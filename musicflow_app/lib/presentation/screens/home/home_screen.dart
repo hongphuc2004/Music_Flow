@@ -1,7 +1,41 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List songs = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchSongs();
+  }
+
+  Future<void> fetchSongs() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://10.243.214.153:5000/api/songs"),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          songs = jsonDecode(response.body);
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -9,11 +43,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Image.asset(
-              'assets/images/logo.png',
-              width: 28,
-              height: 28,
-            ),
+            Image.asset('assets/images/logo.png', width: 28, height: 28),
             const SizedBox(width: 8),
             const Text('MusicFlow'),
           ],
@@ -25,22 +55,21 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionTitle('Trending'),
-            _trendingList(),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionTitle('Trending'),
+                  _trendingList(),
 
-            _sectionTitle('Recently Played'),
-            _songList(),
-
-            _sectionTitle('Your Playlists'),
-            _playlistList(),
-          ],
-        ),
-      ),
+                  _sectionTitle('Recently Added'),
+                  _songList(),
+                ],
+              ),
+            ),
     );
   }
 
@@ -51,10 +80,7 @@ class HomeScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -65,25 +91,18 @@ class HomeScreen extends StatelessWidget {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 5,
+        itemCount: songs.length,
         itemBuilder: (context, index) {
+          final song = songs[index];
           return Container(
             width: 140,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: Colors.grey.shade900,
               borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.music_note, size: 48),
-                SizedBox(height: 8),
-                Text(
-                  'Trending Song',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              image: DecorationImage(
+                image: NetworkImage(song['imageUrl']),
+                fit: BoxFit.cover,
+              ),
             ),
           );
         },
@@ -95,42 +114,22 @@ class HomeScreen extends StatelessWidget {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 5,
+      itemCount: songs.length,
       itemBuilder: (context, index) {
+        final song = songs[index];
+
         return ListTile(
-          leading: const CircleAvatar(
-            child: Icon(Icons.music_note),
+          leading: CircleAvatar(
+            backgroundImage: NetworkImage(song['imageUrl']),
           ),
-          title: const Text('Song Name'),
-          subtitle: const Text('Artist'),
-          trailing: const Icon(Icons.more_vert),
-          onTap: () {},
+          title: Text(song['title']),
+          subtitle: Text(song['artist']),
+          trailing: const Icon(Icons.play_arrow),
+          onTap: () {
+            print("Play song: ${song['audioUrl']}");
+          },
         );
       },
-    );
-  }
-
-  Widget _playlistList() {
-    return SizedBox(
-      height: 150,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 4,
-        itemBuilder: (context, index) {
-          return Container(
-            width: 120,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade800,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Text('Playlist'),
-            ),
-          );
-        },
-      ),
     );
   }
 }

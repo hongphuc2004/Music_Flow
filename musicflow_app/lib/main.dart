@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/mini_player.dart';
 import 'package:musicflow_app/presentation/screens/splash/splash_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_screen.dart';
 import 'package:musicflow_app/presentation/screens/search/search_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/library_screen.dart';
+import 'package:musicflow_app/core/audio/audio_player_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Khởi tạo Audio Service cho background playback
+  await AudioPlayerService.init();
+  
   runApp(const MusicFlowApp());
 }
 
@@ -33,24 +40,58 @@ class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   
-  // Mock mini player data
-  bool _isPlaying = true;
-  bool _showMiniPlayer = true;
-  String _songTitle = 'Lạc Trôi';
-  String _artist = 'Sơn Tùng M-TP';
-  double _progress = 0.35;
+  // Mini player state
+  final AudioPlayerService _audioService = AudioPlayerService();
+  Song? _currentSong;
+  bool _isPlaying = false;
+  double _progress = 0.0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    SearchScreen(),
-    LibraryScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _setupAudioListeners();
+  }
+
+  void _setupAudioListeners() {
+    // Lắng nghe trạng thái playing
+    _audioService.player.playerStateStream.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = state.playing;
+        });
+      }
+    });
+
+    // Lắng nghe progress
+    _audioService.player.positionStream.listen((position) {
+      final duration = _audioService.player.duration;
+      if (mounted && duration != null && duration.inMilliseconds > 0) {
+        setState(() {
+          _progress = position.inMilliseconds / duration.inMilliseconds;
+        });
+      }
+    });
+  }
+
+  // Hàm này sẽ được gọi từ HomeScreen khi click vào bài hát
+  void playSong(Song song) {
+    setState(() {
+      _currentSong = song;
+    });
+    // Sử dụng play() với metadata để hiển thị notification đẹp
+    _audioService.play(
+      url: song.audioUrl,
+      title: song.title,
+      artist: song.artist,
+      imageUrl: song.imageUrl,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,41 +99,44 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          _screens[_currentIndex],
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              HomeScreen(onSongTap: playSong),
+              const SearchScreen(),
+              const LibraryScreen(),
+            ],
+          ),
 
-          // Mini Player nổi
-          if (_showMiniPlayer)
+          // Mini Player - chỉ hiện khi có bài hát đang phát
+          if (_currentSong != null)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: MiniPlayer(
                 isPlaying: _isPlaying,
-                songTitle: _songTitle,
-                artist: _artist,
+                songTitle: _currentSong!.title,
+                artist: _currentSong!.artist,
+                song: _currentSong,
                 progress: _progress,
                 onPlayPause: () {
-                  setState(() {
-                    _isPlaying = !_isPlaying;
-                  });
+                  if (_isPlaying) {
+                    _audioService.pause();
+                  } else {
+                    _audioService.player.play();
+                  }
                 },
                 onNext: () {
-                  setState(() {
-                    _songTitle = 'Hãy Trao Cho Anh';
-                    _artist = 'Sơn Tùng M-TP ft. Snoop Dogg';
-                    _progress = 0.0;
-                  });
+                  // TODO: Implement next song
                 },
                 onPrevious: () {
-                  setState(() {
-                    _songTitle = 'Chạy Ngay Đi';
-                    _artist = 'Sơn Tùng M-TP';
-                    _progress = 0.0;
-                  });
+                  // TODO: Implement previous song
                 },
                 onClose: () {
+                  _audioService.player.stop();
                   setState(() {
-                    _showMiniPlayer = false;
+                    _currentSong = null;
                     _isPlaying = false;
                   });
                 },

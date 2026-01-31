@@ -1,17 +1,20 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:musicflow_app/data/models/song_model.dart';
+import 'package:musicflow_app/data/services/song_api_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Function(Song)? onSongTap;  
+  
+  const HomeScreen({super.key, this.onSongTap});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List songs = [];
+  List<Song> songs = [];
   bool isLoading = true;
+  String? errorMessage;  // Lưu lỗi để hiển thị
 
   @override
   void initState() {
@@ -20,21 +23,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> fetchSongs() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+    
     try {
-      final response = await http.get(
-        Uri.parse("http://10.243.214.153:5000/api/songs"),
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          songs = jsonDecode(response.body);
-          isLoading = false;
-        });
-      }
+      final result = await SongApiService.fetchSongs();
+      setState(() {
+        songs = result;
+        isLoading = false;
+      });
+    } on NetworkException catch (e) {
+      setState(() {
+        errorMessage = e.message;
+        isLoading = false;
+      });
     } catch (e) {
-      print(e);
-      setState(() => isLoading = false);
+      setState(() {
+        errorMessage = 'Đã xảy ra lỗi: $e';
+        isLoading = false;
+      });
     }
+  }
+
+  void _onSongTap(Song song) {
+    // Gọi callback để MainScreen biết và hiện MiniPlayer
+    widget.onSongTap?.call(song);
   }
 
   @override
@@ -55,53 +70,101 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Trending'),
-                  _trendingList(),
-
-                  _sectionTitle('Recently Added'),
-                  _songList(),
-                ],
-              ),
-            ),
+      body: _buildBody(),
     );
   }
 
-  // ---------- UI COMPONENTS ----------
+  Widget _buildBody() {
+    // Loading
+    if (isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Colors.greenAccent),
+            SizedBox(height: 16),
+            Text('Đang tải...', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
 
-  Widget _sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    // Error
+    if (errorMessage != null) {
+      return _buildErrorWidget();
+    }
+
+    // Content với Pull to Refresh
+    return RefreshIndicator(
+      onRefresh: fetchSongs,
+      color: Colors.greenAccent,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 80),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            _songList(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _trendingList() {
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              errorMessage!,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: fetchSongs,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
     return SizedBox(
       height: 180,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(12),
         itemCount: songs.length,
         itemBuilder: (context, index) {
           final song = songs[index];
-          return Container(
-            width: 140,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: DecorationImage(
-                image: NetworkImage(song['imageUrl']),
-                fit: BoxFit.cover,
+
+          return GestureDetector(
+            onTap: () => _onSongTap(song),  // Gọi callback
+            child: Container(
+              width: 140,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: DecorationImage(
+                  image: NetworkImage(song.imageUrl),
+                  fit: BoxFit.cover,
+                  onError: (_, __) {},  // Handle ảnh lỗi
+                ),
               ),
             ),
           );
@@ -120,14 +183,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return ListTile(
           leading: CircleAvatar(
-            backgroundImage: NetworkImage(song['imageUrl']),
+            backgroundImage: NetworkImage(song.imageUrl),
+            onBackgroundImageError: (_, __) {},  // Handle ảnh lỗi
+            child: song.imageUrl.isEmpty 
+                ? const Icon(Icons.music_note, color: Colors.white70)
+                : null,
           ),
-          title: Text(song['title']),
-          subtitle: Text(song['artist']),
+          title: Text(song.title),
+          subtitle: Text(song.artist),
           trailing: const Icon(Icons.play_arrow),
-          onTap: () {
-            print("Play song: ${song['audioUrl']}");
-          },
+          onTap: () => _onSongTap(song),  // Gọi callback
         );
       },
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/player/player_screen.dart';
 
 class MiniPlayer extends StatefulWidget {
@@ -6,6 +7,7 @@ class MiniPlayer extends StatefulWidget {
   final String songTitle;
   final String artist;
   final String? albumArt;
+  final Song? song;
   final double progress;
   final Duration currentPosition;
   final Duration totalDuration;
@@ -20,6 +22,7 @@ class MiniPlayer extends StatefulWidget {
     required this.songTitle,
     required this.artist,
     this.albumArt,
+    this.song,
     this.progress = 0.0,
     this.currentPosition = Duration.zero,
     this.totalDuration = const Duration(minutes: 3, seconds: 30),
@@ -37,7 +40,6 @@ class _MiniPlayerState extends State<MiniPlayer>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _scaleAnim;
-  double _dragOffset = 0;
 
   @override
   void initState() {
@@ -84,11 +86,9 @@ class _MiniPlayerState extends State<MiniPlayer>
         direction: DismissDirection.horizontal,
         confirmDismiss: (direction) async {
           if (direction == DismissDirection.endToStart) {
-            // Swipe left → Next song
             widget.onNext?.call();
             return false;
           } else {
-            // Swipe right → Previous song
             widget.onPrevious?.call();
             return false;
           }
@@ -107,13 +107,13 @@ class _MiniPlayerState extends State<MiniPlayer>
               gradient: LinearGradient(
                 colors: [
                   Colors.grey.shade900,
-                  Colors.grey.shade900.withOpacity(0.95),
+                  Colors.grey.shade900.withValues(alpha: 0.95),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -121,7 +121,6 @@ class _MiniPlayerState extends State<MiniPlayer>
             ),
             child: Column(
               children: [
-                // Progress bar on top
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: LinearProgressIndicator(
@@ -131,22 +130,14 @@ class _MiniPlayerState extends State<MiniPlayer>
                     minHeight: 3,
                   ),
                 ),
-                
-                // Main content
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
                       children: [
-                        // Album art with animation
                         _buildAlbumArt(),
-                        
                         const SizedBox(width: 12),
-                        
-                        // Song info
                         Expanded(child: _buildSongInfo()),
-                        
-                        // Controls
                         _buildControls(),
                       ],
                     ),
@@ -164,7 +155,7 @@ class _MiniPlayerState extends State<MiniPlayer>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.greenAccent.withOpacity(0.2),
+        color: Colors.greenAccent.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
       ),
       alignment: alignment,
@@ -190,7 +181,7 @@ class _MiniPlayerState extends State<MiniPlayer>
           boxShadow: widget.isPlaying
               ? [
                   BoxShadow(
-                    color: Colors.greenAccent.withOpacity(0.4),
+                    color: Colors.greenAccent.withValues(alpha: 0.4),
                     blurRadius: 12,
                     spreadRadius: 2,
                   )
@@ -267,15 +258,12 @@ class _MiniPlayerState extends State<MiniPlayer>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Previous button (small)
         IconButton(
           icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 24),
           onPressed: widget.onPrevious,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
         ),
-        
-        // Play/Pause button (main)
         Container(
           width: 42,
           height: 42,
@@ -284,7 +272,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.greenAccent.withOpacity(0.4),
+                color: Colors.greenAccent.withValues(alpha: 0.4),
                 blurRadius: 8,
                 spreadRadius: 1,
               ),
@@ -305,8 +293,6 @@ class _MiniPlayerState extends State<MiniPlayer>
             padding: EdgeInsets.zero,
           ),
         ),
-        
-        // Next button (small)
         IconButton(
           icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 24),
           onPressed: widget.onNext,
@@ -318,13 +304,12 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   void _openFullPlayer(BuildContext context) {
+    if (widget.song == null) return;
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => PlayerScreen(
-          songTitle: widget.songTitle,
-          artist: widget.artist,
-          isPlaying: widget.isPlaying,
+          song: widget.song!,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
@@ -344,7 +329,6 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 }
 
-// 🎵 Animated wave bars for playing state
 class _PlayingWaveAnimation extends StatefulWidget {
   const _PlayingWaveAnimation();
 
@@ -366,7 +350,7 @@ class _PlayingWaveAnimationState extends State<_PlayingWaveAnimation>
         duration: Duration(milliseconds: 400 + index * 100),
       )..repeat(reverse: true);
     });
-    
+
     _animations = _controllers.map((controller) {
       return Tween<double>(begin: 0.3, end: 1.0).animate(
         CurvedAnimation(parent: controller, curve: Curves.easeInOut),

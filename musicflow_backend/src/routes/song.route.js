@@ -25,6 +25,42 @@ router.get("/", async (req, res) => {
 });
 
 // =================================================
+// 🔍 SEARCH SONGS (by title, artist, first letter)
+router.get("/search", async (req, res) => {
+  try {
+    const { query, artist, letter } = req.query;
+    
+    let filter = {};
+    
+    // Tìm kiếm theo query (tên bài hát hoặc ca sĩ)
+    if (query) {
+      const searchRegex = new RegExp(query, "i"); // case-insensitive
+      filter.$or = [
+        { title: searchRegex },
+        { artist: searchRegex }
+      ];
+    }
+    
+    // Lọc theo ca sĩ cụ thể
+    if (artist) {
+      filter.artist = new RegExp(artist, "i");
+    }
+    
+    // Lọc theo chữ cái đầu của tên bài hát
+    if (letter) {
+      filter.title = new RegExp(`^${letter}`, "i"); // bắt đầu bằng chữ cái
+    }
+    
+    const songs = await Song.find(filter).sort({ createdAt: -1 });
+    
+    res.json(songs);
+  } catch (error) {
+    console.error("Search songs error:", error);
+    res.status(500).json({ message: "Search failed", error: error.message });
+  }
+});
+
+// =================================================
 // 🎵 UPLOAD SONG (audio + image)
 router.post(
   "/",

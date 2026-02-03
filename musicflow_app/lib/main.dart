@@ -103,7 +103,7 @@ class MainScreenState extends State<MainScreen> {
             index: _currentIndex,
             children: [
               HomeScreen(onSongTap: playSong),
-              const SearchScreen(),
+              SearchScreen(onSongTap: playSong),
               const LibraryScreen(),
             ],
           ),

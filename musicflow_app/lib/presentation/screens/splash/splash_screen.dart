@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/main.dart';
+import 'package:musicflow_app/data/services/auth_service.dart';
+import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -23,12 +25,29 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1200),
     )..forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // Kiểm tra đã đăng nhập chưa
+    final isLoggedIn = await AuthService.isLoggedIn();
+    
+    if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
+        MaterialPageRoute(
+          builder: (_) => isLoggedIn ? const MainScreen() : const LoginScreen(),
+        ),
       );
-    });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override

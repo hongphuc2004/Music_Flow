@@ -15,6 +15,10 @@ class MiniPlayer extends StatefulWidget {
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
   final VoidCallback? onClose;
+  // Playlist support
+  final List<Song> playlist;
+  final int currentIndex;
+  final Function(int)? onPlaylistItemTap;
 
   const MiniPlayer({
     super.key,
@@ -30,6 +34,9 @@ class MiniPlayer extends StatefulWidget {
     this.onNext,
     this.onPrevious,
     this.onClose,
+    this.playlist = const [],
+    this.currentIndex = 0,
+    this.onPlaylistItemTap,
   });
 
   @override
@@ -310,6 +317,9 @@ class _MiniPlayerState extends State<MiniPlayer>
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => PlayerScreen(
           song: widget.song!,
+          playlist: widget.playlist,
+          currentIndex: widget.currentIndex,
+          onSongChanged: widget.onPlaylistItemTap,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(

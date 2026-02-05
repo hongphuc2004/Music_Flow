@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/song_model.dart';
 
 class SongApiService {
-  static const String baseUrl = "http://172.16.0.28:5000/api";
+  static const String baseUrl = "http://192.168.1.148:5000/api";
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 

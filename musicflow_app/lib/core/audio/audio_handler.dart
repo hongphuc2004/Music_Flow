@@ -54,6 +54,8 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
+  bool _isLoading = false;
+
   /// Play a song with URL and metadata
   Future<void> playFromUrl({
     required String url,
@@ -64,8 +66,22 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
   }) async {
     try {
       print('🎵 Playing URL: $url');
+      print('🎵 Current volume: ${_player.volume}');
 
-      // Stop current playback if different URL
+      // Nếu đang loading, stop trước
+      if (_isLoading) {
+        print('⏹️ Stopping previous loading...');
+        await _player.stop();
+        // Chờ một chút để player reset
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      _isLoading = true;
+
+      // Đảm bảo volume = 1.0
+      await _player.setVolume(1.0);
+
+      // Luôn stop trước khi load URL mới
       if (_currentUrl != null && _currentUrl != url) {
         await _player.stop();
       }
@@ -79,16 +95,34 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
         duration: duration,
       ));
 
-      // Only set URL if different
-      if (_currentUrl != url) {
-        _currentUrl = url;
-        await _player.setUrl(url);
-      }
+      // Set URL mới
+      _currentUrl = url;
+      await _player.setUrl(url);
+      
+      _isLoading = false;
 
       await _player.play();
+      print('🎵 Player state after play: playing=${_player.playing}, volume=${_player.volume}');
     } catch (e) {
+      _isLoading = false;
       print('❌ Audio error: $e');
-      _currentUrl = null;
+      
+      // Nếu là "Loading interrupted", thử lại một lần
+      if (e.toString().contains('interrupted')) {
+        print('🔄 Retrying after interrupt...');
+        await Future.delayed(const Duration(milliseconds: 200));
+        try {
+          _currentUrl = url;
+          await _player.setUrl(url);
+          await _player.play();
+          print('✅ Retry successful');
+        } catch (retryError) {
+          print('❌ Retry failed: $retryError');
+          _currentUrl = null;
+        }
+      } else {
+        _currentUrl = null;
+      }
     }
   }
 

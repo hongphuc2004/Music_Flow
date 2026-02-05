@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/mini_player.dart';
 import 'package:musicflow_app/presentation/screens/splash/splash_screen.dart';
@@ -52,6 +53,13 @@ class MainScreenState extends State<MainScreen> {
   bool _isPlaying = false;
   double _progress = 0.0;
 
+  // Playlist/Queue state
+  List<Song> _playlist = [];
+  int _currentPlaylistIndex = 0;
+  
+  // Debounce cho next/previous
+  bool _isChangingSong = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,20 +85,102 @@ class MainScreenState extends State<MainScreen> {
         });
       }
     });
+
+    // Lắng nghe khi bài hát kết thúc để tự động phát bài tiếp theo
+    _audioService.player.processingStateStream.listen((state) {
+      if (state == ProcessingState.completed) {
+        _playNext();
+      }
+    });
   }
 
-  // Hàm này sẽ được gọi từ HomeScreen khi click vào bài hát
+  // Phát một bài hát đơn lẻ (xóa playlist cũ)
   void playSong(Song song) {
+    print('🎵 MainScreen.playSong called!');
+    print('🎵 Song: ${song.title} - ${song.artist}');
+    
     setState(() {
+      _playlist = [song];
+      _currentPlaylistIndex = 0;
       _currentSong = song;
     });
-    // Sử dụng play() với metadata để hiển thị notification đẹp
+    
+    _playCurrentSong();
+  }
+
+  // Phát playlist từ vị trí chỉ định
+  void playPlaylist(List<Song> songs, {int startIndex = 0}) {
+    if (songs.isEmpty) return;
+    
+    print('🎵 MainScreen.playPlaylist called!');
+    print('🎵 Playlist: ${songs.length} songs, starting at index $startIndex');
+    
+    setState(() {
+      _playlist = List.from(songs);
+      _currentPlaylistIndex = startIndex;
+      _currentSong = songs[startIndex];
+    });
+    
+    _playCurrentSong();
+  }
+
+  void _playCurrentSong() {
+    if (_currentSong == null) return;
+    
     _audioService.play(
-      url: song.audioUrl,
-      title: song.title,
-      artist: song.artist,
-      imageUrl: song.imageUrl,
-    );
+      url: _currentSong!.audioUrl,
+      title: _currentSong!.title,
+      artist: _currentSong!.artist,
+      imageUrl: _currentSong!.imageUrl,
+    ).then((_) {
+      print('✅ Audio play() completed');
+    }).catchError((e) {
+      print('❌ Audio play() error: $e');
+    });
+  }
+
+  void _playNext() {
+    if (_playlist.isEmpty || _isChangingSong) return;
+    
+    if (_currentPlaylistIndex < _playlist.length - 1) {
+      _isChangingSong = true;
+      setState(() {
+        _currentPlaylistIndex++;
+        _currentSong = _playlist[_currentPlaylistIndex];
+      });
+      _playCurrentSong();
+      print('⏭️ Playing next: ${_currentSong?.title}');
+      
+      // Reset debounce sau 500ms
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isChangingSong = false;
+      });
+    } else {
+      // Đã hết playlist, có thể loop hoặc dừng
+      print('🏁 Playlist ended');
+    }
+  }
+
+  void _playPrevious() {
+    if (_playlist.isEmpty || _isChangingSong) return;
+    
+    if (_currentPlaylistIndex > 0) {
+      _isChangingSong = true;
+      setState(() {
+        _currentPlaylistIndex--;
+        _currentSong = _playlist[_currentPlaylistIndex];
+      });
+      _playCurrentSong();
+      print('⏮️ Playing previous: ${_currentSong?.title}');
+      
+      // Reset debounce sau 500ms
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isChangingSong = false;
+      });
+    } else {
+      // Đang ở bài đầu tiên, phát lại từ đầu
+      _audioService.seek(Duration.zero);
+    }
   }
 
   @override
@@ -102,7 +192,10 @@ class MainScreenState extends State<MainScreen> {
           IndexedStack(
             index: _currentIndex,
             children: [
-              HomeScreen(onSongTap: playSong),
+              HomeScreen(
+                onSongTap: playSong,
+                onPlayAll: playPlaylist,
+              ),
               SearchScreen(onSongTap: playSong),
               const LibraryScreen(),
             ],
@@ -120,6 +213,8 @@ class MainScreenState extends State<MainScreen> {
                 artist: _currentSong!.artist,
                 song: _currentSong,
                 progress: _progress,
+                playlist: _playlist,
+                currentIndex: _currentPlaylistIndex,
                 onPlayPause: () {
                   if (_isPlaying) {
                     _audioService.pause();
@@ -127,15 +222,17 @@ class MainScreenState extends State<MainScreen> {
                     _audioService.player.play();
                   }
                 },
-                onNext: () {
-                  // TODO: Implement next song
-                },
-                onPrevious: () {
-                  // TODO: Implement previous song
+                onNext: _playNext,
+                onPrevious: _playPrevious,
+                onPlaylistItemTap: (index) {
+                  // Khi user tap vào bài hát trong queue của PlayerScreen
+                  playPlaylist(_playlist, startIndex: index);
                 },
                 onClose: () {
                   _audioService.player.stop();
                   setState(() {
+                    _playlist.clear();
+                    _currentPlaylistIndex = 0;
                     _currentSong = null;
                     _isPlaying = false;
                   });

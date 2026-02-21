@@ -56,6 +56,19 @@ class SongApiService {
     }
   }
 
+  /// Lấy danh sách bài hát gợi ý (random)
+  static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
+    final uri = Uri.parse("$baseUrl/songs/recommended?limit=$limit");
+    final response = await _getWithRetry(uri);
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return data.map((e) => Song.fromJson(e)).toList();
+    } else {
+      throw NetworkException("Lấy gợi ý thất bại");
+    }
+  }
+
   /// Tìm kiếm bài hát theo query (tên bài hát hoặc ca sĩ)
   static Future<List<Song>> searchSongs({
     String? query,

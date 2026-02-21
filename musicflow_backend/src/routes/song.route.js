@@ -25,6 +25,24 @@ router.get("/", async (req, res) => {
 });
 
 // =================================================
+// 🎲 GET RECOMMENDED SONGS (Random)
+router.get("/recommended", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 12;
+    
+    // Dùng MongoDB aggregation để lấy random songs
+    const songs = await Song.aggregate([
+      { $sample: { size: limit } }
+    ]);
+    
+    res.json(songs);
+  } catch (error) {
+    console.error("Get recommended songs error:", error);
+    res.status(500).json({ message: "Get recommended songs failed", error: error.message });
+  }
+});
+
+// =================================================
 // 🔍 SEARCH SONGS (by title, artist, first letter)
 router.get("/search", async (req, res) => {
   try {

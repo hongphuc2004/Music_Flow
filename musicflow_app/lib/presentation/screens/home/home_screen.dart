@@ -19,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Song> songs = [];
   List<Topic> topics = [];
+  List<Song> recommendedSongs = [];
   bool isLoading = true;
   String? errorMessage;
 
@@ -35,15 +36,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     
     try {
-      // Fetch songs và topics song song
+      // Fetch songs, topics và recommended songs song song
       final results = await Future.wait([
         SongApiService.fetchSongs(),
         TopicApiService.fetchTopics(),
+        SongApiService.fetchRecommendedSongs(limit: 12),
       ]);
       
       setState(() {
         songs = results[0] as List<Song>;
         topics = results[1] as List<Topic>;
+        recommendedSongs = results[2] as List<Song>;
         isLoading = false;
       });
     } on NetworkException catch (e) {
@@ -67,6 +70,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSongTap(Song song) {
     // Gọi callback để MainScreen biết và hiện MiniPlayer
     widget.onSongTap?.call(song);
+  }
+
+  Future<void> _refreshRecommendedSongs() async {
+    try {
+      final newRecommended = await SongApiService.fetchRecommendedSongs(limit: 12);
+      setState(() {
+        recommendedSongs = newRecommended;
+      });
+    } catch (e) {
+      // Ignore errors on refresh, keep current list
+    }
   }
 
   @override
@@ -192,6 +206,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
+        _buildSuggestedSongs(),
+        const SizedBox(height: 16),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
@@ -204,6 +220,160 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSuggestedSongs() {
+    if (recommendedSongs.isEmpty) return const SizedBox.shrink();
+    
+    // Group songs into columns of 3
+    final columns = <List<Song>>[];
+    for (var i = 0; i < recommendedSongs.length; i += 3) {
+      columns.add(recommendedSongs.sublist(i, (i + 3).clamp(0, recommendedSongs.length)));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header with title, play all and refresh buttons
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(
+            children: [
+              const Text(
+                'Gợi ý bài hát',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              // Play all button
+              InkWell(
+                onTap: () => widget.onPlayAll?.call(recommendedSongs, startIndex: 0),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[600]!),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.play_arrow, size: 18, color: Colors.grey[300]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Phát tất cả',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[300]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Refresh button
+              InkWell(
+                onTap: _refreshRecommendedSongs,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[600]!),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.refresh, size: 18, color: Colors.grey[300]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Horizontal scrollable song list
+        SizedBox(
+          height: 210, // 3 songs * 70 height each
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: columns.length,
+            itemBuilder: (context, columnIndex) {
+              final columnSongs = columns[columnIndex];
+              return Container(
+                width: MediaQuery.of(context).size.width * 0.75,
+                margin: const EdgeInsets.only(right: 8),
+                child: Column(
+                  children: columnSongs.map((song) => _buildSuggestedSongTile(song, recommendedSongs)).toList(),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestedSongTile(Song song, List<Song> playlist) {
+    return InkWell(
+      onTap: () {
+        final index = playlist.indexOf(song);
+        widget.onPlayAll?.call(playlist, startIndex: index);
+      },
+      child: Container(
+        height: 70,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Row(
+          children: [
+            // Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.network(
+                song.imageUrl,
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 56,
+                  height: 56,
+                  color: Colors.grey[800],
+                  child: const Icon(Icons.music_note, color: Colors.white54),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Title and artist
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    song.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    song.artist,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            // Options menu
+            SongOptionsMenu(song: song),
+          ],
+        ),
+      ),
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:musicflow_app/data/models/topic_model.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
 import 'package:musicflow_app/data/services/topic_api_service.dart';
 import 'package:musicflow_app/presentation/screens/home/album_detail_screen.dart';
+import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -355,8 +356,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           title: Text(song.title),
           subtitle: Text(song.artist),
-          trailing: const Icon(Icons.play_arrow),
-          onTap: () => _onSongTap(song),  // Gọi callback
+          trailing: SongOptionsMenu(song: song),
+          onTap: () => _onSongTap(song),  // Click anywhere to play
         );
       },
     );

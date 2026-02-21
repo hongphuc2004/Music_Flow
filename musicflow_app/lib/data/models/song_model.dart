@@ -25,4 +25,15 @@ class Song {
       lyrics: json['lyrics'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'title': title,
+      'artist': artist,
+      'audioUrl': audioUrl,
+      'imageUrl': imageUrl,
+      'lyrics': lyrics,
+    };
+  }
 }

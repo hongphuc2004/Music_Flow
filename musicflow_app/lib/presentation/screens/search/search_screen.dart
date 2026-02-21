@@ -5,6 +5,7 @@ import '../../../data/services/song_api_service.dart';
 import '../../../data/services/topic_api_service.dart';
 import '../../../data/models/song_model.dart';
 import '../../../data/models/topic_model.dart';
+import '../../widgets/song_options_menu.dart';
 
 class SearchScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -657,8 +658,9 @@ class _SearchScreenState extends State<SearchScreen> {
         song.artist,
         style: const TextStyle(color: Colors.grey),
       ),
+      trailing: SongOptionsMenu(song: song),
       onTap: () {
-        widget.onSongTap?.call(song);
+        widget.onSongTap?.call(song);  // Click anywhere to play
       },
     );
   }

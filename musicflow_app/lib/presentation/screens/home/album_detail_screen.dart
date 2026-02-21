@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/topic_model.dart';
 import 'package:musicflow_app/data/services/topic_api_service.dart';
+import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
   final Topic topic;
@@ -362,11 +363,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: IconButton(
-        icon: const Icon(Icons.more_vert, color: Colors.grey),
-        onPressed: () {},
-      ),
-      onTap: () => _playSong(song, index: index - 1),  // index - 1 vì index bắt đầu từ 1 trong UI
+      trailing: SongOptionsMenu(song: song),
+      onTap: () => _playSong(song, index: index - 1),  // Click anywhere to play
     );
   }
 }

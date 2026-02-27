@@ -8,6 +8,7 @@ const songRoute = require("./routes/song.route");
 const authRoute = require("./routes/auth.route");
 const topicRoute = require("./routes/topic.route");
 const playlistRoute = require("./routes/playlist.route");
+const favoriteRoute = require("./routes/favorite.route");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/songs", songRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/topics", topicRoute);
 app.use("/api/playlists", playlistRoute);
+app.use("/api/favorites", favoriteRoute);
 
 // connect DB
 mongoose

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
+import 'package:musicflow_app/data/services/favorite_service.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -33,6 +34,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late Song _currentSong;
   late int _currentIndex;
   bool _isChangingSong = false;  // Debounce
+  bool _isFavorite = false;  // Trạng thái yêu thích
 
   @override
   void initState() {
@@ -40,12 +42,56 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _currentSong = widget.song;
     _currentIndex = widget.currentIndex;
     _initPlayer();
+    _checkFavorite();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  /// Kiểm tra bài hát có trong yêu thích không
+  Future<void> _checkFavorite() async {
+    print('❤️ Checking favorite for song: ${_currentSong.id}');
+    final result = await FavoriteService.checkFavorite(_currentSong.id);
+    print('❤️ Check result: success=${result.success}, isFavorite=${result.isFavorite}, message=${result.message}');
+    if (mounted && result.success) {
+      setState(() {
+        _isFavorite = result.isFavorite ?? false;
+      });
+    }
+  }
+
+  /// Toggle trạng thái yêu thích
+  Future<void> _toggleFavorite() async {
+    print('❤️ Toggling favorite for song: ${_currentSong.id}');
+    final result = await FavoriteService.toggleFavorite(_currentSong.id);
+    print('❤️ Toggle result: success=${result.success}, isFavorite=${result.isFavorite}, message=${result.message}');
+    if (result.success) {
+      setState(() {
+        _isFavorite = result.isFavorite ?? !_isFavorite;
+      });
+      // Hiển thị thông báo
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? ''),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Lỗi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _initPlayer() async {
@@ -98,6 +144,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _currentSong = newSong;
       });
       
+      // Check trạng thái yêu thích của bài mới
+      _checkFavorite();
+      
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
       
@@ -121,6 +170,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _currentIndex = newIndex;
         _currentSong = newSong;
       });
+      
+      // Check trạng thái yêu thích của bài mới
+      _checkFavorite();
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
@@ -339,6 +391,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           _currentIndex = index;
                           _currentSong = song;
                         });
+                        // Check trạng thái yêu thích
+                        _checkFavorite();
                       }
                     },
                   ),
@@ -481,18 +535,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          Text(
-            _currentSong.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  _currentSong.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              IconButton(
+                onPressed: _toggleFavorite,
+                icon: Icon(
+                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: _isFavorite ? Colors.red : Colors.white,
+                  size: 28,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
           Text(
             _currentSong.artist,
             style: TextStyle(

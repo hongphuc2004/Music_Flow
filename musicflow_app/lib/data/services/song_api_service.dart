@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/song_model.dart';
 
 class SongApiService {
-  static const String baseUrl = "http://192.168.1.148:5000/api";
+  static const String baseUrl = "http://192.168.1.60:5000/api/songs";
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 
@@ -46,7 +46,7 @@ class SongApiService {
   }
 
   static Future<List<Song>> fetchSongs() async {
-    final response = await _getWithRetry(Uri.parse("$baseUrl/songs"));
+    final response = await _getWithRetry(Uri.parse(baseUrl));
 
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
@@ -58,7 +58,7 @@ class SongApiService {
 
   /// Lấy danh sách bài hát gợi ý (random)
   static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
-    final uri = Uri.parse("$baseUrl/songs/recommended?limit=$limit");
+    final uri = Uri.parse("$baseUrl/recommended?limit=$limit");
     final response = await _getWithRetry(uri);
 
     if (response.statusCode == 200) {
@@ -87,7 +87,7 @@ class SongApiService {
       queryParams['letter'] = letter;
     }
 
-    final uri = Uri.parse("$baseUrl/songs/search").replace(queryParameters: queryParams);
+    final uri = Uri.parse("$baseUrl/search").replace(queryParameters: queryParams);
     final response = await _getWithRetry(uri);
 
     if (response.statusCode == 200) {

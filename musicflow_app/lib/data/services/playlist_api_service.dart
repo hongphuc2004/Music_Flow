@@ -6,7 +6,7 @@ import '../models/playlist_model.dart';
 import 'auth_service.dart';
 
 class PlaylistApiService {
-  static const String baseUrl = "http://192.168.1.148:5000/api/playlists";
+  static const String baseUrl = "http://192.168.1.60:5000/api/playlists";
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token xác thực

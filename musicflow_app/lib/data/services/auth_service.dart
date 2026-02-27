@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  static const String baseUrl = "http://192.168.1.148:5000/api/auth";
+  static const String baseUrl = "http://192.168.1.60:5000/api/auth";
   static const Duration timeout = Duration(seconds: 15);
   
   // Keys cho SharedPreferences

@@ -3,6 +3,7 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
+import 'package:musicflow_app/data/services/favorite_service.dart';
 
 /// Widget hiển thị menu tùy chọn cho bài hát (3 chấm dọc)
 class SongOptionsMenu extends StatelessWidget {
@@ -14,6 +15,8 @@ class SongOptionsMenu extends StatelessWidget {
   final String? currentPlaylistId;
   /// Callback khi xóa bài hát khỏi playlist
   final VoidCallback? onRemovedFromPlaylist;
+  /// Callback khi trạng thái yêu thích thay đổi
+  final VoidCallback? onFavoriteChanged;
 
   const SongOptionsMenu({
     super.key,
@@ -23,6 +26,7 @@ class SongOptionsMenu extends StatelessWidget {
     this.onDownload,
     this.currentPlaylistId,
     this.onRemovedFromPlaylist,
+    this.onFavoriteChanged,
   });
 
   @override
@@ -44,6 +48,7 @@ class SongOptionsMenu extends StatelessWidget {
         onDownload: onDownload,
         currentPlaylistId: currentPlaylistId,
         onRemovedFromPlaylist: onRemovedFromPlaylist,
+        onFavoriteChanged: onFavoriteChanged,
       ),
     );
   }
@@ -56,6 +61,7 @@ class _SongOptionsSheet extends StatefulWidget {
   final VoidCallback? onDownload;
   final String? currentPlaylistId;
   final VoidCallback? onRemovedFromPlaylist;
+  final VoidCallback? onFavoriteChanged;
 
   const _SongOptionsSheet({
     required this.song,
@@ -64,6 +70,7 @@ class _SongOptionsSheet extends StatefulWidget {
     this.onDownload,
     this.currentPlaylistId,
     this.onRemovedFromPlaylist,
+    this.onFavoriteChanged,
   });
 
   @override
@@ -73,6 +80,54 @@ class _SongOptionsSheet extends StatefulWidget {
 class _SongOptionsSheetState extends State<_SongOptionsSheet> {
   List<Playlist> _playlists = [];
   bool _isLoadingPlaylists = false;
+  bool _isFavorite = false;
+  bool _isCheckingFavorite = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFavorite();
+  }
+
+  Future<void> _checkFavorite() async {
+    final result = await FavoriteService.checkFavorite(widget.song.id);
+    if (mounted) {
+      setState(() {
+        _isFavorite = result.isFavorite ?? false;
+        _isCheckingFavorite = false;
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final result = await FavoriteService.toggleFavorite(widget.song.id);
+    if (result.success) {
+      setState(() {
+        _isFavorite = result.isFavorite ?? !_isFavorite;
+      });
+      // Gọi callback để refresh danh sách favorites
+      widget.onFavoriteChanged?.call();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? ''),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Lỗi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,18 +219,10 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
               onTap: () => _showAddToPlaylistDialog(context),
             ),
           _buildOptionTile(
-            icon: Icons.favorite_border,
-            title: 'Thêm vào yêu thích',
-            onTap: () {
-              Navigator.pop(context);
-              widget.onAddToFavorite?.call();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã thêm vào yêu thích'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+            title: _isFavorite ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích',
+            iconColor: _isFavorite ? Colors.red : null,
+            onTap: _isCheckingFavorite ? null : _toggleFavorite,
           ),
           _buildOptionTile(
             icon: Icons.queue_music,
@@ -217,7 +264,7 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
   Widget _buildOptionTile({
     required IconData icon,
     required String title,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
     Color? iconColor,
   }) {
     return ListTile(

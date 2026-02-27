@@ -4,6 +4,7 @@ import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
+import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 import 'package:musicflow_app/presentation/screens/library/playlist_detail_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/history_screen.dart';
@@ -21,16 +22,17 @@ class LibraryScreen extends StatefulWidget {
   });
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  State<LibraryScreen> createState() => LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
+class LibraryScreenState extends State<LibraryScreen> {
   List<Playlist> _playlists = [];
   List<Song> _recentHistory = [];
-  List<Song> _favoriteSongs = []; // TODO: Implement favorites from API
+  List<Song> _favoriteSongs = [];
   
   bool _isLoadingPlaylists = false;
   bool _isLoadingHistory = false;
+  bool _isLoadingFavorites = false;
   bool _isLoggedIn = false;
   String? _errorMessage;
 
@@ -40,11 +42,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
     _loadData();
   }
 
+  /// Refresh all data - có thể gọi từ bên ngoài
+  Future<void> refresh() async {
+    await _loadData();
+  }
+
+  /// Chỉ refresh favorites - dùng khi toggle favorite
+  Future<void> refreshFavorites() async {
+    await _loadFavorites();
+  }
+
   Future<void> _loadData() async {
     await _checkLoginStatus();
     await Future.wait([
       _loadPlaylists(),
       _loadRecentHistory(),
+      _loadFavorites(),
     ]);
   }
 
@@ -85,6 +98,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(() {
         _isLoadingHistory = false;
         _recentHistory = history;
+      });
+    }
+  }
+
+  Future<void> _loadFavorites() async {
+    if (!_isLoggedIn) return;
+    
+    setState(() => _isLoadingFavorites = true);
+    
+    final result = await FavoriteService.getFavorites();
+    print('❤️ Load favorites result: ${result.success}, count: ${result.favorites?.length}');
+    
+    if (mounted) {
+      setState(() {
+        _isLoadingFavorites = false;
+        if (result.success) {
+          _favoriteSongs = result.favorites ?? [];
+        }
       });
     }
   }
@@ -750,7 +781,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: SongOptionsMenu(song: song),
+      trailing: SongOptionsMenu(
+        song: song,
+        onFavoriteChanged: isFavorite ? refreshFavorites : null,
+      ),
       onTap: () => widget.onSongTap?.call(song),
     );
   }

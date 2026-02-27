@@ -51,6 +51,7 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final GlobalAudioState _audioState = GlobalAudioState();
+  final GlobalKey<LibraryScreenState> _libraryKey = GlobalKey<LibraryScreenState>();
 
   @override
   void initState() {
@@ -96,6 +97,7 @@ class MainScreenState extends State<MainScreen> {
               ),
               SearchScreen(onSongTap: playSong),
               LibraryScreen(
+                key: _libraryKey,
                 onSongTap: playSong,
                 onPlayAll: playPlaylist,
               ),
@@ -131,6 +133,10 @@ class MainScreenState extends State<MainScreen> {
           setState(() {
             _currentIndex = index;
           });
+          // Refresh Library khi chuyển sang tab Library
+          if (index == 2) {
+            _libraryKey.currentState?.refreshFavorites();
+          }
         },
         backgroundColor: Colors.black,
         selectedItemColor: Colors.greenAccent,

@@ -6,7 +6,7 @@ import '../models/topic_model.dart';
 import '../models/song_model.dart';
 
 class TopicApiService {
-  static const String baseUrl = "http://192.168.1.148:5000/api";
+  static const String baseUrl = "http://192.168.1.60:5000/api/topics";
   static const Duration timeout = Duration(seconds: 15);
   static const int maxRetries = 3;
 
@@ -48,7 +48,7 @@ class TopicApiService {
 
   /// Lấy danh sách tất cả topics
   static Future<List<Topic>> fetchTopics() async {
-    final response = await _getWithRetry(Uri.parse("$baseUrl/topics"));
+    final response = await _getWithRetry(Uri.parse(baseUrl));
 
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
@@ -60,7 +60,7 @@ class TopicApiService {
 
   /// Lấy danh sách bài hát theo topic ID
   static Future<List<Song>> fetchSongsByTopic(String topicId) async {
-    final response = await _getWithRetry(Uri.parse("$baseUrl/topics/$topicId/songs"));
+    final response = await _getWithRetry(Uri.parse("$baseUrl/$topicId/songs"));
 
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);

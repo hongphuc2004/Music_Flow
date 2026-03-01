@@ -6,7 +6,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class FavoriteService {
-  static const String baseUrl = "http://192.168.1.60:5000/api/favorites";
+  static const String baseUrl = "http://192.168.1.58:5000/api/favorites";
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token

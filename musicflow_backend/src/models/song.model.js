@@ -15,7 +15,20 @@ const songSchema = new mongoose.Schema(
     topicId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Topic",
-      required: true,
+      required: false,
+    },
+
+    // 👤 UPLOADER
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false, // null = admin upload
+    },
+
+    // 🔒 VISIBILITY
+    isPublic: {
+      type: Boolean,
+      default: false, // Mặc định private, chỉ user thấy
     },
 
     // 🎵 AUDIO
@@ -31,14 +44,14 @@ const songSchema = new mongoose.Schema(
       type: Number,
     },
 
-    // 🖼️ IMAGE (COVER)
+    // 🖼️ IMAGE (COVER) - Tùy chọn, có ảnh mặc định
     imageUrl: {
       type: String,
-      required: true,
+      default: "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg",
     },
     imagePublicId: {
       type: String,
-      required: true,
+      default: null,
     },
 
     // 📝 LYRICS

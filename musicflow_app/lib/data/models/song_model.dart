@@ -5,6 +5,8 @@ class Song {
   final String audioUrl;
   final String imageUrl;
   final String lyrics;
+  final String? uploadedBy;
+  final bool isPublic;
 
   Song({
     required this.id,
@@ -13,6 +15,8 @@ class Song {
     required this.audioUrl,
     required this.imageUrl,
     required this.lyrics,
+    this.uploadedBy,
+    this.isPublic = false,
   });
 
   factory Song.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Song {
       audioUrl: json['audioUrl'],
       imageUrl: json['imageUrl'] ?? '',
       lyrics: json['lyrics'] ?? '',
+      uploadedBy: json['uploadedBy'],
+      isPublic: json['isPublic'] ?? false,
     );
   }
 
@@ -34,6 +40,27 @@ class Song {
       'audioUrl': audioUrl,
       'imageUrl': imageUrl,
       'lyrics': lyrics,
+      'uploadedBy': uploadedBy,
+      'isPublic': isPublic,
     };
+  }
+
+  /// Copy with modified fields
+  Song copyWith({
+    String? title,
+    String? artist,
+    String? lyrics,
+    bool? isPublic,
+  }) {
+    return Song(
+      id: id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      audioUrl: audioUrl,
+      imageUrl: imageUrl,
+      lyrics: lyrics ?? this.lyrics,
+      uploadedBy: uploadedBy,
+      isPublic: isPublic ?? this.isPublic,
+    );
   }
 }

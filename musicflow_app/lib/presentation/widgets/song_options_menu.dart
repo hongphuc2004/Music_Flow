@@ -78,8 +78,6 @@ class _SongOptionsSheet extends StatefulWidget {
 }
 
 class _SongOptionsSheetState extends State<_SongOptionsSheet> {
-  List<Playlist> _playlists = [];
-  bool _isLoadingPlaylists = false;
   bool _isFavorite = false;
   bool _isCheckingFavorite = true;
 

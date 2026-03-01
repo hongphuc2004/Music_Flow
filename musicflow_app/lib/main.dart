@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/mini_player.dart';
 import 'package:musicflow_app/presentation/screens/splash/splash_screen.dart';

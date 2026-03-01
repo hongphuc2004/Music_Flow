@@ -524,8 +524,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? const Icon(Icons.music_note, color: Colors.white70)
                 : null,
           ),
-          title: Text(song.title),
-          subtitle: Text(song.artist),
+          title: Text(
+            song.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            song.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           trailing: SongOptionsMenu(song: song),
           onTap: () => _onSongTap(song),  // Click anywhere to play
         );

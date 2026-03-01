@@ -4,6 +4,7 @@ const multer = require("multer");
 const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
 const Song = require("../models/song.model");
+const authMiddleware = require("../middleware/auth.middleware");
 
 // ================= MULTER CONFIG =================
 const upload = multer({
@@ -12,10 +13,16 @@ const upload = multer({
 });
 
 // =================================================
-// 📌 GET ALL SONGS (CHO FLUTTER APP)
+// 📌 GET ALL SONGS (PUBLIC + ADMIN SONGS)
 router.get("/", async (req, res) => {
   try {
-    const songs = await Song.find().sort({ createdAt: -1 });
+    // Chỉ lấy bài hát public hoặc bài do admin upload (uploadedBy = null)
+    const songs = await Song.find({
+      $or: [
+        { isPublic: true },
+        { uploadedBy: null }
+      ]
+    }).sort({ createdAt: -1 });
 
     res.json(songs);
   } catch (error) {
@@ -25,13 +32,21 @@ router.get("/", async (req, res) => {
 });
 
 // =================================================
-// 🎲 GET RECOMMENDED SONGS (Random)
+// 🎲 GET RECOMMENDED SONGS (Random - PUBLIC + ADMIN)
 router.get("/recommended", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 12;
     
-    // Dùng MongoDB aggregation để lấy random songs
+    // Chỉ lấy bài hát public hoặc admin
     const songs = await Song.aggregate([
+      { 
+        $match: { 
+          $or: [
+            { isPublic: true },
+            { uploadedBy: null }
+          ]
+        } 
+      },
       { $sample: { size: limit } }
     ]);
     
@@ -43,20 +58,26 @@ router.get("/recommended", async (req, res) => {
 });
 
 // =================================================
-// 🔍 SEARCH SONGS (by title, artist, first letter)
+// 🔍 SEARCH SONGS (PUBLIC + ADMIN)
 router.get("/search", async (req, res) => {
   try {
     const { query, artist, letter } = req.query;
     
-    let filter = {};
+    let filter = {
+      $or: [
+        { isPublic: true },
+        { uploadedBy: null }
+      ]
+    };
     
     // Tìm kiếm theo query (tên bài hát hoặc ca sĩ)
     if (query) {
-      const searchRegex = new RegExp(query, "i"); // case-insensitive
-      filter.$or = [
-        { title: searchRegex },
-        { artist: searchRegex }
+      const searchRegex = new RegExp(query, "i");
+      filter.$and = [
+        { $or: filter.$or },
+        { $or: [{ title: searchRegex }, { artist: searchRegex }] }
       ];
+      delete filter.$or;
     }
     
     // Lọc theo ca sĩ cụ thể
@@ -66,7 +87,7 @@ router.get("/search", async (req, res) => {
     
     // Lọc theo chữ cái đầu của tên bài hát
     if (letter) {
-      filter.title = new RegExp(`^${letter}`, "i"); // bắt đầu bằng chữ cái
+      filter.title = new RegExp(`^${letter}`, "i");
     }
     
     const songs = await Song.find(filter).sort({ createdAt: -1 });
@@ -79,31 +100,53 @@ router.get("/search", async (req, res) => {
 });
 
 // =================================================
-// 🎵 UPLOAD SONG (audio + image)
+// 📁 GET MY UPLOADS (User's uploaded songs - AUTH REQUIRED)
+router.get("/my-uploads", authMiddleware, async (req, res) => {
+  try {
+    const songs = await Song.find({ uploadedBy: req.userId })
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      songs,
+      count: songs.length
+    });
+  } catch (error) {
+    console.error("Get my uploads error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Lấy danh sách thất bại" 
+    });
+  }
+});
+
+// =================================================
+// 🎵 UPLOAD SONG (AUTH REQUIRED)
 router.post(
   "/",
+  authMiddleware,
   upload.fields([
     { name: "audio", maxCount: 1 },
     { name: "image", maxCount: 1 },
   ]),
   async (req, res) => {
     try {
-      const { title, artist, topicId, lyrics } = req.body;
+      const { title, artist, topicId, lyrics, isPublic } = req.body;
 
-      if (!title || !artist || !topicId) {
+      if (!title || !artist) {
         return res.status(400).json({
-          message: "Missing required fields",
+          message: "Missing required fields (title, artist)",
         });
       }
 
-      if (!req.files?.audio || !req.files?.image) {
+      if (!req.files?.audio) {
         return res.status(400).json({
-          message: "Audio or image file missing",
+          message: "Audio file is required",
         });
       }
 
       const audioFile = req.files.audio[0];
-      const imageFile = req.files.image[0];
+      const imageFile = req.files.image ? req.files.image[0] : null;
 
       // ================= CLOUDINARY UPLOAD =================
       const audioUpload = await cloudinary.uploader.upload(
@@ -114,42 +157,192 @@ router.post(
         }
       );
 
-      const imageUpload = await cloudinary.uploader.upload(
-        imageFile.path,
-        {
-          folder: "musicflow/images",
-        }
-      );
+      // Upload image nếu có, không thì dùng ảnh mặc định
+      let imageUrl = "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg";
+      let imagePublicId = null;
+      
+      if (imageFile) {
+        const imageUpload = await cloudinary.uploader.upload(
+          imageFile.path,
+          {
+            folder: "musicflow/images",
+          }
+        );
+        imageUrl = imageUpload.secure_url;
+        imagePublicId = imageUpload.public_id;
+        fs.unlinkSync(imageFile.path);
+      }
 
       // Xoá file tạm sau khi upload
       fs.unlinkSync(audioFile.path);
-      fs.unlinkSync(imageFile.path);
 
       // ================= SAVE MONGODB =================
-      const song = await Song.create({
+      const songData = {
         title,
         artist,
-        topicId,
         lyrics,
+        uploadedBy: req.userId,
+        isPublic: isPublic === 'true' || isPublic === true,
         audioUrl: audioUpload.secure_url,
         audioPublicId: audioUpload.public_id,
         duration: audioUpload.duration,
-        imageUrl: imageUpload.secure_url,
-        imagePublicId: imageUpload.public_id,
-      });
+        imageUrl: imageUrl,
+        imagePublicId: imagePublicId,
+      };
+
+      if (topicId) {
+        songData.topicId = topicId;
+      }
+
+      const song = await Song.create(songData);
 
       res.status(201).json({
-        message: "Upload song successfully",
+        success: true,
+        message: "Upload thành công",
         song,
       });
     } catch (error) {
       console.error(error);
       res.status(500).json({
-        message: "Upload failed",
+        success: false,
+        message: "Upload thất bại",
         error: error.message,
       });
     }
   }
 );
+
+// =================================================
+// ✏️ UPDATE SONG (AUTH REQUIRED - OWNER ONLY)
+router.put("/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, artist, lyrics, topicId } = req.body;
+
+    const song = await Song.findById(id);
+    
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy bài hát"
+      });
+    }
+
+    // Kiểm tra quyền sở hữu
+    if (!song.uploadedBy || song.uploadedBy.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền sửa bài hát này"
+      });
+    }
+
+    // Cập nhật
+    if (title) song.title = title;
+    if (artist) song.artist = artist;
+    if (lyrics !== undefined) song.lyrics = lyrics;
+    if (topicId) song.topicId = topicId;
+
+    await song.save();
+
+    res.json({
+      success: true,
+      message: "Cập nhật thành công",
+      song
+    });
+  } catch (error) {
+    console.error("Update song error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Cập nhật thất bại"
+    });
+  }
+});
+
+// =================================================
+// 🔄 TOGGLE PUBLIC/PRIVATE (AUTH REQUIRED - OWNER ONLY)
+router.patch("/:id/toggle-public", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const song = await Song.findById(id);
+    
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy bài hát"
+      });
+    }
+
+    // Kiểm tra quyền sở hữu
+    if (!song.uploadedBy || song.uploadedBy.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thay đổi"
+      });
+    }
+
+    song.isPublic = !song.isPublic;
+    await song.save();
+
+    res.json({
+      success: true,
+      message: song.isPublic ? "Đã công khai bài hát" : "Đã chuyển sang riêng tư",
+      isPublic: song.isPublic
+    });
+  } catch (error) {
+    console.error("Toggle public error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Thay đổi thất bại"
+    });
+  }
+});
+
+// =================================================
+// 🗑️ DELETE SONG (AUTH REQUIRED - OWNER ONLY)
+router.delete("/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const song = await Song.findById(id);
+    
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy bài hát"
+      });
+    }
+
+    // Kiểm tra quyền sở hữu
+    if (!song.uploadedBy || song.uploadedBy.toString() !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xóa bài hát này"
+      });
+    }
+
+    // Xóa file trên Cloudinary
+    try {
+      await cloudinary.uploader.destroy(song.audioPublicId, { resource_type: "video" });
+      await cloudinary.uploader.destroy(song.imagePublicId);
+    } catch (cloudErr) {
+      console.error("Cloudinary delete error:", cloudErr);
+    }
+
+    // Xóa khỏi database
+    await Song.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: "Đã xóa bài hát"
+    });
+  } catch (error) {
+    console.error("Delete song error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Xóa thất bại"
+    });
+  }
+});
 
 module.exports = router;

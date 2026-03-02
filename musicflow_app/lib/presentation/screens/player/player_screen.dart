@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
+import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 
@@ -23,6 +24,7 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   final AudioPlayerService _audioService = AudioPlayerService();
+  final GlobalAudioState _globalAudioState = GlobalAudioState();
   final PageController _pageController = PageController(initialPage: 0);
   
   bool _isPlaying = false;
@@ -43,19 +45,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _currentIndex = widget.currentIndex;
     _initPlayer();
     _checkFavorite();
+    
+    // Lắng nghe GlobalAudioState để sync khi auto-next
+    _globalAudioState.addListener(_onGlobalAudioStateChanged);
+  }
+  
+  /// Sync local state khi GlobalAudioState thay đổi (auto-next)
+  void _onGlobalAudioStateChanged() {
+    final globalSong = _globalAudioState.currentSong;
+    final globalIndex = _globalAudioState.currentIndex;
+    
+    // Chỉ sync nếu bài hát khác với local state
+    if (globalSong != null && 
+        globalSong.id != _currentSong.id && 
+        !_isChangingSong) {
+      setState(() {
+        _currentSong = globalSong;
+        _currentIndex = globalIndex;
+        _position = Duration.zero;
+        _duration = globalSong.durationAsDuration ?? Duration.zero;
+      });
+      _checkFavorite();
+      widget.onSongChanged?.call(globalIndex);
+    }
   }
 
   @override
   void dispose() {
+    _globalAudioState.removeListener(_onGlobalAudioStateChanged);
     _pageController.dispose();
     super.dispose();
   }
 
   /// Kiểm tra bài hát có trong yêu thích không
   Future<void> _checkFavorite() async {
-    print('❤️ Checking favorite for song: ${_currentSong.id}');
     final result = await FavoriteService.checkFavorite(_currentSong.id);
-    print('❤️ Check result: success=${result.success}, isFavorite=${result.isFavorite}, message=${result.message}');
     if (mounted && result.success) {
       setState(() {
         _isFavorite = result.isFavorite ?? false;
@@ -65,9 +89,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   /// Toggle trạng thái yêu thích
   Future<void> _toggleFavorite() async {
-    print('❤️ Toggling favorite for song: ${_currentSong.id}');
     final result = await FavoriteService.toggleFavorite(_currentSong.id);
-    print('❤️ Toggle result: success=${result.success}, isFavorite=${result.isFavorite}, message=${result.message}');
     if (result.success) {
       setState(() {
         _isFavorite = result.isFavorite ?? !_isFavorite;
@@ -101,7 +123,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     // Lấy trạng thái hiện tại
     _isPlaying = _audioService.isPlaying;
     _position = _audioService.player.position;
-    _duration = _audioService.player.duration ?? Duration.zero;
+    
+    // Ưu tiên lấy duration từ song metadata (có sẵn từ backend)
+    // Fallback về player duration nếu không có
+    _duration = _currentSong.durationAsDuration ?? 
+                _audioService.player.duration ?? 
+                Duration.zero;
     
     // Lắng nghe trạng thái playing
     _audioService.player.playerStateStream.listen((state) {
@@ -121,9 +148,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
       }
     });
 
-    // Lắng nghe tổng thời lượng
+    // Lắng nghe tổng thời lượng (backup nếu song metadata không có)
     _audioService.player.durationStream.listen((dur) {
-      if (mounted && dur != null) {
+      if (mounted && dur != null && _duration == Duration.zero) {
         setState(() {
           _duration = dur;
         });
@@ -142,6 +169,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       setState(() {
         _currentIndex = newIndex;
         _currentSong = newSong;
+        _position = Duration.zero;  // Reset position
+        _duration = newSong.durationAsDuration ?? Duration.zero;  // Update duration
       });
       
       // Check trạng thái yêu thích của bài mới
@@ -149,8 +178,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
-      
-      print('⏭️ PlayerScreen: Playing next: ${newSong.title}');
       
       Future.delayed(const Duration(milliseconds: 500), () {
         _isChangingSong = false;
@@ -169,6 +196,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       setState(() {
         _currentIndex = newIndex;
         _currentSong = newSong;
+        _position = Duration.zero;  // Reset position
+        _duration = newSong.durationAsDuration ?? Duration.zero;  // Update duration
       });
       
       // Check trạng thái yêu thích của bài mới
@@ -176,8 +205,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
-      
-      print('⏮️ PlayerScreen: Playing previous: ${newSong.title}');
       
       Future.delayed(const Duration(milliseconds: 500), () {
         _isChangingSong = false;
@@ -390,6 +417,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         setState(() {
                           _currentIndex = index;
                           _currentSong = song;
+                          _position = Duration.zero;  // Reset position
+                          _duration = song.durationAsDuration ?? Duration.zero;  // Update duration
                         });
                         // Check trạng thái yêu thích
                         _checkFavorite();
@@ -603,8 +632,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
             child: Slider(
               value: _duration.inMilliseconds > 0
-                  ? _position.inMilliseconds / _duration.inMilliseconds
-                  : 0,
+                  ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+                  : 0.0,
               onChanged: (value) {
                 final newPosition = Duration(
                   milliseconds: (value * _duration.inMilliseconds).toInt(),

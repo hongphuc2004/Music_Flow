@@ -246,20 +246,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   void _playSong(Song song, {int? index}) {
-    print('🎵 AlbumDetail: Playing song: ${song.title}');
-    
-    // Pop trước, rồi gọi callback sau để đảm bảo MainScreen đã hiển thị
     Navigator.pop(context);
     
-    // Delay nhỏ để đảm bảo MainScreen đã render
     Future.delayed(const Duration(milliseconds: 50), () {
-      // Nếu có index và onPlayAll, phát playlist từ vị trí đó
       if (index != null && widget.onPlayAll != null) {
         widget.onPlayAll!(songs, startIndex: index);
       } else if (widget.onSongTap != null) {
         widget.onSongTap!(song);
-      } else {
-        print('❌ AlbumDetail: No callback available!');
       }
     });
   }
@@ -267,9 +260,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   void _playAll() {
     if (songs.isEmpty) return;
     
-    print('🎵 AlbumDetail: Playing all ${songs.length} songs');
-    
-    // Pop trước, rồi gọi callback sau
     Navigator.pop(context);
     
     Future.delayed(const Duration(milliseconds: 50), () {

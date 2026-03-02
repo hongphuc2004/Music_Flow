@@ -131,7 +131,7 @@ class _MiniPlayerState extends State<MiniPlayer>
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: LinearProgressIndicator(
-                    value: widget.progress,
+                    value: widget.progress.clamp(0.0, 1.0),
                     backgroundColor: Colors.grey.shade800,
                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.greenAccent),
                     minHeight: 3,

@@ -6,13 +6,12 @@ import '../models/playlist_model.dart';
 import 'auth_service.dart';
 
 class PlaylistApiService {
-  static const String baseUrl = "http://192.168.1.58:5000/api/playlists";
+  static const String baseUrl = "http://10.30.180.153:5000/api/playlists";
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token xác thực
   static Future<Map<String, String>> _getAuthHeaders() async {
     final token = await AuthService.getToken();
-    print('🔑 PlaylistApiService - Token: ${token != null ? "${token.substring(0, 20)}..." : "NULL"}');
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -111,8 +110,6 @@ class PlaylistApiService {
           'coverImage': coverImage ?? '',
         }),
       ).timeout(timeout);
-
-      print('📦 Create playlist response: ${response.statusCode} - ${response.body}');
       
       final data = jsonDecode(response.body);
 

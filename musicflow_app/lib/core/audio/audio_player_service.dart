@@ -33,7 +33,6 @@ class AudioPlayerService {
     );
     
     _isInitialized = true;
-    print('✅ AudioService initialized');
   }
 
   /// Lấy audio handler

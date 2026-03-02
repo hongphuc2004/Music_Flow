@@ -622,33 +622,21 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: song.imageUrl.isNotEmpty
-            ? Image.network(
-                song.imageUrl,
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade800,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.music_note, color: Colors.white),
-                  );
-                },
-              )
-            : Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade800,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.music_note, color: Colors.white),
-              ),
+        child: Image.network(
+          song.imageUrl,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade800,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.music_note, color: Colors.white),
+          ),
+        ),
       ),
       title: Text(
         song.title,
@@ -660,7 +648,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       trailing: SongOptionsMenu(song: song),
       onTap: () {
-        widget.onSongTap?.call(song);  // Click anywhere to play
+        widget.onSongTap?.call(song);
       },
     );
   }

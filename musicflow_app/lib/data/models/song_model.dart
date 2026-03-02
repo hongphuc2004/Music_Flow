@@ -1,3 +1,5 @@
+import 'package:musicflow_app/core/config/api_config.dart';
+
 class Song {
   final String id;
   final String title;
@@ -7,6 +9,7 @@ class Song {
   final String lyrics;
   final String? uploadedBy;
   final bool isPublic;
+  final double? duration; // Duration in seconds from backend
 
   Song({
     required this.id,
@@ -17,7 +20,17 @@ class Song {
     required this.lyrics,
     this.uploadedBy,
     this.isPublic = false,
+    this.duration,
   });
+
+  /// URL streaming với HTTP Range Requests support
+  /// Cho phép seek/tua nhanh mà không cần tải lại từ đầu
+  String get streamUrl => ApiConfig.getStreamUrl(id);
+
+  /// Duration as Duration object for audio player
+  Duration? get durationAsDuration => duration != null 
+      ? Duration(milliseconds: (duration! * 1000).toInt()) 
+      : null;
 
   factory Song.fromJson(Map<String, dynamic> json) {
     return Song(
@@ -29,6 +42,7 @@ class Song {
       lyrics: json['lyrics'] ?? '',
       uploadedBy: json['uploadedBy'],
       isPublic: json['isPublic'] ?? false,
+      duration: json['duration']?.toDouble(),
     );
   }
 
@@ -42,6 +56,7 @@ class Song {
       'lyrics': lyrics,
       'uploadedBy': uploadedBy,
       'isPublic': isPublic,
+      'duration': duration,
     };
   }
 
@@ -61,6 +76,7 @@ class Song {
       lyrics: lyrics ?? this.lyrics,
       uploadedBy: uploadedBy,
       isPublic: isPublic ?? this.isPublic,
+      duration: duration,
     );
   }
 }

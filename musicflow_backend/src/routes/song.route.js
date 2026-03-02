@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const fs = require("fs");
+const https = require("https");
+const http = require("http");
 const cloudinary = require("../config/cloudinary");
 const Song = require("../models/song.model");
 const authMiddleware = require("../middleware/auth.middleware");
@@ -10,6 +12,86 @@ const authMiddleware = require("../middleware/auth.middleware");
 const upload = multer({
   dest: "uploads/",
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+});
+
+// =================================================
+// 🎵 AUDIO STREAMING - HTTP Range Requests (HTTP 206)
+// Hỗ trợ seek/tua nhanh mà không cần tải lại từ đầu
+router.get("/:id/stream", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const song = await Song.findById(id);
+    if (!song) {
+      return res.status(404).json({ message: "Song not found" });
+    }
+
+    const audioUrl = song.audioUrl;
+    
+    // Parse URL để xác định protocol
+    const urlObj = new URL(audioUrl);
+    const protocol = urlObj.protocol === "https:" ? https : http;
+    
+    // Forward Range header nếu có
+    const range = req.headers.range;
+    const headers = {
+      "User-Agent": "MusicFlow-Streaming/1.0",
+    };
+    
+    if (range) {
+      headers["Range"] = range;
+    }
+
+    // Proxy request đến Cloudinary
+    const proxyReq = protocol.get(audioUrl, { headers }, (proxyRes) => {
+      const contentType = proxyRes.headers["content-type"] || "audio/mpeg";
+      const contentLength = proxyRes.headers["content-length"];
+      const contentRange = proxyRes.headers["content-range"];
+      const acceptRanges = proxyRes.headers["accept-ranges"] || "bytes";
+      
+      // Set response headers cho streaming
+      const responseHeaders = {
+        "Content-Type": contentType,
+        "Accept-Ranges": acceptRanges,
+        "Cache-Control": "public, max-age=86400", // Cache 1 ngày
+        "X-Content-Duration": song.duration || 0,
+      };
+      
+      if (contentLength) {
+        responseHeaders["Content-Length"] = contentLength;
+      }
+      
+      if (contentRange) {
+        responseHeaders["Content-Range"] = contentRange;
+      }
+      
+      // HTTP 206 Partial Content nếu có Range request
+      const statusCode = range && proxyRes.statusCode === 206 ? 206 : 200;
+      
+      res.writeHead(statusCode, responseHeaders);
+      
+      // Pipe stream từ Cloudinary đến client
+      proxyRes.pipe(res);
+    });
+    
+    proxyReq.on("error", (err) => {
+      console.error("Stream proxy error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Streaming failed" });
+      }
+    });
+    
+    // Cleanup khi client disconnect
+    req.on("close", () => {
+      proxyReq.destroy();
+    });
+    
+  } catch (error) {
+    console.error("Stream error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Streaming failed", error: error.message });
+    }
+  }
 });
 
 // =================================================

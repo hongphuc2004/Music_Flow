@@ -63,6 +63,8 @@ class _MiniPlayerWrapperState extends State<MiniPlayerWrapper> {
               artist: _audioState.currentSong!.artist,
               song: _audioState.currentSong,
               progress: _audioState.progress,
+              currentPosition: _audioState.currentPosition,
+              totalDuration: _audioState.currentSong!.durationAsDuration ?? _audioState.totalDuration,
               playlist: _audioState.playlist,
               currentIndex: _audioState.currentIndex,
               onPlayPause: _audioState.togglePlayPause,

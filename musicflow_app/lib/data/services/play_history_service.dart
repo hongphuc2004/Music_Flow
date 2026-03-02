@@ -41,7 +41,6 @@ class PlayHistoryService {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((json) => Song.fromJson(json)).toList();
     } catch (e) {
-      print('Error parsing play history: $e');
       return [];
     }
   }

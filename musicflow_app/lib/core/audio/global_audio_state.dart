@@ -21,6 +21,8 @@ class GlobalAudioState extends ChangeNotifier {
   double _progress = 0.0;
   bool _isChangingSong = false;
   bool _isInitialized = false;
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
 
   // Getters
   Song? get currentSong => _currentSong;
@@ -29,6 +31,8 @@ class GlobalAudioState extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   double get progress => _progress;
   AudioPlayerService get audioService => _audioService;
+  Duration get currentPosition => _currentPosition;
+  Duration get totalDuration => _totalDuration;
 
   void initialize() {
     if (_isInitialized) return;
@@ -42,11 +46,13 @@ class GlobalAudioState extends ChangeNotifier {
 
     // Listen to progress
     _audioService.player.positionStream.listen((position) {
+      _currentPosition = position;
       final duration = _audioService.player.duration;
       if (duration != null && duration.inMilliseconds > 0) {
+        _totalDuration = duration;
         _progress = position.inMilliseconds / duration.inMilliseconds;
-        notifyListeners();
       }
+      notifyListeners();
     });
 
     // Listen to completion
@@ -79,14 +85,22 @@ class GlobalAudioState extends ChangeNotifier {
   void _playCurrentSong() {
     if (_currentSong == null) return;
     
+    // Reset position và set duration từ metadata ngay lập tức
+    _currentPosition = Duration.zero;
+    _totalDuration = _currentSong!.durationAsDuration ?? Duration.zero;
+    _progress = 0.0;
+    
     // Record to play history
     PlayHistoryService.addToHistory(_currentSong!);
     
+    // Dùng audioUrl Cloudinary trực tiếp (Cloudinary đã hỗ trợ Range requests)
+    // streamUrl có thể dùng sau nếu cần proxy qua backend
     _audioService.play(
-      url: _currentSong!.audioUrl,
+      url: _currentSong!.audioUrl,  // Cloudinary URL trực tiếp
       title: _currentSong!.title,
       artist: _currentSong!.artist,
       imageUrl: _currentSong!.imageUrl,
+      duration: _currentSong!.durationAsDuration,
     );
   }
 

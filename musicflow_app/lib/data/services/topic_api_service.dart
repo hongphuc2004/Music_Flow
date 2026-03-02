@@ -6,7 +6,7 @@ import '../models/topic_model.dart';
 import '../models/song_model.dart';
 
 class TopicApiService {
-  static const String baseUrl = "http://192.168.1.58:5000/api/topics";
+  static const String baseUrl = "http://10.30.180.153:5000/api/topics";
   static const Duration timeout = Duration(seconds: 15);
   static const int maxRetries = 3;
 
@@ -17,23 +17,18 @@ class TopicApiService {
     while (attempts < maxRetries) {
       try {
         attempts++;
-        print('📡 Fetching (attempt $attempts): $uri');
-        
         final response = await http.get(uri).timeout(timeout);
         return response;
         
       } on TimeoutException {
-        print('⏰ Timeout (attempt $attempts)');
         if (attempts >= maxRetries) {
           throw TopicException('Kết nối quá chậm. Vui lòng kiểm tra mạng.');
         }
       } on SocketException {
-        print('🔌 No connection (attempt $attempts)');
         if (attempts >= maxRetries) {
           throw TopicException('Không có kết nối mạng.');
         }
       } catch (e) {
-        print('❌ Error (attempt $attempts): $e');
         if (attempts >= maxRetries) {
           throw TopicException('Lỗi kết nối: $e');
         }

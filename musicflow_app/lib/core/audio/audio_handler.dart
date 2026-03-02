@@ -65,14 +65,9 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
     Duration? duration,
   }) async {
     try {
-      print('🎵 Playing URL: $url');
-      print('🎵 Current volume: ${_player.volume}');
-
       // Nếu đang loading, stop trước
       if (_isLoading) {
-        print('⏹️ Stopping previous loading...');
         await _player.stop();
-        // Chờ một chút để player reset
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
@@ -102,22 +97,17 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
       _isLoading = false;
 
       await _player.play();
-      print('🎵 Player state after play: playing=${_player.playing}, volume=${_player.volume}');
     } catch (e) {
       _isLoading = false;
-      print('❌ Audio error: $e');
       
       // Nếu là "Loading interrupted", thử lại một lần
       if (e.toString().contains('interrupted')) {
-        print('🔄 Retrying after interrupt...');
         await Future.delayed(const Duration(milliseconds: 200));
         try {
           _currentUrl = url;
           await _player.setUrl(url);
           await _player.play();
-          print('✅ Retry successful');
         } catch (retryError) {
-          print('❌ Retry failed: $retryError');
           _currentUrl = null;
         }
       } else {

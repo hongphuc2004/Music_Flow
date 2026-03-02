@@ -518,10 +518,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return ListTile(
           leading: CircleAvatar(
+            radius: 20,
             backgroundImage: NetworkImage(song.imageUrl),
-            onBackgroundImageError: (_, __) {},  // Handle ảnh lỗi
-            child: song.imageUrl.isEmpty 
-                ? const Icon(Icons.music_note, color: Colors.white70)
+            onBackgroundImageError: (_, __) {},
+            child: song.imageUrl.isEmpty
+                ? const Icon(Icons.music_note, color: Colors.white54)
                 : null,
           ),
           title: Text(
@@ -535,7 +536,7 @@ class _HomeScreenState extends State<HomeScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           trailing: SongOptionsMenu(song: song),
-          onTap: () => _onSongTap(song),  // Click anywhere to play
+          onTap: () => _onSongTap(song),
         );
       },
     );

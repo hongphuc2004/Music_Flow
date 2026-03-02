@@ -6,7 +6,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class FavoriteService {
-  static const String baseUrl = "http://192.168.1.58:5000/api/favorites";
+  static const String baseUrl = "http://10.30.180.153:5000/api/favorites";
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token
@@ -123,7 +123,6 @@ class FavoriteService {
   static Future<FavoriteResult> toggleFavorite(String songId) async {
     try {
       final token = await AuthService.getToken();
-      print('🔑 Toggle - Token: ${token != null ? "có" : "không có"}');
       if (token == null) {
         return FavoriteResult(
           success: false,
@@ -131,13 +130,11 @@ class FavoriteService {
         );
       }
 
-      print('📡 Toggle API: $baseUrl/toggle/$songId');
       final response = await http.post(
         Uri.parse('$baseUrl/toggle/$songId'),
         headers: await _getAuthHeaders(),
       ).timeout(timeout);
 
-      print('📡 Toggle Response: ${response.statusCode} - ${response.body}');
       final data = jsonDecode(response.body);
 
       return FavoriteResult(
@@ -158,7 +155,6 @@ class FavoriteService {
   static Future<FavoriteResult> checkFavorite(String songId) async {
     try {
       final token = await AuthService.getToken();
-      print('🔑 Check - Token: ${token != null ? "có" : "không có"}');
       if (token == null) {
         return FavoriteResult(
           success: false,
@@ -167,13 +163,11 @@ class FavoriteService {
         );
       }
 
-      print('📡 Check API: $baseUrl/check/$songId');
       final response = await http.get(
         Uri.parse('$baseUrl/check/$songId'),
         headers: await _getAuthHeaders(),
       ).timeout(timeout);
 
-      print('📡 Check Response: ${response.statusCode} - ${response.body}');
       final data = jsonDecode(response.body);
 
       return FavoriteResult(

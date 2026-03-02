@@ -120,12 +120,10 @@ router.delete("/remove/:songId", authMiddleware, async (req, res) => {
 router.post("/toggle/:songId", authMiddleware, async (req, res) => {
   try {
     const { songId } = req.params;
-    console.log("🔄 Toggle favorite - userId:", req.userId, "songId:", songId);
 
     // Kiểm tra bài hát có tồn tại không
     const song = await Song.findById(songId);
     if (!song) {
-      console.log("❌ Song not found:", songId);
       return res.status(404).json({
         success: false,
         message: "Bài hát không tồn tại",
@@ -137,23 +135,18 @@ router.post("/toggle/:songId", authMiddleware, async (req, res) => {
       userId: req.userId,
       songId: songId,
     });
-    console.log("📦 Existing favorite:", existingFav);
 
     let isFavorite;
 
     if (existingFav) {
-      // Đã có -> xóa đi
       await Favorite.findByIdAndDelete(existingFav._id);
       isFavorite = false;
-      console.log("🗑️ Removed favorite");
     } else {
-      // Chưa có -> thêm vào
-      const newFav = await Favorite.create({
+      await Favorite.create({
         userId: req.userId,
         songId: songId,
       });
       isFavorite = true;
-      console.log("✅ Added favorite:", newFav);
     }
 
     res.json({

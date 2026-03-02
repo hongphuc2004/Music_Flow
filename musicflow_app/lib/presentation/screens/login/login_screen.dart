@@ -14,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
   Future<void> _login() async {
@@ -45,6 +46,26 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       _showSnackBar(result.message ?? 'Đăng nhập thất bại');
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+
+    final result = await AuthService.signInWithGoogle();
+
+    setState(() => _isGoogleLoading = false);
+
+    if (result.success) {
+      _showSnackBar('Đăng nhập Google thành công!', isError: false);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
+      }
+    } else {
+      _showSnackBar(result.message ?? 'Đăng nhập Google thất bại');
     }
   }
 
@@ -134,6 +155,54 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Đăng nhập',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Divider với text
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'hoặc',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Google Sign In button
+                OutlinedButton.icon(
+                  onPressed: _isGoogleLoading ? null : _loginWithGoogle,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Colors.grey),
+                  ),
+                  icon: _isGoogleLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Image.network(
+                          'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                          height: 24,
+                          width: 24,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.g_mobiledata,
+                            size: 24,
+                            color: Colors.red,
+                          ),
+                        ),
+                  label: const Text(
+                    'Đăng nhập với Google',
+                    style: TextStyle(fontSize: 16),
+                  ),
                 ),
 
                 const SizedBox(height: 12),

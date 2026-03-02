@@ -115,6 +115,67 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// ================= GOOGLE LOGIN =================
+router.post("/google", async (req, res) => {
+  try {
+    const { googleId, email, name, avatar } = req.body;
+
+    // Validate input
+    if (!googleId || !email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin từ Google",
+      });
+    }
+
+    // Tìm user theo googleId hoặc email
+    let user = await User.findOne({
+      $or: [{ googleId }, { email }],
+    });
+
+    if (user) {
+      // User đã tồn tại
+      if (!user.googleId) {
+        // User đã đăng ký bằng email/password, liên kết với Google
+        user.googleId = googleId;
+        user.provider = "google";
+        if (avatar && !user.avatar) {
+          user.avatar = avatar;
+        }
+        await user.save();
+      }
+    } else {
+      // Tạo user mới
+      user = await User.create({
+        googleId,
+        email,
+        name,
+        avatar: avatar || "",
+        provider: "google",
+      });
+    }
+
+    // Tạo token
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+    });
+
+    res.json({
+      success: true,
+      message: "Đăng nhập Google thành công",
+      token,
+      user,
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đăng nhập Google thất bại",
+      error: error.message,
+    });
+  }
+});
+
 // ================= GET PROFILE =================
 router.get("/profile", authMiddleware, async (req, res) => {
   try {

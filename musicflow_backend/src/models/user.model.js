@@ -17,8 +17,18 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
       minlength: 6,
+      // Password không bắt buộc cho Google login
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Cho phép nhiều null values
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
     },
     avatar: {
       type: String,
@@ -40,7 +50,7 @@ const userSchema = new mongoose.Schema(
 
 // Hash password trước khi save
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+  if (!this.password || !this.isModified("password")) return;
   
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -48,6 +58,7 @@ userSchema.pre("save", async function () {
 
 // Method so sánh password
 userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 

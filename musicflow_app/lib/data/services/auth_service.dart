@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 
 class AuthService {
@@ -99,8 +100,70 @@ class AuthService {
     }
   }
 
+  // ================= GOOGLE SIGN IN =================
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
+
+  static Future<AuthResult> signInWithGoogle() async {
+    try {
+      // Đăng xuất trước để đảm bảo chọn tài khoản mới
+      await _googleSignIn.signOut();
+      
+      // Bắt đầu đăng nhập Google
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        // User hủy đăng nhập
+        return AuthResult(success: false, message: 'Đăng nhập đã bị hủy');
+      }
+
+      // Gửi thông tin lên backend
+      final response = await http.post(
+        Uri.parse("$baseUrl/google"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'googleId': googleUser.id,
+          'email': googleUser.email,
+          'name': googleUser.displayName ?? googleUser.email.split('@').first,
+          'avatar': googleUser.photoUrl ?? '',
+        }),
+      ).timeout(timeout);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Lưu token và user
+        await _saveAuthData(data['token'], data['user']);
+        
+        return AuthResult(
+          success: true,
+          message: data['message'],
+          user: User.fromJson(data['user']),
+          token: data['token'],
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: data['message'] ?? 'Đăng nhập Google thất bại',
+        );
+      }
+    } on TimeoutException {
+      return AuthResult(success: false, message: 'Kết nối quá chậm');
+    } on SocketException {
+      return AuthResult(success: false, message: 'Không có kết nối mạng');
+    } catch (e) {
+      return AuthResult(success: false, message: 'Lỗi Google Sign-In: $e');
+    }
+  }
+
   // ================= LOGOUT =================
   static Future<void> logout() async {
+    // Đăng xuất Google nếu đã đăng nhập
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);

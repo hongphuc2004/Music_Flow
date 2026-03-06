@@ -7,7 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  static const String baseUrl = "http://10.30.180.153:5000/api/auth";
+  static const String baseUrl = "http://192.168.1.26:5000/api/auth";
   static const Duration timeout = Duration(seconds: 15);
   
   // Keys cho SharedPreferences

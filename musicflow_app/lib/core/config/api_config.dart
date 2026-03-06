@@ -1,7 +1,7 @@
 /// Cấu hình API chung cho toàn bộ app
 class ApiConfig {
   // Base URL của backend - thay đổi khi deploy
-  static const String baseUrl = "http://10.30.180.153:5000";
+  static const String baseUrl = "http://192.168.1.148:5000";
   
   // API endpoints
   static const String songsEndpoint = "$baseUrl/api/songs";

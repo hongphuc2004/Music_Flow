@@ -6,7 +6,7 @@ import '../models/topic_model.dart';
 import '../models/song_model.dart';
 
 class TopicApiService {
-  static const String baseUrl = "http://10.30.180.153:5000/api/topics";
+  static const String baseUrl = "http://192.168.1.26:5000/api/topics";
   static const Duration timeout = Duration(seconds: 15);
   static const int maxRetries = 3;
 

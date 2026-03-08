@@ -378,17 +378,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAlbumCard(Topic topic) {
-    // Parse color từ hex string
-    Color albumColor;
-    try {
-      String hex = topic.color.replaceAll('#', '');
-      if (hex.length == 6) {
-        hex = 'FF$hex';
-      }
-      albumColor = Color(int.parse(hex, radix: 16));
-    } catch (e) {
-      albumColor = Colors.green;
-    }
+    // Default color since we no longer store color in Topic
+    Color albumColor = const Color(0xFF6c63ff);
 
     return GestureDetector(
       onTap: () => _onAlbumTap(topic),
@@ -415,9 +406,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: topic.imageUrl.isNotEmpty
+                child: topic.avatar.isNotEmpty
                     ? Image.network(
-                        topic.imageUrl,
+                        topic.avatar,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _buildPlaceholderCover(albumColor, topic.name),
                       )

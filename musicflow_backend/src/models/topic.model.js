@@ -11,13 +11,9 @@ const topicSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    imageUrl: {
+    avatar: {
       type: String,
       default: "",
-    },
-    color: {
-      type: String,
-      default: "#1DB954", // Màu mặc định giống Spotify
     },
   },
   {

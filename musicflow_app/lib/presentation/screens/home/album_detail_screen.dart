@@ -57,15 +57,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   Color get albumColor {
-    try {
-      String hex = widget.topic.color.replaceAll('#', '');
-      if (hex.length == 6) {
-        hex = 'FF$hex';
-      }
-      return Color(int.parse(hex, radix: 16));
-    } catch (e) {
-      return Colors.green;
-    }
+    // Default color since we no longer store color in Topic
+    return const Color(0xFF6c63ff);
   }
 
   @override
@@ -135,9 +128,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: widget.topic.imageUrl.isNotEmpty
+                    child: widget.topic.avatar.isNotEmpty
                         ? Image.network(
-                            widget.topic.imageUrl,
+                            widget.topic.avatar,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
                           )

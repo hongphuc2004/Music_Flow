@@ -402,24 +402,36 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // 🎨 Card cho mỗi Topic
   Widget _buildTopicCard(Topic topic) {
-    // Lấy tên file ảnh local dựa trên tên topic (lowercase)
-    String? localImagePath = _getTopicImagePath(topic.name);
-
     return GestureDetector(
       onTap: () => _loadSongsByTopic(topic),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.grey.shade800,
           borderRadius: BorderRadius.circular(8),
-          image: localImagePath != null
+          image: topic.avatar.isNotEmpty
               ? DecorationImage(
-                  image: AssetImage(localImagePath),
+                  image: NetworkImage(topic.avatar),
                   fit: BoxFit.cover,
                 )
               : null,
         ),
         child: Stack(
           children: [
+            // Overlay gradient để text dễ đọc hơn
+            if (topic.avatar.isNotEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.3),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
             Positioned(
               left: 12,
               top: 12,
@@ -436,18 +448,6 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       ),
     );
-  }
-
-  // Lấy đường dẫn ảnh local cho topic
-  String? _getTopicImagePath(String topicName) {
-    // Map tên topic với file ảnh (không phân biệt hoa thường)
-    final Map<String, String> topicImages = {
-      'pop': 'assets/images/pop.jpg',
-      'edm': 'assets/images/edm.jpg',
-      // Thêm các topic khác ở đây khi có thêm ảnh
-    };
-    
-    return topicImages[topicName.toLowerCase()];
   }
 
   // 🎵 Danh sách bài hát theo Topic

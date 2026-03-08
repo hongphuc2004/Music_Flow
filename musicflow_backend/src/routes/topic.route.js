@@ -32,7 +32,7 @@ router.get("/:topicId/songs", async (req, res) => {
 // 📌 CREATE TOPIC
 router.post("/", async (req, res) => {
   try {
-    const { name, description, imageUrl, color } = req.body;
+    const { name, description, avatar } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: "Topic name is required" });
@@ -41,8 +41,7 @@ router.post("/", async (req, res) => {
     const topic = await Topic.create({
       name,
       description,
-      imageUrl,
-      color,
+      avatar,
     });
 
     res.status(201).json({
@@ -60,11 +59,11 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, imageUrl, color } = req.body;
+    const { name, description, avatar } = req.body;
 
     const topic = await Topic.findByIdAndUpdate(
       id,
-      { name, description, imageUrl, color },
+      { name, description, avatar },
       { new: true }
     );
 

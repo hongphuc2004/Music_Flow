@@ -6,7 +6,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class SongApiService {
-  static const String baseUrl = "http://192.168.1.59:5000/api/songs";
+  static const String baseUrl = "http://192.168.88.129:5000/api/songs";
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 

@@ -12,7 +12,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Khởi tạo Audio Service cho background playback
-  await AudioPlayerService.init();
+  try {
+    await AudioPlayerService.init();
+  } catch (e) {
+    debugPrint('AudioService init failed: $e');
+  }
   
   // Khởi tạo Global Audio State
   GlobalAudioState().initialize();

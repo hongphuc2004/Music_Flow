@@ -10,6 +10,7 @@ const topicRoute = require("./routes/topic.route");
 const playlistRoute = require("./routes/playlist.route");
 const favoriteRoute = require("./routes/favorite.route");
 const adminRoute = require("./routes/admin.route");
+const commentRoute = require("./routes/comment.route");
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/api/topics", topicRoute);
 app.use("/api/playlists", playlistRoute);
 app.use("/api/favorites", favoriteRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/comments", commentRoute);
 
 // connect DB
 mongoose

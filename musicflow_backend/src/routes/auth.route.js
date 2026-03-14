@@ -212,7 +212,16 @@ function authMiddleware(req, res, next) {
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.userId;
+    const resolvedUserId = decoded.userId || decoded.id || decoded._id || null;
+
+    if (!resolvedUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "Token không chứa thông tin user",
+      });
+    }
+
+    req.userId = resolvedUserId;
     next();
   } catch (error) {
     return res.status(401).json({

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
+import 'package:musicflow_app/data/services/comment_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/lrc_service.dart';
+import 'package:musicflow_app/presentation/widgets/player_bottom_action_bar.dart';
+import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
 
 /// Class đại diện cho 1 dòng lyrics với timestamp
 class LyricLine {
@@ -47,6 +50,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   late int _currentIndex;
   bool _isChangingSong = false;  // Debounce
   bool _isFavorite = false;  // Trạng thái yêu thích (dùng trong _checkFavorite)
+  int _likeCount = 0;
+  int _commentCount = 0;
   
   // Animation cho đĩa xoay
   late AnimationController _discRotationController;
@@ -74,6 +79,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     
     _initPlayer();
     _checkFavorite();
+    _loadCommentCount();
     _fetchSyncedLyrics(); // Fetch LRC từ LRCLIB trước
     
     // Lắng nghe GlobalAudioState để sync khi auto-next
@@ -96,6 +102,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         _duration = globalSong.durationAsDuration ?? Duration.zero;
       });
       _checkFavorite();
+      _loadCommentCount();
       _fetchSyncedLyrics(); // Fetch LRC cho bài mới
       widget.onSongChanged?.call(globalIndex);
     }
@@ -330,6 +337,117 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     }
   }
 
+  Future<void> _toggleLikeSong() async {
+    final result = await FavoriteService.toggleFavorite(_currentSong.id);
+    if (!mounted) return;
+
+    if (result.success) {
+      final nextFavorite = result.isFavorite ?? _isFavorite;
+      setState(() {
+        if (!_isFavorite && nextFavorite) {
+          _likeCount += 1;
+        }
+        if (_isFavorite && !nextFavorite) {
+          _likeCount = (_likeCount - 1).clamp(0, 1 << 31);
+        }
+        _isFavorite = nextFavorite;
+      });
+      _showActionMessage(nextFavorite ? 'Da like bai hat' : 'Da bo like bai hat');
+      return;
+    }
+
+    _showActionMessage(result.message ?? 'Khong the cap nhat like luc nay');
+  }
+
+  Future<void> _loadCommentCount() async {
+    final result = await CommentService.getSongComments(
+      _currentSong.id,
+      page: 1,
+      limit: 1,
+      sort: 'top',
+    );
+    if (!mounted || !result.success) return;
+
+    setState(() {
+      _commentCount = result.totalComments;
+    });
+  }
+
+  void _openComments() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF111111),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => SongCommentsSheet(
+        songId: _currentSong.id,
+        initialCommentCount: _commentCount,
+        onCommentCountChanged: (count) {
+          if (!mounted) return;
+          setState(() {
+            _commentCount = count;
+          });
+        },
+      ),
+    );
+  }
+
+  void _shareSong() {
+    _showActionMessage('Chia se: ${_currentSong.title} - ${_currentSong.artist}');
+  }
+
+  void _toggleLyricsView() {
+    setState(() {
+      _showLyrics = !_showLyrics;
+    });
+  }
+
+  void _showMoreOptions() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF181818),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.queue_music, color: Colors.white70),
+                title: const Text('Them vao danh sach phat', style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person_outline, color: Colors.white70),
+                title: const Text('Xem nghe si', style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline, color: Colors.white70),
+                title: const Text('Thong tin bai hat', style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showActionMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 1500),
+      ),
+    );
+  }
+
   Future<void> _initPlayer() async {
     // KHÔNG gọi play() ở đây nữa - nhạc đã được phát từ MainScreen rồi
     // Chỉ setup listeners
@@ -402,6 +520,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       
       // Check trạng thái yêu thích của bài mới
       _checkFavorite();
+      _loadCommentCount();
       _fetchSyncedLyrics(); // Fetch LRC cho bài mới
       
       // Gọi callback để MainScreen cập nhật
@@ -430,6 +549,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       
       // Check trạng thái yêu thích của bài mới
       _checkFavorite();
+      _loadCommentCount();
       _fetchSyncedLyrics(); // Fetch LRC cho bài mới
       
       // Gọi callback để MainScreen cập nhật
@@ -484,6 +604,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
               _buildSongInfo(),
               _buildProgressBar(),
               _buildControls(),
+              const SizedBox(height: 14),
+              _buildBottomActionBar(),
               const SizedBox(height: 20),
             ],
           ),
@@ -651,6 +773,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                         });
                         // Check trạng thái yêu thích
                         _checkFavorite();
+                        _loadCommentCount();
                       }
                     },
                   ),
@@ -695,47 +818,49 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     return GestureDetector(
       onTap: () => setState(() => _showLyrics = true),
       child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Hero(
-            tag: 'album_art',
-            child: AnimatedBuilder(
-              animation: _discRotationController,
-              builder: (context, child) {
-                return Transform.rotate(
-                  angle: _discRotationController.value * 2 * 3.14159,
-                  child: child,
-                );
-              },
-              child: SizedBox(
-                width: 280,
-                height: 280,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 30,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: _currentSong.imageUrl.isNotEmpty
-                        ? Image.network(
-                            _currentSong.imageUrl,
-                            width: 280,
-                            height: 280,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildDefaultArt(),
-                          )
-                        : _buildDefaultArt(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final discSize = (constraints.maxWidth * 0.72).clamp(220.0, 320.0);
+
+            return Hero(
+              tag: 'album_art',
+              child: AnimatedBuilder(
+                animation: _discRotationController,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _discRotationController.value * 2 * 3.14159,
+                    child: child,
+                  );
+                },
+                child: SizedBox(
+                  width: discSize,
+                  height: discSize,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 30,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: _currentSong.imageUrl.isNotEmpty
+                          ? Image.network(
+                              _currentSong.imageUrl,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
+                              errorBuilder: (_, __, ___) => _buildDefaultArt(),
+                            )
+                          : _buildDefaultArt(),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -1024,6 +1149,19 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
           onPressed: () {},
         ),
       ],
+    );
+  }
+
+  Widget _buildBottomActionBar() {
+    return PlayerBottomActionBar(
+      isLiked: _isFavorite,
+      likeCount: _likeCount,
+      commentCount: _commentCount,
+      onLikePressed: _toggleLikeSong,
+      onCommentPressed: _openComments,
+      onSharePressed: _shareSong,
+      onLyricsPressed: _toggleLyricsView,
+      onMorePressed: _showMoreOptions,
     );
   }
 

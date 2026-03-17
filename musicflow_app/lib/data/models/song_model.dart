@@ -1,5 +1,3 @@
-import 'package:musicflow_app/core/config/api_config.dart';
-
 class Song {
   final String id;
   final String title;
@@ -22,10 +20,6 @@ class Song {
     this.isPublic = false,
     this.duration,
   });
-
-  /// URL streaming với HTTP Range Requests support
-  /// Cho phép seek/tua nhanh mà không cần tải lại từ đầu
-  String get streamUrl => ApiConfig.getStreamUrl(id);
 
   /// Duration as Duration object for audio player
   Duration? get durationAsDuration => duration != null 

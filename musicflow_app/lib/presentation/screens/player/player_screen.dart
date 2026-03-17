@@ -4,17 +4,10 @@ import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/comment_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
-import 'package:musicflow_app/data/services/lrc_service.dart';
+import 'package:musicflow_app/data/services/like_service.dart';
+import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/presentation/widgets/player_bottom_action_bar.dart';
 import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
-
-/// Class đại diện cho 1 dòng lyrics với timestamp
-class LyricLine {
-  final Duration timestamp;
-  final String text;
-
-  LyricLine({required this.timestamp, required this.text});
-}
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -38,33 +31,23 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   final AudioPlayerService _audioService = AudioPlayerService();
   final GlobalAudioState _globalAudioState = GlobalAudioState();
   final PageController _pageController = PageController(initialPage: 0);
-  final ScrollController _lyricsScrollController = ScrollController();
   
   bool _isPlaying = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-  bool _showLyrics = false;
   int _currentPage = 0;  // 0 = Player, 1 = Queue
 
   late Song _currentSong;
   late int _currentIndex;
   bool _isChangingSong = false;  // Debounce
-  bool _isFavorite = false;  // Trạng thái yêu thích (dùng trong _checkFavorite)
+  bool _isFavorite = false;
   int _likeCount = 0;
   int _commentCount = 0;
+  bool _isDownloading = false;
   
   // Animation cho đĩa xoay
   late AnimationController _discRotationController;
   
-  // Lyrics đã parse
-  List<LyricLine> _parsedLyrics = [];
-  int _currentLyricIndex = -1;
-  bool _hasRealTimestamp = false;
-  
-  // LRC Service - Synced lyrics
-  bool _isFetchingLrc = false;
-  String? _syncedLrcLyrics;
-
   @override
   void initState() {
     super.initState();
@@ -78,9 +61,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     );
     
     _initPlayer();
-    _checkFavorite();
+    _loadLikeStatus();
     _loadCommentCount();
-    _fetchSyncedLyrics(); // Fetch LRC từ LRCLIB trước
     
     // Lắng nghe GlobalAudioState để sync khi auto-next
     _globalAudioState.addListener(_onGlobalAudioStateChanged);
@@ -101,9 +83,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         _position = Duration.zero;
         _duration = globalSong.durationAsDuration ?? Duration.zero;
       });
-      _checkFavorite();
+      _loadLikeStatus();
       _loadCommentCount();
-      _fetchSyncedLyrics(); // Fetch LRC cho bài mới
       widget.onSongChanged?.call(globalIndex);
     }
   }
@@ -113,243 +94,28 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     _globalAudioState.removeListener(_onGlobalAudioStateChanged);
     _pageController.dispose();
     _discRotationController.dispose();
-    _lyricsScrollController.dispose();
     super.dispose();
   }
-  
-  /// Kiểm tra lyrics từ API có khớp với bài hát hiện tại không
-  bool _verifyLyricsMatch(String? apiTrackName, String? apiArtistName) {
-    if (apiTrackName == null) return false;
-    
-    final currentTitle = _currentSong.title.toLowerCase().trim();
-    final apiTitle = apiTrackName.toLowerCase().trim();
-    
-    // So sánh tên bài hát - chấp nhận nếu chứa nhau hoặc tương tự
-    if (currentTitle == apiTitle) return true;
-    if (currentTitle.contains(apiTitle) || apiTitle.contains(currentTitle)) return true;
-    
-    // So sánh bằng cách loại bỏ ký tự đặc biệt
-    final cleanCurrent = currentTitle.replaceAll(RegExp(r'[^a-z0-9\s]'), '');
-    final cleanApi = apiTitle.replaceAll(RegExp(r'[^a-z0-9\s]'), '');
-    if (cleanCurrent == cleanApi) return true;
-    if (cleanCurrent.contains(cleanApi) || cleanApi.contains(cleanCurrent)) return true;
-    
-    // Tính similarity - nếu >= 60% thì chấp nhận
-    final similarity = _calculateSimilarity(cleanCurrent, cleanApi);
-    return similarity >= 0.6;
-  }
-  
-  /// Tính độ tương đồng giữa 2 chuỗi (0.0 - 1.0)
-  double _calculateSimilarity(String s1, String s2) {
-    if (s1.isEmpty || s2.isEmpty) return 0.0;
-    if (s1 == s2) return 1.0;
-    
-    final words1 = s1.split(' ').where((w) => w.isNotEmpty).toSet();
-    final words2 = s2.split(' ').where((w) => w.isNotEmpty).toSet();
-    
-    if (words1.isEmpty || words2.isEmpty) return 0.0;
-    
-    final intersection = words1.intersection(words2).length;
-    final union = words1.union(words2).length;
-    
-    return intersection / union;
-  }
-  
-  /// Fetch synced lyrics - tự động verify và fallback
-  Future<void> _fetchSyncedLyrics() async {
-    if (_isFetchingLrc) return;
-    
-    setState(() {
-      _isFetchingLrc = true;
-      _syncedLrcLyrics = null;
-    });
-    
-    try {
-      final durationSeconds = _duration.inSeconds > 0 ? _duration.inSeconds : null;
-      
-      final result = await LrcService.fetchLyrics(
-        trackName: _currentSong.title,
-        artistName: _currentSong.artist,
-        duration: durationSeconds,
-      );
-      
-      if (mounted) {
-        // Kiểm tra API có lyrics và ĐÚNG bài hát không
-        if (result != null && result.hasSyncedLyrics && 
-            _verifyLyricsMatch(result.trackName, result.artistName)) {
-          // API lyrics đúng bài → dùng để sync chuẩn
-          _syncedLrcLyrics = result.syncedLyrics;
-        } else if (_currentSong.lyrics.isNotEmpty) {
-          // API không có hoặc SAI bài → dùng local
-          _syncedLrcLyrics = null;
-        } else {
-          // Không có lyrics nào
-          _syncedLrcLyrics = null;
-        }
-        _isFetchingLrc = false;
-        _parseLyrics();
-        setState(() {});
-      }
-    } catch (e) {
-      // Lỗi API → fallback về local lyrics nếu có
-      if (mounted) {
-        _syncedLrcLyrics = null;
-        _isFetchingLrc = false;
-        _parseLyrics();
-        setState(() {});
-      }
-    }
-  }
-  
-  /// Parse lyrics từ format LRC hoặc plain text
-  void _parseLyrics() {
-    _parsedLyrics = [];
-    _currentLyricIndex = -1;
-    _hasRealTimestamp = false;
-    
-    // Ưu tiên sử dụng synced LRC từ LRCLIB nếu có
-    final lyricsSource = _syncedLrcLyrics ?? _currentSong.lyrics;
-    
-    if (lyricsSource.isEmpty) return;
-    
-    final lines = lyricsSource.split('\n');
-    final lrcRegex = RegExp(r'^\[(\d{2}):(\d{2})(?:[.:](\d{2,3}))?\](.*)$');
-    
-    // Keywords metadata cần lọc
-    final metadataKeywords = [
-      '作曲', '作词', '编曲', '制作人', '混音', '母带', '录音', '和声',
-      '吉他', '贝斯', '鼓', '键盘', '弦乐', '监制', '出品', '发行',
-      '演唱', '原唱', '翻唱', '配唱', '制作', '统筹', '企划', '策划',
-      'Composer', 'Lyricist', 'Arranger', 'Producer', 'Written by',
-      'Composed by', 'Lyrics by', 'Music by', 'Arranged by',
-    ];
-    
-    for (final line in lines) {
-      final match = lrcRegex.firstMatch(line.trim());
-      if (match != null) {
-        _hasRealTimestamp = true;
-        final minutes = int.parse(match.group(1)!);
-        final seconds = int.parse(match.group(2)!);
-        final millisStr = match.group(3);
-        final millis = millisStr != null 
-            ? (millisStr.length == 2 ? int.parse(millisStr) * 10 : int.parse(millisStr))
-            : 0;
-        final text = match.group(4)?.trim() ?? '';
-        
-        if (text.isNotEmpty) {
-          // Lọc metadata tiếng Trung
-          bool isMetadata = false;
-          for (final keyword in metadataKeywords) {
-            if (text.startsWith(keyword) || 
-                text.contains('$keyword:') || 
-                text.contains('$keyword：') ||
-                text.contains('$keyword :') ||
-                text.contains('$keyword ：')) {
-              isMetadata = true;
-              break;
-            }
-          }
-          
-          if (!isMetadata) {
-            _parsedLyrics.add(LyricLine(
-              timestamp: Duration(minutes: minutes, seconds: seconds, milliseconds: millis),
-              text: text,
-            ));
-          }
-        }
-      }
-    }
-    
-    // Nếu không có timestamp thật, chia đều từ đầu đến cuối bài
-    if (!_hasRealTimestamp) {
-      List<String> cleanLines = [];
-      for (final line in lines) {
-        if (line.trim().isNotEmpty) {
-          cleanLines.add(line.trim());
-        }
-      }
-      
-      if (cleanLines.isNotEmpty && _duration.inMilliseconds > 0) {
-        // Chia đều từ đầu đến cuối bài
-        final msPerLine = _duration.inMilliseconds ~/ cleanLines.length;
-        
-        for (int i = 0; i < cleanLines.length; i++) {
-          _parsedLyrics.add(LyricLine(
-            timestamp: Duration(milliseconds: i * msPerLine),
-            text: cleanLines[i],
-          ));
-        }
-      } else {
-        // Không có duration, chỉ hiển thị text
-        for (final line in cleanLines) {
-          _parsedLyrics.add(LyricLine(
-            timestamp: Duration.zero,
-            text: line,
-          ));
-        }
-      }
-    }
-  }
-  
-  /// Cập nhật dòng lyrics hiện tại dựa vào position
-  void _updateCurrentLyricIndex() {
-    if (_parsedLyrics.isEmpty) return;
-    
-    final currentPos = _position;
-    
-    // Tìm dòng hiện tại - dòng có timestamp <= currentPos
-    int currentLineIndex = -1;
-    for (int i = 0; i < _parsedLyrics.length; i++) {
-      if (currentPos >= _parsedLyrics[i].timestamp) {
-        currentLineIndex = i;
-      } else {
-        break;
-      }
-    }
-    
-    if (currentLineIndex != _currentLyricIndex) {
-      _currentLyricIndex = currentLineIndex;
-      _scrollToCurrentLyric();
-    }
-  }
-  
-  /// Auto scroll đến dòng lyrics hiện tại
-  void _scrollToCurrentLyric() {
-    if (!_lyricsScrollController.hasClients) return;
-    if (_currentLyricIndex < 0) return;
-    
-    final targetOffset = (_currentLyricIndex * 60.0) - 100;
-    
-    _lyricsScrollController.animateTo(
-      targetOffset.clamp(0.0, _lyricsScrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
-  }
 
-  /// Kiểm tra bài hát có trong yêu thích không
-  Future<void> _checkFavorite() async {
-    final result = await FavoriteService.checkFavorite(_currentSong.id);
+  /// Lấy trạng thái like + tổng like cho bài hiện tại
+  Future<void> _loadLikeStatus() async {
+    final result = await LikeService.getLikeStatus(_currentSong.id);
     if (mounted && result.success) {
       setState(() {
-        _isFavorite = result.isFavorite ?? false;
+        _isFavorite = result.isLiked ?? false;
+        _likeCount = result.likeCount ?? 0;
       });
     }
   }
 
   Future<void> _toggleLikeSong() async {
-    final result = await FavoriteService.toggleFavorite(_currentSong.id);
+    final result = await LikeService.toggleLike(_currentSong.id);
     if (!mounted) return;
 
     if (result.success) {
-      final nextFavorite = result.isFavorite ?? _isFavorite;
+      final nextFavorite = result.isLiked ?? _isFavorite;
       setState(() {
-        if (!_isFavorite && nextFavorite) {
-          _likeCount += 1;
-        }
-        if (_isFavorite && !nextFavorite) {
-          _likeCount = (_likeCount - 1).clamp(0, 1 << 31);
-        }
+        _likeCount = result.likeCount ?? _likeCount;
         _isFavorite = nextFavorite;
       });
       _showActionMessage(nextFavorite ? 'Da like bai hat' : 'Da bo like bai hat');
@@ -398,10 +164,28 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     _showActionMessage('Chia se: ${_currentSong.title} - ${_currentSong.artist}');
   }
 
-  void _toggleLyricsView() {
+  Future<void> _downloadCurrentSong() async {
+    if (_isDownloading) return;
+
     setState(() {
-      _showLyrics = !_showLyrics;
+      _isDownloading = true;
     });
+
+    final result = await OfflineSongService().downloadSong(_currentSong);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isDownloading = false;
+    });
+
+    _showActionMessage(result.message);
+  }
+
+  Future<void> _toggleFavoriteFromMenu() async {
+    final result = await FavoriteService.toggleFavorite(_currentSong.id);
+    if (!mounted) return;
+    _showActionMessage(result.message ?? 'Khong the cap nhat yeu thich luc nay');
   }
 
   void _showMoreOptions() {
@@ -420,6 +204,14 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                 leading: const Icon(Icons.queue_music, color: Colors.white70),
                 title: const Text('Them vao danh sach phat', style: TextStyle(color: Colors.white)),
                 onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.favorite_border, color: Colors.white70),
+                title: const Text('Them/Xoa bai hat yeu thich', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleFavoriteFromMenu();
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.person_outline, color: Colors.white70),
@@ -486,7 +278,6 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     _audioService.player.positionStream.listen((pos) {
       if (mounted) {
         _position = pos;
-        _updateCurrentLyricIndex(); // Cập nhật lyrics theo position
         setState(() {}); // Rebuild UI
       }
     });
@@ -495,9 +286,6 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     _audioService.player.durationStream.listen((dur) {
       if (mounted && dur != null && _duration == Duration.zero) {
         _duration = dur;
-        if (_parsedLyrics.isEmpty && !_isFetchingLrc) {
-          _parseLyrics();
-        }
         setState(() {});
       }
     });
@@ -518,10 +306,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         _duration = newSong.durationAsDuration ?? Duration.zero;  // Update duration
       });
       
-      // Check trạng thái yêu thích của bài mới
-      _checkFavorite();
+      // Refresh like state cho bài mới
+      _loadLikeStatus();
       _loadCommentCount();
-      _fetchSyncedLyrics(); // Fetch LRC cho bài mới
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
@@ -547,10 +334,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         _duration = newSong.durationAsDuration ?? Duration.zero;  // Update duration
       });
       
-      // Check trạng thái yêu thích của bài mới
-      _checkFavorite();
+      // Refresh like state cho bài mới
+      _loadLikeStatus();
       _loadCommentCount();
-      _fetchSyncedLyrics(); // Fetch LRC cho bài mới
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
@@ -658,7 +444,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 
   Widget _buildPlayerPage() {
-    return _showLyrics ? _buildLyrics() : _buildAlbumArt();
+    return _buildAlbumArt();
   }
 
   Widget _buildQueuePage() {
@@ -771,8 +557,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                           _position = Duration.zero;  // Reset position
                           _duration = song.durationAsDuration ?? Duration.zero;  // Update duration
                         });
-                        // Check trạng thái yêu thích
-                        _checkFavorite();
+                        // Refresh like state
+                        _loadLikeStatus();
                         _loadCommentCount();
                       }
                     },
@@ -815,10 +601,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 
   Widget _buildAlbumArt() {
-    return GestureDetector(
-      onTap: () => setState(() => _showLyrics = true),
-      child: Center(
-        child: LayoutBuilder(
+    return Center(
+      child: LayoutBuilder(
           builder: (context, constraints) {
             final discSize = (constraints.maxWidth * 0.72).clamp(220.0, 320.0);
 
@@ -861,7 +645,6 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
               ),
             );
           },
-        ),
       ),
     );
   }
@@ -879,115 +662,6 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         ),
       ),
       child: const Icon(Icons.music_note, size: 50, color: Colors.black54),
-    );
-  }
-
-  Widget _buildLyrics() {
-    return GestureDetector(
-      onTap: () => setState(() => _showLyrics = false),
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.lyrics, color: Colors.greenAccent, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'LỜI BÀI HÁT',
-                  style: TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // Hiển thị loading khi đang fetch LRC
-            if (_isFetchingLrc)
-              const Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.greenAccent,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        'Đang tìm lời bài hát...',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else if (_parsedLyrics.isEmpty)
-              Expanded(
-                child: Center(
-                  child: Text(
-                    _currentSong.lyrics.isNotEmpty
-                        ? _currentSong.lyrics
-                        : 'Không có lời bài hát',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      height: 2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: ListView.builder(
-                      controller: _lyricsScrollController,
-                      itemCount: _parsedLyrics.length,
-                      itemBuilder: (context, index) {
-                        final isCurrentLine = index == _currentLyricIndex;
-                        final isPastLine = index < _currentLyricIndex;
-                        
-                        // Luôn hiển thị karaoke đơn giản (highlight theo dòng)
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            _parsedLyrics[index].text,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: isCurrentLine 
-                                  ? Colors.greenAccent 
-                                  : isPastLine 
-                                      ? Colors.greenAccent.withOpacity(0.5)
-                                      : Colors.white.withOpacity(0.6),
-                              fontSize: isCurrentLine ? 20 : 16,
-                              fontWeight: isCurrentLine ? FontWeight.bold : FontWeight.normal,
-                              height: 1.5,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1021,18 +695,6 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () => setState(() => _showLyrics = !_showLyrics),
-            icon: Icon(
-              _showLyrics ? Icons.album : Icons.lyrics,
-              color: Colors.greenAccent,
-              size: 18,
-            ),
-            label: Text(
-              _showLyrics ? 'Xem ảnh bìa' : 'Xem lời bài hát',
-              style: const TextStyle(color: Colors.greenAccent),
-            ),
-          ),
         ],
       ),
     );
@@ -1159,8 +821,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       commentCount: _commentCount,
       onLikePressed: _toggleLikeSong,
       onCommentPressed: _openComments,
+      onDownloadPressed: _downloadCurrentSong,
       onSharePressed: _shareSong,
-      onLyricsPressed: _toggleLyricsView,
       onMorePressed: _showMoreOptions,
     );
   }

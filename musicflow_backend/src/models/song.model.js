@@ -28,7 +28,7 @@ const songSchema = new mongoose.Schema(
     // 🔒 VISIBILITY
     isPublic: {
       type: Boolean,
-      default: false, // Mặc định private, chỉ user thấy
+      default: false,
     },
 
     // 🎵 AUDIO
@@ -44,10 +44,11 @@ const songSchema = new mongoose.Schema(
       type: Number,
     },
 
-    // 🖼️ IMAGE (COVER) - Tùy chọn, có ảnh mặc định
+    // 🖼️ IMAGE
     imageUrl: {
       type: String,
-      default: "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg",
+      default:
+        "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg",
     },
     imagePublicId: {
       type: String,
@@ -58,6 +59,40 @@ const songSchema = new mongoose.Schema(
     lyrics: {
       type: String,
       default: "",
+    },
+
+    // Phân biệt admin upload hay user upload
+    source: {
+      type: String,
+      enum: ["admin", "user"],
+      default: "admin",
+    },
+
+    // Cho phép download hay không
+    allowDownload: {
+      type: Boolean,
+      default: true,
+    },
+
+    // 📊 THỐNG KÊ
+    playCount: {
+      type: Number,
+      default: 0,
+    },
+
+    likeCount: {
+      type: Number,
+      default: 0,
+    },
+
+    commentCount: {
+      type: Number,
+      default: 0,
+    },
+
+    shareCount: {
+      type: Number,
+      default: 0,
     },
   },
   {

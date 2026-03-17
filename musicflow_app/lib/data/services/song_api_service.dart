@@ -6,7 +6,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class SongApiService {
-  static const String baseUrl = "http://192.168.88.129:5000/api/songs";
+  static const String baseUrl = "http://10.29.58.153:5000/api/songs";
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 
@@ -333,6 +333,54 @@ class SongApiService {
       return DeleteResult(success: false, message: 'Lỗi: $e');
     }
   }
+
+  /// Xin quyền tải bài hát từ backend
+  static Future<DownloadSongApiResult> requestDownloadSong(String songId) async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null) {
+        return DownloadSongApiResult(
+          success: false,
+          message: 'Vui long dang nhap de tai bai hat',
+        );
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/$songId/download'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(timeout);
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return DownloadSongApiResult(
+          success: true,
+          message: data['message'] ?? 'Co the tai bai hat',
+          audioUrl: data['audioUrl'],
+        );
+      }
+
+      return DownloadSongApiResult(
+        success: false,
+        message: data['message'] ?? 'Khong the tai bai hat',
+      );
+    } on TimeoutException {
+      return DownloadSongApiResult(
+        success: false,
+        message: 'Het thoi gian cho khi xin quyen tai bai hat',
+      );
+    } on SocketException {
+      return DownloadSongApiResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
+    } catch (e) {
+      return DownloadSongApiResult(
+        success: false,
+        message: 'Loi request download: $e',
+      );
+    }
+  }
 }
 
 /// Kết quả upload
@@ -380,6 +428,19 @@ class DeleteResult {
   final String message;
 
   DeleteResult({required this.success, required this.message});
+}
+
+/// Kết quả xin quyền tải bài hát từ backend
+class DownloadSongApiResult {
+  final bool success;
+  final String message;
+  final String? audioUrl;
+
+  DownloadSongApiResult({
+    required this.success,
+    required this.message,
+    this.audioUrl,
+  });
 }
 
 /// Custom exception cho network errors

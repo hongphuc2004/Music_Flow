@@ -9,6 +9,7 @@ const authRoute = require("./routes/auth.route");
 const topicRoute = require("./routes/topic.route");
 const playlistRoute = require("./routes/playlist.route");
 const favoriteRoute = require("./routes/favorite.route");
+const songLikeRoute = require("./routes/song-like.route");
 const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
 
@@ -24,6 +25,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/topics", topicRoute);
 app.use("/api/playlists", playlistRoute);
 app.use("/api/favorites", favoriteRoute);
+app.use("/api/song-likes", songLikeRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/comments", commentRoute);
 

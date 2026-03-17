@@ -6,12 +6,14 @@ import 'package:musicflow_app/data/services/play_history_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
+import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 import 'package:musicflow_app/presentation/screens/library/history_screen.dart';
 import 'package:musicflow_app/presentation/screens/settings/settings_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/your_uploads_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/favorites_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/playlists_screen.dart';
+import 'package:musicflow_app/presentation/screens/library/downloaded_songs_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -32,6 +34,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   List<Song> _recentHistory = [];
   List<Song> _favoriteSongs = [];
   int _uploadedSongsCount = 0;
+  int _downloadedSongsCount = 0;
   
   bool _isLoadingHistory = false;
   bool _isLoggedIn = false;
@@ -59,6 +62,7 @@ class LibraryScreenState extends State<LibraryScreen> {
       _loadRecentHistory(),
       _loadFavorites(),
       _loadUploadedSongsCount(),
+      _loadDownloadedSongsCount(),
     ]);
   }
 
@@ -116,6 +120,16 @@ class LibraryScreenState extends State<LibraryScreen> {
     if (mounted && result.success) {
       setState(() {
         _uploadedSongsCount = result.songs.length;
+      });
+    }
+  }
+
+  Future<void> _loadDownloadedSongsCount() async {
+    final count = await OfflineSongService().getDownloadedSongsCount();
+
+    if (mounted) {
+      setState(() {
+        _downloadedSongsCount = count;
       });
     }
   }
@@ -318,6 +332,18 @@ class LibraryScreenState extends State<LibraryScreen> {
     ).then((_) => _loadPlaylists());
   }
 
+  void _openDownloadedSongs() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DownloadedSongsScreen(
+          onSongTap: widget.onSongTap,
+          onPlayAll: widget.onPlayAll,
+        ),
+      ),
+    ).then((_) => _loadDownloadedSongsCount());
+  }
+
   // ==================== MENU SECTION ====================
   Widget _buildMenuSection() {
     return Column(
@@ -342,6 +368,13 @@ class LibraryScreenState extends State<LibraryScreen> {
           title: 'Bài hát của bạn',
           subtitle: _uploadedSongsCount > 0 ? '$_uploadedSongsCount bài hát' : null,
           onTap: _openYourUploads,
+        ),
+        _buildMenuItem(
+          icon: Icons.download_done,
+          iconColor: Colors.greenAccent,
+          title: 'Bài hát đã tải',
+          subtitle: _downloadedSongsCount > 0 ? '$_downloadedSongsCount bài hát' : null,
+          onTap: _openDownloadedSongs,
         ),
       ],
     );

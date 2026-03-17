@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
+import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
 
 /// Global audio state notifier để quản lý trạng thái phát nhạc
@@ -92,11 +93,20 @@ class GlobalAudioState extends ChangeNotifier {
     
     // Record to play history
     PlayHistoryService.addToHistory(_currentSong!);
-    
-    // Dùng audioUrl Cloudinary trực tiếp (Cloudinary đã hỗ trợ Range requests)
-    // streamUrl có thể dùng sau nếu cần proxy qua backend
+
+    _playWithBestSource();
+  }
+
+  Future<void> _playWithBestSource() async {
+    if (_currentSong == null) return;
+
+    final localPath = await OfflineSongService().getLocalPathIfDownloaded(_currentSong!.id);
+    final playbackUrl = localPath != null
+        ? Uri.file(localPath).toString()
+        : _currentSong!.audioUrl;
+
     _audioService.play(
-      url: _currentSong!.audioUrl,  // Cloudinary URL trực tiếp
+      url: playbackUrl,
       title: _currentSong!.title,
       artist: _currentSong!.artist,
       imageUrl: _currentSong!.imageUrl,

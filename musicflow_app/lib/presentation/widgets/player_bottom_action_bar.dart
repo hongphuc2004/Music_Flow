@@ -6,8 +6,8 @@ class PlayerBottomActionBar extends StatelessWidget {
   final int commentCount;
   final VoidCallback onLikePressed;
   final VoidCallback onCommentPressed;
+  final VoidCallback onDownloadPressed;
   final VoidCallback onSharePressed;
-  final VoidCallback onLyricsPressed;
   final VoidCallback onMorePressed;
 
   const PlayerBottomActionBar({
@@ -17,8 +17,8 @@ class PlayerBottomActionBar extends StatelessWidget {
     required this.commentCount,
     required this.onLikePressed,
     required this.onCommentPressed,
+    required this.onDownloadPressed,
     required this.onSharePressed,
-    required this.onLyricsPressed,
     required this.onMorePressed,
   });
 
@@ -50,18 +50,18 @@ class PlayerBottomActionBar extends StatelessWidget {
             onPressed: onCommentPressed,
           ),
           _ActionMenuItem(
+            icon: Icons.download_outlined,
+            iconColor: Colors.white70,
+            label: 'Tai',
+            tooltip: 'Tai bai hat',
+            onPressed: onDownloadPressed,
+          ),
+          _ActionMenuItem(
             icon: Icons.share_outlined,
             iconColor: Colors.white70,
             label: 'Chia se',
             tooltip: 'Chia se',
             onPressed: onSharePressed,
-          ),
-          _ActionMenuItem(
-            icon: Icons.lyrics_outlined,
-            iconColor: Colors.white70,
-            label: 'Loi bai',
-            tooltip: 'Loi bai hat',
-            onPressed: onLyricsPressed,
           ),
           _ActionMenuItem(
             icon: Icons.more_vert,

@@ -7,6 +7,7 @@ const http = require("http");
 const cloudinary = require("../config/cloudinary");
 const Song = require("../models/song.model");
 const authMiddleware = require("../middleware/auth.middleware");
+const { downloadSong } = require("../controllers/song.controller");
 
 // ================= MULTER CONFIG =================
 const upload = multer({
@@ -93,6 +94,10 @@ router.get("/:id/stream", async (req, res) => {
     }
   }
 });
+
+// =================================================
+// ⬇️ DOWNLOAD SONG (AUTH REQUIRED)
+router.post("/:songId/download", authMiddleware, downloadSong);
 
 // =================================================
 // 📌 GET ALL SONGS (PUBLIC + ADMIN SONGS)

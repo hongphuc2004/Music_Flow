@@ -51,7 +51,7 @@ class LikeService {
     }
   }
 
-  static Future<LikeResult> toggleLike(String songId) async {
+  static Future<LikeResult> toggleLike(String songId, {required bool liked}) async {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
@@ -61,6 +61,7 @@ class LikeService {
       final response = await http.post(
         Uri.parse('$baseUrl/toggle/$songId'),
         headers: await _getAuthHeaders(),
+        body: jsonEncode({'liked': liked}),
       ).timeout(timeout);
 
       final data = jsonDecode(response.body);

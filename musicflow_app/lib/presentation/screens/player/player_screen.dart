@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
+import 'package:musicflow_app/core/utils/lrc_parser.dart';
+import 'package:musicflow_app/data/models/lrc_line_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/comment_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/like_service.dart';
+import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/presentation/widgets/player_bottom_action_bar.dart';
 import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
+import 'package:musicflow_app/presentation/widgets/synced_lyrics_view.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -44,6 +48,12 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   int _likeCount = 0;
   int _commentCount = 0;
   bool _isDownloading = false;
+  bool _isLyricsLoading = false;
+  String? _lyricsError;
+  bool _isLyricsSynced = true;
+  bool _isEstimatedLyrics = false;
+  String _rawLyricsContent = '';
+  List<LrcLine> _lyricsLines = const [];
   
   // Animation cho đĩa xoay
   late AnimationController _discRotationController;
@@ -63,6 +73,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     _initPlayer();
     _loadLikeStatus();
     _loadCommentCount();
+    _loadLyricsForCurrentSong();
     
     // Lắng nghe GlobalAudioState để sync khi auto-next
     _globalAudioState.addListener(_onGlobalAudioStateChanged);
@@ -85,8 +96,107 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       });
       _loadLikeStatus();
       _loadCommentCount();
+      _loadLyricsForCurrentSong();
       widget.onSongChanged?.call(globalIndex);
     }
+  }
+
+  Future<void> _loadLyricsForCurrentSong() async {
+    setState(() {
+      _isLyricsLoading = true;
+      _lyricsError = null;
+      _isLyricsSynced = true;
+      _isEstimatedLyrics = false;
+      _rawLyricsContent = '';
+      _lyricsLines = const [];
+    });
+
+    final result = await LyricsApiService.fetchLrcLyrics(
+      songId: _currentSong.id,
+      fallbackLyrics: _currentSong.lyrics,
+    );
+
+    if (!mounted) return;
+
+    if (!result.success) {
+      setState(() {
+        _isLyricsLoading = false;
+        _lyricsError = result.message ?? 'Khong the tai lyrics';
+      });
+      return;
+    }
+
+    final parsedLines = LrcParser.parse(result.lyrics);
+    final rawLyrics = result.lyrics.trim();
+    _rawLyricsContent = rawLyrics;
+
+    if (parsedLines.isEmpty && rawLyrics.isNotEmpty) {
+      final estimatedLines = _buildEstimatedTimedLyrics(rawLyrics, _duration);
+
+      setState(() {
+        _isLyricsLoading = false;
+        _isLyricsSynced = estimatedLines.isNotEmpty;
+        _isEstimatedLyrics = true;
+        _lyricsLines = estimatedLines;
+        _lyricsError = estimatedLines.isEmpty ? 'Bai hat chua co lyrics.' : null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLyricsLoading = false;
+      _isLyricsSynced = true;
+      _isEstimatedLyrics = false;
+      _lyricsLines = parsedLines;
+      _lyricsError = parsedLines.isEmpty ? 'Bai hat chua co lyrics.' : null;
+    });
+  }
+
+  List<LrcLine> _buildEstimatedTimedLyrics(String rawLyrics, Duration totalDuration) {
+    final lines = rawLyrics
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    if (lines.isEmpty) {
+      return const [];
+    }
+
+    final weights = lines
+        .map((line) => line.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length)
+        .map((wordCount) => wordCount <= 0 ? 1 : wordCount)
+        .toList();
+
+    final weightSum = weights.fold<int>(0, (sum, item) => sum + item);
+    final totalMs = totalDuration.inMilliseconds;
+    final useTrackDuration = totalMs > 0 && weightSum > 0;
+
+    int elapsedMs = 0;
+    final List<LrcLine> timed = [];
+
+    for (int i = 0; i < lines.length; i++) {
+      timed.add(
+        LrcLine(
+          timestamp: Duration(milliseconds: elapsedMs),
+          text: lines[i],
+        ),
+      );
+
+      int lineDurationMs;
+      if (useTrackDuration) {
+        lineDurationMs = ((weights[i] / weightSum) * totalMs).round();
+        if (lineDurationMs < 900) {
+          lineDurationMs = 900;
+        }
+      } else {
+        lineDurationMs = 1800 + (weights[i] * 320);
+      }
+
+      elapsedMs += lineDurationMs;
+    }
+
+    return timed;
   }
 
   @override
@@ -97,32 +207,47 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  /// Lấy trạng thái like + tổng like cho bài hiện tại
-  Future<void> _loadLikeStatus() async {
-    final result = await LikeService.getLikeStatus(_currentSong.id);
-    if (mounted && result.success) {
+  /// Khởi tạo trạng thái like từ dữ liệu bài hát (likeCount lấy từ Song model)
+  void _loadLikeStatus() {
+    if (mounted) {
       setState(() {
-        _isFavorite = result.isLiked ?? false;
-        _likeCount = result.likeCount ?? 0;
+        _isFavorite = false;
+        _likeCount = _currentSong.likeCount;
       });
     }
   }
 
   Future<void> _toggleLikeSong() async {
-    final result = await LikeService.toggleLike(_currentSong.id);
+    final nextFavorite = !_isFavorite;
+    // Cập nhật UI ngay lập tức
+    setState(() {
+      _isFavorite = nextFavorite;
+      _likeCount = nextFavorite
+          ? _likeCount + 1
+          : (_likeCount > 0 ? _likeCount - 1 : 0);
+    });
+
+    final result = await LikeService.toggleLike(
+      _currentSong.id,
+      liked: nextFavorite,
+    );
     if (!mounted) return;
 
     if (result.success) {
-      final nextFavorite = result.isLiked ?? _isFavorite;
       setState(() {
         _likeCount = result.likeCount ?? _likeCount;
-        _isFavorite = nextFavorite;
       });
       _showActionMessage(nextFavorite ? 'Da like bai hat' : 'Da bo like bai hat');
-      return;
+    } else {
+      // Hoàn tác nếu server báo lỗi
+      setState(() {
+        _isFavorite = !nextFavorite;
+        _likeCount = nextFavorite
+            ? (_likeCount > 0 ? _likeCount - 1 : 0)
+            : _likeCount + 1;
+      });
+      _showActionMessage(result.message ?? 'Khong the cap nhat like luc nay');
     }
-
-    _showActionMessage(result.message ?? 'Khong the cap nhat like luc nay');
   }
 
   Future<void> _loadCommentCount() async {
@@ -284,9 +409,19 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
 
     // Lắng nghe tổng thời lượng (backup nếu song metadata không có)
     _audioService.player.durationStream.listen((dur) {
-      if (mounted && dur != null && _duration == Duration.zero) {
-        _duration = dur;
-        setState(() {});
+      if (mounted && dur != null) {
+        final durationChanged = dur != _duration;
+
+        if (!durationChanged) return;
+
+        setState(() {
+          _duration = dur;
+
+          if (_isEstimatedLyrics && _rawLyricsContent.isNotEmpty) {
+            _lyricsLines = _buildEstimatedTimedLyrics(_rawLyricsContent, dur);
+            _isLyricsSynced = _lyricsLines.isNotEmpty;
+          }
+        });
       }
     });
   }
@@ -309,6 +444,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       // Refresh like state cho bài mới
       _loadLikeStatus();
       _loadCommentCount();
+      _loadLyricsForCurrentSong();
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
@@ -337,6 +473,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       // Refresh like state cho bài mới
       _loadLikeStatus();
       _loadCommentCount();
+      _loadLyricsForCurrentSong();
       
       // Gọi callback để MainScreen cập nhật
       widget.onSongChanged?.call(newIndex);
@@ -370,7 +507,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
             children: [
               _buildAppBar(),
               // Page indicator
-              if (widget.playlist.isNotEmpty) _buildPageIndicator(),
+              _buildPageIndicator(),
               Expanded(
                 child: PageView(
                   controller: _pageController,
@@ -382,12 +519,14 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                   children: [
                     // Page 1: Player
                     _buildPlayerPage(),
-                    // Page 2: Queue
+                    // Page 2: Lyrics
+                    _buildLyricsPage(),
+                    // Page 3: Queue
                     if (widget.playlist.isNotEmpty) _buildQueuePage(),
                   ],
                 ),
               ),
-              _buildSongInfo(),
+              if (_currentPage == 0) _buildSongInfo(),
               _buildProgressBar(),
               _buildControls(),
               const SizedBox(height: 14),
@@ -401,15 +540,23 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 
   Widget _buildPageIndicator() {
+    final labels = <String>[
+      'Dang phat',
+      'Lyrics',
+      if (widget.playlist.isNotEmpty) 'Danh sach cho',
+    ];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildDot(0, 'Đang phát'),
-          const SizedBox(width: 8),
-          _buildDot(1, 'Danh sách chờ'),
-        ],
+        children: List.generate(labels.length * 2 - 1, (index) {
+          if (index.isOdd) {
+            return const SizedBox(width: 8);
+          }
+          final pageIndex = index ~/ 2;
+          return _buildDot(pageIndex, labels[pageIndex]);
+        }),
       ),
     );
   }
@@ -445,6 +592,36 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
 
   Widget _buildPlayerPage() {
     return _buildAlbumArt();
+  }
+
+  Widget _buildLyricsPage() {
+    if (_isLyricsLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.greenAccent),
+      );
+    }
+
+    if (_lyricsError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            _lyricsError!,
+            style: const TextStyle(color: Colors.white70, fontSize: 15),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    return SyncedLyricsView(
+      lyrics: _lyricsLines,
+      currentPosition: _position,
+      isSynced: _isLyricsSynced,
+      onLineTap: _isEstimatedLyrics
+          ? null
+          : (timestamp) => _audioService.seek(timestamp),
+    );
   }
 
   Widget _buildQueuePage() {
@@ -560,6 +737,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                         // Refresh like state
                         _loadLikeStatus();
                         _loadCommentCount();
+                        _loadLyricsForCurrentSong();
                       }
                     },
                   ),
@@ -583,7 +761,11 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
             onPressed: () => Navigator.pop(context),
           ),
           Text(
-            _currentPage == 0 ? 'ĐANG PHÁT' : 'DANH SÁCH CHỜ',
+            _currentPage == 0
+                ? 'DANG PHAT'
+                : _currentPage == 1
+                    ? 'LYRICS DONG BO'
+                    : 'DANH SACH CHO',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,

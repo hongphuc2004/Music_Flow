@@ -8,6 +8,7 @@ class Song {
   final String? uploadedBy;
   final bool isPublic;
   final double? duration; // Duration in seconds from backend
+  final int likeCount;
 
   Song({
     required this.id,
@@ -19,6 +20,7 @@ class Song {
     this.uploadedBy,
     this.isPublic = false,
     this.duration,
+    this.likeCount = 0,
   });
 
   /// Duration as Duration object for audio player
@@ -37,6 +39,7 @@ class Song {
       uploadedBy: json['uploadedBy'],
       isPublic: json['isPublic'] ?? false,
       duration: json['duration']?.toDouble(),
+      likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -51,6 +54,7 @@ class Song {
       'uploadedBy': uploadedBy,
       'isPublic': isPublic,
       'duration': duration,
+      'likeCount': likeCount,
     };
   }
 
@@ -60,6 +64,7 @@ class Song {
     String? artist,
     String? lyrics,
     bool? isPublic,
+    int? likeCount,
   }) {
     return Song(
       id: id,
@@ -71,6 +76,7 @@ class Song {
       uploadedBy: uploadedBy,
       isPublic: isPublic ?? this.isPublic,
       duration: duration,
+      likeCount: likeCount ?? this.likeCount,
     );
   }
 }

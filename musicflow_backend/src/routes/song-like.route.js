@@ -1,11 +1,10 @@
 const express = require("express");
 const router = express.Router();
 
-const SongLike = require("../models/song-like.model");
 const Song = require("../models/song.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
-// Lấy trạng thái like + tổng like cho bài hát
+// Lấy tổng like cho bài hát (isLiked không lưu DB, quản lý phía client)
 router.get("/status/:songId", authMiddleware, async (req, res) => {
   try {
     const { songId } = req.params;
@@ -18,11 +17,9 @@ router.get("/status/:songId", authMiddleware, async (req, res) => {
       });
     }
 
-    const liked = await SongLike.findOne({ userId: req.userId, songId });
-
     res.json({
       success: true,
-      isLiked: !!liked,
+      isLiked: false,
       likeCount: song.likeCount || 0,
     });
   } catch (error) {
@@ -35,10 +32,11 @@ router.get("/status/:songId", authMiddleware, async (req, res) => {
   }
 });
 
-// Toggle like cho bài hát
+// Tăng/giảm likeCount trực tiếp trên Song (liked: true = thích, false = bỏ thích)
 router.post("/toggle/:songId", authMiddleware, async (req, res) => {
   try {
     const { songId } = req.params;
+    const { liked } = req.body;
 
     const song = await Song.findById(songId);
     if (!song) {
@@ -48,26 +46,19 @@ router.post("/toggle/:songId", authMiddleware, async (req, res) => {
       });
     }
 
-    const existing = await SongLike.findOne({ userId: req.userId, songId });
-
-    let isLiked;
-    if (existing) {
-      await SongLike.findByIdAndDelete(existing._id);
-      song.likeCount = Math.max(0, (song.likeCount || 0) - 1);
-      isLiked = false;
-    } else {
-      await SongLike.create({ userId: req.userId, songId });
+    if (liked) {
       song.likeCount = (song.likeCount || 0) + 1;
-      isLiked = true;
+    } else {
+      song.likeCount = Math.max(0, (song.likeCount || 0) - 1);
     }
 
     await song.save();
 
     res.json({
       success: true,
-      isLiked,
-      likeCount: song.likeCount || 0,
-      message: isLiked ? "Da thich bai hat" : "Da bo thich bai hat",
+      isLiked: !!liked,
+      likeCount: song.likeCount,
+      message: liked ? "Da thich bai hat" : "Da bo thich bai hat",
     });
   } catch (error) {
     console.error("Toggle like error:", error);

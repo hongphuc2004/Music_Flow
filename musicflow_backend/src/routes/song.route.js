@@ -16,6 +16,37 @@ const upload = multer({
 });
 
 // =================================================
+// 🎤 GET LYRICS BY SONG ID
+router.get("/:id/lyrics", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const song = await Song.findById(id).select("_id title artist lyrics");
+    if (!song) {
+      return res.status(404).json({
+        success: false,
+        message: "Khong tim thay bai hat",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      songId: song._id,
+      title: song.title,
+      artist: song.artist,
+      lyrics: song.lyrics || "",
+    });
+  } catch (error) {
+    console.error("Get lyrics error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Khong the tai lyrics",
+      error: error.message,
+    });
+  }
+});
+
+// =================================================
 // 🎵 AUDIO STREAMING - HTTP Range Requests (HTTP 206)
 // Hỗ trợ seek/tua nhanh mà không cần tải lại từ đầu
 router.get("/:id/stream", async (req, res) => {

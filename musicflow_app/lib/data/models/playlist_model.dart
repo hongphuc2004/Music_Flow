@@ -48,9 +48,12 @@ class Playlist {
       id: json['_id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      userId: json['userId'] is Map 
-          ? json['userId']['_id'] ?? '' 
-          : json['userId'] ?? '',
+      userId: json['userId'] is Map
+        ? json['userId']['_id'] ?? ''
+        : (json['userId'] ??
+          (json['createdBy'] is Map
+            ? json['createdBy']['_id'] ?? ''
+            : json['createdBy'] ?? '')),
       songs: parsedSongs,
       coverImage: json['coverImage'] ?? '',
       isPublic: json['isPublic'] ?? false,

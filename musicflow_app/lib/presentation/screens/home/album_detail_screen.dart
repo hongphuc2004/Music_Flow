@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
-import 'package:musicflow_app/data/models/topic_model.dart';
-import 'package:musicflow_app/data/services/topic_api_service.dart';
+import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
-  final Topic topic;
+  final Playlist playlist;
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
 
   const AlbumDetailScreen({
     super.key,
-    required this.topic,
+    required this.playlist,
     this.onSongTap,
     this.onPlayAll,
   });
@@ -22,12 +22,15 @@ class AlbumDetailScreen extends StatefulWidget {
 
 class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   List<Song> songs = [];
+  Playlist? playlistDetail;
   bool isLoading = true;
   String? errorMessage;
 
   @override
   void initState() {
     super.initState();
+    playlistDetail = widget.playlist;
+    songs = widget.playlist.songs;
     fetchSongs();
   }
 
@@ -38,14 +41,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     });
 
     try {
-      final result = await TopicApiService.fetchSongsByTopic(widget.topic.id);
+      final result = await PlaylistApiService.getSystemPlaylist(widget.playlist.id);
+      if (!result.success || result.playlist == null) {
+        throw Exception(result.message ?? 'Không thể tải playlist hệ thống');
+      }
       setState(() {
-        songs = result;
-        isLoading = false;
-      });
-    } on TopicException catch (e) {
-      setState(() {
-        errorMessage = e.message;
+        playlistDetail = result.playlist;
+        songs = result.playlist!.songs;
         isLoading = false;
       });
     } catch (e) {
@@ -80,7 +82,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       backgroundColor: albumColor.withOpacity(0.8),
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
-          widget.topic.name,
+          playlistDetail?.name ?? widget.playlist.name,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             shadows: [
@@ -128,9 +130,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: widget.topic.avatar.isNotEmpty
+                    child: (playlistDetail?.displayCoverImage ?? widget.playlist.displayCoverImage).isNotEmpty
                         ? Image.network(
-                            widget.topic.avatar,
+                            playlistDetail?.displayCoverImage ?? widget.playlist.displayCoverImage,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
                           )
@@ -159,7 +161,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       ),
       child: Center(
         child: Icon(
-          Icons.album,
+          Icons.queue_music,
           size: 80,
           color: Colors.white.withOpacity(0.8),
         ),
@@ -212,7 +214,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               Icon(Icons.music_off, size: 64, color: Colors.grey),
               SizedBox(height: 16),
               Text(
-                'Chưa có bài hát nào trong album này',
+                'Chưa có bài hát nào trong playlist này',
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ],

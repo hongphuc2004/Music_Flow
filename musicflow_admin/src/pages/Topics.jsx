@@ -23,6 +23,9 @@ import {
   CircularProgress,
   Alert,
   Grid,
+  Stack,
+  Checkbox,
+  Divider,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -34,7 +37,7 @@ import {
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import { Layout } from '../components/Layout';
-import { topicsApi } from '../services/api';
+import { topicsApi, songsApi } from '../services/api';
 
 function Topics() {
   const [topics, setTopics] = useState([]);
@@ -48,11 +51,21 @@ function Topics() {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, topic: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editDialog, setEditDialog] = useState({ open: false, topic: null });
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', avatarUrl: '', songs: [] });
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const fileInputRef = useRef(null);
+  // Song picker state
+  const [songPickerOpen, setSongPickerOpen] = useState(false);
+  const [songOptions, setSongOptions] = useState([]);
+  const [songOptionsLoading, setSongOptionsLoading] = useState(false);
+  const [songOptionsPage, setSongOptionsPage] = useState(0);
+  const [songOptionsRowsPerPage, setSongOptionsRowsPerPage] = useState(10);
+  const [songOptionsTotal, setSongOptionsTotal] = useState(0);
+  const [songOptionsSearch, setSongOptionsSearch] = useState('');
+  const [songOptionsSearchTimeout, setSongOptionsSearchTimeout] = useState(null);
+  const [selectedSongMap, setSelectedSongMap] = useState({});
 
   const fetchTopics = useCallback(async () => {
     try {
@@ -110,15 +123,33 @@ function Topics() {
     }
   };
 
-  const openEditDialog = (topic = null) => {
+  // Sửa lại: Khi sửa topic, gọi API lấy danh sách bài hát thuộc topic
+  const openEditDialog = async (topic = null) => {
     if (topic) {
-      setFormData({
-        name: topic.name,
-        description: topic.description || '',
-      });
-      setAvatarPreview(topic.avatar || '');
+      setFormLoading(true);
+      try {
+        const res = await topicsApi.getSongsByTopic(topic._id);
+        const songIds = Array.isArray(res.data.songs) ? res.data.songs.map((s) => s._id) : [];
+        setFormData({
+          name: topic.name,
+          description: topic.description || '',
+          avatarUrl: topic.avatar || '',
+          songs: songIds,
+        });
+        setAvatarPreview(topic.avatar || '');
+      } catch (err) {
+        setFormData({
+          name: topic.name,
+          description: topic.description || '',
+          avatarUrl: topic.avatar || '',
+          songs: [],
+        });
+        setAvatarPreview(topic.avatar || '');
+      } finally {
+        setFormLoading(false);
+      }
     } else {
-      setFormData({ name: '', description: '' });
+      setFormData({ name: '', description: '', avatarUrl: '', songs: [] });
       setAvatarPreview('');
     }
     setAvatarFile(null);
@@ -147,15 +178,25 @@ function Topics() {
   const handleSave = async () => {
     try {
       setFormLoading(true);
-      
-      // Create FormData for multipart upload
-      const submitData = new FormData();
-      submitData.append('name', formData.name);
-      submitData.append('description', formData.description);
+      let submitData;
       if (avatarFile) {
+        submitData = new FormData();
+        submitData.append('name', formData.name);
+        submitData.append('description', formData.description);
         submitData.append('avatar', avatarFile);
+        submitData.append('songs', JSON.stringify(formData.songs));
+      } else if (formData.avatarUrl && formData.avatarUrl.trim()) {
+        submitData = new FormData();
+        submitData.append('name', formData.name);
+        submitData.append('description', formData.description);
+        submitData.append('avatarUrl', formData.avatarUrl.trim());
+        submitData.append('songs', JSON.stringify(formData.songs));
+      } else {
+        submitData = new FormData();
+        submitData.append('name', formData.name);
+        submitData.append('description', formData.description);
+        submitData.append('songs', JSON.stringify(formData.songs));
       }
-
       if (editDialog.topic) {
         await topicsApi.update(editDialog.topic._id, submitData);
       } else {
@@ -168,6 +209,85 @@ function Topics() {
     } finally {
       setFormLoading(false);
     }
+  };
+  // Song picker logic (reuse from playlist)
+  const fetchSongOptions = useCallback(async () => {
+    try {
+      setSongOptionsLoading(true);
+      const response = await songsApi.getAll({
+        page: songOptionsPage + 1,
+        limit: songOptionsRowsPerPage,
+        search: songOptionsSearch,
+      });
+      const songs = response.data?.songs || [];
+      setSongOptions(songs);
+      setSongOptionsTotal(response.data?.pagination?.total || 0);
+      setSelectedSongMap((prev) => {
+        const next = { ...prev };
+        songs.forEach((song) => {
+          next[song._id] = {
+            title: song.title,
+            artist: song.artist,
+          };
+        });
+        return next;
+      });
+    } catch {
+      setSongOptions([]);
+      setSongOptionsTotal(0);
+    } finally {
+      setSongOptionsLoading(false);
+    }
+  }, [songOptionsPage, songOptionsRowsPerPage, songOptionsSearch]);
+
+  useEffect(() => {
+    if (songPickerOpen) {
+      fetchSongOptions();
+    }
+  }, [songPickerOpen, fetchSongOptions]);
+
+  const handleSongSearchChange = (event) => {
+    const value = event.target.value;
+    setSongOptionsSearch(value);
+    if (songOptionsSearchTimeout) clearTimeout(songOptionsSearchTimeout);
+    setSongOptionsSearchTimeout(setTimeout(() => {
+      setSongOptionsPage(0);
+    }, 400));
+  };
+
+  const toggleSongSelection = (song) => {
+    setFormData((prev) => {
+      const exists = prev.songs.includes(song._id);
+      return {
+        ...prev,
+        songs: exists
+          ? prev.songs.filter((id) => id !== song._id)
+          : [...prev.songs, song._id],
+      };
+    });
+    setSelectedSongMap((prev) => ({
+      ...prev,
+      [song._id]: {
+        title: song.title,
+        artist: song.artist,
+      },
+    }));
+  };
+
+  const removeSelectedSong = (songId) => {
+    setFormData((prev) => ({
+      ...prev,
+      songs: prev.songs.filter((id) => id !== songId),
+    }));
+  };
+
+  const handleSongOptionsPageChange = (event, newPage) => {
+    setSongOptionsPage(newPage);
+  };
+
+  const handleSongOptionsRowsChange = (event) => {
+    setSongOptionsRowsPerPage(parseInt(event.target.value, 10));
+    setSongOptionsPage(0);
   };
 
   const formatDate = (dateString) => {
@@ -327,11 +447,19 @@ function Topics() {
             <Grid size={12}>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <Avatar
-                  src={avatarPreview}
+                  src={avatarPreview || formData.avatarUrl}
                   sx={{ width: 120, height: 120, bgcolor: '#6c63ff' }}
                 >
                   <CategoryIcon sx={{ fontSize: 60 }} />
                 </Avatar>
+                <TextField
+                  fullWidth
+                  label="Avatar Image URL"
+                  value={formData.avatarUrl}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, avatarUrl: e.target.value }))}
+                  helperText="Paste image URL or upload from computer below"
+                  sx={{ mt: 2 }}
+                />
                 <input
                   type="file"
                   accept="image/*"
@@ -373,6 +501,99 @@ function Topics() {
                 rows={3}
               />
             </Grid>
+            <Grid size={12}>
+              <Box sx={{ mt: 2 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2">Songs in topic</Typography>
+                  <Chip label={`${formData.songs.length} selected`} size="small" color="primary" />
+                </Stack>
+                <Button variant="outlined" onClick={() => setSongPickerOpen(true)}>
+                  Choose Songs
+                </Button>
+              </Box>
+            </Grid>
+                <Dialog
+                  open={songPickerOpen}
+                  onClose={() => setSongPickerOpen(false)}
+                  fullWidth
+                  maxWidth="md"
+                >
+                  <DialogTitle>Select Songs</DialogTitle>
+                  <DialogContent>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Search songs by title or artist..."
+                      value={songOptionsSearch}
+                      onChange={handleSongSearchChange}
+                      sx={{ mt: 1, mb: 2 }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                    <Divider sx={{ mb: 2 }} />
+                    {songOptionsLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <CircularProgress size={28} />
+                      </Box>
+                    ) : (
+                      <>
+                        <TableContainer component={Paper} variant="outlined">
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell width={80}>Select</TableCell>
+                                <TableCell>Title</TableCell>
+                                <TableCell>Artist</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {songOptions.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={3} align="center">
+                                    No songs found
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                songOptions.map((song) => {
+                                  const checked = formData.songs.includes(song._id);
+                                  return (
+                                    <TableRow key={song._id} hover>
+                                      <TableCell>
+                                        <Checkbox
+                                          checked={checked}
+                                          onChange={() => toggleSongSelection(song)}
+                                        />
+                                      </TableCell>
+                                      <TableCell>{song.title}</TableCell>
+                                      <TableCell>{song.artist}</TableCell>
+                                    </TableRow>
+                                  );
+                                })
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        <TablePagination
+                          rowsPerPageOptions={[10, 20, 50]}
+                          component="div"
+                          count={songOptionsTotal}
+                          rowsPerPage={songOptionsRowsPerPage}
+                          page={songOptionsPage}
+                          onPageChange={handleSongOptionsPageChange}
+                          onRowsPerPageChange={handleSongOptionsRowsChange}
+                        />
+                      </>
+                    )}
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => setSongPickerOpen(false)}>Done</Button>
+                  </DialogActions>
+                </Dialog>
           </Grid>
         </DialogContent>
         <DialogActions>

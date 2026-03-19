@@ -23,16 +23,26 @@ import {
   CircularProgress,
   Alert,
   Switch,
+  DialogContentText,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Delete as DeleteIcon,
+  Edit as EditIcon,
   Refresh as RefreshIcon,
   MusicNote as MusicNoteIcon,
   PlayArrow as PlayIcon,
+  Add as AddIcon,
+  CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import { Layout } from '../components/Layout';
-import { songsApi } from '../services/api';
+import { songsApi, topicsApi } from '../services/api';
 
 function Songs() {
   const [songs, setSongs] = useState([]);
@@ -45,6 +55,19 @@ function Songs() {
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, song: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [topics, setTopics] = useState([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [editingSong, setEditingSong] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    artist: '',
+    topicId: '',
+    lyrics: '',
+    isPublic: true,
+  });
+  const [audioFile, setAudioFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
 
   const fetchSongs = useCallback(async () => {
     try {
@@ -67,6 +90,19 @@ function Songs() {
   useEffect(() => {
     fetchSongs();
   }, [fetchSongs]);
+
+  const fetchTopics = useCallback(async () => {
+    try {
+      const response = await topicsApi.getAll({ page: 1, limit: 1000 });
+      setTopics(response.data.topics || []);
+    } catch (err) {
+      setTopics([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTopics();
+  }, [fetchTopics]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -111,6 +147,73 @@ function Songs() {
     }
   };
 
+  const openCreateDialog = () => {
+    setEditingSong(null);
+    setFormData({
+      title: '',
+      artist: '',
+      topicId: '',
+      lyrics: '',
+      isPublic: true,
+    });
+    setAudioFile(null);
+    setImageFile(null);
+    setCreateDialogOpen(true);
+  };
+
+  const openEditDialog = (song) => {
+    setEditingSong(song);
+    setFormData({
+      title: song.title || '',
+      artist: song.artist || '',
+      topicId: song.topicId?._id || '',
+      lyrics: song.lyrics || '',
+      isPublic: !!song.isPublic,
+    });
+    setAudioFile(null);
+    setImageFile(null);
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateSong = async () => {
+    if (!formData.title.trim() || !formData.artist.trim()) {
+      setError('Title and artist are required');
+      return;
+    }
+
+    if (!editingSong && !audioFile) {
+      setError('Audio file is required');
+      return;
+    }
+
+    try {
+      setCreateLoading(true);
+      const payload = new FormData();
+      payload.append('title', formData.title.trim());
+      payload.append('artist', formData.artist.trim());
+      payload.append('lyrics', formData.lyrics || '');
+      payload.append('isPublic', String(formData.isPublic));
+      if (formData.topicId) payload.append('topicId', formData.topicId);
+      else payload.append('topicId', '');
+      if (audioFile) payload.append('audio', audioFile);
+      if (imageFile) payload.append('image', imageFile);
+
+      if (editingSong) {
+        await songsApi.update(editingSong._id, payload);
+      } else {
+        await songsApi.create(payload);
+      }
+
+      setCreateDialogOpen(false);
+      setEditingSong(null);
+      fetchSongs();
+    } catch (err) {
+      setError(editingSong ? 'Failed to update song' : 'Failed to create song');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   const formatDuration = (seconds) => {
     if (!seconds) return '--:--';
     const mins = Math.floor(seconds / 60);
@@ -132,9 +235,19 @@ function Songs() {
         <Typography variant="h5" fontWeight={600}>
           Songs ({total})
         </Typography>
-        <IconButton onClick={fetchSongs} disabled={loading}>
-          <RefreshIcon />
-        </IconButton>
+        <Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreateDialog}
+            sx={{ mr: 1, bgcolor: '#00bcd4', '&:hover': { bgcolor: '#0097a7' } }}
+          >
+            Add Song
+          </Button>
+          <IconButton onClick={fetchSongs} disabled={loading}>
+            <RefreshIcon />
+          </IconButton>
+        </Box>
       </Box>
 
       {error && (
@@ -231,6 +344,13 @@ function Songs() {
                       </IconButton>
                       <IconButton
                         size="small"
+                        color="primary"
+                        onClick={() => openEditDialog(song)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
                         color="error"
                         onClick={() => setDeleteDialog({ open: true, song })}
                       >
@@ -253,6 +373,122 @@ function Songs() {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </TableContainer>
+
+      <Dialog
+        open={createDialogOpen}
+        onClose={() => {
+          setCreateDialogOpen(false);
+          setEditingSong(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>{editingSong ? 'Edit Song' : 'Add New Song'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            {editingSong
+              ? 'Update song metadata and optionally replace audio/cover.'
+              : 'Upload an audio file and fill basic metadata.'}
+          </DialogContentText>
+          <Grid container spacing={2}>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Title"
+                value={formData.title}
+                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Artist"
+                value={formData.artist}
+                onChange={(e) => setFormData((prev) => ({ ...prev, artist: e.target.value }))}
+              />
+            </Grid>
+            <Grid size={12}>
+              <FormControl fullWidth>
+                <InputLabel id="song-topic-label">Topic</InputLabel>
+                <Select
+                  labelId="song-topic-label"
+                  value={formData.topicId}
+                  label="Topic"
+                  onChange={(e) => setFormData((prev) => ({ ...prev, topicId: e.target.value }))}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {topics.map((topic) => (
+                    <MenuItem key={topic._id} value={topic._id}>
+                      {topic.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Lyrics"
+                multiline
+                minRows={3}
+                value={formData.lyrics}
+                onChange={(e) => setFormData((prev) => ({ ...prev, lyrics: e.target.value }))}
+              />
+            </Grid>
+            <Grid size={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isPublic}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, isPublic: e.target.checked }))}
+                  />
+                }
+                label="Public song"
+              />
+            </Grid>
+            <Grid size={12}>
+              <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />} fullWidth>
+                {audioFile
+                  ? `Audio: ${audioFile.name}`
+                  : editingSong
+                    ? 'Replace Audio (optional)'
+                    : 'Upload Audio (required)'}
+                <input
+                  hidden
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
+                />
+              </Button>
+            </Grid>
+            <Grid size={12}>
+              <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />} fullWidth>
+                {imageFile ? `Cover: ${imageFile.name}` : 'Upload Cover Image (optional)'}
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                />
+              </Button>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setCreateDialogOpen(false);
+              setEditingSong(null);
+            }}
+            disabled={createLoading}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleCreateSong} disabled={createLoading}>
+            {createLoading ? <CircularProgress size={20} /> : editingSong ? 'Save Changes' : 'Create Song'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, song: null })}>

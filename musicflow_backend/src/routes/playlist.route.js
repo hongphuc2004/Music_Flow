@@ -1,8 +1,65 @@
 const express = require("express");
 const router = express.Router();
 const Playlist = require("../models/playlist.model");
+const PlaylistSong = require("../models/playlist-song.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
+
+// ================= GET SYSTEM PLAYLISTS (public) =================
+router.get("/system", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 50);
+
+    const playlists = await PlaylistSong.find({ isPublic: true })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate({
+        path: "songs",
+        match: { isPublic: true },
+      });
+
+    res.json({
+      success: true,
+      playlists,
+    });
+  } catch (error) {
+    console.error("Get system playlists error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lấy playlist hệ thống thất bại",
+      error: error.message,
+    });
+  }
+});
+
+// ================= GET SINGLE SYSTEM PLAYLIST (public) =================
+router.get("/system/:id", async (req, res) => {
+  try {
+    const playlist = await PlaylistSong.findById(req.params.id).populate({
+      path: "songs",
+      match: { isPublic: true },
+    });
+
+    if (!playlist || !playlist.isPublic) {
+      return res.status(404).json({
+        success: false,
+        message: "Playlist hệ thống không tồn tại",
+      });
+    }
+
+    res.json({
+      success: true,
+      playlist,
+    });
+  } catch (error) {
+    console.error("Get system playlist error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lấy chi tiết playlist hệ thống thất bại",
+      error: error.message,
+    });
+  }
+});
 
 // ================= GET ALL PLAYLISTS (của user hiện tại) =================
 router.get("/", authMiddleware, async (req, res) => {

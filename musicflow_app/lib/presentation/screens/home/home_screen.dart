@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
-import 'package:musicflow_app/data/models/topic_model.dart';
+import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
-import 'package:musicflow_app/data/services/topic_api_service.dart';
 import 'package:musicflow_app/presentation/screens/home/album_detail_screen.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Song> songs = [];
-  List<Topic> topics = [];
+  List<Playlist> systemPlaylists = [];
   List<Song> recommendedSongs = [];
   bool isLoading = true;
   String? errorMessage;
@@ -36,25 +36,25 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     
     try {
-      // Fetch songs, topics và recommended songs song song
+      // Fetch songs, system playlists và recommended songs song song
       final results = await Future.wait([
         SongApiService.fetchSongs(),
-        TopicApiService.fetchTopics(),
         SongApiService.fetchRecommendedSongs(limit: 12),
+        PlaylistApiService.getSystemPlaylists(limit: 12),
       ]);
+
+      final systemPlaylistResult = results[2] as PlaylistResult;
+      if (!systemPlaylistResult.success) {
+        throw Exception(systemPlaylistResult.message ?? 'Không thể tải playlist hệ thống');
+      }
       
       setState(() {
         songs = results[0] as List<Song>;
-        topics = results[1] as List<Topic>;
-        recommendedSongs = results[2] as List<Song>;
+        recommendedSongs = results[1] as List<Song>;
+        systemPlaylists = systemPlaylistResult.playlists ?? [];
         isLoading = false;
       });
     } on NetworkException catch (e) {
-      setState(() {
-        errorMessage = e.message;
-        isLoading = false;
-      });
-    } on TopicException catch (e) {
       setState(() {
         errorMessage = e.message;
         isLoading = false;
@@ -175,37 +175,35 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader() {
-    if (topics.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Text(
-            'Albums',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+        if (systemPlaylists.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Text(
+              'Playlist gợi ý',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
-        ),
-        SizedBox(
-          height: 200,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: topics.length,
-            itemBuilder: (context, index) {
-              final topic = topics[index];
-              return _buildAlbumCard(topic);
-            },
+          SizedBox(
+            height: 200,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: systemPlaylists.length,
+              itemBuilder: (context, index) {
+                final playlist = systemPlaylists[index];
+                return _buildAlbumCard(playlist);
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
+        ],
         _buildSuggestedSongs(),
         const SizedBox(height: 16),
         const Padding(
@@ -377,12 +375,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAlbumCard(Topic topic) {
-    // Default color since we no longer store color in Topic
+  Widget _buildAlbumCard(Playlist playlist) {
     Color albumColor = const Color(0xFF6c63ff);
 
     return GestureDetector(
-      onTap: () => _onAlbumTap(topic),
+      onTap: () => _onAlbumTap(playlist),
       child: Container(
         width: 150,
         margin: const EdgeInsets.only(right: 12),
@@ -406,19 +403,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: topic.avatar.isNotEmpty
+                child: playlist.displayCoverImage.isNotEmpty
                     ? Image.network(
-                        topic.avatar,
+                        playlist.displayCoverImage,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(albumColor, topic.name),
+                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(albumColor, playlist.name),
                       )
-                    : _buildPlaceholderCover(albumColor, topic.name),
+                    : _buildPlaceholderCover(albumColor, playlist.name),
               ),
             ),
             const SizedBox(height: 8),
             // Album name
             Text(
-              topic.name,
+              playlist.name,
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -428,9 +425,9 @@ class _HomeScreenState extends State<HomeScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             // Description
-            if (topic.description.isNotEmpty)
+            if (playlist.description.isNotEmpty)
               Text(
-                topic.description,
+                playlist.description,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[400],
@@ -461,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.album,
+              Icons.queue_music,
               size: 48,
               color: Colors.white.withOpacity(0.8),
             ),
@@ -486,12 +483,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onAlbumTap(Topic topic) {
+  void _onAlbumTap(Playlist playlist) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AlbumDetailScreen(
-          topic: topic,
+          playlist: playlist,
           onSongTap: widget.onSongTap,
           onPlayAll: widget.onPlayAll,
         ),

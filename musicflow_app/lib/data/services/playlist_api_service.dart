@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../../core/config/api_config.dart';
 import '../models/playlist_model.dart';
 import 'auth_service.dart';
 
 class PlaylistApiService {
-  static const String baseUrl = "http://10.29.58.153:5000/api/playlists";
+  static const String baseUrl = ApiConfig.playlistsEndpoint;
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token xác thực
@@ -47,6 +48,71 @@ class PlaylistApiService {
           message: data['message'] ?? 'Lấy danh sách playlist thất bại',
         );
       }
+    } on TimeoutException {
+      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
+    } on SocketException {
+      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } catch (e) {
+      return PlaylistResult(success: false, message: 'Lỗi: $e');
+    }
+  }
+
+  // ================= GET SYSTEM PLAYLISTS (public) =================
+  /// Lấy playlist hệ thống do admin tạo (public)
+  static Future<PlaylistResult> getSystemPlaylists({int limit = 12}) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/system?limit=$limit'))
+          .timeout(timeout);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final List playlistsJson = data['playlists'] ?? [];
+        final playlists = playlistsJson
+            .map((json) => Playlist.fromJson(json))
+            .toList();
+
+        return PlaylistResult(
+          success: true,
+          playlists: playlists,
+        );
+      }
+
+      return PlaylistResult(
+        success: false,
+        message: data['message'] ?? 'Lấy playlist hệ thống thất bại',
+      );
+    } on TimeoutException {
+      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
+    } on SocketException {
+      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } catch (e) {
+      return PlaylistResult(success: false, message: 'Lỗi: $e');
+    }
+  }
+
+  // ================= GET SINGLE SYSTEM PLAYLIST (public) =================
+  /// Lấy chi tiết playlist hệ thống
+  static Future<PlaylistResult> getSystemPlaylist(String playlistId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/system/$playlistId'))
+          .timeout(timeout);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return PlaylistResult(
+          success: true,
+          playlist: Playlist.fromJson(data['playlist']),
+        );
+      }
+
+      return PlaylistResult(
+        success: false,
+        message: data['message'] ?? 'Lấy chi tiết playlist hệ thống thất bại',
+      );
     } on TimeoutException {
       return PlaylistResult(success: false, message: 'Kết nối quá chậm');
     } on SocketException {

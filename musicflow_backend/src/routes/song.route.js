@@ -131,16 +131,11 @@ router.get("/:id/stream", async (req, res) => {
 router.post("/:songId/download", authMiddleware, downloadSong);
 
 // =================================================
-// 📌 GET ALL SONGS (PUBLIC + ADMIN SONGS)
+// 📌 GET ALL SONGS (PUBLIC ONLY)
 router.get("/", async (req, res) => {
   try {
-    // Chỉ lấy bài hát public hoặc bài do admin upload (uploadedBy = null)
-    const songs = await Song.find({
-      $or: [
-        { isPublic: true },
-        { uploadedBy: null }
-      ]
-    }).sort({ createdAt: -1 });
+    // Public thực sự cho cả admin và user upload
+    const songs = await Song.find({ isPublic: true }).sort({ createdAt: -1 });
 
     res.json(songs);
   } catch (error) {
@@ -150,21 +145,14 @@ router.get("/", async (req, res) => {
 });
 
 // =================================================
-// 🎲 GET RECOMMENDED SONGS (Random - PUBLIC + ADMIN)
+// 🎲 GET RECOMMENDED SONGS (Random - PUBLIC ONLY)
 router.get("/recommended", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 12;
     
-    // Chỉ lấy bài hát public hoặc admin
+    // Public thực sự cho cả admin và user upload
     const songs = await Song.aggregate([
-      { 
-        $match: { 
-          $or: [
-            { isPublic: true },
-            { uploadedBy: null }
-          ]
-        } 
-      },
+      { $match: { isPublic: true } },
       { $sample: { size: limit } }
     ]);
     
@@ -176,38 +164,28 @@ router.get("/recommended", async (req, res) => {
 });
 
 // =================================================
-// 🔍 SEARCH SONGS (PUBLIC + ADMIN)
+// 🔍 SEARCH SONGS (PUBLIC ONLY)
 router.get("/search", async (req, res) => {
   try {
     const { query, artist, letter } = req.query;
-    
-    let filter = {
-      $or: [
-        { isPublic: true },
-        { uploadedBy: null }
-      ]
-    };
-    
-    // Tìm kiếm theo query (tên bài hát hoặc ca sĩ)
+
+    const conditions = [{ isPublic: true }];
+
     if (query) {
       const searchRegex = new RegExp(query, "i");
-      filter.$and = [
-        { $or: filter.$or },
-        { $or: [{ title: searchRegex }, { artist: searchRegex }] }
-      ];
-      delete filter.$or;
+      conditions.push({ $or: [{ title: searchRegex }, { artist: searchRegex }] });
     }
-    
-    // Lọc theo ca sĩ cụ thể
+
     if (artist) {
-      filter.artist = new RegExp(artist, "i");
+      conditions.push({ artist: new RegExp(artist, "i") });
     }
-    
-    // Lọc theo chữ cái đầu của tên bài hát
+
     if (letter) {
-      filter.title = new RegExp(`^${letter}`, "i");
+      conditions.push({ title: new RegExp(`^${letter}`, "i") });
     }
-    
+
+    const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
+
     const songs = await Song.find(filter).sort({ createdAt: -1 });
     
     res.json(songs);

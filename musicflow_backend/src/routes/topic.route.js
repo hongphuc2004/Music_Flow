@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
 router.get("/:topicId/songs", async (req, res) => {
   try {
     const { topicId } = req.params;
-    const songs = await Song.find({ topicId }).sort({ createdAt: -1 });
+    const songs = await Song.find({ topicId, isPublic: true }).sort({ createdAt: -1 });
     res.json(songs);
   } catch (error) {
     console.error("Get songs by topic error:", error);

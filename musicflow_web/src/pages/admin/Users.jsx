@@ -30,8 +30,8 @@ import {
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { Layout } from '../components/Layout';
-import { usersApi } from '../services/api';
+import { Layout } from '../../components/Layout';
+import { usersApi } from '../../services/api';
 
 function Users() {
   const [users, setUsers] = useState([]);

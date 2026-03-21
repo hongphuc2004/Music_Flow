@@ -41,8 +41,8 @@ import {
   Add as AddIcon,
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
-import { Layout } from '../components/Layout';
-import { songsApi, topicsApi } from '../services/api';
+import { Layout } from '../../components/Layout';
+import { songsApi, topicsApi } from '../../services/api';
 
 function Songs() {
   const [songs, setSongs] = useState([]);

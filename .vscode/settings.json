@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/Users/Lenovo/MusicFlow/musicflow_app/linux"
+    "cmake.sourceDirectory": "C:/Users/Lenovo/MusicFlow/musicflow_app/linux",
+    "CodeGPT.apiKey": "OpenAI"
 }

@@ -15,7 +15,7 @@ import {
   VisibilityOff,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import { authApi } from '../services/api';
+import { authApi } from '../../services/api';
 
 function Login() {
   const navigate = useNavigate();

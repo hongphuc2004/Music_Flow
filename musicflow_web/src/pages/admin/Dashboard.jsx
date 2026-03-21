@@ -21,8 +21,8 @@ import {
   PlaylistPlay as PlaylistIcon,
   PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
-import { Layout } from '../components/Layout';
-import { statsApi } from '../services/api';
+import { Layout } from '../../components/Layout';
+import { statsApi } from '../../services/api';
 
 // Helper function to format time ago
 const timeAgo = (date) => {
@@ -80,7 +80,7 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <Layout title="Dashboard">
+      <Layout title="Dashboard Admin">
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
           <CircularProgress />
         </Box>
@@ -89,7 +89,7 @@ function Dashboard() {
   }
 
   return (
-    <Layout title="Dashboard">
+    <Layout title="Dashboard Admin">
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight={700} gutterBottom>
           Welcome back, Admin!

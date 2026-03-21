@@ -12,7 +12,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
-import { Layout } from '../components/Layout';
+import { Layout } from '../../components/Layout';
 
 function Settings() {
   const [settings, setSettings] = useState({

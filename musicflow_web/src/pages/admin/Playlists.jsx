@@ -39,8 +39,8 @@ import {
   Edit as EditIcon,
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
-import { Layout } from '../components/Layout';
-import { playlistsApi, songsApi } from '../services/api';
+import { Layout } from '../../components/Layout';
+import { playlistsApi, songsApi } from '../../services/api';
 
 const INITIAL_FORM_DATA = {
   name: '',
@@ -51,6 +51,16 @@ const INITIAL_FORM_DATA = {
 };
 
 function Playlists() {
+
+const INITIAL_FORM_DATA = {
+  name: '',
+  description: '',
+  isPublic: true,
+  coverImage: '',
+  songs: [],
+};
+
+
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

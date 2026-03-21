@@ -36,8 +36,8 @@ import {
   Category as CategoryIcon,
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
-import { Layout } from '../components/Layout';
-import { topicsApi, songsApi } from '../services/api';
+import { Layout } from '../../components/Layout';
+import { topicsApi, songsApi } from '../../services/api';
 
 function Topics() {
   const [topics, setTopics] = useState([]);

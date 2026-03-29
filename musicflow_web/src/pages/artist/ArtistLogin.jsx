@@ -15,9 +15,9 @@ import {
   VisibilityOff,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import { authApi } from '../../services/api';
+import axios from 'axios';
 
-function Login() {
+function ArtistLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -36,68 +36,39 @@ function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
-      const response = await authApi.login(formData);
-      localStorage.setItem('adminToken', response.data.token);
-      localStorage.setItem('adminUser', JSON.stringify(response.data.user));
-      navigate('/');
+      const res = await axios.post('/api/artist/login', formData);
+      const { token, artist } = res.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', artist.role);
+      localStorage.setItem('artistName', artist.name); // Lưu tên artist để fetch bài hát
+      navigate('/artist/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#1a1a2e',
-        backgroundImage: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-      }}
-    >
-      <Paper
-        elevation={10}
-        sx={{
-          p: 4,
-          width: '100%',
-          maxWidth: 400,
-          borderRadius: 3,
-        }}
-      >
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)' }}>
+      <Paper elevation={12} sx={{ p: 4, width: '100%', maxWidth: 420, borderRadius: 4, boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)' }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 60,
-              height: 60,
-              borderRadius: '50%',
-              backgroundColor: '#6c63ff',
-              mb: 2,
-            }}
-          >
-            <MusicNoteIcon sx={{ fontSize: 32, color: '#fff' }} />
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 70, height: 70, borderRadius: '50%', background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 100%)', mb: 2, boxShadow: '0 4px 16px 0 rgba(108,99,255,0.15)' }}>
+            <MusicNoteIcon sx={{ fontSize: 38, color: '#fff' }} />
           </Box>
-          <Typography variant="h5" fontWeight={700} gutterBottom>
-            MusicFlow Admin
+          <Typography variant="h4" fontWeight={800} gutterBottom color="#00bcd4">
+            Artist Login
           </Typography>
-          <Typography color="text.secondary">
-            Sign in to access the dashboard
+          <Typography color="text.secondary" fontWeight={500}>
+            Đăng nhập tài khoản nghệ sĩ để quản lý nhạc của bạn!
           </Typography>
         </Box>
-
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
@@ -110,7 +81,7 @@ function Login() {
           />
           <TextField
             fullWidth
-            label="Password"
+            label="Mật khẩu"
             type={showPassword ? 'text' : 'password'}
             value={formData.password}
             onChange={handleChange('password')}
@@ -135,27 +106,26 @@ function Login() {
             variant="contained"
             size="large"
             disabled={loading}
-            sx={{
-              bgcolor: '#6c63ff',
-              '&:hover': { bgcolor: '#5a52d5' },
-              py: 1.5,
-            }}
+            sx={{ bgcolor: '#00bcd4', '&:hover': { bgcolor: '#0097a7' }, py: 1.5, fontWeight: 700, fontSize: 18, letterSpacing: 1 }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </form>
-
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          textAlign="center"
-          sx={{ mt: 3 }}
-        >
-          Use your MusicFlow account to login
-        </Typography>
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="body1" fontWeight={500} mb={1}>
+            Bạn chưa có tài khoản nghệ sĩ?
+          </Typography>
+          <Button
+            variant="outlined"
+            sx={{ borderColor: '#00bcd4', color: '#00bcd4', fontWeight: 600 }}
+            onClick={() => navigate('/artist/register')}
+          >
+            Đăng ký Artist
+          </Button>
+        </Box>
       </Paper>
     </Box>
   );
 }
 
-export default Login;
+export default ArtistLogin;

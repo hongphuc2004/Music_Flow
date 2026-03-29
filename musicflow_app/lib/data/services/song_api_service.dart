@@ -6,7 +6,15 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class SongApiService {
-  static const String baseUrl = "http://10.29.58.153:5000/api/songs";
+    /// Lấy headers với token
+    static Future<Map<String, String>> _getAuthHeaders() async {
+      final token = await AuthService.getToken();
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+    }
+  static const String baseUrl = "http://192.168.1.53:5000/api/songs";
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 
@@ -285,25 +293,24 @@ class SongApiService {
       if (token == null) {
         return TogglePublicResult(success: false, message: 'Vui lòng đăng nhập');
       }
-
-      final response = await http.patch(
+      http.Response response = await http.patch(
         Uri.parse('$baseUrl/$songId/toggle-public'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: await _getAuthHeaders(),
       ).timeout(timeout);
-
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200) {
-        return TogglePublicResult(
-          success: true,
-          message: data['message'],
-          isPublic: data['isPublic'],
-        );
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService.tryRefreshToken();
+        if (refreshed) {
+          response = await http.patch(
+            Uri.parse('$baseUrl/$songId/toggle-public'),
+            headers: await _getAuthHeaders(),
+          ).timeout(timeout);
+        }
+      }
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return TogglePublicResult(success: true, message: data['message'] ?? 'Thành công');
       } else {
-        return TogglePublicResult(
-          success: false,
-          message: data['message'] ?? 'Thay đổi thất bại',
-        );
+        return TogglePublicResult(success: false, message: data['message'] ?? 'Thay đổi thất bại');
       }
     } catch (e) {
       return TogglePublicResult(success: false, message: 'Lỗi: $e');

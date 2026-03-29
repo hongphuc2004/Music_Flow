@@ -7,11 +7,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  static const String baseUrl = "http://10.29.58.153:5000/api/auth";
+  static const String baseUrl = "http://192.168.1.53:5000/api/auth";
   static const Duration timeout = Duration(seconds: 15);
   
   // Keys cho SharedPreferences
   static const String _tokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
 
   // ================= REGISTER =================
@@ -34,9 +35,8 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 && data['success'] == true) {
-        // Lưu token và user
-        await _saveAuthData(data['token'], data['user']);
-        
+        // Lưu token, refresh token và user
+        await _saveAuthData(data['token'], data['refreshToken'], data['user']);
         return AuthResult(
           success: true,
           message: data['message'],
@@ -76,9 +76,8 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        // Lưu token và user
-        await _saveAuthData(data['token'], data['user']);
-        
+        // Lưu token, refresh token và user
+        await _saveAuthData(data['token'], data['refreshToken'], data['user']);
         return AuthResult(
           success: true,
           message: data['message'],
@@ -134,7 +133,7 @@ class AuthService {
 
       if (response.statusCode == 200 && data['success'] == true) {
         // Lưu token và user
-        await _saveAuthData(data['token'], data['user']);
+        await _saveAuthData(data['token'], data['refreshToken'], data['user']);
         
         return AuthResult(
           success: true,
@@ -192,10 +191,44 @@ class AuthService {
   }
 
   // ================= SAVE AUTH DATA =================
-  static Future<void> _saveAuthData(String token, Map<String, dynamic> user) async {
+  static Future<void> _saveAuthData(String token, String? refreshToken, Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+    if (refreshToken != null) {
+      await prefs.setString(_refreshTokenKey, refreshToken);
+    }
     await prefs.setString(_userKey, jsonEncode(user));
+  }
+
+  static Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_refreshTokenKey);
+  }
+
+  static Future<void> clearAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_refreshTokenKey);
+    await prefs.remove(_userKey);
+  }
+
+  // Hàm tự động refresh access token nếu hết hạn (401)
+  static Future<bool> tryRefreshToken() async {
+    final refreshToken = await getRefreshToken();
+    if (refreshToken == null) return false;
+    final response = await http.post(
+      Uri.parse("$baseUrl/refresh"),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refreshToken': refreshToken}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      await _saveAuthData(data['token'], data['refreshToken'], data['user']);
+      return true;
+    }
+    // Refresh token hết hạn hoặc không hợp lệ
+    await clearAuthData();
+    return false;
   }
 
   // ================= GET PROFILE (với token) =================

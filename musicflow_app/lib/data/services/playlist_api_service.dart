@@ -252,14 +252,20 @@ class PlaylistApiService {
   static Future<PlaylistResult> deletePlaylist(String playlistId) async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.delete(
+      http.Response response = await http.delete(
         Uri.parse('$baseUrl/$playlistId'),
         headers: headers,
       ).timeout(timeout);
-
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService.tryRefreshToken();
+        if (refreshed) {
+          response = await http.delete(
+            Uri.parse('$baseUrl/$playlistId'),
+            headers: headers,
+          ).timeout(timeout);
+        }
+      }
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
         return PlaylistResult(
           success: true,

@@ -2,9 +2,18 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const RefreshToken = require("../models/refreshToken.model");
+const crypto = require("crypto");
 
 const JWT_SECRET = process.env.JWT_SECRET || "musicflow_secret_key_2024";
-const JWT_EXPIRES_IN = "7d"; // Token hết hạn sau 7 ngày
+const JWT_EXPIRES_IN = "2h"; // Access token hết hạn sau 2h
+const REFRESH_EXPIRES_IN = 30; // Refresh token sống 30 ngày
+
+function generateRefreshToken(userId) {
+  const token = crypto.randomBytes(64).toString("hex");
+  const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_IN * 24 * 60 * 60 * 1000);
+  return { token, expiresAt };
+}
 
 // ================= REGISTER =================
 router.post("/register", async (req, res) => {
@@ -42,15 +51,19 @@ router.post("/register", async (req, res) => {
       password,
     });
 
-    // Tạo token
+    // Tạo access token
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
+    // Tạo refresh token
+    const { token: refreshToken, expiresAt } = generateRefreshToken(user._id);
+    await RefreshToken.create({ userId: user._id, token: refreshToken, expiresAt });
 
     res.status(201).json({
       success: true,
       message: "Đăng ký thành công",
       token,
+      refreshToken,
       user,
     });
   } catch (error) {
@@ -94,15 +107,20 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Tạo token
+    // Tạo access token
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
+    // Tạo refresh token mới (rolling)
+    const { token: refreshToken, expiresAt } = generateRefreshToken(user._id);
+    await RefreshToken.findOneAndDelete({ userId: user._id });
+    await RefreshToken.create({ userId: user._id, token: refreshToken, expiresAt });
 
     res.json({
       success: true,
       message: "Đăng nhập thành công",
       token,
+      refreshToken,
       user,
     });
   } catch (error) {
@@ -155,17 +173,54 @@ router.post("/google", async (req, res) => {
       });
     }
 
-    // Tạo token
+    // Tạo access token
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
+    // Tạo refresh token mới (rolling)
+    const { token: refreshToken, expiresAt } = generateRefreshToken(user._id);
+    await RefreshToken.findOneAndDelete({ userId: user._id });
+    await RefreshToken.create({ userId: user._id, token: refreshToken, expiresAt });
 
     res.json({
       success: true,
       message: "Đăng nhập Google thành công",
       token,
+      refreshToken,
       user,
     });
+
+  // ================= REFRESH TOKEN =================
+  router.post("/refresh", async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return res.status(400).json({ success: false, message: "Thiếu refresh token" });
+      }
+      const found = await RefreshToken.findOne({ token: refreshToken });
+      if (!found || found.expiresAt < new Date()) {
+        return res.status(401).json({ success: false, message: "Refresh token hết hạn hoặc không hợp lệ" });
+      }
+      const user = await User.findById(found.userId);
+      if (!user) {
+        return res.status(401).json({ success: false, message: "User không tồn tại" });
+      }
+      // Rolling: xóa refresh token cũ, tạo mới
+      await RefreshToken.deleteOne({ token: refreshToken });
+      const { token: newRefreshToken, expiresAt } = generateRefreshToken(user._id);
+      await RefreshToken.create({ userId: user._id, token: newRefreshToken, expiresAt });
+      // Tạo access token mới
+      const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+      res.json({
+        success: true,
+        token,
+        refreshToken: newRefreshToken,
+        user,
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Lỗi refresh token", error: error.message });
+    }
+  });
   } catch (error) {
     console.error("Google login error:", error);
     res.status(500).json({

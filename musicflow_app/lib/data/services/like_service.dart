@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class LikeService {
-  static const String baseUrl = 'http://10.29.58.153:5000/api/song-likes';
+  static const String baseUrl = 'http://192.168.1.53:5000/api/song-likes';
   static const Duration timeout = Duration(seconds: 15);
 
   static Future<Map<String, String>> _getAuthHeaders() async {

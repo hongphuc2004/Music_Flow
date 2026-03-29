@@ -311,7 +311,7 @@ router.post(
     const imageFile = req.files?.image?.[0] || null;
 
     try {
-      const { title, artist, topicId, lyrics, isPublic } = req.body;
+      const { title, artist, topicId, lyrics, isPublic, audioUrl, imageUrl } = req.body;
 
       if (!title || !artist) {
         return res.status(400).json({
@@ -319,27 +319,48 @@ router.post(
         });
       }
 
-      if (!audioFile) {
+      // Xử lý audio: ưu tiên file, nếu không có thì lấy URL
+      let finalAudioUrl = null;
+      let audioPublicId = null;
+      let duration = null;
+      if (audioFile) {
+        const audioUpload = await cloudinary.uploader.upload(audioFile.path, {
+          resource_type: "video",
+          folder: "musicflow/audio",
+        });
+        finalAudioUrl = audioUpload.secure_url;
+        audioPublicId = audioUpload.public_id;
+        duration = audioUpload.duration;
+      }
+
+      if (!finalAudioUrl) {
         return res.status(400).json({
-          message: "Audio file is required",
+          message: "Audio file hoặc Audio URL là bắt buộc",
         });
       }
 
-      const audioUpload = await cloudinary.uploader.upload(audioFile.path, {
-        resource_type: "video",
-        folder: "musicflow/audio",
-      });
-
-      let imageUrl =
+      // Xử lý image: ưu tiên file, nếu không có thì lấy URL hoặc default
+      let finalImageUrl =
         "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg";
       let imagePublicId = null;
-
       if (imageFile) {
         const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
           folder: "musicflow/images",
         });
-        imageUrl = imageUpload.secure_url;
+        finalImageUrl = imageUpload.secure_url;
         imagePublicId = imageUpload.public_id;
+      } else if (imageUrl && isHttpUrl(imageUrl)) {
+        // Nếu có imageUrl là URL, upload lên Cloudinary
+        try {
+          const imageUpload = await cloudinary.uploader.upload(imageUrl.trim(), {
+            folder: "musicflow/images",
+          });
+          finalImageUrl = imageUpload.secure_url;
+          imagePublicId = imageUpload.public_id;
+        } catch (err) {
+          // Nếu upload thất bại, fallback dùng link gốc
+          finalImageUrl = imageUrl.trim();
+        }
       }
 
       const songData = {
@@ -347,10 +368,10 @@ router.post(
         artist,
         lyrics: lyrics || "",
         isPublic: isPublic === "true" || isPublic === true,
-        audioUrl: audioUpload.secure_url,
-        audioPublicId: audioUpload.public_id,
-        duration: audioUpload.duration,
-        imageUrl,
+        audioUrl: finalAudioUrl,
+        audioPublicId,
+        duration,
+        imageUrl: finalImageUrl,
         imagePublicId,
         source: "admin",
         uploadedBy: null,

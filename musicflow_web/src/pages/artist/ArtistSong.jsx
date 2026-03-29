@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   Box,
   Paper,
@@ -22,15 +22,11 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Switch,
-  DialogContentText,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormControlLabel,
+  DialogContentText,
 } from '@mui/material';
+
+import axios from 'axios';
 import {
   Search as SearchIcon,
   Delete as DeleteIcon,
@@ -41,70 +37,58 @@ import {
   Add as AddIcon,
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
-import { Layout } from '../../components/Layout';
-import { songsApi, topicsApi } from '../../services/api';
+import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 
-function Songs() {
-  const [songs, setSongs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, song: null });
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [topics, setTopics] = useState([]);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [editingSong, setEditingSong] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    artist: '',
-    topicId: '',
-    lyrics: '',
-    isPublic: true,
-    imageUrl: '', // Thêm trường URL ảnh
-  });
-  const [audioFile, setAudioFile] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
-  const [showFullLyrics, setShowFullLyrics] = useState(false);
+function ArtistSong() {
+  // State và logic lấy từ Songs.jsx
+  const [songs, setSongs] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [total, setTotal] = React.useState(0);
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const [editingSong, setEditingSong] = React.useState(null);
+  const [formData, setFormData] = React.useState({ title: '', artist: '', lyrics: '', imageUrl: '' });
+  const [audioFile, setAudioFile] = React.useState(null);
+  const [imageFile, setImageFile] = React.useState(null);
+  const [createLoading, setCreateLoading] = React.useState(false);
+  const [showFullLyrics, setShowFullLyrics] = React.useState(false);
+  const [deleteDialog, setDeleteDialog] = React.useState({ open: false, song: null });
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
 
-  const fetchSongs = useCallback(async () => {
+  React.useEffect(() => {
+    fetchSongs();
+    // eslint-disable-next-line
+  }, [page, rowsPerPage, searchQuery]);
+
+  const fetchSongs = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const response = await songsApi.getAll({
-        page: page + 1,
-        limit: rowsPerPage,
-        search: searchQuery,
-      });
-      setSongs(response.data.songs);
-      setTotal(response.data.pagination.total);
-      setError(null);
+      const artistName = localStorage.getItem('artistName');
+      if (!artistName) {
+        setSongs([]);
+        setTotal(0);
+        setError('Không tìm thấy tên nghệ sĩ.');
+        setLoading(false);
+        return;
+      }
+      const res = await axios.get(`/api/songs/by-artist?name=${encodeURIComponent(artistName)}&search=${encodeURIComponent(searchQuery)}&page=${page + 1}&limit=${rowsPerPage}`);
+      setSongs(res.data.songs || []);
+      setTotal(res.data.total || 0);
     } catch (err) {
-      setError('Failed to load songs. Make sure the backend is running.');
+      setError('Không thể tải danh sách bài hát.');
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, searchQuery]);
+  };
 
-  useEffect(() => {
-    fetchSongs();
-  }, [fetchSongs]);
-
-  const fetchTopics = useCallback(async () => {
-    try {
-      const response = await topicsApi.getAll({ page: 1, limit: 1000 });
-      setTopics(response.data.topics || []);
-    } catch (err) {
-      setTopics([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTopics();
-  }, [fetchTopics]);
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setPage(0);
+  };
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -115,107 +99,60 @@ function Songs() {
     setPage(0);
   };
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    
-    if (searchTimeout) clearTimeout(searchTimeout);
-    setSearchTimeout(setTimeout(() => {
-      setPage(0);
-    }, 500));
-  };
-
-  const handleDelete = async () => {
-    if (!deleteDialog.song) return;
-    
-    try {
-      setDeleteLoading(true);
-      await songsApi.delete(deleteDialog.song._id);
-      setDeleteDialog({ open: false, song: null });
-      fetchSongs();
-    } catch (err) {
-      setError('Failed to delete song');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  const handleVisibilityChange = async (song) => {
-    try {
-      await songsApi.updateVisibility(song._id, !song.isPublic);
-      fetchSongs();
-    } catch (err) {
-      setError('Failed to update song visibility');
-    }
-  };
-
   const openCreateDialog = () => {
     setEditingSong(null);
-    setFormData({
-      title: '',
-      artist: '',
-      topicId: '',
-      lyrics: '',
-      isPublic: true,
-    });
+    setFormData({ title: '', artist: '', lyrics: '', imageUrl: '' });
     setAudioFile(null);
     setImageFile(null);
+    setShowFullLyrics(false);
     setCreateDialogOpen(true);
   };
 
   const openEditDialog = (song) => {
     setEditingSong(song);
     setFormData({
-      title: song.title || '',
-      artist: song.artist || '',
-      topicId: song.topicId?._id || '',
+      title: song.title,
+      artist: song.artist,
       lyrics: song.lyrics || '',
-      isPublic: !!song.isPublic,
+      imageUrl: song.imageUrl || '',
     });
     setAudioFile(null);
     setImageFile(null);
+    setShowFullLyrics(false);
     setCreateDialogOpen(true);
   };
 
   const handleCreateSong = async () => {
-    if (!formData.title.trim() || !formData.artist.trim()) {
-      setError('Title and artist are required');
-      return;
-    }
-
-    if (!editingSong && !audioFile) {
-      setError('Audio file là bắt buộc');
-      return;
-    }
-
+    setCreateLoading(true);
     try {
-      setCreateLoading(true);
-      const payload = new FormData();
-      payload.append('title', formData.title.trim());
-      payload.append('artist', formData.artist.trim());
-      payload.append('lyrics', formData.lyrics || '');
-      payload.append('isPublic', String(formData.isPublic));
-      if (formData.topicId) payload.append('topicId', formData.topicId);
-      else payload.append('topicId', '');
-      if (audioFile) payload.append('audio', audioFile);
-      if (imageFile) payload.append('image', imageFile);
-      // Xoá logic gửi audioUrl
-      // Nếu có URL ảnh thì gửi lên
-      if (formData.imageUrl && formData.imageUrl.trim()) payload.append('imageUrl', formData.imageUrl.trim());
-
+      // Tùy vào editingSong để gọi API tạo mới hoặc cập nhật
       if (editingSong) {
-        await songsApi.update(editingSong._id, payload);
+        // Update song
+        await axios.put(`/api/songs/${editingSong._id}`, formData);
       } else {
-        await songsApi.create(payload);
+        // Create song
+        await axios.post('/api/songs', formData);
       }
-
       setCreateDialogOpen(false);
-      setEditingSong(null);
       fetchSongs();
     } catch (err) {
-      setError(editingSong ? 'Failed to update song' : 'Failed to create song');
+      setError('Không thể lưu bài hát.');
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.song) return;
+    setDeleteLoading(true);
+    try {
+      await axios.delete(`/api/songs/${deleteDialog.song._id}`);
+      setDeleteDialog({ open: false, song: null });
+      fetchSongs();
+    } catch (err) {
+      setError('Không thể xóa bài hát.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -226,19 +163,16 @@ function Songs() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDate = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('vi-VN');
   };
 
   return (
-    <Layout title="Songs Management">
+    <ArtistLayout title="Songs Management">
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h5" fontWeight={600}>
-          Songs ({total})
+          Songs ({songs.length})
         </Typography>
         <Box>
           <Button
@@ -290,8 +224,6 @@ function Songs() {
                 <TableCell>Song</TableCell>
                 <TableCell>Artist</TableCell>
                 <TableCell>Duration</TableCell>
-                <TableCell>Uploaded By</TableCell>
-                <TableCell>Public</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
@@ -299,7 +231,7 @@ function Songs() {
             <TableBody>
               {songs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={5} align="center">
                     No songs found
                   </TableCell>
                 </TableRow>
@@ -320,24 +252,6 @@ function Songs() {
                     </TableCell>
                     <TableCell>{song.artist}</TableCell>
                     <TableCell>{formatDuration(song.duration)}</TableCell>
-                    <TableCell>
-                      {song.uploadedBy ? (
-                        <Chip
-                          label={song.uploadedBy.name}
-                          size="small"
-                          variant="outlined"
-                        />
-                      ) : (
-                        <Chip label="Admin" size="small" color="primary" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={song.isPublic}
-                        onChange={() => handleVisibilityChange(song)}
-                        size="small"
-                      />
-                    </TableCell>
                     <TableCell>{formatDate(song.createdAt)}</TableCell>
                     <TableCell align="right">
                       <IconButton
@@ -371,7 +285,7 @@ function Songs() {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={total}
+          count={songs.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -413,24 +327,6 @@ function Songs() {
               />
             </Grid>
             <Grid size={12}>
-              <FormControl fullWidth>
-                <InputLabel id="song-topic-label">Topic</InputLabel>
-                <Select
-                  labelId="song-topic-label"
-                  value={formData.topicId}
-                  label="Topic"
-                  onChange={(e) => setFormData((prev) => ({ ...prev, topicId: e.target.value }))}
-                >
-                  <MenuItem value="">None</MenuItem>
-                  {topics.map((topic) => (
-                    <MenuItem key={topic._id} value={topic._id}>
-                      {topic.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={12}>
               <Box sx={{ position: 'relative', mb: 2 }}>
                 <TextField
                   fullWidth
@@ -452,18 +348,8 @@ function Songs() {
                 )}
               </Box>
             </Grid>
-            <Grid size={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.isPublic}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, isPublic: e.target.checked }))}
-                  />
-                }
-                label="Public song"
-              />
-            </Grid>
-            <Grid size={12}>
+            {/* Đã xóa các trường upload/cover image/audio theo yêu cầu */}
+<Grid size={12}>
               <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />} fullWidth>
                 {audioFile
                   ? `Audio: ${audioFile.name}`
@@ -498,11 +384,11 @@ function Songs() {
                 placeholder="Dán link ảnh cover..."
                 helperText="Có thể upload file hoặc dán link trực tiếp. Nếu có cả 2 thì ưu tiên file."
               />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button
+            </Grid>          
+        </Grid>
+    </DialogContent>
+    <DialogActions>
+        <Button
             onClick={() => {
               setCreateDialogOpen(false);
               setEditingSong(null);
@@ -511,38 +397,27 @@ function Songs() {
           >
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleCreateSong} disabled={createLoading}>
+          <Button variant="contained" onClick={handleCreateSong} disabled={createLoading} sx={{ ml: 2 }}>
             {createLoading ? <CircularProgress size={20} /> : editingSong ? 'Save Changes' : 'Create Song'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, song: null })}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          Are you sure you want to delete "{deleteDialog.song?.title}" by {deleteDialog.song?.artist}?
-          This action cannot be undone.
-        </DialogContent>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, song: null })}
+      >
+        <DialogTitle>Xác nhận xóa</DialogTitle>
+        <DialogContent>Bạn có chắc muốn xóa bài hát này?</DialogContent>
         <DialogActions>
-          <Button 
-            onClick={() => setDeleteDialog({ open: false, song: null })}
-            disabled={deleteLoading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            color="error" 
-            variant="contained" 
-            onClick={handleDelete}
-            disabled={deleteLoading}
-          >
-            {deleteLoading ? <CircularProgress size={20} /> : 'Delete'}
+          <Button onClick={() => setDeleteDialog({ open: false, song: null })}>Hủy</Button>
+          <Button onClick={handleDelete} color="error" disabled={deleteLoading}>
+            Xóa
           </Button>
         </DialogActions>
       </Dialog>
-    </Layout>
+    </ArtistLayout>
   );
 }
 
-export default Songs;
+export default ArtistSong;

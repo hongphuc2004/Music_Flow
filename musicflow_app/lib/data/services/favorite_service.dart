@@ -6,7 +6,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class FavoriteService {
-  static const String baseUrl = "http://10.29.58.153:5000/api/favorites";
+  static const String baseUrl = "http://192.168.1.53:5000/api/favorites";
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token
@@ -68,13 +68,21 @@ class FavoriteService {
         );
       }
 
-      final response = await http.post(
+      http.Response response = await http.post(
         Uri.parse('$baseUrl/add/$songId'),
         headers: await _getAuthHeaders(),
       ).timeout(timeout);
-
+      if (response.statusCode == 401) {
+        // Token hết hạn, thử refresh
+        final refreshed = await AuthService.tryRefreshToken();
+        if (refreshed) {
+          response = await http.post(
+            Uri.parse('$baseUrl/add/$songId'),
+            headers: await _getAuthHeaders(),
+          ).timeout(timeout);
+        }
+      }
       final data = jsonDecode(response.body);
-
       return FavoriteResult(
         success: data['success'] == true,
         message: data['message'],
@@ -99,13 +107,20 @@ class FavoriteService {
         );
       }
 
-      final response = await http.delete(
+      http.Response response = await http.delete(
         Uri.parse('$baseUrl/remove/$songId'),
         headers: await _getAuthHeaders(),
       ).timeout(timeout);
-
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService.tryRefreshToken();
+        if (refreshed) {
+          response = await http.delete(
+            Uri.parse('$baseUrl/remove/$songId'),
+            headers: await _getAuthHeaders(),
+          ).timeout(timeout);
+        }
+      }
       final data = jsonDecode(response.body);
-
       return FavoriteResult(
         success: data['success'] == true,
         message: data['message'],
@@ -130,13 +145,20 @@ class FavoriteService {
         );
       }
 
-      final response = await http.post(
+      http.Response response = await http.post(
         Uri.parse('$baseUrl/toggle/$songId'),
         headers: await _getAuthHeaders(),
       ).timeout(timeout);
-
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService.tryRefreshToken();
+        if (refreshed) {
+          response = await http.post(
+            Uri.parse('$baseUrl/toggle/$songId'),
+            headers: await _getAuthHeaders(),
+          ).timeout(timeout);
+        }
+      }
       final data = jsonDecode(response.body);
-
       return FavoriteResult(
         success: data['success'] == true,
         message: data['message'],

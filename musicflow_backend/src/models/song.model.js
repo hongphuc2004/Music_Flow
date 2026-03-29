@@ -38,7 +38,8 @@ const songSchema = new mongoose.Schema(
     },
     audioPublicId: {
       type: String,
-      required: true,
+      required: false,
+      default: null,
     },
     duration: {
       type: Number,

@@ -38,8 +38,9 @@ function Sidebar() {
   const location = useLocation();
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    navigate('/login');
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    navigate('/adminlogin');
   };
 
   return (

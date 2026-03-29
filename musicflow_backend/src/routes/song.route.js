@@ -9,6 +9,22 @@ const Song = require("../models/song.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const { downloadSong } = require("../controllers/song.controller");
 
+// 📋 GET SONGS BY ARTIST NAME (PUBLIC + ADMIN UPLOAD)
+router.get("/by-artist", async (req, res) => {
+  try {
+    const { name } = req.query;
+    if (!name) {
+      return res.status(400).json({ message: "Missing artist name" });
+    }
+    // Tìm tất cả bài hát có trường artist trùng tên (không phân biệt ai upload)
+    const songs = await Song.find({ artist: new RegExp(`^${name}$`, "i") }).sort({ createdAt: -1 });
+    res.json({ success: true, songs, count: songs.length });
+  } catch (error) {
+    console.error("Get songs by artist error:", error);
+    res.status(500).json({ success: false, message: "Get songs by artist failed", error: error.message });
+  }
+});
+
 // ================= MULTER CONFIG =================
 const upload = multer({
   dest: "uploads/",

@@ -458,7 +458,7 @@ class LibraryScreenState extends State<LibraryScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        song.artist,
+        song.artists.join(', '),
         style: TextStyle(color: Colors.grey[400]),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

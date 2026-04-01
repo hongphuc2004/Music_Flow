@@ -643,7 +643,7 @@ class _SearchScreenState extends State<SearchScreen> {
         style: const TextStyle(color: Colors.white),
       ),
       subtitle: Text(
-        song.artist,
+        song.artists.join(', '),
         style: const TextStyle(color: Colors.grey),
       ),
       trailing: SongOptionsMenu(song: song),

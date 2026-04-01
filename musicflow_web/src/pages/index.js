@@ -1,6 +1,6 @@
 export { default as AccountLogin } from './AccountLogin';
 export { default as AdminLogin } from './admin/AdminLogin';
-export { default as Users } from './admin/Users';
+export { default as Accounts } from './admin/Accounts';
 export { default as Dashboard } from './admin/Dashboard';
 export { default as Topics } from './admin/Topics';
 export { default as Songs } from './admin/Songs';

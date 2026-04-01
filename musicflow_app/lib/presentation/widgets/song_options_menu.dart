@@ -185,7 +185,7 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.song.artist,
+                        widget.song.artists.join(', '),
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 14,
@@ -346,7 +346,7 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _infoRow('Tên bài hát', widget.song.title),
-            _infoRow('Ca sĩ', widget.song.artist),
+            _infoRow('Ca sĩ', widget.song.artists.join(', ')),
             if (widget.song.lyrics.isNotEmpty)
               _infoRow('Lời bài hát', 'Có'),
           ],

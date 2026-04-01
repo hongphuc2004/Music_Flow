@@ -14,7 +14,7 @@ class SongApiService {
         'Authorization': 'Bearer $token',
       };
     }
-  static const String baseUrl = "http://192.168.1.53:5000/api/songs";
+  static const String baseUrl = "http://192.168.1.148:5000/api/songs";
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 

@@ -50,7 +50,7 @@ function Dashboard() {
   const [error, setError] = useState(null);
   const [data, setData] = useState({
     stats: { totalUsers: 0, totalSongs: 0, totalPlaylists: 0, newUsers: 0 },
-    recentUsers: [],
+    recentAccounts: [],
     recentSongs: [],
   });
 
@@ -62,7 +62,10 @@ function Dashboard() {
     try {
       setLoading(true);
       const response = await statsApi.getDashboard();
-      setData(response.data);
+      setData({
+        ...response.data,
+        recentAccounts: response.data.recentAccounts || response.data.recentUsers || [],
+      });
       setError(null);
     } catch (err) {
       setError('Failed to load dashboard data. Make sure the backend is running.');
@@ -72,10 +75,10 @@ function Dashboard() {
   };
 
   const statsCards = [
-    { title: 'Total Users', value: data.stats.totalUsers, icon: <PeopleIcon />, color: '#6c63ff' },
+    { title: 'Total Accounts', value: data.stats.totalUsers, icon: <PeopleIcon />, color: '#6c63ff' },
     { title: 'Total Songs', value: data.stats.totalSongs, icon: <MusicNoteIcon />, color: '#00bcd4' },
     { title: 'Total Playlists', value: data.stats.totalPlaylists, icon: <PlaylistIcon />, color: '#4caf50' },
-    { title: 'New Users (30d)', value: data.stats.newUsers, icon: <PersonAddIcon />, color: '#ff9800' },
+    { title: 'New Accounts (30d)', value: data.stats.newUsers, icon: <PersonAddIcon />, color: '#ff9800' },
   ];
 
   if (loading) {
@@ -138,31 +141,46 @@ function Dashboard() {
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" fontWeight={600} gutterBottom>
-              Recent Users
-            </Typography>
-            {data.recentUsers.length === 0 ? (
-              <Typography color="text.secondary">No users yet</Typography>
-            ) : (
-              <List>
-                {data.recentUsers.map((user) => (
-                  <ListItem key={user._id} sx={{ px: 0 }}>
-                    <ListItemAvatar>
-                      <Avatar src={user.avatar} sx={{ bgcolor: '#6c63ff' }}>
-                        {user.name?.charAt(0)}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={user.name}
-                      secondary={user.email}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {timeAgo(user.createdAt)}
+                    <Typography variant="h6" fontWeight={600} gutterBottom>
+                      Recent Accounts
                     </Typography>
-                  </ListItem>
-                ))}
-              </List>
-            )}
+                    {data.recentAccounts.length === 0 ? (
+                      <Typography color="text.secondary">No accounts yet</Typography>
+                    ) : (
+                      <List>
+                        {data.recentAccounts.map((user) => (
+                          <ListItem key={user._id} sx={{ px: 0 }}>
+                            <ListItemAvatar>
+                              <Avatar src={user.avatar} sx={{ bgcolor: '#6c63ff' }}>
+                                {user.name?.charAt(0)}
+                              </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {user.name}
+                                  <Chip
+                                    label={user.role === 'artist' ? 'Artist' : user.role === 'admin' ? 'Admin' : 'User'}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: user.role === 'artist' ? '#ff980020' : user.role === 'admin' ? '#d32f2f20' : '#1976d220',
+                                      color: user.role === 'artist' ? '#ff9800' : user.role === 'admin' ? '#d32f2f' : '#1976d2',
+                                      fontWeight: 600,
+                                      ml: 1,
+                                      textTransform: 'capitalize',
+                                    }}
+                                  />
+                                </Box>
+                              }
+                              secondary={user.email}
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                              {timeAgo(user.createdAt)}
+                            </Typography>
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
           </Paper>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>

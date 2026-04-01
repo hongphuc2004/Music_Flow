@@ -91,7 +91,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
 
   void _showEditDialog(Song song) {
     final titleController = TextEditingController(text: song.title);
-    final artistController = TextEditingController(text: song.artist);
+    final artistController = TextEditingController(text: song.artists.join(', '));
     final lyricsController = TextEditingController(text: song.lyrics);
 
     showDialog(
@@ -446,7 +446,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
         children: [
           Expanded(
             child: Text(
-              song.artist,
+              song.artists.join(', '),
               style: TextStyle(color: Colors.grey[400], fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

@@ -266,7 +266,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
               child: MiniPlayer(
                 isPlaying: _audioState.isPlaying,
                 songTitle: _audioState.currentSong!.title,
-                artist: _audioState.currentSong!.artist,
+                artist: _audioState.currentSong!.artists.join(', '),
                 song: _audioState.currentSong,
                 progress: _audioState.progress,
                 playlist: _audioState.playlist,
@@ -364,7 +364,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          song.artist,
+          song.artists.join(', '),
           style: TextStyle(color: Colors.grey[400]),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

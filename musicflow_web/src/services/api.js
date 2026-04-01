@@ -12,7 +12,7 @@ const api = axios.create({
 // Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -45,12 +45,10 @@ export const statsApi = {
   getDashboard: () => api.get('/admin/stats/dashboard'),
 };
 
-// Users API
-export const usersApi = {
-  getAll: (params) => api.get('/admin/users', { params }),
-  getById: (id) => api.get(`/admin/users/${id}`),
-  delete: (id) => api.delete(`/admin/users/${id}`),
-  updateRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
+
+// Accounts API (users + artists)
+export const accountsApi = {
+  getAll: () => api.get('/admin/accounts'),
 };
 
 // Songs API

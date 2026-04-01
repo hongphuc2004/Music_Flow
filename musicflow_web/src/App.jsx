@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import {
   Dashboard,
-  Users,
+  Accounts,
   Songs,
   Topics,
   Playlists,
@@ -106,10 +106,10 @@ function App() {
             }
           />
           <Route
-            path="/users"
+            path="/accounts"
             element={
               <ProtectedRoute>
-                <Users />
+                <Accounts />
               </ProtectedRoute>
             }
           />

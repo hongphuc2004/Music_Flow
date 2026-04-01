@@ -177,7 +177,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               child: MiniPlayer(
                 isPlaying: _audioState.isPlaying,
                 songTitle: _audioState.currentSong!.title,
-                artist: _audioState.currentSong!.artist,
+                artist: _audioState.currentSong!.artists.join(', '),
                 song: _audioState.currentSong,
                 progress: _audioState.progress,
                 playlist: _audioState.playlist,
@@ -253,7 +253,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          song.artist,
+          song.artists.join(', '),
           style: TextStyle(color: Colors.grey[400]),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

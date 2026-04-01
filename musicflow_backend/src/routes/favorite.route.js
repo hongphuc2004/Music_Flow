@@ -12,7 +12,10 @@ const authMiddleware = authRoute.authMiddleware;
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const favorites = await Favorite.find({ userId: req.userId })
-      .populate("songId")
+      .populate({
+        path: "songId",
+        populate: { path: "artists" }
+      })
       .sort({ createdAt: -1 });
 
     // Trả về danh sách songs

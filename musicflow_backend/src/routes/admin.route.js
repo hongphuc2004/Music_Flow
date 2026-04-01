@@ -3,7 +3,6 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
-const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
 const User = require("../models/user.model");
 const Song = require("../models/song.model");
@@ -11,6 +10,8 @@ const Playlist = require("../models/playlist.model");
 const PlaylistSong = require("../models/playlist-song.model");
 const Topic = require("../models/topic.model");
 const authMiddleware = require("../middleware/auth.middleware");
+
+const Artist = require("../models/artist.model");
 
 // Multer config for image upload
 const upload = multer({ dest: "uploads/" });
@@ -23,7 +24,6 @@ const requireAdmin = async (req, res, next) => {
     }
     next();
   } catch (error) {
-    console.error("Admin role check error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -57,7 +57,6 @@ const safeUnlink = (filePath) => {
       fs.unlinkSync(filePath);
     }
   } catch (error) {
-    console.error("Failed to remove temp file:", error.message);
   }
 };
 
@@ -102,7 +101,6 @@ router.post("/auth/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Admin login error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -110,24 +108,34 @@ router.post("/auth/login", async (req, res) => {
 // ================= DASHBOARD STATS =================
 router.get("/stats/dashboard", async (req, res) => {
   try {
-    const [totalUsers, totalSongs, totalPlaylists] = await Promise.all([
+
+    // Đếm tất cả user (mọi role) và artist
+    const [totalUsers, totalArtists, totalSongs, totalPlaylists] = await Promise.all([
       User.countDocuments(),
+      Artist.countDocuments(),
       Song.countDocuments(),
       Playlist.countDocuments(),
     ]);
 
-    // Users đăng ký trong 30 ngày qua
+    // Accounts đăng ký trong 30 ngày qua (mọi role)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const newUsers = await User.countDocuments({
-      createdAt: { $gte: thirtyDaysAgo },
-    });
+    const [newUsers, newArtists] = await Promise.all([
+      User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Artist.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+    ]);
 
-    // Recent users
-    const recentUsers = await User.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select("name email avatar createdAt");
+    // Recent accounts (user mọi role + artist)
+    const [recentUsers, recentArtists] = await Promise.all([
+      User.find().sort({ createdAt: -1 }).limit(10).select("name email avatar createdAt role"),
+      Artist.find().sort({ createdAt: -1 }).limit(10).select("name email avatar createdAt role"),
+    ]);
+    // Gắn role cho artist
+    const recentArtistsWithRole = recentArtists.map(a => ({ ...a.toObject(), role: "artist" }));
+    // Gộp, sort lại theo createdAt, lấy 5 account mới nhất
+    const allRecentAccounts = [...recentUsers, ...recentArtistsWithRole]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
 
     // Recent songs
     const recentSongs = await Song.find()
@@ -137,16 +145,15 @@ router.get("/stats/dashboard", async (req, res) => {
 
     res.json({
       stats: {
-        totalUsers,
+        totalUsers: totalUsers + totalArtists,
         totalSongs,
         totalPlaylists,
-        newUsers,
+        newUsers: newUsers + newArtists,
       },
-      recentUsers,
+      recentAccounts: allRecentAccounts,
       recentSongs,
     });
   } catch (error) {
-    console.error("Dashboard stats error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -188,7 +195,6 @@ router.get("/users", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get users error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -207,7 +213,6 @@ router.get("/users/:id", async (req, res) => {
 
     res.json(user);
   } catch (error) {
-    console.error("Get user error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -225,7 +230,6 @@ router.delete("/users/:id", async (req, res) => {
 
     res.json({ message: "User deleted successfully" });
   } catch (error) {
-    console.error("Delete user error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -251,7 +255,22 @@ router.patch("/users/:id/role", async (req, res) => {
 
     res.json({ message: "Role updated successfully", user });
   } catch (error) {
-    console.error("Update role error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ================= ACCOUNTS MANAGEMENT (User + Artist) =================
+// Get all accounts (users + artists)
+router.get("/accounts", async (req, res) => {
+  try {
+    // Lấy tất cả user (kể cả admin), gắn role rõ ràng
+    const users = await User.find().select("-password");
+    const userAccounts = users.map(u => ({ ...u.toObject(), role: u.role || "user" }));
+    // Lấy tất cả artist, gắn role là artist
+    const artists = await Artist.find().select("-password");
+    const artistAccounts = artists.map(a => ({ ...a.toObject(), role: "artist" }));
+    res.json({ accounts: [...userAccounts, ...artistAccounts] });
+  } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -294,7 +313,6 @@ router.get("/songs", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get songs error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -388,7 +406,6 @@ router.post(
         song,
       });
     } catch (error) {
-      console.error("Create song error:", error);
       res.status(500).json({ message: "Server error" });
     } finally {
       safeUnlink(audioFile?.path);
@@ -461,7 +478,6 @@ router.put(
         song,
       });
     } catch (error) {
-      console.error("Update song error:", error);
       res.status(500).json({ message: "Server error" });
     } finally {
       safeUnlink(audioFile?.path);
@@ -480,7 +496,6 @@ router.delete("/songs/:id", async (req, res) => {
 
     res.json({ message: "Song deleted successfully" });
   } catch (error) {
-    console.error("Delete song error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -501,7 +516,6 @@ router.patch("/songs/:id/visibility", async (req, res) => {
 
     res.json(song);
   } catch (error) {
-    console.error("Update song visibility error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -525,7 +539,7 @@ router.get("/playlists", authMiddleware, requireAdmin, async (req, res) => {
         .skip(skip)
         .limit(limit)
         .populate("createdBy", "name email")
-        .populate("songs", "title artist imageUrl"),
+        .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } }),
       PlaylistSong.countDocuments(query),
     ]);
 
@@ -539,7 +553,6 @@ router.get("/playlists", authMiddleware, requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get playlists error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -549,7 +562,7 @@ router.get("/playlists/:id", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const playlist = await PlaylistSong.findById(req.params.id)
       .populate("createdBy", "name email")
-      .populate("songs", "title artist imageUrl");
+      .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
     if (!playlist) {
       return res.status(404).json({ message: "Playlist not found" });
@@ -557,7 +570,6 @@ router.get("/playlists/:id", authMiddleware, requireAdmin, async (req, res) => {
 
     res.json(playlist);
   } catch (error) {
-    console.error("Get playlist detail error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -602,11 +614,10 @@ router.post("/playlists", authMiddleware, requireAdmin, upload.single("coverImag
 
     const populatedPlaylist = await PlaylistSong.findById(playlist._id)
       .populate("createdBy", "name email")
-      .populate("songs", "title artist imageUrl");
+      .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
     res.status(201).json(populatedPlaylist);
   } catch (error) {
-    console.error("Create playlist error:", error);
     res.status(500).json({ message: "Server error" });
   } finally {
     safeUnlink(coverImageFile?.path);
@@ -664,7 +675,7 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
       { new: true }
     )
       .populate("createdBy", "name email")
-      .populate("songs", "title artist imageUrl");
+      .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
     if (!playlist) {
       return res.status(404).json({ message: "Playlist not found" });
@@ -672,7 +683,6 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
 
     res.json(playlist);
   } catch (error) {
-    console.error("Update playlist error:", error);
     res.status(500).json({ message: "Server error" });
   } finally {
     safeUnlink(coverImageFile?.path);
@@ -689,7 +699,6 @@ router.delete("/playlists/:id", authMiddleware, requireAdmin, async (req, res) =
 
     res.json({ message: "Playlist deleted successfully" });
   } catch (error) {
-    console.error("Delete playlist error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -733,7 +742,6 @@ router.get("/topics", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get topics error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -777,7 +785,6 @@ router.post("/topics", upload.single("avatar"), async (req, res) => {
 
     res.status(201).json(topic);
   } catch (error) {
-    console.error("Create topic error:", error);
     if (req.file) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: "Server error" });
   }
@@ -829,7 +836,6 @@ router.put("/topics/:id", upload.single("avatar"), async (req, res) => {
 
     res.json(topic);
   } catch (error) {
-    console.error("Update topic error:", error);
     if (req.file) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: "Server error" });
   }
@@ -848,7 +854,6 @@ router.delete("/topics/:id", async (req, res) => {
 
     res.json({ message: "Topic deleted successfully" });
   } catch (error) {
-    console.error("Delete topic error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -860,7 +865,6 @@ router.get("/topics/:id/songs", async (req, res) => {
     const songs = await Song.find({ topicId: topicId });
     res.json({ songs });
   } catch (error) {
-    console.error("Get songs by topic error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });

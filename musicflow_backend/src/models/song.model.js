@@ -7,16 +7,20 @@ const songSchema = new mongoose.Schema(
       required: true,
     },
 
-    artist: {
-      type: String,
-      required: true,
-    },
 
-    topicId: {
+    // Danh sách ca sĩ thể hiện (có thể nhiều ca sĩ)
+    artists: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Artist",
+      required: false,
+    }],
+
+    // Danh sách thể loại/chủ đề (có thể nhiều topic)
+    topicIds: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Topic",
       required: false,
-    },
+    }],
 
     // 👤 UPLOADER
     uploadedBy: {

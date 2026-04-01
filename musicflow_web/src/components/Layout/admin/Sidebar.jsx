@@ -26,7 +26,7 @@ const drawerWidth = 260;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Users', icon: <PeopleIcon />, path: '/users' },
+  { text: 'Accounts', icon: <PeopleIcon />, path: '/accounts' },
   { text: 'Songs', icon: <MusicNoteIcon />, path: '/songs' },
   { text: 'Topics', icon: <CategoryIcon />, path: '/topics' },
   { text: 'Playlists', icon: <PlaylistIcon />, path: '/playlists' },

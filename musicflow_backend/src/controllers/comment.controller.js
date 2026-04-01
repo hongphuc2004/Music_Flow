@@ -127,6 +127,9 @@ exports.createComment = async (req, res) => {
       parentCommentId: parentCommentId || null,
     });
 
+    // Tăng commentCount cho bài hát
+    await Song.findByIdAndUpdate(songId, { $inc: { commentCount: 1 } });
+
     const populatedComment = await Comment.findById(comment._id)
       .populate("userId", "name avatar")
       .populate("reactions.userId", "name avatar");
@@ -240,6 +243,11 @@ exports.deleteComment = async (req, res) => {
     const result = await Comment.deleteMany({
       _id: { $in: deleteIds },
     });
+
+    // Giảm commentCount cho bài hát
+    if (comment.songId) {
+      await Song.findByIdAndUpdate(comment.songId, { $inc: { commentCount: -result.deletedCount } });
+    }
 
     return res.json({
       success: true,

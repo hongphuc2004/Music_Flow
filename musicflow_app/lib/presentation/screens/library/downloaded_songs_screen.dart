@@ -148,7 +148,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 subtitle: Text(
-                                  song.artist,
+                                  song.artists.join(', '),
                                   style: TextStyle(color: Colors.grey[400], fontSize: 13),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

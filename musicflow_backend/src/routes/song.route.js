@@ -10,17 +10,17 @@ const authMiddleware = require("../middleware/auth.middleware");
 const { downloadSong } = require("../controllers/song.controller");
 
 // 📋 GET SONGS BY ARTIST NAME (PUBLIC + ADMIN UPLOAD)
+// Tìm bài hát theo artistId (ObjectId)
 router.get("/by-artist", async (req, res) => {
   try {
-    const { name } = req.query;
-    if (!name) {
-      return res.status(400).json({ message: "Missing artist name" });
+    const { artistId } = req.query;
+    if (!artistId) {
+      return res.status(400).json({ message: "Missing artistId" });
     }
-    // Tìm tất cả bài hát có trường artist trùng tên (không phân biệt ai upload)
-    const songs = await Song.find({ artist: new RegExp(`^${name}$`, "i") }).sort({ createdAt: -1 });
+    // Tìm tất cả bài hát có artistId trong mảng artists
+    const songs = await Song.find({ artists: artistId }).populate("artists").sort({ createdAt: -1 });
     res.json({ success: true, songs, count: songs.length });
   } catch (error) {
-    console.error("Get songs by artist error:", error);
     res.status(500).json({ success: false, message: "Get songs by artist failed", error: error.message });
   }
 });
@@ -37,7 +37,7 @@ router.get("/:id/lyrics", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const song = await Song.findById(id).select("_id title artist lyrics");
+    const song = await Song.findById(id).select("_id title artists lyrics").populate("artists", "name");
     if (!song) {
       return res.status(404).json({
         success: false,
@@ -49,7 +49,7 @@ router.get("/:id/lyrics", async (req, res) => {
       success: true,
       songId: song._id,
       title: song.title,
-      artist: song.artist,
+      artists: song.artists,
       lyrics: song.lyrics || "",
     });
   } catch (error) {
@@ -151,7 +151,7 @@ router.post("/:songId/download", authMiddleware, downloadSong);
 router.get("/", async (req, res) => {
   try {
     // Public thực sự cho cả admin và user upload
-    const songs = await Song.find({ isPublic: true }).sort({ createdAt: -1 });
+    const songs = await Song.find({ isPublic: true }).sort({ createdAt: -1 }).populate("artists").populate("topicIds");
 
     res.json(songs);
   } catch (error) {
@@ -169,7 +169,15 @@ router.get("/recommended", async (req, res) => {
     // Public thực sự cho cả admin và user upload
     const songs = await Song.aggregate([
       { $match: { isPublic: true } },
-      { $sample: { size: limit } }
+      { $sample: { size: limit } },
+      {
+        $lookup: {
+          from: "artists",
+          localField: "artists",
+          foreignField: "_id",
+          as: "artists"
+        }
+      }
     ]);
     
     res.json(songs);
@@ -183,17 +191,21 @@ router.get("/recommended", async (req, res) => {
 // 🔍 SEARCH SONGS (PUBLIC ONLY)
 router.get("/search", async (req, res) => {
   try {
-    const { query, artist, letter } = req.query;
+    const { query, artistId, topicId, letter } = req.query;
 
     const conditions = [{ isPublic: true }];
 
     if (query) {
       const searchRegex = new RegExp(query, "i");
-      conditions.push({ $or: [{ title: searchRegex }, { artist: searchRegex }] });
+      conditions.push({ title: searchRegex });
     }
 
-    if (artist) {
-      conditions.push({ artist: new RegExp(artist, "i") });
+    if (artistId) {
+      conditions.push({ artists: artistId });
+    }
+
+    if (topicId) {
+      conditions.push({ topicIds: topicId });
     }
 
     if (letter) {
@@ -202,8 +214,7 @@ router.get("/search", async (req, res) => {
 
     const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
-    const songs = await Song.find(filter).sort({ createdAt: -1 });
-    
+    const songs = await Song.find(filter).sort({ createdAt: -1 }).populate("artists").populate("topicIds");
     res.json(songs);
   } catch (error) {
     console.error("Search songs error:", error);
@@ -216,6 +227,7 @@ router.get("/search", async (req, res) => {
 router.get("/my-uploads", authMiddleware, async (req, res) => {
   try {
     const songs = await Song.find({ uploadedBy: req.userId })
+      .populate("artists")
       .sort({ createdAt: -1 });
     
     res.json({
@@ -243,11 +255,11 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { title, artist, topicId, lyrics, isPublic } = req.body;
+      const { title, artists, topicIds, lyrics, isPublic } = req.body;
 
-      if (!title || !artist) {
+      if (!title || !artists || !Array.isArray(artists) || artists.length === 0) {
         return res.status(400).json({
-          message: "Missing required fields (title, artist)",
+          message: "Missing required fields (title, artists)",
         });
       }
 
@@ -291,7 +303,8 @@ router.post(
       // ================= SAVE MONGODB =================
       const songData = {
         title,
-        artist,
+        artists,
+        topicIds,
         lyrics,
         uploadedBy: req.userId,
         isPublic: isPublic === 'true' || isPublic === true,
@@ -301,10 +314,6 @@ router.post(
         imageUrl: imageUrl,
         imagePublicId: imagePublicId,
       };
-
-      if (topicId) {
-        songData.topicId = topicId;
-      }
 
       const song = await Song.create(songData);
 
@@ -329,7 +338,7 @@ router.post(
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, artist, lyrics, topicId } = req.body;
+    const { title, artists, lyrics, topicIds } = req.body;
 
     const song = await Song.findById(id);
     
@@ -350,9 +359,9 @@ router.put("/:id", authMiddleware, async (req, res) => {
 
     // Cập nhật
     if (title) song.title = title;
-    if (artist) song.artist = artist;
+    if (artists && Array.isArray(artists)) song.artists = artists;
     if (lyrics !== undefined) song.lyrics = lyrics;
-    if (topicId) song.topicId = topicId;
+    if (topicIds && Array.isArray(topicIds)) song.topicIds = topicIds;
 
     await song.save();
 

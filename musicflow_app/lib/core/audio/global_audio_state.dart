@@ -108,7 +108,7 @@ class GlobalAudioState extends ChangeNotifier {
     _audioService.play(
       url: playbackUrl,
       title: _currentSong!.title,
-      artist: _currentSong!.artist,
+      artist: _currentSong!.artists.join(', '),
       imageUrl: _currentSong!.imageUrl,
       duration: _currentSong!.durationAsDuration,
     );

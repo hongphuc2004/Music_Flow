@@ -31,9 +31,12 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { usersApi } from '../../services/api';
+import { accountsApi } from '../../services/api';
 
-function Users() {
+
+
+function Accounts() {
+  const [allAccounts, setAllAccounts] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,27 +49,39 @@ function Users() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [roleLoading, setRoleLoading] = useState(null);
 
-  const fetchUsers = useCallback(async () => {
+  // Lấy tất cả accounts (users + artists)
+  const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await usersApi.getAll({
-        page: page + 1,
-        limit: rowsPerPage,
-        search: searchQuery,
-      });
-      setUsers(response.data.users);
-      setTotal(response.data.pagination.total);
+      const response = await accountsApi.getAll();
+      let accounts = response.data.accounts || [];
+      setAllAccounts(accounts);
       setError(null);
     } catch (err) {
-      setError('Failed to load users. Make sure the backend is running.');
+      setError('Failed to load accounts. Make sure the backend is running.');
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, searchQuery]);
+  }, []);
+
+  // Lọc và phân trang client-side
+  useEffect(() => {
+    let filtered = allAccounts;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(acc =>
+        (acc.name && acc.name.toLowerCase().includes(q)) ||
+        (acc.email && acc.email.toLowerCase().includes(q))
+      );
+    }
+    setTotal(filtered.length);
+    setUsers(filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage));
+  }, [allAccounts, searchQuery, page, rowsPerPage]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchAccounts();
+  }, [fetchAccounts]);
+
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -80,22 +95,28 @@ function Users() {
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
-    
-    // Debounce search
+    setPage(0);
+    // Debounce nếu muốn
     if (searchTimeout) clearTimeout(searchTimeout);
     setSearchTimeout(setTimeout(() => {
-      setPage(0);
-    }, 500));
+      setSearchQuery(value);
+    }, 300));
   };
+
 
   const handleDelete = async () => {
     if (!deleteDialog.user) return;
-    
     try {
       setDeleteLoading(true);
-      await usersApi.delete(deleteDialog.user._id);
-      setDeleteDialog({ open: false, user: null });
-      fetchUsers();
+      // Chỉ xóa user thường, không xóa artist qua API này
+      if (deleteDialog.user.role !== 'artist') {
+        await usersApi.delete(deleteDialog.user._id);
+        setDeleteDialog({ open: false, user: null });
+        fetchAccounts();
+      } else {
+        setError('Cannot delete artist from this panel.');
+        setDeleteDialog({ open: false, user: null });
+      }
     } catch (err) {
       setError('Failed to delete user');
     } finally {
@@ -111,14 +132,18 @@ function Users() {
     }
   };
 
+
   const handleRoleChange = async (userId, newRole) => {
     try {
       setRoleLoading(userId);
-      await usersApi.updateRole(userId, newRole);
-      // Update local state
-      setUsers(users.map(u => 
-        u._id === userId ? { ...u, role: newRole } : u
-      ));
+      // Chỉ cho phép đổi role user thường, không đổi role artist
+      const user = users.find(u => u._id === userId);
+      if (user && user.role !== 'artist') {
+        await usersApi.updateRole(userId, newRole);
+        fetchAccounts();
+      } else {
+        setError('Cannot change role of artist account.');
+      }
     } catch (err) {
       setError('Failed to update role');
     } finally {
@@ -135,12 +160,12 @@ function Users() {
   };
 
   return (
-    <Layout title="Users Management">
+    <Layout title="Accounts Management">
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h5" fontWeight={600}>
-          Users ({total})
+          Accounts ({total})
         </Typography>
-        <IconButton onClick={fetchUsers} disabled={loading}>
+        <IconButton onClick={fetchAccounts} disabled={loading}>
           <RefreshIcon />
         </IconButton>
       </Box>
@@ -177,7 +202,7 @@ function Users() {
           <Table>
             <TableHead>
               <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell>User</TableCell>
+                <TableCell>Account</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
                 <TableCell>Provider</TableCell>
@@ -209,18 +234,21 @@ function Users() {
                         size="small"
                         value={user.role || 'user'}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={roleLoading === user._id}
+                        disabled={roleLoading === user._id || user.role === 'artist'}
                         sx={{
                           minWidth: 100,
                           '& .MuiSelect-select': {
                             py: 0.5,
-                            color: user.role === 'admin' ? '#d32f2f' : '#1976d2',
+                            color: user.role === 'admin' ? '#d32f2f' : user.role === 'artist' ? '#ff9800' : '#1976d2',
                             fontWeight: 600,
                           },
                         }}
                       >
                         <MenuItem value="user">User</MenuItem>
                         <MenuItem value="admin">Admin</MenuItem>
+                        {user.role === 'artist' && (
+                          <MenuItem value="artist" disabled>Artist</MenuItem>
+                        )}
                       </Select>
                     </TableCell>
                     <TableCell>
@@ -290,4 +318,4 @@ function Users() {
   );
 }
 
-export default Users;
+export default Accounts;

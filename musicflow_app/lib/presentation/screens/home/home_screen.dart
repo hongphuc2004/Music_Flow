@@ -356,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    song.artist,
+                    song.artists.join(', '),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[400],
@@ -519,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
-            song.artist,
+            song.artists.isNotEmpty ? song.artists.join(', ') : '',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

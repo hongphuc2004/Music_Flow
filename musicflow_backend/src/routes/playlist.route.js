@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Playlist = require("../models/playlist.model");
 const PlaylistSong = require("../models/playlist-song.model");
+const Artist = require("../models/artist.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
@@ -16,6 +17,7 @@ router.get("/system", async (req, res) => {
       .populate({
         path: "songs",
         match: { isPublic: true },
+        populate: { path: "artists" },
       });
 
     res.json({
@@ -38,6 +40,7 @@ router.get("/system/:id", async (req, res) => {
     const playlist = await PlaylistSong.findById(req.params.id).populate({
       path: "songs",
       match: { isPublic: true },
+      populate: { path: "artists" },
     });
 
     if (!playlist || !playlist.isPublic) {
@@ -65,7 +68,7 @@ router.get("/system/:id", async (req, res) => {
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const playlists = await Playlist.find({ userId: req.userId })
-      .populate("songs")
+      .populate({ path: "songs", populate: { path: "artists" } })
       .sort({ createdAt: -1 });
 
     res.json({
@@ -86,7 +89,7 @@ router.get("/", authMiddleware, async (req, res) => {
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id)
-      .populate("songs")
+      .populate({ path: "songs", populate: { path: "artists" } })
       .populate("userId", "name email");
 
     if (!playlist) {
@@ -188,7 +191,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     if (coverImage !== undefined) playlist.coverImage = coverImage;
 
     await playlist.save();
-    await playlist.populate("songs");
+    await playlist.populate({ path: "songs", populate: { path: "artists" } });
 
     res.json({
       success: true,
@@ -285,7 +288,7 @@ router.post("/:id/songs", authMiddleware, async (req, res) => {
 
     playlist.songs.push(songId);
     await playlist.save();
-    await playlist.populate("songs");
+    await playlist.populate({ path: "songs", populate: { path: "artists" } });
 
     res.json({
       success: true,
@@ -329,7 +332,7 @@ router.delete("/:id/songs/:songId", authMiddleware, async (req, res) => {
       (id) => id.toString() !== songId
     );
     await playlist.save();
-    await playlist.populate("songs");
+    await playlist.populate({ path: "songs", populate: { path: "artists" } });
 
     res.json({
       success: true,
@@ -377,7 +380,7 @@ router.put("/:id/reorder", authMiddleware, async (req, res) => {
 
     playlist.songs = songIds;
     await playlist.save();
-    await playlist.populate("songs");
+    await playlist.populate({ path: "songs", populate: { path: "artists" } });
 
     res.json({
       success: true,

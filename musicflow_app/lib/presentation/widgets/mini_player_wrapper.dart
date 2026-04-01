@@ -60,7 +60,7 @@ class _MiniPlayerWrapperState extends State<MiniPlayerWrapper> {
             child: MiniPlayer(
               isPlaying: _audioState.isPlaying,
               songTitle: _audioState.currentSong!.title,
-              artist: _audioState.currentSong!.artist,
+              artist: _audioState.currentSong!.artists.join(', '),
               song: _audioState.currentSong,
               progress: _audioState.progress,
               currentPosition: _audioState.currentPosition,

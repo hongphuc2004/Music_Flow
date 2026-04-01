@@ -286,7 +286,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 
   void _shareSong() {
-    _showActionMessage('Chia se: ${_currentSong.title} - ${_currentSong.artist}');
+    _showActionMessage('Chia se: ${_currentSong.title} - ${_currentSong.artists.join(', ')}');
   }
 
   Future<void> _downloadCurrentSong() async {
@@ -713,7 +713,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text(
-                      song.artist,
+                      song.artists.join(', '),
                       style: TextStyle(
                         color: isCurrentSong ? Colors.greenAccent.withOpacity(0.7) : Colors.grey,
                         fontSize: 13,
@@ -867,7 +867,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
           const SizedBox(height: 8),
           // Tên nghệ sĩ - căn giữa
           Text(
-            _currentSong.artist,
+            _currentSong.artists.join(', '),
             style: TextStyle(
               color: Colors.grey.shade400,
               fontSize: 16,

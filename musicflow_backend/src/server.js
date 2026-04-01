@@ -14,7 +14,6 @@ const songLikeRoute = require("./routes/song-like.route");
 const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
 const artistRoute = require("./routes/artist.route");
-const youtubeRoute = require("./routes/youtube.route");
 const app = express();
 
 app.use(cors());
@@ -31,7 +30,6 @@ app.use("/api/song-likes", songLikeRoute);
 app.use("/api/admin", adminRoute);
 
 app.use("/api/comments", commentRoute);
-app.use("/api", youtubeRoute);
 
 // Artist routes
 app.use("/api/artist", artistRoute);

@@ -91,7 +91,7 @@ class OfflineSongService {
           (item) => Song(
             id: item.songId,
             title: item.title,
-            artist: item.artist,
+            artists: item.artist.split(', '),
             audioUrl: item.remoteAudioUrl,
             imageUrl: item.imageUrl ?? '',
             lyrics: '',
@@ -183,7 +183,7 @@ class OfflineSongService {
 
       final folderPath = await _getDownloadFolderPath();
       final safeTitle = _sanitizeFileName(song.title);
-      final safeArtist = _sanitizeFileName(song.artist);
+      final safeArtist = _sanitizeFileName(song.artists.join(', '));
       final fileName = '${song.id}_${safeTitle}_$safeArtist.mp3';
       final filePath = p.join(folderPath, fileName);
 
@@ -194,7 +194,7 @@ class OfflineSongService {
       await boxRef.put(song.id, {
         'song_id': song.id,
         'title': song.title,
-        'artist': song.artist,
+        'artist': song.artists.join(', '),
         'image_url': song.imageUrl,
         'remote_audio_url': apiResult.audioUrl,
         'local_path': filePath,

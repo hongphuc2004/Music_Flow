@@ -298,38 +298,36 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   Widget _buildSongTile(Song song, int index) {
     return ListTile(
-      leading: SizedBox(
-        width: 50,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 20,
-              child: Text(
-                '$index',
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 14,
-                ),
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 24,
+            child: Text(
+              '$index',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
               ),
             ),
-            const SizedBox(width: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                song.imageUrl,
-                width: 22,
-                height: 22,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 22,
-                  height: 22,
-                  color: albumColor.withOpacity(0.3),
-                  child: const Icon(Icons.music_note, size: 14, color: Colors.white54),
-                ),
+          ),
+          const SizedBox(width: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.network(
+              song.imageUrl,
+              width: 45,
+              height: 45,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 45,
+                height: 45,
+                color: albumColor.withOpacity(0.3),
+                child: const Icon(Icons.music_note, size: 24, color: Colors.white54),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       title: Text(
         song.title,
@@ -340,7 +338,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        song.artist,
+        song.artists.join(', '),
         style: TextStyle(
           color: Colors.grey[400],
           fontSize: 13,

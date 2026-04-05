@@ -4,12 +4,16 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
 import 'package:musicflow_app/presentation/screens/home/album_detail_screen.dart';
-import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
+import 'package:musicflow_app/presentation/screens/home/home_playlist_section.dart';
+import 'package:musicflow_app/presentation/screens/home/home_recommended_section.dart';
+import 'package:musicflow_app/presentation/screens/home/home_shared.dart';
+import 'package:musicflow_app/presentation/screens/home/home_song_list_section.dart';
+import 'package:musicflow_app/presentation/screens/home/home_top_section.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
-  
+
   const HomeScreen({super.key, this.onSongTap, this.onPlayAll});
 
   @override
@@ -23,6 +27,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   String? errorMessage;
 
+  Song? get _featuredSong {
+    if (recommendedSongs.isNotEmpty) return recommendedSongs.first;
+    if (songs.isNotEmpty) return songs.first;
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,9 +44,8 @@ class _HomeScreenState extends State<HomeScreen> {
       isLoading = true;
       errorMessage = null;
     });
-    
+
     try {
-      // Fetch songs, system playlists và recommended songs song song
       final results = await Future.wait([
         SongApiService.fetchSongs(),
         SongApiService.fetchRecommendedSongs(limit: 12),
@@ -45,9 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final systemPlaylistResult = results[2] as PlaylistResult;
       if (!systemPlaylistResult.success) {
-        throw Exception(systemPlaylistResult.message ?? 'Không thể tải playlist hệ thống');
+        throw Exception(
+          systemPlaylistResult.message ?? 'Khong the tai playlist he thong',
+        );
       }
-      
+
       setState(() {
         songs = results[0] as List<Song>;
         recommendedSongs = results[1] as List<Song>;
@@ -61,426 +72,25 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'Đã xảy ra lỗi: $e';
+        errorMessage = 'Da xay ra loi: $e';
         isLoading = false;
       });
     }
   }
 
-  void _onSongTap(Song song) {
-    // Gọi callback để MainScreen biết và hiện MiniPlayer
-    widget.onSongTap?.call(song);
-  }
-
   Future<void> _refreshRecommendedSongs() async {
     try {
-      final newRecommended = await SongApiService.fetchRecommendedSongs(limit: 12);
+      final newRecommended =
+          await SongApiService.fetchRecommendedSongs(limit: 12);
+      if (!mounted) return;
       setState(() {
         recommendedSongs = newRecommended;
       });
-    } catch (e) {
-      // Ignore errors on refresh, keep current list
-    }
+    } catch (_) {}
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset('assets/images/logo.png', width: 28, height: 28),
-            const SizedBox(width: 8),
-            const Text('MusicFlow'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    // Loading
-    if (isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.greenAccent),
-            SizedBox(height: 16),
-            Text('Đang tải...', style: TextStyle(color: Colors.grey)),
-          ],
-        ),
-      );
-    }
-
-    // Error
-    if (errorMessage != null) {
-      return _buildErrorWidget();
-    }
-
-    // Content với Pull to Refresh
-    return RefreshIndicator(
-      onRefresh: fetchData,
-      color: Colors.greenAccent,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 80),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _songList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              errorMessage!,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: fetchData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.greenAccent,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (systemPlaylists.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text(
-              'Playlist gợi ý',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 200,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: systemPlaylists.length,
-              itemBuilder: (context, index) {
-                final playlist = systemPlaylists[index];
-                return _buildAlbumCard(playlist);
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        _buildSuggestedSongs(),
-        const SizedBox(height: 16),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(
-            'Tất cả bài hát',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuggestedSongs() {
-    if (recommendedSongs.isEmpty) return const SizedBox.shrink();
-    
-    // Group songs into columns of 3
-    final columns = <List<Song>>[];
-    for (var i = 0; i < recommendedSongs.length; i += 3) {
-      columns.add(recommendedSongs.sublist(i, (i + 3).clamp(0, recommendedSongs.length)));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header with title, play all and refresh buttons
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Row(
-            children: [
-              const Text(
-                'Gợi ý bài hát',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              // Play all button
-              InkWell(
-                onTap: () => widget.onPlayAll?.call(recommendedSongs, startIndex: 0),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[600]!),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.play_arrow, size: 18, color: Colors.grey[300]),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Phát tất cả',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[300]),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Refresh button
-              InkWell(
-                onTap: _refreshRecommendedSongs,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[600]!),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.refresh, size: 18, color: Colors.grey[300]),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Horizontal scrollable song list
-        SizedBox(
-          height: 210, // 3 songs * 70 height each
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: columns.length,
-            itemBuilder: (context, columnIndex) {
-              final columnSongs = columns[columnIndex];
-              return Container(
-                width: MediaQuery.of(context).size.width * 0.75,
-                margin: const EdgeInsets.only(right: 8),
-                child: Column(
-                  children: columnSongs.map((song) => _buildSuggestedSongTile(song, recommendedSongs)).toList(),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuggestedSongTile(Song song, List<Song> playlist) {
-    return InkWell(
-      onTap: () {
-        final index = playlist.indexOf(song);
-        widget.onPlayAll?.call(playlist, startIndex: index);
-      },
-      child: Container(
-        height: 70,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Row(
-          children: [
-            // Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.network(
-                song.imageUrl,
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 56,
-                  height: 56,
-                  color: Colors.grey[800],
-                  child: const Icon(Icons.music_note, color: Colors.white54),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Title and artist
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    song.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    song.artists.join(', '),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[400],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            // Options menu
-            SongOptionsMenu(song: song),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAlbumCard(Playlist playlist) {
-    Color albumColor = const Color(0xFF6c63ff);
-
-    return GestureDetector(
-      onTap: () => _onAlbumTap(playlist),
-      child: Container(
-        width: 150,
-        margin: const EdgeInsets.only(right: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Album cover
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: albumColor.withOpacity(0.3),
-                boxShadow: [
-                  BoxShadow(
-                    color: albumColor.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: playlist.displayCoverImage.isNotEmpty
-                    ? Image.network(
-                        playlist.displayCoverImage,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildPlaceholderCover(albumColor, playlist.name),
-                      )
-                    : _buildPlaceholderCover(albumColor, playlist.name),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Album name
-            Text(
-              playlist.name,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            // Description
-            if (playlist.description.isNotEmpty)
-              Text(
-                playlist.description,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[400],
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderCover(Color color, String name) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color,
-            color.withOpacity(0.6),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.queue_music,
-              size: 48,
-              color: Colors.white.withOpacity(0.8),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _onSongTap(Song song) {
+    widget.onSongTap?.call(song);
   }
 
   void _onAlbumTap(Playlist playlist) {
@@ -496,37 +106,211 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _songList() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: songs.length,
-      itemBuilder: (context, index) {
-        final song = songs[index];
+  String _formatDuration(Duration? duration) {
+    if (duration == null) return '--:--';
 
-        return ListTile(
-          leading: CircleAvatar(
-            radius: 20,
-            backgroundImage: NetworkImage(song.imageUrl),
-            onBackgroundImageError: (_, __) {},
-            child: song.imageUrl.isEmpty
-                ? const Icon(Icons.music_note, color: Colors.white54)
-                : null,
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          const HomeBackdrop(),
+          SafeArea(
+            bottom: false,
+            child: _buildBody(),
           ),
-          title: Text(
-            song.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: HomePalette.accent),
+            SizedBox(height: 16),
+            Text(
+              'Dang tai khong gian am nhac...',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return _buildErrorWidget();
+    }
+
+    return RefreshIndicator(
+      onRefresh: fetchData,
+      color: HomePalette.accent,
+      backgroundColor: HomePalette.card,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const HomeTopBar(),
+                  const SizedBox(height: 20),
+                  if (_featuredSong != null)
+                    HomeHeroSection(
+                      featuredSong: _featuredSong!,
+                      librarySongCount: songs.length,
+                      recommendedSongs: recommendedSongs,
+                      onPlaySong: _onSongTap,
+                      onPlayRecommended: recommendedSongs.isEmpty
+                          ? null
+                          : () => widget.onPlayAll?.call(
+                                recommendedSongs,
+                                startIndex: 0,
+                              ),
+                    ),
+                  const SizedBox(height: 18),
+                  HomeQuickActions(
+                    featuredSong: _featuredSong,
+                    playlistCount: systemPlaylists.length,
+                    recommendedCount: recommendedSongs.length,
+                    onPlayFeatured: _featuredSong == null
+                        ? null
+                        : () => _onSongTap(_featuredSong!),
+                    onOpenPlaylists: systemPlaylists.isEmpty
+                        ? null
+                        : () => _onAlbumTap(systemPlaylists.first),
+                    onPlayRecommended: recommendedSongs.isEmpty
+                        ? null
+                        : () => widget.onPlayAll?.call(
+                              recommendedSongs,
+                              startIndex: 0,
+                            ),
+                  ),
+                  const SizedBox(height: 28),
+                  if (systemPlaylists.isNotEmpty) ...[
+                    HomeSectionHeader(
+                      title: 'Playlist cho hom nay',
+                      subtitle: 'Chon nhanh mot mood de bat dau nghe',
+                      trailing: Text(
+                        '${systemPlaylists.length} playlist',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    HomePlaylistCarousel(
+                      playlists: systemPlaylists,
+                      onPlaylistTap: _onAlbumTap,
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  if (recommendedSongs.isNotEmpty) ...[
+                    HomeSectionHeader(
+                      title: 'Goi y danh cho ban',
+                      subtitle: 'Nhung bai hat de vao mood nhanh hon',
+                      trailing: HomeGhostButton(
+                        icon: Icons.refresh,
+                        label: 'Lam moi',
+                        onTap: _refreshRecommendedSongs,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    HomeRecommendedList(
+                      songs: recommendedSongs,
+                      formatDuration: _formatDuration,
+                      onPlayAll: widget.onPlayAll,
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  HomeSectionHeader(
+                    title: 'Tat ca bai hat',
+                    subtitle: 'Thu vien dang co san cho buoi nghe cua ban',
+                    trailing: HomeCountBadge(label: '${songs.length} bai'),
+                  ),
+                  const SizedBox(height: 14),
+                  HomeSongList(
+                    songs: songs,
+                    onSongTap: _onSongTap,
+                    formatDuration: _formatDuration,
+                  ),
+                ],
+              ),
+            ),
           ),
-          subtitle: Text(
-            song.artists.isNotEmpty ? song.artists.join(', ') : '',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: HomePalette.card,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
-          trailing: SongOptionsMenu(song: song),
-          onTap: () => _onSongTap(song),
-        );
-      },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.white54),
+              const SizedBox(height: 16),
+              const Text(
+                'Ket noi dang gap van de',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                errorMessage!,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  height: 1.45,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 22),
+              ElevatedButton.icon(
+                onPressed: fetchData,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Thu lai'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: HomePalette.accent,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

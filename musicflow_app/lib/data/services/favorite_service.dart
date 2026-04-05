@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class FavoriteService {
-  static const String baseUrl = "http://192.168.1.148:5000/api/favorites";
+  static const String baseUrl = ApiConfig.favoritesEndpoint;
   static const Duration timeout = Duration(seconds: 15);
 
   /// Lấy headers với token

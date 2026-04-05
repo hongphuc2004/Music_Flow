@@ -9,5 +9,6 @@ class ApiConfig {
   static const String topicsEndpoint = "$baseUrl/api/topics";
   static const String playlistsEndpoint = "$baseUrl/api/playlists";
   static const String favoritesEndpoint = "$baseUrl/api/favorites";
+  static const String songLikesEndpoint = "$baseUrl/api/song-likes";
   static const String commentsEndpoint = "$baseUrl/api/comments";
 }

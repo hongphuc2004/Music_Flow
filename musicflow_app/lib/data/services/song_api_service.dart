@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/song_model.dart';
 import 'auth_service.dart';
 
@@ -14,7 +15,7 @@ class SongApiService {
         'Authorization': 'Bearer $token',
       };
     }
-  static const String baseUrl = "http://192.168.1.148:5000/api/songs";
+  static const String baseUrl = ApiConfig.songsEndpoint;
   static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
   static const int maxRetries = 3;  // Số lần retry tối đa
 

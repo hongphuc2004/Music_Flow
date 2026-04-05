@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:musicflow_app/core/config/api_config.dart';
 
 import 'auth_service.dart';
 
 class LikeService {
-  static const String baseUrl = 'http://192.168.1.148:5000/api/song-likes';
+  static const String baseUrl = ApiConfig.songLikesEndpoint;
   static const Duration timeout = Duration(seconds: 15);
 
   static Future<Map<String, String>> _getAuthHeaders() async {

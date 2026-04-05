@@ -1,7 +1,3 @@
-import ArtistLogin from './pages/artist/ArtistLogin';
-          <Route path="/artistlogin" element={<ArtistLogin />} />
-import UserRegister from './pages/client/UserRegister';
-          <Route path="/user/register" element={<UserRegister />} />
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import {
@@ -14,9 +10,11 @@ import {
 } from './pages';
 import AccountLogin from './pages/AccountLogin';
 import ArtistDashboard from './pages/artist/ArtistDashboard';
+import ArtistLogin from './pages/artist/ArtistLogin';
 import ArtistSong from './pages/artist/ArtistSong';
 import ArtistRegister from './pages/artist/ArtistRegister';
 import AdminLogin from './pages/admin/AdminLogin';
+import UserRegister from './pages/client/UserRegister';
 
 const theme = createTheme({
   palette: {

@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/topic_model.dart';
 import '../models/song_model.dart';
 
 class TopicApiService {
-  static const String baseUrl = "http://192.168.1.148:5000/api/topics";
+  static const String baseUrl = ApiConfig.topicsEndpoint;
   static const Duration timeout = Duration(seconds: 15);
   static const int maxRetries = 3;
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
+import 'package:musicflow_app/data/models/user_model.dart';
+import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
 import 'package:musicflow_app/presentation/screens/home/album_detail_screen.dart';
+import 'package:musicflow_app/presentation/screens/home/home_artist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_playlist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_recommended_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_shared.dart';
@@ -24,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Song> songs = [];
   List<Playlist> systemPlaylists = [];
   List<Song> recommendedSongs = [];
+  User? _currentUser;
   bool isLoading = true;
   String? errorMessage;
 
@@ -33,10 +37,65 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
+  List<HomeArtistPreview> get _featuredArtists {
+    final mergedSongs = [
+      ...recommendedSongs,
+      ...songs,
+    ];
+    final seen = <String>{};
+    final artists = <HomeArtistPreview>[];
+
+    for (final song in mergedSongs) {
+      for (final artistName in song.artists) {
+        final normalized = artistName.trim().toLowerCase();
+        if (normalized.isEmpty || seen.contains(normalized)) continue;
+
+        seen.add(normalized);
+        artists.add(
+          HomeArtistPreview(
+            name: artistName.trim(),
+            imageUrl: song.imageUrl,
+          ),
+        );
+
+        if (artists.length >= 12) {
+          return artists;
+        }
+      }
+    }
+
+    return artists;
+  }
+
   @override
   void initState() {
     super.initState();
+    AuthService.currentUserNotifier.addListener(_handleCurrentUserChanged);
+    _loadCurrentUser();
     fetchData();
+  }
+
+  @override
+  void dispose() {
+    AuthService.currentUserNotifier.removeListener(_handleCurrentUserChanged);
+    super.dispose();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthService.getCurrentUser();
+    if (!mounted) return;
+
+    setState(() {
+      _currentUser = user;
+    });
+  }
+
+  void _handleCurrentUserChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      _currentUser = AuthService.currentUserNotifier.value;
+    });
   }
 
   Future<void> fetchData() async {
@@ -114,6 +173,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
+  String _resolveHomeDisplayName(User? user) {
+    final name = user?.name.trim() ?? _currentUser?.name.trim();
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+    return 'MusicFlow';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -164,7 +231,14 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const HomeTopBar(),
+                  ValueListenableBuilder<User?>(
+                    valueListenable: AuthService.currentUserNotifier,
+                    builder: (context, currentUser, _) {
+                      return HomeTopBar(
+                        displayName: _resolveHomeDisplayName(currentUser),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
                   if (_featuredSong != null)
                     HomeHeroSection(
@@ -233,6 +307,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       songs: recommendedSongs,
                       formatDuration: _formatDuration,
                       onPlayAll: widget.onPlayAll,
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  if (_featuredArtists.isNotEmpty) ...[
+                    HomeSectionHeader(
+                      title: 'Nghe si noi bat',
+                      subtitle: 'Luot ngang de kham pha nhanh nhung cai ten dang hot',
+                    ),
+                    const SizedBox(height: 14),
+                    HomeArtistCarousel(
+                      artists: _featuredArtists.take(6).toList(),
+                      allArtists: _featuredArtists,
                     ),
                     const SizedBox(height: 28),
                   ],

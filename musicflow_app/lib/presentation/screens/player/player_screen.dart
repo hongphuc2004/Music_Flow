@@ -10,6 +10,7 @@ import 'package:musicflow_app/data/services/like_service.dart';
 import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/presentation/widgets/player_bottom_action_bar.dart';
+import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
 import 'package:musicflow_app/presentation/widgets/synced_lyrics_view.dart';
 
@@ -54,6 +55,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   bool _isEstimatedLyrics = false;
   String _rawLyricsContent = '';
   List<LrcLine> _lyricsLines = const [];
+
+  List<Song> get _activePlaylist =>
+      _globalAudioState.playlist.isNotEmpty ? _globalAudioState.playlist : widget.playlist;
   
   // Animation cho đĩa xoay
   late AnimationController _discRotationController;
@@ -98,6 +102,8 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       _loadCommentCount();
       _loadLyricsForCurrentSong();
       widget.onSongChanged?.call(globalIndex);
+    } else if (mounted) {
+      setState(() {});
     }
   }
 
@@ -313,6 +319,18 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     _showActionMessage(result.message ?? 'Khong the cap nhat yeu thich luc nay');
   }
 
+  void _openCurrentArtist() {
+    final artistName = _currentSong.artists.isNotEmpty ? _currentSong.artists.first : '';
+    if (artistName.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ArtistScreen(artistName: artistName),
+      ),
+    );
+  }
+
   void _showMoreOptions() {
     showModalBottomSheet<void>(
       context: context,
@@ -341,7 +359,10 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
               ListTile(
                 leading: const Icon(Icons.person_outline, color: Colors.white70),
                 title: const Text('Xem nghe si', style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openCurrentArtist();
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.white70),
@@ -427,64 +448,11 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 
   void _playNext() {
-    if (widget.playlist.isEmpty || _isChangingSong) return;
-    
-    if (_currentIndex < widget.playlist.length - 1) {
-      _isChangingSong = true;
-      final newIndex = _currentIndex + 1;
-      final newSong = widget.playlist[newIndex];
-      
-      setState(() {
-        _currentIndex = newIndex;
-        _currentSong = newSong;
-        _position = Duration.zero;  // Reset position
-        _duration = newSong.durationAsDuration ?? Duration.zero;  // Update duration
-      });
-      
-      // Refresh like state cho bài mới
-      _loadLikeStatus();
-      _loadCommentCount();
-      _loadLyricsForCurrentSong();
-      
-      // Gọi callback để MainScreen cập nhật
-      widget.onSongChanged?.call(newIndex);
-      
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _isChangingSong = false;
-      });
-    }
+    _globalAudioState.playNext();
   }
 
   void _playPrevious() {
-    if (widget.playlist.isEmpty || _isChangingSong) return;
-    
-    if (_currentIndex > 0) {
-      _isChangingSong = true;
-      final newIndex = _currentIndex - 1;
-      final newSong = widget.playlist[newIndex];
-      
-      setState(() {
-        _currentIndex = newIndex;
-        _currentSong = newSong;
-        _position = Duration.zero;  // Reset position
-        _duration = newSong.durationAsDuration ?? Duration.zero;  // Update duration
-      });
-      
-      // Refresh like state cho bài mới
-      _loadLikeStatus();
-      _loadCommentCount();
-      _loadLyricsForCurrentSong();
-      
-      // Gọi callback để MainScreen cập nhật
-      widget.onSongChanged?.call(newIndex);
-      
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _isChangingSong = false;
-      });
-    } else {
-      // Đang ở bài đầu, phát lại từ đầu
-      _audioService.seek(Duration.zero);
-    }
+    _globalAudioState.playPrevious();
   }
 
   @override
@@ -522,7 +490,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                     // Page 2: Lyrics
                     _buildLyricsPage(),
                     // Page 3: Queue
-                    if (widget.playlist.isNotEmpty) _buildQueuePage(),
+                    if (_activePlaylist.isNotEmpty) _buildQueuePage(),
                   ],
                 ),
               ),
@@ -543,7 +511,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     final labels = <String>[
       'Dang phat',
       'Lyrics',
-      if (widget.playlist.isNotEmpty) 'Danh sach cho',
+      if (_activePlaylist.isNotEmpty) 'Danh sach cho',
     ];
 
     return Padding(
@@ -637,7 +605,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                 const Icon(Icons.queue_music, color: Colors.greenAccent),
                 const SizedBox(width: 8),
                 Text(
-                  'Danh sách phát (${widget.playlist.length} bài)',
+                  'Danh sách phát (${_activePlaylist.length} bài)',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -649,9 +617,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: widget.playlist.length,
+              itemCount: _activePlaylist.length,
               itemBuilder: (context, index) {
-                final song = widget.playlist[index];
+                final song = _activePlaylist[index];
                 final isCurrentSong = index == _currentIndex;
                 
                 return Container(
@@ -726,18 +694,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                         : null,
                     onTap: () {
                       if (!isCurrentSong) {
-                        // Gọi callback để phát bài này
-                        widget.onSongChanged?.call(index);
-                        setState(() {
-                          _currentIndex = index;
-                          _currentSong = song;
-                          _position = Duration.zero;  // Reset position
-                          _duration = song.durationAsDuration ?? Duration.zero;  // Update duration
-                        });
-                        // Refresh like state
-                        _loadLikeStatus();
-                        _loadCommentCount();
-                        _loadLyricsForCurrentSong();
+                        _globalAudioState.playAtIndex(index);
                       }
                     },
                   ),
@@ -866,15 +823,20 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
           ),
           const SizedBox(height: 8),
           // Tên nghệ sĩ - căn giữa
-          Text(
-            _currentSong.artists.join(', '),
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 16,
+          GestureDetector(
+            onTap: _openCurrentArtist,
+            child: Text(
+              _currentSong.artists.join(', '),
+              style: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 16,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.grey.shade600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
         ],
@@ -932,23 +894,36 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
 
   Widget _buildControls() {
     final canGoPrevious = _currentIndex > 0;
-    final canGoNext = _currentIndex < widget.playlist.length - 1;
+    final canGoNext = _currentIndex < _activePlaylist.length - 1;
+    final isShuffleEnabled = _globalAudioState.isShuffleEnabled;
+    final repeatMode = _globalAudioState.repeatMode;
+    final canUsePlaylistModes = _activePlaylist.isNotEmpty;
+    final canTriggerPrevious = canGoPrevious || isShuffleEnabled || repeatMode == PlaybackRepeatMode.all;
+    final canTriggerNext = canGoNext || isShuffleEnabled || repeatMode == PlaybackRepeatMode.all;
     
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         IconButton(
-          icon: const Icon(Icons.shuffle, color: Colors.white54),
+          icon: Icon(
+            Icons.shuffle,
+            color: isShuffleEnabled ? Colors.greenAccent : Colors.white54,
+          ),
           iconSize: 28,
-          onPressed: () {},
+          onPressed: canUsePlaylistModes
+              ? () {
+                  _globalAudioState.toggleShuffle();
+                  setState(() {});
+                }
+              : null,
         ),
         IconButton(
           icon: Icon(
             Icons.skip_previous_rounded, 
-            color: canGoPrevious ? Colors.white : Colors.white38,
+            color: canTriggerPrevious ? Colors.white : Colors.white38,
           ),
           iconSize: 40,
-          onPressed: canGoPrevious ? _playPrevious : null,
+          onPressed: canTriggerPrevious ? _playPrevious : null,
         ),
         Container(
           width: 72,
@@ -982,15 +957,41 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         IconButton(
           icon: Icon(
             Icons.skip_next_rounded, 
-            color: canGoNext ? Colors.white : Colors.white38,
+            color: canTriggerNext ? Colors.white : Colors.white38,
           ),
           iconSize: 40,
-          onPressed: canGoNext ? _playNext : null,
+          onPressed: canTriggerNext ? _playNext : null,
         ),
         IconButton(
-          icon: const Icon(Icons.repeat, color: Colors.white54),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                repeatMode == PlaybackRepeatMode.one ? Icons.repeat_one : Icons.repeat,
+                color: repeatMode == PlaybackRepeatMode.off ? Colors.white54 : Colors.greenAccent,
+              ),
+              if (repeatMode == PlaybackRepeatMode.all)
+                Positioned(
+                  right: -1,
+                  top: -2,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Colors.greenAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           iconSize: 28,
-          onPressed: () {},
+          onPressed: canUsePlaylistModes
+              ? () {
+                  _globalAudioState.cycleRepeatMode();
+                  setState(() {});
+                }
+              : null,
         ),
       ],
     );

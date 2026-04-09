@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Playlist",
     }],
+    followedArtists: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Artist",
+    }],
   },
   {
     timestamps: true,

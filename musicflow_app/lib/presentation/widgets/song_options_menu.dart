@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
+import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 
 /// Widget hiển thị menu tùy chọn cho bài hát (3 chấm dọc)
 class SongOptionsMenu extends StatelessWidget {
@@ -78,6 +80,7 @@ class _SongOptionsSheet extends StatefulWidget {
 }
 
 class _SongOptionsSheetState extends State<_SongOptionsSheet> {
+  final GlobalAudioState _audioState = GlobalAudioState();
   bool _isFavorite = false;
   bool _isCheckingFavorite = true;
 
@@ -225,16 +228,12 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
           _buildOptionTile(
             icon: Icons.queue_music,
             title: 'Thêm vào danh sách chờ',
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: Implement add to queue
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã thêm vào danh sách chờ'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            onTap: _addToQueue,
+          ),
+          _buildOptionTile(
+            icon: Icons.person_outline_rounded,
+            title: 'Xem artist',
+            onTap: _openArtistScreen,
           ),
           _buildOptionTile(
             icon: Icons.share,
@@ -272,6 +271,37 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
         style: const TextStyle(color: Colors.white),
       ),
       onTap: onTap,
+    );
+  }
+
+  void _addToQueue() {
+    final hadActiveQueue = _audioState.hasActiveQueue;
+    _audioState.addToQueue(widget.song);
+
+    if (!mounted) return;
+
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          hadActiveQueue
+              ? 'Da them vao danh sach cho'
+              : 'Chua co bai dang phat, da bat dau phat bai hat',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _openArtistScreen() {
+    final artistName = widget.song.artists.isNotEmpty ? widget.song.artists.first : '';
+    if (artistName.isEmpty) return;
+
+    Navigator.pop(context);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ArtistScreen(artistName: artistName),
+      ),
     );
   }
 

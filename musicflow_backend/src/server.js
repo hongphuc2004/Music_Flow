@@ -10,6 +10,7 @@ const topicRoute = require("./routes/topic.route");
 const playlistRoute = require("./routes/playlist.route");
 const favoriteRoute = require("./routes/favorite.route");
 const songLikeRoute = require("./routes/song-like.route");
+const userRoute = require("./routes/user.route");
 
 const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
@@ -27,12 +28,21 @@ app.use("/api/topics", topicRoute);
 app.use("/api/playlists", playlistRoute);
 app.use("/api/favorites", favoriteRoute);
 app.use("/api/song-likes", songLikeRoute);
+app.use("/api/users", userRoute);
 app.use("/api/admin", adminRoute);
 
 app.use("/api/comments", commentRoute);
 
 // Artist routes
 app.use("/api/artist", artistRoute);
+
+// Return JSON for unknown API routes so clients do not receive HTML error pages.
+app.use("/api", (req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
 
 // connect DB
 mongoose

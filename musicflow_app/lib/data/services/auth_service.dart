@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -15,6 +16,9 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
+  static final ValueNotifier<User?> currentUserNotifier = ValueNotifier<User?>(
+    null,
+  );
 
   // ================= REGISTER =================
   static Future<AuthResult> register({
@@ -166,7 +170,9 @@ class AuthService {
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userKey);
+    currentUserNotifier.value = null;
   }
 
   // ================= CHECK LOGIN STATUS =================
@@ -186,9 +192,18 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
     if (userJson != null) {
-      return User.fromJson(jsonDecode(userJson));
+      final user = User.fromJson(jsonDecode(userJson));
+      currentUserNotifier.value = user;
+      return user;
     }
+    currentUserNotifier.value = null;
     return null;
+  }
+
+  static Future<void> updateStoredUser(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userKey, jsonEncode(user.toJson()));
+    currentUserNotifier.value = user;
   }
 
   // ================= SAVE AUTH DATA =================
@@ -199,6 +214,7 @@ class AuthService {
       await prefs.setString(_refreshTokenKey, refreshToken);
     }
     await prefs.setString(_userKey, jsonEncode(user));
+    currentUserNotifier.value = User.fromJson(user);
   }
 
   static Future<String?> getRefreshToken() async {
@@ -211,6 +227,7 @@ class AuthService {
     await prefs.remove(_tokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userKey);
+    currentUserNotifier.value = null;
   }
 
   // Hàm tự động refresh access token nếu hết hạn (401)

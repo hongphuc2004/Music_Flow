@@ -29,6 +29,8 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoadingTopics = false;
   bool _isLoadingTopicSongs = false;
   String? _errorMessage;
+  String? _topicsErrorMessage;
+  String? _topicSongsErrorMessage;
   Timer? _debounceTimer;
   bool _hasSearched = false;
   bool _isSearchFocused = false;
@@ -68,6 +70,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _loadTopics() async {
     setState(() {
       _isLoadingTopics = true;
+      _topicsErrorMessage = null;
     });
 
     try {
@@ -78,6 +81,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     } catch (e) {
       setState(() {
+        _topicsErrorMessage = e.toString();
         _isLoadingTopics = false;
       });
     }
@@ -88,6 +92,7 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       _selectedTopic = topic;
       _isLoadingTopicSongs = true;
+      _topicSongsErrorMessage = null;
       _isSearchFocused = false;
       _hasSearched = false;
       _searchResults = [];
@@ -104,6 +109,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     } catch (e) {
       setState(() {
+        _topicSongsErrorMessage = e.toString();
         _isLoadingTopicSongs = false;
       });
     }
@@ -350,6 +356,34 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
 
+    if (_topicsErrorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                _topicsErrorMessage!,
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadTopics,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text('Thu lai'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_topics.isEmpty) {
       return const Center(
         child: Column(
@@ -455,6 +489,36 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_isLoadingTopicSongs) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.green),
+      );
+    }
+
+    if (_topicSongsErrorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                _topicSongsErrorMessage!,
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _selectedTopic == null
+                    ? null
+                    : () => _loadSongsByTopic(_selectedTopic!),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text('Thu lai'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

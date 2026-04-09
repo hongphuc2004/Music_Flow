@@ -1,9 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'dart:math';
+import 'package:musicflow_app/core/config/api_config.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
+
+enum PlaybackRepeatMode { off, all, one }
 
 /// Global audio state notifier để quản lý trạng thái phát nhạc
 /// Có thể truy cập từ bất kỳ đâu trong app
@@ -24,6 +28,9 @@ class GlobalAudioState extends ChangeNotifier {
   bool _isInitialized = false;
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
+  bool _isShuffleEnabled = false;
+  PlaybackRepeatMode _repeatMode = PlaybackRepeatMode.off;
+  final Random _random = Random();
 
   // Getters
   Song? get currentSong => _currentSong;
@@ -34,6 +41,9 @@ class GlobalAudioState extends ChangeNotifier {
   AudioPlayerService get audioService => _audioService;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
+  bool get hasActiveQueue => _currentSong != null && _playlist.isNotEmpty;
+  bool get isShuffleEnabled => _isShuffleEnabled;
+  PlaybackRepeatMode get repeatMode => _repeatMode;
 
   void initialize() {
     if (_isInitialized) return;
@@ -59,7 +69,7 @@ class GlobalAudioState extends ChangeNotifier {
     // Listen to completion
     _audioService.player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
-        playNext();
+        playNext(fromCompletion: true);
       }
     });
   }
@@ -103,7 +113,7 @@ class GlobalAudioState extends ChangeNotifier {
     final localPath = await OfflineSongService().getLocalPathIfDownloaded(_currentSong!.id);
     final playbackUrl = localPath != null
         ? Uri.file(localPath).toString()
-        : _currentSong!.audioUrl;
+        : ApiConfig.songStreamUrl(_currentSong!.id);
 
     _audioService.play(
       url: playbackUrl,
@@ -114,38 +124,54 @@ class GlobalAudioState extends ChangeNotifier {
     );
   }
 
-  void playNext() {
+  void playNext({bool fromCompletion = false}) {
     if (_playlist.isEmpty || _isChangingSong) return;
-    
-    if (_currentIndex < _playlist.length - 1) {
-      _isChangingSong = true;
-      _currentIndex++;
-      _currentSong = _playlist[_currentIndex];
-      notifyListeners();
-      _playCurrentSong();
-      
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _isChangingSong = false;
-      });
+
+    if (fromCompletion && _repeatMode == PlaybackRepeatMode.one) {
+      _audioService.seek(Duration.zero);
+      _audioService.resume();
+      return;
     }
+
+    final nextIndex = _resolveNextIndex();
+    if (nextIndex == null) {
+      return;
+    }
+
+    _isChangingSong = true;
+    _currentIndex = nextIndex;
+    _currentSong = _playlist[_currentIndex];
+    notifyListeners();
+    _playCurrentSong();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _isChangingSong = false;
+    });
   }
 
   void playPrevious() {
     if (_playlist.isEmpty || _isChangingSong) return;
-    
-    if (_currentIndex > 0) {
-      _isChangingSong = true;
-      _currentIndex--;
-      _currentSong = _playlist[_currentIndex];
-      notifyListeners();
-      _playCurrentSong();
-      
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _isChangingSong = false;
-      });
-    } else {
+
+    if (_currentPosition > const Duration(seconds: 3)) {
       _audioService.seek(Duration.zero);
+      return;
     }
+
+    final previousIndex = _resolvePreviousIndex();
+    if (previousIndex == null) {
+      _audioService.seek(Duration.zero);
+      return;
+    }
+
+    _isChangingSong = true;
+    _currentIndex = previousIndex;
+    _currentSong = _playlist[_currentIndex];
+    notifyListeners();
+    _playCurrentSong();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _isChangingSong = false;
+    });
   }
 
   void togglePlayPause() {
@@ -163,6 +189,89 @@ class GlobalAudioState extends ChangeNotifier {
       notifyListeners();
       _playCurrentSong();
     }
+  }
+
+  int addToQueue(Song song, {bool playNext = true}) {
+    if (!hasActiveQueue) {
+      playSong(song);
+      return 0;
+    }
+
+    final insertIndex = playNext
+        ? (_currentIndex + 1).clamp(0, _playlist.length)
+        : _playlist.length;
+
+    _playlist.insert(insertIndex, song);
+    notifyListeners();
+    return insertIndex;
+  }
+
+  void toggleShuffle() {
+    _isShuffleEnabled = !_isShuffleEnabled;
+    notifyListeners();
+  }
+
+  PlaybackRepeatMode cycleRepeatMode() {
+    switch (_repeatMode) {
+      case PlaybackRepeatMode.off:
+        _repeatMode = PlaybackRepeatMode.all;
+        break;
+      case PlaybackRepeatMode.all:
+        _repeatMode = PlaybackRepeatMode.one;
+        break;
+      case PlaybackRepeatMode.one:
+        _repeatMode = PlaybackRepeatMode.off;
+        break;
+    }
+
+    notifyListeners();
+    return _repeatMode;
+  }
+
+  int? _resolveNextIndex() {
+    if (_playlist.isEmpty) return null;
+
+    if (_isShuffleEnabled && _playlist.length > 1) {
+      return _randomIndexExcluding(_currentIndex);
+    }
+
+    if (_currentIndex < _playlist.length - 1) {
+      return _currentIndex + 1;
+    }
+
+    if (_repeatMode == PlaybackRepeatMode.all) {
+      return 0;
+    }
+
+    return null;
+  }
+
+  int? _resolvePreviousIndex() {
+    if (_playlist.isEmpty) return null;
+
+    if (_isShuffleEnabled && _playlist.length > 1) {
+      return _randomIndexExcluding(_currentIndex);
+    }
+
+    if (_currentIndex > 0) {
+      return _currentIndex - 1;
+    }
+
+    if (_repeatMode == PlaybackRepeatMode.all) {
+      return _playlist.length - 1;
+    }
+
+    return null;
+  }
+
+  int _randomIndexExcluding(int excludedIndex) {
+    if (_playlist.length <= 1) return 0;
+
+    var index = excludedIndex;
+    while (index == excludedIndex) {
+      index = _random.nextInt(_playlist.length);
+    }
+    return index;
   }
 
   void stop() {

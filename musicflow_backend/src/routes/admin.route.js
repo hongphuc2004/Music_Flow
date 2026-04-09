@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
 const User = require("../models/user.model");
 const Song = require("../models/song.model");
@@ -58,6 +59,45 @@ const safeUnlink = (filePath) => {
     }
   } catch (error) {
   }
+};
+
+const parseArtistNames = (value) =>
+  String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const escapeRegex = (value) =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const resolveArtistIds = async (artistValue) => {
+  const artistNames = parseArtistNames(artistValue);
+  if (artistNames.length === 0) return [];
+
+  const conditions = artistNames.map((name) => ({
+    name: { $regex: new RegExp(`^${escapeRegex(name)}$`, "i") },
+  }));
+
+  const artists = await Artist.find({ $or: conditions }).select("_id");
+  return artists.map((artist) => artist._id);
+};
+
+const serializeAdminSong = (song) => {
+  const plainSong = song.toObject ? song.toObject() : song;
+  const artistNames = Array.isArray(plainSong.artists)
+    ? plainSong.artists
+        .map((artist) => (artist && typeof artist === "object" ? artist.name : ""))
+        .filter(Boolean)
+    : [];
+  const topics = Array.isArray(plainSong.topicIds) ? plainSong.topicIds : [];
+
+  return {
+    ...plainSong,
+    artist: artistNames.join(", "),
+    artists: plainSong.artists,
+    topicId: topics[0] || null,
+    topicIds: topics,
+  };
 };
 
 // ================= ADMIN AUTH =================
@@ -281,17 +321,23 @@ router.get("/songs", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || "";
+    const search = String(req.query.search || "").trim();
     const skip = (page - 1) * limit;
 
-    const query = search
-      ? {
-          $or: [
-            { title: { $regex: search, $options: "i" } },
-            { artist: { $regex: search, $options: "i" } },
-          ],
-        }
-      : {};
+    let query = {};
+    if (search) {
+      const artistMatches = await Artist.find({
+        name: { $regex: search, $options: "i" },
+      }).select("_id");
+      const artistIds = artistMatches.map((artist) => artist._id);
+
+      query = {
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          ...(artistIds.length > 0 ? [{ artists: { $in: artistIds } }] : []),
+        ],
+      };
+    }
 
     const [songs, total] = await Promise.all([
       Song.find(query)
@@ -299,12 +345,13 @@ router.get("/songs", async (req, res) => {
         .skip(skip)
         .limit(limit)
         .populate("uploadedBy", "name email")
-        .populate("topicId", "name"),
+        .populate("artists", "name")
+        .populate("topicIds", "name"),
       Song.countDocuments(query),
     ]);
 
     res.json({
-      songs,
+      songs: songs.map(serializeAdminSong),
       pagination: {
         page,
         limit,
@@ -324,17 +371,17 @@ router.post(
     { name: "audio", maxCount: 1 },
     { name: "image", maxCount: 1 },
   ]),
-  async (req, res) => {
-    const audioFile = req.files?.audio?.[0] || null;
-    const imageFile = req.files?.image?.[0] || null;
+    async (req, res) => {
+      const audioFile = req.files?.audio?.[0] || null;
+      const imageFile = req.files?.image?.[0] || null;
+  
+      try {
+        const { title, artist, topicId, lyrics, isPublic, imageUrl } = req.body;
 
-    try {
-      const { title, artist, topicId, lyrics, isPublic, audioUrl, imageUrl } = req.body;
-
-      if (!title || !artist) {
-        return res.status(400).json({
-          message: "Missing required fields (title, artist)",
-        });
+        if (!title || !artist) {
+          return res.status(400).json({
+            message: "Missing required fields (title, artist)",
+          });
       }
 
       // Xử lý audio: ưu tiên file, nếu không có thì lấy URL
@@ -367,7 +414,7 @@ router.post(
         });
         finalImageUrl = imageUpload.secure_url;
         imagePublicId = imageUpload.public_id;
-      } else if (imageUrl && isHttpUrl(imageUrl)) {
+        } else if (imageUrl && isHttpUrl(imageUrl)) {
         // Nếu có imageUrl là URL, upload lên Cloudinary
         try {
           const imageUpload = await cloudinary.uploader.upload(imageUrl.trim(), {
@@ -379,35 +426,41 @@ router.post(
           // Nếu upload thất bại, fallback dùng link gốc
           finalImageUrl = imageUrl.trim();
         }
-      }
+        }
 
-      const songData = {
-        title,
-        artist,
-        lyrics: lyrics || "",
-        isPublic: isPublic === "true" || isPublic === true,
-        audioUrl: finalAudioUrl,
-        audioPublicId,
-        duration,
+        const artistIds = await resolveArtistIds(artist);
+
+        const songData = {
+          title,
+          artists: artistIds,
+          lyrics: lyrics || "",
+          isPublic: isPublic === "true" || isPublic === true,
+          audioUrl: finalAudioUrl,
+          audioPublicId,
+          duration,
         imageUrl: finalImageUrl,
         imagePublicId,
-        source: "admin",
-        uploadedBy: null,
-      };
+          source: "admin",
+          uploadedBy: null,
+        };
 
-      if (topicId) {
-        songData.topicId = topicId;
-      }
+        if (topicId) {
+          songData.topicIds = [topicId];
+        }
 
-      const song = await Song.create(songData);
+        const song = await Song.create(songData);
+        const populatedSong = await Song.findById(song._id)
+          .populate("uploadedBy", "name email")
+          .populate("artists", "name")
+          .populate("topicIds", "name");
 
-      res.status(201).json({
-        message: "Song created successfully",
-        song,
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Server error" });
-    } finally {
+        res.status(201).json({
+          message: "Song created successfully",
+          song: serializeAdminSong(populatedSong),
+        });
+      } catch (error) {
+        res.status(500).json({ message: "Server error" });
+      } finally {
       safeUnlink(audioFile?.path);
       safeUnlink(imageFile?.path);
     }
@@ -431,14 +484,14 @@ router.put(
         return res.status(404).json({ message: "Song not found" });
       }
 
-      const { title, artist, topicId, lyrics, isPublic } = req.body;
+      const { title, artist, topicId, lyrics, isPublic, imageUrl } = req.body;
 
       if (typeof title !== "undefined") {
         song.title = String(title).trim();
       }
 
       if (typeof artist !== "undefined") {
-        song.artist = String(artist).trim();
+        song.artists = await resolveArtistIds(artist);
       }
 
       if (typeof lyrics !== "undefined") {
@@ -450,7 +503,7 @@ router.put(
       }
 
       if (typeof topicId !== "undefined") {
-        song.topicId = topicId ? topicId : null;
+        song.topicIds = topicId ? [topicId] : [];
       }
 
       if (audioFile) {
@@ -469,13 +522,19 @@ router.put(
         });
         song.imageUrl = imageUpload.secure_url;
         song.imagePublicId = imageUpload.public_id;
+      } else if (imageUrl && isHttpUrl(imageUrl)) {
+        song.imageUrl = imageUrl.trim();
       }
 
       await song.save();
+      const populatedSong = await Song.findById(song._id)
+        .populate("uploadedBy", "name email")
+        .populate("artists", "name")
+        .populate("topicIds", "name");
 
       res.json({
         message: "Song updated successfully",
-        song,
+        song: serializeAdminSong(populatedSong),
       });
     } catch (error) {
       res.status(500).json({ message: "Server error" });
@@ -727,7 +786,7 @@ router.get("/topics", async (req, res) => {
     // Get song count for each topic
     const topicsWithCount = await Promise.all(
       topics.map(async (topic) => {
-        const songCount = await Song.countDocuments({ topicId: topic._id });
+        const songCount = await Song.countDocuments({ topicIds: topic._id });
         return { ...topic.toObject(), songCount };
       })
     );
@@ -780,7 +839,7 @@ router.post("/topics", upload.single("avatar"), async (req, res) => {
 
     // Gán topicId cho các bài hát đã chọn
     if (Array.isArray(songs) && songs.length > 0) {
-      await Song.updateMany({ _id: { $in: songs } }, { topicId: topic._id });
+      await Song.updateMany({ _id: { $in: songs } }, { $addToSet: { topicIds: topic._id } });
     }
 
     res.status(201).json(topic);
@@ -828,10 +887,10 @@ router.put("/topics/:id", upload.single("avatar"), async (req, res) => {
     }
 
     // Clear topicId cho các bài hát cũ không còn thuộc topic này
-    await Song.updateMany({ topicId: topic._id, _id: { $nin: songs } }, { topicId: null });
+    await Song.updateMany({ topicIds: topic._id, _id: { $nin: songs } }, { $pull: { topicIds: topic._id } });
     // Gán topicId cho các bài hát mới được chọn
     if (Array.isArray(songs) && songs.length > 0) {
-      await Song.updateMany({ _id: { $in: songs } }, { topicId: topic._id });
+      await Song.updateMany({ _id: { $in: songs } }, { $addToSet: { topicIds: topic._id } });
     }
 
     res.json(topic);
@@ -850,7 +909,7 @@ router.delete("/topics/:id", async (req, res) => {
     }
 
     // Set topicId to null for songs with this topic
-    await Song.updateMany({ topicId: req.params.id }, { topicId: null });
+    await Song.updateMany({ topicIds: req.params.id }, { $pull: { topicIds: req.params.id } });
 
     res.json({ message: "Topic deleted successfully" });
   } catch (error) {
@@ -862,7 +921,7 @@ router.delete("/topics/:id", async (req, res) => {
 router.get("/topics/:id/songs", async (req, res) => {
   try {
     const topicId = req.params.id;
-    const songs = await Song.find({ topicId: topicId });
+    const songs = await Song.find({ topicIds: topicId });
     res.json({ songs });
   } catch (error) {
     res.status(500).json({ message: "Server error" });

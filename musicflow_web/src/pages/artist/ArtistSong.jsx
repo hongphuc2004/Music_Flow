@@ -101,7 +101,12 @@ function ArtistSong() {
 
   const openCreateDialog = () => {
     setEditingSong(null);
-    setFormData({ title: '', artist: '', lyrics: '', imageUrl: '' });
+    setFormData({
+      title: '',
+      artist: localStorage.getItem('artistName') || '',
+      lyrics: '',
+      imageUrl: '',
+    });
     setAudioFile(null);
     setImageFile(null);
     setShowFullLyrics(false);
@@ -172,7 +177,7 @@ function ArtistSong() {
     <ArtistLayout title="Songs Management">
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h5" fontWeight={600}>
-          Songs ({songs.length})
+          Songs ({total})
         </Typography>
         <Box>
           <Button
@@ -285,7 +290,7 @@ function ArtistSong() {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={songs.length}
+          count={total}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

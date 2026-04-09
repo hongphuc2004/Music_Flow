@@ -42,7 +42,14 @@ class LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.currentUserNotifier.addListener(_handleAuthChanged);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    AuthService.currentUserNotifier.removeListener(_handleAuthChanged);
+    super.dispose();
   }
 
   /// Refresh all data - có thể gọi từ bên ngoài
@@ -71,12 +78,41 @@ class LibraryScreenState extends State<LibraryScreen> {
     if (mounted) {
       setState(() {
         _isLoggedIn = isLoggedIn;
+        if (!isLoggedIn) {
+          _clearUserScopedData();
+        }
       });
     }
   }
 
+  void _handleAuthChanged() {
+    final isLoggedIn = AuthService.currentUserNotifier.value != null;
+    if (!mounted) return;
+
+    setState(() {
+      _isLoggedIn = isLoggedIn;
+      if (!isLoggedIn) {
+        _clearUserScopedData();
+      }
+    });
+  }
+
+  void _clearUserScopedData() {
+    _playlists = [];
+    _favoriteSongs = [];
+    _uploadedSongsCount = 0;
+    _downloadedSongsCount = 0;
+  }
+
   Future<void> _loadPlaylists() async {
-    if (!_isLoggedIn) return;
+    if (!_isLoggedIn) {
+      if (mounted) {
+        setState(() {
+          _playlists = [];
+        });
+      }
+      return;
+    }
     
     final result = await PlaylistApiService.getPlaylists();
     
@@ -101,7 +137,14 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadFavorites() async {
-    if (!_isLoggedIn) return;
+    if (!_isLoggedIn) {
+      if (mounted) {
+        setState(() {
+          _favoriteSongs = [];
+        });
+      }
+      return;
+    }
     
     final result = await FavoriteService.getFavorites();
     
@@ -113,7 +156,14 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadUploadedSongsCount() async {
-    if (!_isLoggedIn) return;
+    if (!_isLoggedIn) {
+      if (mounted) {
+        setState(() {
+          _uploadedSongsCount = 0;
+        });
+      }
+      return;
+    }
     
     final result = await SongApiService.getMyUploads();
     
@@ -125,6 +175,15 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadDownloadedSongsCount() async {
+    if (!_isLoggedIn) {
+      if (mounted) {
+        setState(() {
+          _downloadedSongsCount = 0;
+        });
+      }
+      return;
+    }
+
     final count = await OfflineSongService().getDownloadedSongsCount();
 
     if (mounted) {

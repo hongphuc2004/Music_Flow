@@ -1,77 +1,101 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
-import '../models/topic_model.dart';
+
 import '../models/song_model.dart';
+import '../models/topic_model.dart';
 
 class TopicApiService {
   static const String baseUrl = ApiConfig.topicsEndpoint;
   static const Duration timeout = Duration(seconds: 15);
   static const int maxRetries = 3;
 
-  /// Fetch với retry và timeout
+  static dynamic _decodeBody(String body) {
+    try {
+      return json.decode(body);
+    } catch (e) {
+      throw TopicException('Du lieu chu de khong hop le: $e');
+    }
+  }
+
+  static List<dynamic> _extractList(dynamic decoded, {String? key}) {
+    if (decoded is List) return decoded;
+    if (decoded is Map<String, dynamic> && key != null && decoded[key] is List) {
+      return decoded[key] as List<dynamic>;
+    }
+    throw TopicException('Dinh dang du lieu chu de khong dung');
+  }
+
   static Future<http.Response> _getWithRetry(Uri uri) async {
-    int attempts = 0;
-    
+    var attempts = 0;
+
     while (attempts < maxRetries) {
       try {
         attempts++;
-        final response = await http.get(uri).timeout(timeout);
-        return response;
-        
+        return await http.get(uri).timeout(timeout);
       } on TimeoutException {
         if (attempts >= maxRetries) {
-          throw TopicException('Kết nối quá chậm. Vui lòng kiểm tra mạng.');
+          throw TopicException('Ket noi qua cham. Vui long kiem tra mang.');
         }
       } on SocketException {
         if (attempts >= maxRetries) {
-          throw TopicException('Không có kết nối mạng.');
+          throw TopicException('Khong co ket noi mang.');
         }
       } catch (e) {
         if (attempts >= maxRetries) {
-          throw TopicException('Lỗi kết nối: $e');
+          throw TopicException('Loi ket noi: $e');
         }
       }
-      
-      // Chờ trước khi retry (exponential backoff)
+
       await Future.delayed(Duration(milliseconds: 500 * attempts));
     }
-    
-    throw TopicException('Không thể kết nối sau $maxRetries lần thử.');
+
+    throw TopicException('Khong the ket noi sau $maxRetries lan thu.');
   }
 
-  /// Lấy danh sách tất cả topics
   static Future<List<Topic>> fetchTopics() async {
     final response = await _getWithRetry(Uri.parse(baseUrl));
 
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Topic.fromJson(e)).toList();
-    } else {
-      throw TopicException("Không thể tải danh sách chủ đề");
+    if (response.statusCode != 200) {
+      throw TopicException('Khong the tai danh sach chu de');
     }
+
+    final List<dynamic> data = _extractList(
+      _decodeBody(response.body),
+      key: 'topics',
+    );
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(Topic.fromJson)
+        .toList();
   }
 
-  /// Lấy danh sách bài hát theo topic ID
   static Future<List<Song>> fetchSongsByTopic(String topicId) async {
-    final response = await _getWithRetry(Uri.parse("$baseUrl/$topicId/songs"));
+    final response = await _getWithRetry(Uri.parse('$baseUrl/$topicId/songs'));
 
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Song.fromJson(e)).toList();
-    } else {
-      throw TopicException("Không thể tải bài hát theo chủ đề");
+    if (response.statusCode != 200) {
+      throw TopicException('Khong the tai bai hat theo chu de');
     }
+
+    final List<dynamic> data = _extractList(
+      _decodeBody(response.body),
+      key: 'songs',
+    );
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(Song.fromJson)
+        .toList();
   }
 }
 
-/// Custom exception cho Topic errors
 class TopicException implements Exception {
   final String message;
+
   TopicException(this.message);
-  
+
   @override
   String toString() => message;
 }

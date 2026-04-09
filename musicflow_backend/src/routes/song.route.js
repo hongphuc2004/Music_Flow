@@ -6,6 +6,7 @@ const https = require("https");
 const http = require("http");
 const cloudinary = require("../config/cloudinary");
 const Song = require("../models/song.model");
+const Artist = require("../models/artist.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const { downloadSong } = require("../controllers/song.controller");
 
@@ -13,15 +14,70 @@ const { downloadSong } = require("../controllers/song.controller");
 // Tìm bài hát theo artistId (ObjectId)
 router.get("/by-artist", async (req, res) => {
   try {
-    const { artistId } = req.query;
-    if (!artistId) {
-      return res.status(400).json({ message: "Missing artistId" });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = String(req.query.search || "").trim();
+    const skip = (page - 1) * limit;
+    const { artistId, name } = req.query;
+
+    let resolvedArtistId = artistId;
+    if (!resolvedArtistId && name) {
+      const artist = await Artist.findOne({
+        name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") },
+      }).select("_id");
+      resolvedArtistId = artist?._id?.toString();
     }
-    // Tìm tất cả bài hát có artistId trong mảng artists
-    const songs = await Song.find({ artists: artistId }).populate("artists").sort({ createdAt: -1 });
-    res.json({ success: true, songs, count: songs.length });
+
+    if (!resolvedArtistId) {
+      return res.status(400).json({ message: "Missing artistId or artist name" });
+    }
+
+    const query = {
+      artists: resolvedArtistId,
+      ...(search
+        ? {
+            title: { $regex: search, $options: "i" },
+          }
+        : {}),
+    };
+
+    const [songs, total] = await Promise.all([
+      Song.find(query)
+        .populate("artists", "name")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Song.countDocuments(query),
+    ]);
+
+    const serializedSongs = songs.map((song) => {
+      const plainSong = song.toObject();
+      return {
+        ...plainSong,
+        artist: Array.isArray(plainSong.artists)
+          ? plainSong.artists.map((artist) => artist.name).filter(Boolean).join(", ")
+          : "",
+      };
+    });
+
+    res.json({
+      success: true,
+      songs: serializedSongs,
+      count: total,
+      total,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Get songs by artist failed", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Get songs by artist failed",
+      error: error.message,
+    });
   }
 });
 

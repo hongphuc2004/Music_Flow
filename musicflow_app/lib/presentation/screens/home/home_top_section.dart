@@ -4,7 +4,12 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'home_shared.dart';
 
 class HomeTopBar extends StatelessWidget {
-  const HomeTopBar({super.key});
+  final String displayName;
+
+  const HomeTopBar({
+    super.key,
+    required this.displayName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +49,8 @@ class HomeTopBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
-                'Khong gian MusicFlow',
+              Text(
+                displayName,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,

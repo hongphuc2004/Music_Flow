@@ -24,7 +24,7 @@ const ArtistDashboard = () => {
         }
         const res = await axios.get(`/api/songs/by-artist?name=${encodeURIComponent(artistName)}`);
         const songs = res.data.songs || [];
-        const totalSongs = songs.length;
+        const totalSongs = res.data.total || res.data.count || songs.length;
         const totalViews = songs.reduce((sum, s) => sum + (s.playCount || 0), 0);
         const totalLikes = songs.reduce((sum, s) => sum + (s.likeCount || 0), 0);
         setStats({ totalSongs, totalViews, totalLikes });

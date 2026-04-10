@@ -15,7 +15,7 @@ import {
   VisibilityOff,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import { authApi } from '../../services/api';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ function AdminLogin() {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.post('/api/auth/login', formData);
+      const res = await authApi.login(formData);
       const { token, user } = res.data;
       if (user.role !== 'admin') {
         setError('Bạn không có quyền truy cập admin!');

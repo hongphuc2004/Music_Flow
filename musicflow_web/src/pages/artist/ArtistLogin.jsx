@@ -16,6 +16,7 @@ import {
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
+import { syncArtistSession } from '../../utils/artistSession';
 
 function ArtistLogin() {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ function ArtistLogin() {
       const { token, artist } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('role', artist.role);
-      localStorage.setItem('artistName', artist.name); // Lưu tên artist để fetch bài hát
+      syncArtistSession(artist);
       navigate('/artist/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');

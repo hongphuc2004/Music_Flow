@@ -70,16 +70,28 @@ const parseArtistNames = (value) =>
 const escapeRegex = (value) =>
   String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const resolveArtistIds = async (artistValue) => {
+const resolveArtistsByNames = async (artistValue) => {
   const artistNames = parseArtistNames(artistValue);
-  if (artistNames.length === 0) return [];
+  if (artistNames.length === 0) {
+    return { artistIds: [], missingNames: [] };
+  }
 
   const conditions = artistNames.map((name) => ({
     name: { $regex: new RegExp(`^${escapeRegex(name)}$`, "i") },
   }));
 
-  const artists = await Artist.find({ $or: conditions }).select("_id");
-  return artists.map((artist) => artist._id);
+  const artists = await Artist.find({ $or: conditions }).select("_id name");
+  const normalizedFoundNames = new Set(
+    artists.map((artist) => String(artist.name || "").trim().toLowerCase())
+  );
+  const missingNames = artistNames.filter(
+    (name) => !normalizedFoundNames.has(name.trim().toLowerCase())
+  );
+
+  return {
+    artistIds: artists.map((artist) => artist._id),
+    missingNames,
+  };
 };
 
 const serializeAdminSong = (song) => {
@@ -301,7 +313,7 @@ router.patch("/users/:id/role", async (req, res) => {
 
 // ================= ACCOUNTS MANAGEMENT (User + Artist) =================
 // Get all accounts (users + artists)
-router.get("/accounts", async (req, res) => {
+router.get("/accounts", authMiddleware, requireAdmin, async (req, res) => {
   try {
     // Lấy tất cả user (kể cả admin), gắn role rõ ràng
     const users = await User.find().select("-password");
@@ -315,9 +327,169 @@ router.get("/accounts", async (req, res) => {
   }
 });
 
+// Create account (user, admin, or artist)
+router.post("/accounts", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { name, email, password, role, bio } = req.body;
+    const normalizedName = String(name || "").trim();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedPassword = String(password || "").trim();
+    const normalizedRole = String(role || "user").trim().toLowerCase();
+    const normalizedBio = String(bio || "").trim();
+
+    if (!normalizedName || !normalizedEmail || !normalizedPassword) {
+      return res.status(400).json({
+        message: "Name, email, and password are required",
+      });
+    }
+
+    if (normalizedPassword.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    if (!["user", "admin", "artist"].includes(normalizedRole)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    const [duplicateUser, duplicateArtist] = await Promise.all([
+      User.findOne({ email: normalizedEmail }).select("_id"),
+      Artist.findOne({ email: normalizedEmail }).select("_id"),
+    ]);
+
+    if (duplicateUser || duplicateArtist) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    let account;
+    if (normalizedRole === "artist") {
+      account = await Artist.create({
+        name: normalizedName,
+        email: normalizedEmail,
+        password: normalizedPassword,
+        bio: normalizedBio,
+      });
+    } else {
+      account = await User.create({
+        name: normalizedName,
+        email: normalizedEmail,
+        password: normalizedPassword,
+        role: normalizedRole,
+      });
+    }
+
+    res.status(201).json({
+      message: "Account created successfully",
+      account: account.toJSON ? account.toJSON() : account,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Update account (user or artist)
+router.put("/accounts/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { name, email, role, bio, password } = req.body;
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : undefined;
+    const normalizedName = typeof name === "string" ? name.trim() : undefined;
+    const normalizedBio = typeof bio === "string" ? bio.trim() : undefined;
+    const normalizedPassword =
+      typeof password === "string" ? password.trim() : undefined;
+
+    let account = await User.findById(req.params.id);
+    let accountType = "user";
+
+    if (!account) {
+      account = await Artist.findById(req.params.id);
+      accountType = "artist";
+    }
+
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    if (normalizedEmail) {
+      const duplicateUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: account._id },
+      }).select("_id");
+      const duplicateArtist = await Artist.findOne({
+        email: normalizedEmail,
+        _id: { $ne: account._id },
+      }).select("_id");
+
+      if (duplicateUser || duplicateArtist) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      account.email = normalizedEmail;
+    }
+
+    if (typeof normalizedName !== "undefined") {
+      if (!normalizedName) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      account.name = normalizedName;
+    }
+
+    if (accountType === "artist") {
+      if (typeof normalizedBio !== "undefined") {
+        account.bio = normalizedBio;
+      }
+    } else if (typeof role !== "undefined") {
+      if (!["user", "admin"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      account.role = role;
+    }
+
+    if (typeof normalizedPassword !== "undefined" && normalizedPassword) {
+      if (normalizedPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      account.password = normalizedPassword;
+    }
+
+    await account.save();
+
+    res.json({
+      message: "Account updated successfully",
+      account: account.toJSON ? account.toJSON() : account,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Delete account (user or artist)
+router.delete("/accounts/:id", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      await User.findByIdAndDelete(req.params.id);
+      await Playlist.deleteMany({ userId: req.params.id });
+      return res.json({ message: "User deleted successfully" });
+    }
+
+    const artist = await Artist.findById(req.params.id);
+    if (artist) {
+      await Artist.findByIdAndDelete(req.params.id);
+      return res.json({ message: "Artist deleted successfully" });
+    }
+
+    return res.status(404).json({ message: "Account not found" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ================= SONGS MANAGEMENT =================
 // Get all songs with pagination
-router.get("/songs", async (req, res) => {
+router.get("/songs", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -367,6 +539,8 @@ router.get("/songs", async (req, res) => {
 // Create song (with audio + optional image upload)
 router.post(
   "/songs",
+  authMiddleware,
+  requireAdmin,
   upload.fields([
     { name: "audio", maxCount: 1 },
     { name: "image", maxCount: 1 },
@@ -428,7 +602,12 @@ router.post(
         }
         }
 
-        const artistIds = await resolveArtistIds(artist);
+        const { artistIds, missingNames } = await resolveArtistsByNames(artist);
+        if (missingNames.length > 0) {
+          return res.status(400).json({
+            message: `Artist not found: ${missingNames.join(", ")}`,
+          });
+        }
 
         const songData = {
           title,
@@ -470,6 +649,8 @@ router.post(
 // Update song (metadata + optional audio/image upload)
 router.put(
   "/songs/:id",
+  authMiddleware,
+  requireAdmin,
   upload.fields([
     { name: "audio", maxCount: 1 },
     { name: "image", maxCount: 1 },
@@ -491,7 +672,13 @@ router.put(
       }
 
       if (typeof artist !== "undefined") {
-        song.artists = await resolveArtistIds(artist);
+        const { artistIds, missingNames } = await resolveArtistsByNames(artist);
+        if (missingNames.length > 0) {
+          return res.status(400).json({
+            message: `Artist not found: ${missingNames.join(", ")}`,
+          });
+        }
+        song.artists = artistIds;
       }
 
       if (typeof lyrics !== "undefined") {
@@ -546,7 +733,7 @@ router.put(
 );
 
 // Delete song
-router.delete("/songs/:id", async (req, res) => {
+router.delete("/songs/:id", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const song = await Song.findByIdAndDelete(req.params.id);
     if (!song) {
@@ -560,7 +747,7 @@ router.delete("/songs/:id", async (req, res) => {
 });
 
 // Update song visibility
-router.patch("/songs/:id/visibility", async (req, res) => {
+router.patch("/songs/:id/visibility", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { isPublic } = req.body;
     const song = await Song.findByIdAndUpdate(

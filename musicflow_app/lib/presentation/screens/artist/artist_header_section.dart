@@ -86,21 +86,35 @@ class ArtistHeaderSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 46,
-                    backgroundColor: ArtistPalette.surfaceSoft,
-                    backgroundImage:
-                        artist.avatarUrl.isNotEmpty ? NetworkImage(artist.avatarUrl) : null,
-                    child: artist.avatarUrl.isEmpty
-                        ? Text(
-                            artist.name.isNotEmpty ? artist.name[0].toUpperCase() : 'A',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          )
-                        : null,
+                  ClipOval(
+                    child: Container(
+                      width: 92,
+                      height: 92,
+                      color: ArtistPalette.surfaceSoft,
+                      child: artist.avatarUrl.isNotEmpty
+                          ? Image.network(
+                              artist.avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                // Fallback to first song image if avatar fails
+                                if (artist.songs.isNotEmpty && artist.songs.first.imageUrl.isNotEmpty) {
+                                  return Image.network(
+                                    artist.songs.first.imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _buildTextFallback(),
+                                  );
+                                }
+                                return _buildTextFallback();
+                              },
+                            )
+                          : (artist.songs.isNotEmpty && artist.songs.first.imageUrl.isNotEmpty)
+                              ? Image.network(
+                                  artist.songs.first.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _buildTextFallback(),
+                                )
+                              : _buildTextFallback(),
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Text(
@@ -172,7 +186,31 @@ class ArtistHeaderSection extends StatelessWidget {
     );
   }
 
+  Widget _buildTextFallback() {
+    return Center(
+      child: Text(
+        artist.name.isNotEmpty ? artist.name[0].toUpperCase() : 'A',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCoverFallback() {
+    if (artist.songs.isNotEmpty && artist.songs.first.imageUrl.isNotEmpty) {
+      return Image.network(
+        artist.songs.first.imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _defaultCoverGradient(),
+      );
+    }
+    return _defaultCoverGradient();
+  }
+
+  Widget _defaultCoverGradient() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(

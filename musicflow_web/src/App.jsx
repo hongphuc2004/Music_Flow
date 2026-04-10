@@ -9,8 +9,10 @@ import {
   Settings,
 } from './pages';
 import AccountLogin from './pages/AccountLogin';
+import ArtistAnalytics from './pages/artist/ArtistAnalytics';
 import ArtistDashboard from './pages/artist/ArtistDashboard';
 import ArtistLogin from './pages/artist/ArtistLogin';
+import ArtistProfile from './pages/artist/ArtistProfile';
 import ArtistSong from './pages/artist/ArtistSong';
 import ArtistRegister from './pages/artist/ArtistRegister';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -40,22 +42,23 @@ const theme = createTheme({
   },
 });
 
-
-// Protected Route wrapper
 const ProtectedRoute = ({ children, role }) => {
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
-  if (!token) return <Navigate to="/accountlogin" replace />;
+
+  if (!token) {
+    return <Navigate to={role === 'artist' ? '/artistlogin' : '/accountlogin'} replace />;
+  }
+
   if (role && userRole !== role) {
-    // Nếu role không đúng, xóa token và về trang login
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    return <Navigate to="/accountlogin" replace />;
+    return <Navigate to={role === 'artist' ? '/artistlogin' : '/accountlogin'} replace />;
   }
+
   return children;
 };
 
-// Public Route wrapper: Nếu đã đăng nhập thì redirect về dashboard phù hợp
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
@@ -71,10 +74,7 @@ function App() {
       <CssBaseline />
       <Router>
         <Routes>
-          {/* Đăng nhập user/artist */}
-          {/* Đăng nhập user/artist riêng biệt */}
           <Route path="/accountlogin" element={<PublicRoute><AccountLogin /></PublicRoute>} />
-          {/* Đăng nhập admin riêng biệt */}
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path="/artist/register" element={<PublicRoute><ArtistRegister /></PublicRoute>} />
           <Route path="/user/register" element={<PublicRoute><UserRegister /></PublicRoute>} />
@@ -96,6 +96,22 @@ function App() {
             }
           />
           <Route
+            path="/artist/analytics"
+            element={
+              <ProtectedRoute role="artist">
+                <ArtistAnalytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/artist/profile"
+            element={
+              <ProtectedRoute role="artist">
+                <ArtistProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/"
             element={
               <ProtectedRoute role="admin">
@@ -103,46 +119,11 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/accounts"
-            element={
-              <ProtectedRoute>
-                <Accounts />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/songs"
-            element={
-              <ProtectedRoute>
-                <Songs />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/topics"
-            element={
-              <ProtectedRoute>
-                <Topics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/playlists"
-            element={
-              <ProtectedRoute>
-                <Playlists />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
+          <Route path="/songs" element={<ProtectedRoute><Songs /></ProtectedRoute>} />
+          <Route path="/topics" element={<ProtectedRoute><Topics /></ProtectedRoute>} />
+          <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

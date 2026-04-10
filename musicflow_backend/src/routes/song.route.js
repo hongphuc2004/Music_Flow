@@ -87,6 +87,31 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
+const safeUnlink = (filePath) => {
+  if (!filePath) return;
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+  }
+};
+
+const parseArrayField = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [trimmed];
+    } catch (error) {
+      return [trimmed];
+    }
+  }
+  return [];
+};
+
 // =================================================
 // 🎤 GET LYRICS BY SONG ID
 router.get("/:id/lyrics", async (req, res) => {
@@ -310,8 +335,13 @@ router.post(
     { name: "image", maxCount: 1 },
   ]),
   async (req, res) => {
+    const audioFile = req.files?.audio?.[0] || null;
+    const imageFile = req.files?.image?.[0] || null;
     try {
-      const { title, artists, topicIds, lyrics, isPublic } = req.body;
+      const { title, lyrics, isPublic } = req.body;
+      const artists = parseArrayField(req.body.artists);
+      const topicIds = parseArrayField(req.body.topicIds);
+      const imageUrlInput = typeof req.body.imageUrl === "string" ? req.body.imageUrl.trim() : "";
 
       if (!title || !artists || !Array.isArray(artists) || artists.length === 0) {
         return res.status(400).json({
@@ -319,14 +349,11 @@ router.post(
         });
       }
 
-      if (!req.files?.audio) {
+      if (!audioFile) {
         return res.status(400).json({
           message: "Audio file is required",
         });
       }
-
-      const audioFile = req.files.audio[0];
-      const imageFile = req.files.image ? req.files.image[0] : null;
 
       // ================= CLOUDINARY UPLOAD =================
       const audioUpload = await cloudinary.uploader.upload(
@@ -390,11 +417,11 @@ router.post(
 );
 
 // =================================================
-// ✏️ UPDATE SONG (AUTH REQUIRED - OWNER ONLY)
+// ✏️ UPDATE SONG (AUTH REQUIRED - OWNER OR ARTIST)
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, artists, lyrics, topicIds } = req.body;
+    const { title, artists, lyrics, topicIds, isPublic } = req.body;
 
     const song = await Song.findById(id);
     
@@ -406,7 +433,10 @@ router.put("/:id", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (!song.uploadedBy || song.uploadedBy.toString() !== req.userId) {
+    const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
+    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId);
+
+    if (!isUploader && !isArtist) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền sửa bài hát này"
@@ -414,10 +444,11 @@ router.put("/:id", authMiddleware, async (req, res) => {
     }
 
     // Cập nhật
-    if (title) song.title = title;
+    if (title !== undefined) song.title = title;
     if (artists && Array.isArray(artists)) song.artists = artists;
     if (lyrics !== undefined) song.lyrics = lyrics;
     if (topicIds && Array.isArray(topicIds)) song.topicIds = topicIds;
+    if (isPublic !== undefined) song.isPublic = isPublic;
 
     await song.save();
 
@@ -436,7 +467,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // =================================================
-// 🔄 TOGGLE PUBLIC/PRIVATE (AUTH REQUIRED - OWNER ONLY)
+// 🔄 TOGGLE PUBLIC/PRIVATE (AUTH REQUIRED - OWNER OR ARTIST)
 router.patch("/:id/toggle-public", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -451,7 +482,10 @@ router.patch("/:id/toggle-public", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (!song.uploadedBy || song.uploadedBy.toString() !== req.userId) {
+    const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
+    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId);
+
+    if (!isUploader && !isArtist) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền thay đổi"
@@ -476,7 +510,7 @@ router.patch("/:id/toggle-public", authMiddleware, async (req, res) => {
 });
 
 // =================================================
-// 🗑️ DELETE SONG (AUTH REQUIRED - OWNER ONLY)
+// 🗑️ DELETE SONG (AUTH REQUIRED - OWNER OR ARTIST)
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -491,7 +525,10 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (!song.uploadedBy || song.uploadedBy.toString() !== req.userId) {
+    const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
+    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId);
+
+    if (!isUploader && !isArtist) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền xóa bài hát này"

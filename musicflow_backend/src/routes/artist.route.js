@@ -1,15 +1,154 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const fs = require("fs");
 const artistController = require("../controllers/artist.controller");
 const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
+const cloudinary = require("../config/cloudinary");
+
+const upload = multer({ dest: "uploads/" });
+
+const safeUnlink = (filePath) => {
+  if (!filePath) return;
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+  }
+};
 
 // Đăng ký artist
 router.post("/register", artistController.register);
 // Đăng nhập artist
 router.post("/login", artistController.login);
+
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    const artist = await Artist.findById(req.userId).select("-password");
+
+    if (!artist) {
+      return res.status(404).json({
+        success: false,
+        message: "Artist not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      artist,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Get current artist failed",
+      error: error.message,
+    });
+  }
+});
+
+router.put("/profile", authMiddleware, upload.single("avatarFile"), async (req, res) => {
+  try {
+    const artist = await Artist.findById(req.userId);
+
+    if (!artist) {
+      return res.status(404).json({
+        success: false,
+        message: "Artist not found",
+      });
+    }
+
+    const { name, email, bio, avatar, avatarUrl } = req.body;
+    const normalizedName = typeof name === "string" ? name.trim() : undefined;
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : undefined;
+    const normalizedBio = typeof bio === "string" ? bio.trim() : undefined;
+    const normalizedAvatar = typeof avatar === "string" ? avatar.trim() : undefined;
+    const normalizedAvatarUrl =
+      typeof avatarUrl === "string" ? avatarUrl.trim() : undefined;
+
+    if (typeof normalizedName !== "undefined") {
+      if (!normalizedName) {
+        return res.status(400).json({
+          success: false,
+          message: "Name is required",
+        });
+      }
+      artist.name = normalizedName;
+    }
+
+    if (typeof normalizedEmail !== "undefined") {
+      if (!normalizedEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required",
+        });
+      }
+
+      const existingArtist = await Artist.findOne({
+        email: normalizedEmail,
+        _id: { $ne: artist._id },
+      }).select("_id");
+
+      if (existingArtist) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already exists",
+        });
+      }
+
+      artist.email = normalizedEmail;
+    }
+
+    if (typeof normalizedBio !== "undefined") {
+      artist.bio = normalizedBio;
+    }
+
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "musicflow/artists",
+        transformation: [{ width: 500, height: 500, crop: "fill" }],
+      });
+      artist.avatar = uploadResult.secure_url;
+    } else if (typeof normalizedAvatarUrl !== "undefined") {
+      if (normalizedAvatarUrl.startsWith("http") && !normalizedAvatarUrl.includes("cloudinary.com")) {
+        try {
+          const uploadResult = await cloudinary.uploader.upload(normalizedAvatarUrl, {
+            folder: "musicflow/artists",
+            transformation: [{ width: 500, height: 500, crop: "fill" }],
+          });
+          artist.avatar = uploadResult.secure_url;
+        } catch (cloudErr) {
+          console.error("Cloudinary URL upload error:", cloudErr);
+          artist.avatar = normalizedAvatarUrl;
+        }
+      } else {
+        artist.avatar = normalizedAvatarUrl;
+      }
+    } else if (typeof normalizedAvatar !== "undefined") {
+      artist.avatar = normalizedAvatar;
+    }
+
+    await artist.save();
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      artist: artist.toJSON(),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Update artist profile failed",
+      error: error.message,
+    });
+  } finally {
+    safeUnlink(req.file?.path);
+  }
+});
 
 router.get("/profile", async (req, res) => {
   try {

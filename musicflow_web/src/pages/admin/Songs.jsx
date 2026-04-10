@@ -44,29 +44,31 @@ import {
 import { Layout } from '../../components/Layout';
 import { songsApi, topicsApi } from '../../services/api';
 
+const emptyFormData = {
+  title: '',
+  artist: '',
+  topicId: '',
+  lyrics: '',
+  isPublic: true,
+  imageUrl: '',
+};
+
 function Songs() {
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchTimeout, setSearchTimeout] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, song: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [topics, setTopics] = useState([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    artist: '',
-    topicId: '',
-    lyrics: '',
-    isPublic: true,
-    imageUrl: '', // Thêm trường URL ảnh
-  });
+  const [formData, setFormData] = useState(emptyFormData);
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [showFullLyrics, setShowFullLyrics] = useState(false);
@@ -77,13 +79,13 @@ function Songs() {
       const response = await songsApi.getAll({
         page: page + 1,
         limit: rowsPerPage,
-        search: searchQuery,
+        search: searchQuery.trim(),
       });
-      setSongs(response.data.songs);
-      setTotal(response.data.pagination.total);
+      setSongs(response.data.songs || []);
+      setTotal(response.data.pagination?.total || 0);
       setError(null);
     } catch (err) {
-      setError('Failed to load songs. Make sure the backend is running.');
+      setError(err.response?.data?.message || 'Failed to load songs. Make sure the backend is running.');
     } finally {
       setLoading(false);
     }
@@ -116,25 +118,31 @@ function Songs() {
   };
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    
-    if (searchTimeout) clearTimeout(searchTimeout);
-    setSearchTimeout(setTimeout(() => {
-      setPage(0);
-    }, 500));
+    setSearchQuery(e.target.value);
+    setPage(0);
+  };
+
+  const resetSongDialog = () => {
+    setCreateDialogOpen(false);
+    setEditingSong(null);
+    setFormData(emptyFormData);
+    setAudioFile(null);
+    setImageFile(null);
+    setShowFullLyrics(false);
+    setCreateLoading(false);
   };
 
   const handleDelete = async () => {
     if (!deleteDialog.song) return;
-    
+
     try {
       setDeleteLoading(true);
       await songsApi.delete(deleteDialog.song._id);
       setDeleteDialog({ open: false, song: null });
+      setSuccess('Song deleted successfully.');
       fetchSongs();
     } catch (err) {
-      setError('Failed to delete song');
+      setError(err.response?.data?.message || 'Failed to delete song.');
     } finally {
       setDeleteLoading(false);
     }
@@ -143,24 +151,22 @@ function Songs() {
   const handleVisibilityChange = async (song) => {
     try {
       await songsApi.updateVisibility(song._id, !song.isPublic);
+      setSuccess('Song visibility updated successfully.');
       fetchSongs();
     } catch (err) {
-      setError('Failed to update song visibility');
+      setError(err.response?.data?.message || 'Failed to update song visibility.');
     }
   };
 
   const openCreateDialog = () => {
     setEditingSong(null);
-    setFormData({
-      title: '',
-      artist: '',
-      topicId: '',
-      lyrics: '',
-      isPublic: true,
-    });
+    setFormData(emptyFormData);
     setAudioFile(null);
     setImageFile(null);
+    setShowFullLyrics(false);
     setCreateDialogOpen(true);
+    setError(null);
+    setSuccess(null);
   };
 
   const openEditDialog = (song) => {
@@ -168,23 +174,27 @@ function Songs() {
     setFormData({
       title: song.title || '',
       artist: song.artist || '',
-      topicId: song.topicId?._id || '',
+      topicId: song.topicId?._id || song.topicId || '',
       lyrics: song.lyrics || '',
       isPublic: !!song.isPublic,
+      imageUrl: song.imageUrl || '',
     });
     setAudioFile(null);
     setImageFile(null);
+    setShowFullLyrics(false);
     setCreateDialogOpen(true);
+    setError(null);
+    setSuccess(null);
   };
 
   const handleCreateSong = async () => {
     if (!formData.title.trim() || !formData.artist.trim()) {
-      setError('Title and artist are required');
+      setError('Title and artist are required.');
       return;
     }
 
     if (!editingSong && !audioFile) {
-      setError('Audio file là bắt buộc');
+      setError('Audio file is required when creating a song.');
       return;
     }
 
@@ -195,25 +205,25 @@ function Songs() {
       payload.append('artist', formData.artist.trim());
       payload.append('lyrics', formData.lyrics || '');
       payload.append('isPublic', String(formData.isPublic));
-      if (formData.topicId) payload.append('topicId', formData.topicId);
-      else payload.append('topicId', '');
+      payload.append('topicId', formData.topicId || '');
       if (audioFile) payload.append('audio', audioFile);
       if (imageFile) payload.append('image', imageFile);
-      // Xoá logic gửi audioUrl
-      // Nếu có URL ảnh thì gửi lên
-      if (formData.imageUrl && formData.imageUrl.trim()) payload.append('imageUrl', formData.imageUrl.trim());
+      if (formData.imageUrl && formData.imageUrl.trim()) {
+        payload.append('imageUrl', formData.imageUrl.trim());
+      }
 
       if (editingSong) {
         await songsApi.update(editingSong._id, payload);
+        setSuccess('Song updated successfully.');
       } else {
         await songsApi.create(payload);
+        setSuccess('Song created successfully.');
       }
 
-      setCreateDialogOpen(false);
-      setEditingSong(null);
+      resetSongDialog();
       fetchSongs();
     } catch (err) {
-      setError(editingSong ? 'Failed to update song' : 'Failed to create song');
+      setError(err.response?.data?.message || (editingSong ? 'Failed to update song.' : 'Failed to create song.'));
     } finally {
       setCreateLoading(false);
     }
@@ -227,6 +237,7 @@ function Songs() {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -258,6 +269,12 @@ function Songs() {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+          {success}
         </Alert>
       )}
 
@@ -308,8 +325,8 @@ function Songs() {
                   <TableRow key={song._id} hover>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar 
-                          src={song.imageUrl} 
+                        <Avatar
+                          src={song.imageUrl}
                           variant="rounded"
                           sx={{ bgcolor: '#00bcd4' }}
                         >
@@ -381,10 +398,7 @@ function Songs() {
 
       <Dialog
         open={createDialogOpen}
-        onClose={() => {
-          setCreateDialogOpen(false);
-          setEditingSong(null);
-        }}
+        onClose={resetSongDialog}
         maxWidth="sm"
         fullWidth
       >
@@ -392,7 +406,7 @@ function Songs() {
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
             {editingSong
-              ? 'Update song metadata and optionally replace audio/cover.'
+              ? 'Update song metadata and optionally replace audio or cover.'
               : 'Upload an audio file and fill basic metadata.'}
           </DialogContentText>
           <Grid container spacing={2}>
@@ -410,6 +424,7 @@ function Songs() {
                 label="Artist"
                 value={formData.artist}
                 onChange={(e) => setFormData((prev) => ({ ...prev, artist: e.target.value }))}
+                helperText="Artist name must already exist in the artist accounts list. You can enter multiple names separated by commas."
               />
             </Grid>
             <Grid size={12}>
@@ -431,7 +446,7 @@ function Songs() {
               </FormControl>
             </Grid>
             <Grid size={12}>
-              <Box sx={{ position: 'relative', mb: 2 }}>
+              <Box sx={{ position: 'relative', mb: formData.lyrics && formData.lyrics.split('\n').length > 5 ? 2 : 0 }}>
                 <TextField
                   fullWidth
                   label="Lyrics"
@@ -445,9 +460,9 @@ function Songs() {
                   <Button
                     size="small"
                     sx={{ position: 'absolute', right: 0, bottom: -30 }}
-                    onClick={() => setShowFullLyrics(v => !v)}
+                    onClick={() => setShowFullLyrics((v) => !v)}
                   >
-                    {showFullLyrics ? 'Rút gọn' : 'Xem thêm'}
+                    {showFullLyrics ? 'Collapse' : 'Show more'}
                   </Button>
                 )}
               </Box>
@@ -492,23 +507,17 @@ function Songs() {
             <Grid size={12}>
               <TextField
                 fullWidth
-                label="Ảnh bìa URL (tuỳ chọn)"
+                label="Cover image URL (optional)"
                 value={formData.imageUrl}
                 onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="Dán link ảnh cover..."
-                helperText="Có thể upload file hoặc dán link trực tiếp. Nếu có cả 2 thì ưu tiên file."
+                placeholder="Paste a cover image URL..."
+                helperText="You can upload a file or paste a direct image URL. If both are provided, the uploaded file is used first."
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setCreateDialogOpen(false);
-              setEditingSong(null);
-            }}
-            disabled={createLoading}
-          >
+          <Button onClick={resetSongDialog} disabled={createLoading}>
             Cancel
           </Button>
           <Button variant="contained" onClick={handleCreateSong} disabled={createLoading}>
@@ -517,7 +526,6 @@ function Songs() {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, song: null })}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
@@ -525,15 +533,15 @@ function Songs() {
           This action cannot be undone.
         </DialogContent>
         <DialogActions>
-          <Button 
+          <Button
             onClick={() => setDeleteDialog({ open: false, song: null })}
             disabled={deleteLoading}
           >
             Cancel
           </Button>
-          <Button 
-            color="error" 
-            variant="contained" 
+          <Button
+            color="error"
+            variant="contained"
             onClick={handleDelete}
             disabled={deleteLoading}
           >

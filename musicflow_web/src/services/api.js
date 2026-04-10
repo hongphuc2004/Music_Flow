@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearArtistSession } from '../utils/artistSession';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -28,8 +29,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('adminToken');
-      window.location.href = '/login';
+      const currentRole = localStorage.getItem('role');
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      if (currentRole === 'artist') {
+        clearArtistSession();
+        window.location.href = '/artist/login';
+      } else {
+        window.location.href = '/user/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -38,6 +46,20 @@ api.interceptors.response.use(
 // Auth API
 export const authApi = {
   login: (credentials) => api.post('/admin/auth/login', credentials),
+};
+
+export const artistApi = {
+  getMe: () => api.get('/artist/me'),
+  getProfile: (params) => api.get('/artist/profile', { params }),
+  updateProfile: (payload) => {
+    if (payload instanceof FormData) {
+      return api.put('/artist/profile', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put('/artist/profile', payload);
+  },
+  getSongsByArtist: (params) => api.get('/songs/by-artist', { params }),
 };
 
 // Dashboard Stats API
@@ -49,6 +71,9 @@ export const statsApi = {
 // Accounts API (users + artists)
 export const accountsApi = {
   getAll: () => api.get('/admin/accounts'),
+  create: (payload) => api.post('/admin/accounts', payload),
+  update: (id, payload) => api.put(`/admin/accounts/${id}`, payload),
+  delete: (id) => api.delete(`/admin/accounts/${id}`),
 };
 
 // Songs API

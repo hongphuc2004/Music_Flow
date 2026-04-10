@@ -1,123 +1,115 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
+  Alert,
+  Avatar,
   Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Grid,
+  IconButton,
+  InputAdornment,
   Paper,
-  Typography,
+  Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
   TablePagination,
-  IconButton,
-  Avatar,
-  Chip,
+  TableRow,
   TextField,
-  InputAdornment,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  CircularProgress,
-  Alert,
-  Grid,
-  DialogContentText,
+  Typography,
 } from '@mui/material';
-
-import axios from 'axios';
 import {
-  Search as SearchIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Refresh as RefreshIcon,
-  MusicNote as MusicNoteIcon,
-  PlayArrow as PlayIcon,
   Add as AddIcon,
   CloudUpload as CloudUploadIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  MusicNoteRounded as MusicNoteIcon,
+  PlayArrow as PlayIcon,
+  Refresh as RefreshIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
+import api from '../../services/api';
 
 function ArtistSong() {
-  // State và logic lấy từ Songs.jsx
-  const [songs, setSongs] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(10);
-  const [total, setTotal] = React.useState(0);
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const [editingSong, setEditingSong] = React.useState(null);
-  const [formData, setFormData] = React.useState({ title: '', artist: '', lyrics: '', imageUrl: '' });
-  const [audioFile, setAudioFile] = React.useState(null);
-  const [imageFile, setImageFile] = React.useState(null);
-  const [createLoading, setCreateLoading] = React.useState(false);
-  const [showFullLyrics, setShowFullLyrics] = React.useState(false);
-  const [deleteDialog, setDeleteDialog] = React.useState({ open: false, song: null });
-  const [deleteLoading, setDeleteLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    fetchSongs();
-    // eslint-disable-next-line
-  }, [page, rowsPerPage, searchQuery]);
+  const [songs, setSongs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState('');
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editingSong, setEditingSong] = useState(null);
+  const [formData, setFormData] = useState({ title: '', lyrics: '', imageUrl: '' });
+  const [audioFile, setAudioFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [showFullLyrics, setShowFullLyrics] = useState(false);
+  
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, song: null });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchSongs = async () => {
     setLoading(true);
     setError(null);
     try {
+      const artistId = localStorage.getItem('artistId');
       const artistName = localStorage.getItem('artistName');
-      if (!artistName) {
-        setSongs([]);
-        setTotal(0);
-        setError('Không tìm thấy tên nghệ sĩ.');
-        setLoading(false);
-        return;
-      }
-      const res = await axios.get(`/api/songs/by-artist?name=${encodeURIComponent(artistName)}&search=${encodeURIComponent(searchQuery)}&page=${page + 1}&limit=${rowsPerPage}`);
+      const res = await api.get(
+        `/songs/by-artist?${artistId ? `artistId=${artistId}` : `name=${encodeURIComponent(artistName)}`}&limit=1000`
+      );
       setSongs(res.data.songs || []);
-      setTotal(res.data.total || 0);
     } catch (err) {
-      setError('Không thể tải danh sách bài hát.');
+      setError(err.response?.data?.message || 'Không thể tải danh sách bài hát.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchSongs();
+  }, []);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setPage(0);
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  const filteredSongs = useMemo(() => {
+    return songs.filter((s) =>
+      s.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [songs, searchQuery]);
 
   const openCreateDialog = () => {
     setEditingSong(null);
-    setFormData({
-      title: '',
-      artist: localStorage.getItem('artistName') || '',
-      lyrics: '',
-      imageUrl: '',
-    });
+    setFormData({ title: '', lyrics: '', imageUrl: '' });
     setAudioFile(null);
     setImageFile(null);
     setShowFullLyrics(false);
     setCreateDialogOpen(true);
+    setError(null);
+    setSuccess(null);
   };
 
   const openEditDialog = (song) => {
     setEditingSong(song);
     setFormData({
-      title: song.title,
-      artist: song.artist,
+      title: song.title || '',
       lyrics: song.lyrics || '',
       imageUrl: song.imageUrl || '',
     });
@@ -125,23 +117,53 @@ function ArtistSong() {
     setImageFile(null);
     setShowFullLyrics(false);
     setCreateDialogOpen(true);
+    setError(null);
+    setSuccess(null);
   };
 
   const handleCreateSong = async () => {
+    if (!formData.title.trim()) {
+      setError('Tiêu đề bài hát không được để trống.');
+      return;
+    }
+    if (!editingSong && !audioFile) {
+      setError('File audio (mp3) là bắt buộc khi thêm bài hát.');
+      return;
+    }
+
     setCreateLoading(true);
+    setError(null);
+    
     try {
-      // Tùy vào editingSong để gọi API tạo mới hoặc cập nhật
+      const artistId = localStorage.getItem('artistId');
+      if (!artistId) throw new Error('Không tìm thấy thông tin Artist hiện tại.');
+
+      const uploadData = new FormData();
+      uploadData.append('title', formData.title.trim());
+      uploadData.append('artists', JSON.stringify([artistId]));
+      uploadData.append('lyrics', formData.lyrics || '');
+      uploadData.append('imageUrl', formData.imageUrl || '');
+      uploadData.append('isPublic', 'true');
+      
+      if (audioFile) uploadData.append('audio', audioFile);
+      if (imageFile) uploadData.append('image', imageFile);
+
       if (editingSong) {
-        // Update song
-        await axios.put(`/api/songs/${editingSong._id}`, formData);
+        await api.put(`/songs/${editingSong._id}`, uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        setSuccess('Đã cập nhật bài hát thành công!');
       } else {
-        // Create song
-        await axios.post('/api/songs', formData);
+        await api.post('/songs', uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        setSuccess('Đã thêm bài mới thành công!');
       }
       setCreateDialogOpen(false);
       fetchSongs();
     } catch (err) {
-      setError('Không thể lưu bài hát.');
+      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Không thể lưu bài hát.');
     } finally {
       setCreateLoading(false);
     }
@@ -150,12 +172,14 @@ function ArtistSong() {
   const handleDelete = async () => {
     if (!deleteDialog.song) return;
     setDeleteLoading(true);
+    setError(null);
     try {
-      await axios.delete(`/api/songs/${deleteDialog.song._id}`);
+      await api.delete(`/songs/${deleteDialog.song._id}`);
       setDeleteDialog({ open: false, song: null });
+      setSuccess('Đã xóa bài hát thành công!');
       fetchSongs();
     } catch (err) {
-      setError('Không thể xóa bài hát.');
+      setError(err.response?.data?.message || 'Không thể xóa bài hát.');
     } finally {
       setDeleteLoading(false);
     }
@@ -168,256 +192,395 @@ function ArtistSong() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('vi-VN');
-  };
-
   return (
     <ArtistLayout title="Songs Management">
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" fontWeight={600}>
-          Songs ({total})
-        </Typography>
-        <Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreateDialog}
-            sx={{ mr: 1, bgcolor: '#00bcd4', '&:hover': { bgcolor: '#0097a7' } }}
-          >
-            Add Song
-          </Button>
-          <IconButton onClick={fetchSongs} disabled={loading}>
-            <RefreshIcon />
-          </IconButton>
-        </Box>
-      </Box>
+      <Stack spacing={3}>
+        {error && <Alert severity="error">{error}</Alert>}
+        {success && <Alert severity="success">{success}</Alert>}
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      <Paper sx={{ mb: 3, p: 2 }}>
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Search songs by title or artist..."
-          value={searchQuery}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
+        {/* Dashboard-style Header Card */}
+        <Card
+          elevation={0}
+          sx={{
+            overflow: 'hidden',
+            borderRadius: 6,
+            border: '1px solid rgba(15, 23, 42, 0.08)',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 48%, #38bdf8 100%)',
+            color: '#fff',
           }}
-        />
-      </Paper>
-
-      <TableContainer component={Paper}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
+        >
+          <Box
+            sx={{
+              p: { xs: 3, md: 4 },
+              background:
+                'radial-gradient(circle at top right, rgba(255,255,255,0.24), transparent 22%), radial-gradient(circle at left bottom, rgba(255,255,255,0.12), transparent 24%)',
+            }}
+          >
+            <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+              <Box>
+                <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
+                  My Songs
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.85, maxWidth: 500 }}>
+                  Quản lý danh sách các bài hát của bạn đã tải lên hệ thống. Bạn có thể thêm bài mới hoặc chỉnh sửa bài hiện có.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="outlined"
+                  onClick={fetchSongs}
+                  disabled={loading}
+                  startIcon={<RefreshIcon />}
+                  sx={{
+                    color: '#fff',
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    textTransform: 'none',
+                    borderRadius: 3,
+                    '&:hover': {
+                      borderColor: '#fff',
+                      bgcolor: 'rgba(255,255,255,0.1)',
+                    },
+                  }}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={openCreateDialog}
+                  startIcon={<AddIcon />}
+                  sx={{
+                    bgcolor: '#fff',
+                    color: '#0f172a',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: 3,
+                    px: 3,
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.9)',
+                    },
+                  }}
+                >
+                  Upload Song
+                </Button>
+              </Stack>
+            </Stack>
           </Box>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell>Song</TableCell>
-                <TableCell>Artist</TableCell>
-                <TableCell>Duration</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {songs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    No songs found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                songs.map((song) => (
-                  <TableRow key={song._id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar 
-                          src={song.imageUrl} 
-                          variant="rounded"
-                          sx={{ bgcolor: '#00bcd4' }}
-                        >
-                          <MusicNoteIcon />
-                        </Avatar>
-                        <Typography fontWeight={500}>{song.title}</Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>{song.artist}</TableCell>
-                    <TableCell>{formatDuration(song.duration)}</TableCell>
-                    <TableCell>{formatDate(song.createdAt)}</TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="success"
-                        onClick={() => window.open(song.audioUrl, '_blank')}
-                      >
-                        <PlayIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => openEditDialog(song)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => setDeleteDialog({ open: true, song })}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={total}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
+        </Card>
 
+        {/* Content Table */}
+        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid rgba(15, 23, 42, 0.08)' }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(15, 23, 42, 0.05)' }}>
+            <TextField
+              size="small"
+              placeholder="Tìm kiếm bài hát của bạn..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              sx={{ minWidth: { xs: '100%', sm: 320 } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                sx: { borderRadius: 3, bgcolor: '#f8fafc' },
+              }}
+            />
+          </Box>
+
+          <TableContainer>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Table sx={{ minWidth: 600 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'rgba(15, 23, 42, 0.02)' }}>
+                    <TableCell sx={{ fontWeight: 600, py: 2 }}>Song</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Created</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Public</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredSongs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                        {searchQuery ? 'Không tìm thấy bài hát nào khớp với tìm kiếm.' : 'Chưa có bài hát nào được tải lên.'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredSongs
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((song) => (
+                        <TableRow key={song._id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell>
+                            <Stack direction="row" alignItems="center" spacing={2}>
+                              <Avatar
+                                src={song.imageUrl}
+                                variant="rounded"
+                                sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'primary.light' }}
+                              >
+                                <MusicNoteIcon />
+                              </Avatar>
+                              <Box>
+                                <Typography variant="subtitle2" fontWeight={600} noWrap sx={{ maxWidth: 200 }}>
+                                  {song.title}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {song.artists?.map(a => a.name).join(', ')}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {formatDuration(song.duration)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {song.createdAt ? new Date(song.createdAt).toLocaleDateString('vi-VN') : '--'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={song.isPublic}
+                              size="small"
+                              color="success"
+                              onChange={async (e) => {
+                                const newStatus = e.target.checked;
+                                try {
+                                  // Optimistic Update
+                                  setSongs(songs.map(s => s._id === song._id ? { ...s, isPublic: newStatus } : s));
+                                  await api.put(`/songs/${song._id}`, { isPublic: newStatus });
+                                } catch (err) {
+                                  console.error("Failed to update status", err);
+                                  // Revert on failure
+                                  setSongs(songs.map(s => s._id === song._id ? { ...s, isPublic: !newStatus } : s));
+                                }
+                              }}
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              {song.isPublic ? 'Public' : 'Private'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                              <IconButton
+                                size="small"
+                                onClick={() => window.open(song.audioUrl, '_blank')}
+                                sx={{ color: 'action.active' }}
+                              >
+                                <PlayIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => openEditDialog(song)}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setDeleteDialog({ open: true, song })}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </TableContainer>
+          {!loading && filteredSongs.length > 0 && (
+            <TablePagination
+              component="div"
+              count={filteredSongs.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={(e, newPage) => setPage(newPage)}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25]}
+            />
+          )}
+        </Card>
+      </Stack>
+
+      {/* Create/Edit Dialog */}
       <Dialog
         open={createDialogOpen}
-        onClose={() => {
-          setCreateDialogOpen(false);
-          setEditingSong(null);
-        }}
+        onClose={() => !createLoading && setCreateDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <DialogTitle>{editingSong ? 'Edit Song' : 'Add New Song'}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          {editingSong ? 'Chỉnh sửa bài hát' : 'Tải lên bài hát mới'}
+        </DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
+          <DialogContentText sx={{ mb: 3 }}>
             {editingSong
-              ? 'Update song metadata and optionally replace audio/cover.'
-              : 'Upload an audio file and fill basic metadata.'}
+              ? 'Bạn có thể chỉnh sửa tiêu đề, lời bài hát hoặc thay đổi file âm thanh/ảnh bìa.'
+              : 'Tải lên file MP3 và cung cấp thông tin bài hát để xuất bản.'}
           </DialogContentText>
-          <Grid container spacing={2}>
-            <Grid size={12}>
+          <Stack spacing={2.5}>
+            <TextField
+              fullWidth
+              label="Tiêu đề bài hát *"
+              value={formData.title}
+              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+              InputProps={{ sx: { borderRadius: 3 } }}
+            />
+            
+            <Box sx={{ position: 'relative' }}>
               <TextField
                 fullWidth
-                label="Title"
-                value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                label="Lời bài hát"
+                multiline
+                minRows={3}
+                maxRows={showFullLyrics ? 15 : 5}
+                value={formData.lyrics}
+                onChange={(e) => setFormData((prev) => ({ ...prev, lyrics: e.target.value }))}
+                InputProps={{ sx: { borderRadius: 3 } }}
               />
-            </Grid>
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Artist"
-                value={formData.artist}
-                onChange={(e) => setFormData((prev) => ({ ...prev, artist: e.target.value }))}
-              />
-            </Grid>
-            <Grid size={12}>
-              <Box sx={{ position: 'relative', mb: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Lyrics"
-                  multiline
-                  minRows={3}
-                  maxRows={showFullLyrics ? 20 : 5}
-                  value={formData.lyrics}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, lyrics: e.target.value }))}
-                />
-                {formData.lyrics && formData.lyrics.split('\n').length > 5 && (
-                  <Button
-                    size="small"
-                    sx={{ position: 'absolute', right: 0, bottom: -30 }}
-                    onClick={() => setShowFullLyrics(v => !v)}
-                  >
-                    {showFullLyrics ? 'Rút gọn' : 'Xem thêm'}
-                  </Button>
-                )}
-              </Box>
-            </Grid>
-            {/* Đã xóa các trường upload/cover image/audio theo yêu cầu */}
-<Grid size={12}>
-              <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />} fullWidth>
+              {formData.lyrics?.split('\n').length > 5 && (
+                <Button
+                  size="small"
+                  sx={{ position: 'absolute', right: 8, bottom: -28, textTransform: 'none' }}
+                  onClick={() => setShowFullLyrics(v => !v)}
+                >
+                  {showFullLyrics ? 'Rút gọn' : 'Xem thêm'}
+                </Button>
+              )}
+            </Box>
+
+            <Box sx={{ pt: showFullLyrics || (formData.lyrics?.split('\n').length > 5) ? 2 : 0 }} />
+
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUploadIcon />}
+              fullWidth
+              sx={{
+                py: 1.5,
+                borderRadius: 3,
+                justifyContent: 'flex-start',
+                px: 2,
+                color: 'text.secondary',
+                borderColor: 'divider',
+                borderStyle: 'dashed',
+              }}
+            >
+              <Typography noWrap sx={{ flex: 1, textAlign: 'left' }}>
                 {audioFile
-                  ? `Audio: ${audioFile.name}`
+                  ? `🎵 ${audioFile.name}`
                   : editingSong
-                    ? 'Replace Audio (optional)'
-                    : 'Upload Audio (required)'}
-                <input
-                  hidden
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-                />
-              </Button>
-            </Grid>
-            <Grid size={12}>
-              <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />} fullWidth>
-                {imageFile ? `Cover: ${imageFile.name}` : 'Upload Cover Image (optional)'}
-                <input
-                  hidden
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                />
-              </Button>
-            </Grid>
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Ảnh bìa URL (tuỳ chọn)"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="Dán link ảnh cover..."
-                helperText="Có thể upload file hoặc dán link trực tiếp. Nếu có cả 2 thì ưu tiên file."
+                    ? 'Thay đổi File MP3 (Tùy chọn)'
+                    : 'Tải File MP3 *'}
+              </Typography>
+              <input
+                hidden
+                type="file"
+                accept="audio/*"
+                onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
               />
-            </Grid>          
-        </Grid>
-    </DialogContent>
-    <DialogActions>
-        <Button
-            onClick={() => {
-              setCreateDialogOpen(false);
-              setEditingSong(null);
-            }}
+            </Button>
+
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUploadIcon />}
+              fullWidth
+              sx={{
+                py: 1.5,
+                borderRadius: 3,
+                justifyContent: 'flex-start',
+                px: 2,
+                color: 'text.secondary',
+                borderColor: 'divider',
+                borderStyle: 'dashed',
+              }}
+            >
+              <Typography noWrap sx={{ flex: 1, textAlign: 'left' }}>
+                {imageFile
+                  ? `🖼️ ${imageFile.name}`
+                  : 'Tải Ảnh Bìa (Tùy chọn)'}
+              </Typography>
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              />
+            </Button>
+            
+            <TextField
+              fullWidth
+              label="Hoặc dán Link URL Ảnh bìa"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
+              placeholder="https://..."
+              helperText="Nếu có sẵn link ảnh. Ưu tiên upload file ảnh hơn."
+              InputProps={{ sx: { borderRadius: 3 } }}
+            />          
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button
+            onClick={() => setCreateDialogOpen(false)}
             disabled={createLoading}
+            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
           >
-            Cancel
+            Hủy
           </Button>
-          <Button variant="contained" onClick={handleCreateSong} disabled={createLoading} sx={{ ml: 2 }}>
-            {createLoading ? <CircularProgress size={20} /> : editingSong ? 'Save Changes' : 'Create Song'}
+          <Button
+            variant="contained"
+            onClick={handleCreateSong}
+            disabled={createLoading}
+            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, px: 3, minWidth: 120 }}
+          >
+            {createLoading ? <CircularProgress size={24} color="inherit" /> : editingSong ? 'Lưu Thay Đổi' : 'Tải Lên'}
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* Delete Dialog */}
       <Dialog
         open={deleteDialog.open}
-        onClose={() => setDeleteDialog({ open: false, song: null })}
+        onClose={() => !deleteLoading && setDeleteDialog({ open: false, song: null })}
+        PaperProps={{ sx: { borderRadius: 4, minWidth: 400 } }}
       >
-        <DialogTitle>Xác nhận xóa</DialogTitle>
-        <DialogContent>Bạn có chắc muốn xóa bài hát này?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, song: null })}>Hủy</Button>
-          <Button onClick={handleDelete} color="error" disabled={deleteLoading}>
-            Xóa
+        <DialogTitle sx={{ fontWeight: 700 }}>Xác nhận xóa</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bạn có chắc muốn xóa bài hát <b>{deleteDialog.song?.title}</b>? Hành động này không thể hoàn tác.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={() => setDeleteDialog({ open: false, song: null })}
+            disabled={deleteLoading}
+            sx={{ borderRadius: 2, fontWeight: 600, color: 'text.secondary' }}
+          >
+            Hủy bỏ
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            disabled={deleteLoading}
+            sx={{ borderRadius: 2, fontWeight: 600 }}
+          >
+            {deleteLoading ? <CircularProgress size={20} color="inherit" /> : 'Xóa bài hát'}
           </Button>
         </DialogActions>
       </Dialog>

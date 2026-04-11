@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import '../../../data/services/song_api_service.dart';
 import '../../../data/services/topic_api_service.dart';
 import '../../../data/models/song_model.dart';
@@ -9,7 +11,7 @@ import '../../widgets/song_options_menu.dart';
 
 class SearchScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
-  
+
   const SearchScreen({super.key, this.onSongTap});
 
   @override
@@ -19,12 +21,13 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  
+  final SpeechToText _speechToText = SpeechToText();
+
   List<Song> _searchResults = [];
   List<String> _searchHistory = [];
   List<Topic> _topics = [];
   List<Song> _topicSongs = [];
-  
+
   bool _isLoading = false;
   bool _isLoadingTopics = false;
   bool _isLoadingTopicSongs = false;
@@ -34,6 +37,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounceTimer;
   bool _hasSearched = false;
   bool _isSearchFocused = false;
+  bool _isListening = false;
+  bool _isSpeechAvailable = false;
   Topic? _selectedTopic;
 
   @override
@@ -41,7 +46,8 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _loadSearchHistory();
     _loadTopics();
-    
+    _initSpeech();
+
     // Lắng nghe focus của search input
     _searchFocusNode.addListener(_onFocusChange);
   }
@@ -52,7 +58,89 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
     _debounceTimer?.cancel();
+    _speechToText.cancel();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    final available = await _speechToText.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        setState(() {
+          _isListening = status == 'listening';
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _isListening = false;
+        });
+      },
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isSpeechAvailable = available;
+    });
+  }
+
+  Future<void> _toggleVoiceSearch() async {
+    if (!_isSpeechAvailable) {
+      await _initSpeech();
+      if (!_isSpeechAvailable && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thiết bị chưa hỗ trợ tìm kiếm giọng nói'),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (_isListening) {
+      await _speechToText.stop();
+      if (!mounted) return;
+      setState(() {
+        _isListening = false;
+      });
+      return;
+    }
+
+    _searchFocusNode.unfocus();
+    setState(() {
+      _isSearchFocused = true;
+      _selectedTopic = null;
+      _topicSongs = [];
+    });
+
+    await _speechToText.listen(
+      onResult: _onSpeechResult,
+      listenMode: ListenMode.search,
+      partialResults: true,
+      cancelOnError: true,
+      localeId: 'vi_VN',
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isListening = true;
+    });
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    final words = result.recognizedWords.trim();
+    if (words.isEmpty) return;
+
+    _searchController.value = TextEditingValue(
+      text: words,
+      selection: TextSelection.collapsed(offset: words.length),
+    );
+
+    _onSearch(words);
+
+    if (result.finalResult) {
+      _performSearch(words);
+    }
   }
 
   void _onFocusChange() {
@@ -134,7 +222,7 @@ class _SearchScreenState extends State<SearchScreen> {
   // Lưu lịch sử tìm kiếm
   Future<void> _saveToHistory(String query) async {
     if (query.trim().isEmpty) return;
-    
+
     final prefs = await SharedPreferences.getInstance();
     _searchHistory.remove(query);
     _searchHistory.insert(0, query);
@@ -165,7 +253,7 @@ class _SearchScreenState extends State<SearchScreen> {
   // Tìm kiếm với debounce
   void _onSearch(String query) {
     _debounceTimer?.cancel();
-    
+
     if (query.trim().isEmpty) {
       setState(() {
         _hasSearched = false;
@@ -173,7 +261,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return;
     }
-    
+
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _performSearch(query);
     });
@@ -182,7 +270,7 @@ class _SearchScreenState extends State<SearchScreen> {
   // Thực hiện tìm kiếm
   Future<void> _performSearch(String query) async {
     if (query.trim().isEmpty) return;
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -222,7 +310,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return false;
     }
-    
+
     // Nếu đang focus search -> unfocus và quay về topics
     if (_isSearchFocused) {
       _searchFocusNode.unfocus();
@@ -231,13 +319,13 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return false;
     }
-    
+
     // Nếu đang xem bài hát của topic -> quay về danh sách topics
     if (_selectedTopic != null) {
       _backToTopics();
       return false;
     }
-    
+
     // Mặc định cho phép back (thoát)
     return true;
   }
@@ -277,15 +365,21 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
-              onChanged: _onSearch,
+              onChanged: (value) {
+                setState(() {});
+                _onSearch(value);
+              },
               onSubmitted: _performSearch,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Tìm bài hát, nghệ sĩ...',
                 hintStyle: const TextStyle(color: Colors.grey),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
                         icon: const Icon(Icons.clear, color: Colors.grey),
                         onPressed: () {
                           _searchController.clear();
@@ -294,8 +388,20 @@ class _SearchScreenState extends State<SearchScreen> {
                             _searchResults = [];
                           });
                         },
-                      )
-                    : null,
+                      ),
+                    IconButton(
+                      icon: Icon(
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: _isListening ? Colors.greenAccent : Colors.grey,
+                      ),
+                      tooltip: _isListening
+                          ? 'Dừng ghi âm'
+                          : 'Tìm bằng giọng nói',
+                      onPressed: _toggleVoiceSearch,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                ),
                 filled: true,
                 fillColor: Colors.grey.shade900,
                 border: OutlineInputBorder(
@@ -318,10 +424,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   _isSearchFocused = false;
                 });
               },
-              child: const Text(
-                'Hủy',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text('Hủy', style: TextStyle(color: Colors.white)),
             ),
           ],
         ],
@@ -338,12 +441,12 @@ class _SearchScreenState extends State<SearchScreen> {
       }
       return _buildSearchHistory();
     }
-    
+
     // Nếu đang xem bài hát theo topic
     if (_selectedTopic != null) {
       return _buildTopicSongs();
     }
-    
+
     // Mặc định hiển thị danh sách topics
     return _buildTopicsGrid();
   }
@@ -373,9 +476,7 @@ class _SearchScreenState extends State<SearchScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadTopics,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                 child: const Text('Thu lai'),
               ),
             ],
@@ -459,10 +560,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.3),
-                      Colors.transparent,
-                    ],
+                    colors: [Colors.black.withOpacity(0.3), Colors.transparent],
                   ),
                 ),
               ),
@@ -511,9 +609,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 onPressed: _selectedTopic == null
                     ? null
                     : () => _loadSongsByTopic(_selectedTopic!),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                 child: const Text('Thu lai'),
               ),
             ],
@@ -616,10 +712,7 @@ class _SearchScreenState extends State<SearchScreen> {
               final query = _searchHistory[index];
               return ListTile(
                 leading: const Icon(Icons.history, color: Colors.grey),
-                title: Text(
-                  query,
-                  style: const TextStyle(color: Colors.white),
-                ),
+                title: Text(query, style: const TextStyle(color: Colors.white)),
                 trailing: IconButton(
                   icon: const Icon(Icons.close, color: Colors.grey, size: 20),
                   onPressed: () => _removeFromHistory(query),
@@ -646,16 +739,11 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.grey),
-            ),
+            Text(_errorMessage!, style: const TextStyle(color: Colors.grey)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => _performSearch(_searchController.text),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               child: const Text('Thử lại'),
             ),
           ],
@@ -702,10 +790,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
       ),
-      title: Text(
-        song.title,
-        style: const TextStyle(color: Colors.white),
-      ),
+      title: Text(song.title, style: const TextStyle(color: Colors.white)),
       subtitle: Text(
         song.artists.join(', '),
         style: const TextStyle(color: Colors.grey),

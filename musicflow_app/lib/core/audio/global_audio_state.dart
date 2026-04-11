@@ -48,7 +48,16 @@ class GlobalAudioState extends ChangeNotifier {
   void initialize() {
     if (_isInitialized) return;
     _isInitialized = true;
-    
+
+    _audioService.handler.setSkipCallbacks(
+      onSkipNext: () {
+        playNext();
+      },
+      onSkipPrevious: () {
+        playPrevious();
+      },
+    );
+
     // Listen to player state
     _audioService.player.playerStateStream.listen((state) {
       _isPlaying = state.playing;
@@ -95,12 +104,12 @@ class GlobalAudioState extends ChangeNotifier {
 
   void _playCurrentSong() {
     if (_currentSong == null) return;
-    
+
     // Reset position và set duration từ metadata ngay lập tức
     _currentPosition = Duration.zero;
     _totalDuration = _currentSong!.durationAsDuration ?? Duration.zero;
     _progress = 0.0;
-    
+
     // Record to play history
     PlayHistoryService.addToHistory(_currentSong!);
 
@@ -110,7 +119,9 @@ class GlobalAudioState extends ChangeNotifier {
   Future<void> _playWithBestSource() async {
     if (_currentSong == null) return;
 
-    final localPath = await OfflineSongService().getLocalPathIfDownloaded(_currentSong!.id);
+    final localPath = await OfflineSongService().getLocalPathIfDownloaded(
+      _currentSong!.id,
+    );
     final playbackUrl = localPath != null
         ? Uri.file(localPath).toString()
         : ApiConfig.songStreamUrl(_currentSong!.id);

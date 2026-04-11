@@ -1,10 +1,13 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'dart:async';
 
 /// AudioHandler để quản lý background playback với notification controls
 class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
   final AudioPlayer _player = AudioPlayer();
   String? _currentUrl;
+  FutureOr<void> Function()? _onSkipNext;
+  FutureOr<void> Function()? _onSkipPrevious;
 
   MusicFlowAudioHandler() {
     _init();
@@ -56,6 +59,14 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   bool _isLoading = false;
 
+  void setSkipCallbacks({
+    FutureOr<void> Function()? onSkipNext,
+    FutureOr<void> Function()? onSkipPrevious,
+  }) {
+    _onSkipNext = onSkipNext;
+    _onSkipPrevious = onSkipPrevious;
+  }
+
   /// Play a song with URL and metadata
   Future<void> playFromUrl({
     required String url,
@@ -82,24 +93,28 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
       }
 
       // Update media item for notification
-      mediaItem.add(MediaItem(
-        id: url,
-        title: title,
-        artist: artist,
-        artUri: artUri != null && artUri.isNotEmpty ? Uri.parse(artUri) : null,
-        duration: duration,
-      ));
+      mediaItem.add(
+        MediaItem(
+          id: url,
+          title: title,
+          artist: artist,
+          artUri: artUri != null && artUri.isNotEmpty
+              ? Uri.parse(artUri)
+              : null,
+          duration: duration,
+        ),
+      );
 
       // Set URL mới
       _currentUrl = url;
       await _player.setUrl(url);
-      
+
       _isLoading = false;
 
       await _player.play();
     } catch (e) {
       _isLoading = false;
-      
+
       // Nếu là "Loading interrupted", thử lại một lần
       if (e.toString().contains('interrupted')) {
         await Future.delayed(const Duration(milliseconds: 200));
@@ -134,12 +149,16 @@ class MusicFlowAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> skipToNext() async {
-    // TODO: Implement skip to next - sẽ được kết nối với playlist
+    if (_onSkipNext != null) {
+      await Future.sync(_onSkipNext!);
+    }
   }
 
   @override
   Future<void> skipToPrevious() async {
-    // TODO: Implement skip to previous - sẽ được kết nối với playlist
+    if (_onSkipPrevious != null) {
+      await Future.sync(_onSkipPrevious!);
+    }
   }
 
   Future<void> dispose() async {

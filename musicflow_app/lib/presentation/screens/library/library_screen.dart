@@ -19,11 +19,7 @@ class LibraryScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
 
-  const LibraryScreen({
-    super.key,
-    this.onSongTap,
-    this.onPlayAll,
-  });
+  const LibraryScreen({super.key, this.onSongTap, this.onPlayAll});
 
   @override
   State<LibraryScreen> createState() => LibraryScreenState();
@@ -35,7 +31,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   List<Song> _favoriteSongs = [];
   int _uploadedSongsCount = 0;
   int _downloadedSongsCount = 0;
-  
+
   bool _isLoadingHistory = false;
   bool _isLoggedIn = false;
 
@@ -113,9 +109,9 @@ class LibraryScreenState extends State<LibraryScreen> {
       }
       return;
     }
-    
+
     final result = await PlaylistApiService.getPlaylists();
-    
+
     if (mounted && result.success) {
       setState(() {
         _playlists = result.playlists ?? [];
@@ -125,9 +121,9 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _loadRecentHistory() async {
     setState(() => _isLoadingHistory = true);
-    
+
     final history = await PlayHistoryService.getRecentHistory(limit: 3);
-    
+
     if (mounted) {
       setState(() {
         _isLoadingHistory = false;
@@ -145,9 +141,9 @@ class LibraryScreenState extends State<LibraryScreen> {
       }
       return;
     }
-    
+
     final result = await FavoriteService.getFavorites();
-    
+
     if (mounted && result.success) {
       setState(() {
         _favoriteSongs = result.favorites ?? [];
@@ -164,9 +160,9 @@ class LibraryScreenState extends State<LibraryScreen> {
       }
       return;
     }
-    
+
     final result = await SongApiService.getMyUploads();
-    
+
     if (mounted && result.success) {
       setState(() {
         _uploadedSongsCount = result.songs.length;
@@ -208,10 +204,7 @@ class LibraryScreenState extends State<LibraryScreen> {
               floating: true,
               title: const Text(
                 'Thư viện',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               actions: [
                 IconButton(
@@ -229,12 +222,12 @@ class LibraryScreenState extends State<LibraryScreen> {
                 children: [
                   // Menu Section (like SoundCloud)
                   _buildMenuSection(),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Recently Played Section
                   _buildRecentlyPlayedSection(),
-                  
+
                   // Bottom padding for mini player
                   const SizedBox(height: 100),
                 ],
@@ -258,7 +251,11 @@ class LibraryScreenState extends State<LibraryScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.history, color: Colors.greenAccent, size: 24),
+                  const Icon(
+                    Icons.history,
+                    color: Colors.greenAccent,
+                    size: 24,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Nghe gần đây',
@@ -280,7 +277,7 @@ class LibraryScreenState extends State<LibraryScreen> {
             ],
           ),
         ),
-        
+
         if (_isLoadingHistory)
           const Center(
             child: Padding(
@@ -328,7 +325,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   void _openFullHistory() async {
     final allHistory = await PlayHistoryService.getHistory();
     if (!mounted) return;
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -411,28 +408,36 @@ class LibraryScreenState extends State<LibraryScreen> {
           icon: Icons.favorite,
           iconColor: Colors.red,
           title: 'Bài hát yêu thích',
-          subtitle: _favoriteSongs.isNotEmpty ? '${_favoriteSongs.length} bài hát' : null,
+          subtitle: _favoriteSongs.isNotEmpty
+              ? '${_favoriteSongs.length} bài hát'
+              : null,
           onTap: _openFavorites,
         ),
         _buildMenuItem(
           icon: Icons.queue_music,
           iconColor: Colors.greenAccent,
           title: 'Playlists',
-          subtitle: _playlists.isNotEmpty ? '${_playlists.length} playlist' : null,
+          subtitle: _playlists.isNotEmpty
+              ? '${_playlists.length} playlist'
+              : null,
           onTap: _openPlaylists,
         ),
         _buildMenuItem(
           icon: Icons.cloud_upload,
           iconColor: Colors.blueAccent,
           title: 'Bài hát của bạn',
-          subtitle: _uploadedSongsCount > 0 ? '$_uploadedSongsCount bài hát' : null,
+          subtitle: _uploadedSongsCount > 0
+              ? '$_uploadedSongsCount bài hát'
+              : null,
           onTap: _openYourUploads,
         ),
         _buildMenuItem(
           icon: Icons.download_done,
           iconColor: Colors.greenAccent,
           title: 'Bài hát đã tải',
-          subtitle: _downloadedSongsCount > 0 ? '$_downloadedSongsCount bài hát' : null,
+          subtitle: _downloadedSongsCount > 0
+              ? '$_downloadedSongsCount bài hát'
+              : null,
           onTap: _openDownloadedSongs,
         ),
       ],
@@ -474,10 +479,7 @@ class LibraryScreenState extends State<LibraryScreen> {
                   if (subtitle != null)
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
                     ),
                 ],
               ),
@@ -491,6 +493,11 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   // ==================== COMMON ====================
   Widget _buildSongTile(Song song, {bool isFavorite = false}) {
+    final artistText = song.artists
+        .map((artist) => artist.trim())
+        .where((artist) => artist.isNotEmpty)
+        .join(', ');
+
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -517,7 +524,7 @@ class LibraryScreenState extends State<LibraryScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        song.artists.join(', '),
+        artistText.isNotEmpty ? artistText : 'Khong ro nghe si',
         style: TextStyle(color: Colors.grey[400]),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

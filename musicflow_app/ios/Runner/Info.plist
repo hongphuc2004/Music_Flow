@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cho phép ứng dụng dùng micro để tìm kiếm bằng giọng nói.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cho phép ứng dụng nhận diện giọng nói để tìm kiếm bài hát.</string>
 </dict>
 </plist>

@@ -83,10 +83,7 @@ class _MiniPlayerState extends State<MiniPlayer>
     return AnimatedBuilder(
       animation: _scaleAnim,
       builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnim.value,
-          child: child,
-        );
+        return Transform.scale(scale: _scaleAnim.value, child: child);
       },
       child: Dismissible(
         key: const Key('mini_player'),
@@ -100,8 +97,14 @@ class _MiniPlayerState extends State<MiniPlayer>
             return false;
           }
         },
-        background: _buildSwipeBackground(Icons.skip_previous, Alignment.centerLeft),
-        secondaryBackground: _buildSwipeBackground(Icons.skip_next, Alignment.centerRight),
+        background: _buildSwipeBackground(
+          Icons.skip_previous,
+          Alignment.centerLeft,
+        ),
+        secondaryBackground: _buildSwipeBackground(
+          Icons.skip_next,
+          Alignment.centerRight,
+        ),
         child: GestureDetector(
           onTapDown: _onTapDown,
           onTapUp: _onTapUp,
@@ -129,11 +132,15 @@ class _MiniPlayerState extends State<MiniPlayer>
             child: Column(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: LinearProgressIndicator(
                     value: widget.progress.clamp(0.0, 1.0),
                     backgroundColor: Colors.grey.shade800,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.greenAccent,
+                    ),
                     minHeight: 3,
                   ),
                 ),
@@ -172,6 +179,9 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Widget _buildAlbumArt() {
+    final songImageUrl = widget.song?.imageUrl.trim() ?? '';
+    final albumArt = widget.albumArt?.trim() ?? '';
+
     return Hero(
       tag: 'album_art',
       child: AnimatedContainer(
@@ -191,18 +201,44 @@ class _MiniPlayerState extends State<MiniPlayer>
                     color: Colors.greenAccent.withValues(alpha: 0.4),
                     blurRadius: 12,
                     spreadRadius: 2,
-                  )
+                  ),
                 ]
               : null,
         ),
-        child: widget.albumArt != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(widget.albumArt!, fit: BoxFit.cover),
-              )
-            : _buildAnimatedMusicIcon(),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: _buildAlbumArtImage(songImageUrl, albumArt),
+        ),
       ),
     );
+  }
+
+  Widget _buildAlbumArtImage(String songImageUrl, String albumArt) {
+    if (songImageUrl.isNotEmpty) {
+      return Image.network(
+        songImageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildAnimatedMusicIcon(),
+      );
+    }
+
+    if (albumArt.isNotEmpty) {
+      if (albumArt.startsWith('http://') || albumArt.startsWith('https://')) {
+        return Image.network(
+          albumArt,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildAnimatedMusicIcon(),
+        );
+      }
+
+      return Image.asset(
+        albumArt,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildAnimatedMusicIcon(),
+      );
+    }
+
+    return _buildAnimatedMusicIcon();
   }
 
   Widget _buildAnimatedMusicIcon() {
@@ -247,10 +283,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             Expanded(
               child: Text(
                 widget.artist,
-                style: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -266,7 +299,11 @@ class _MiniPlayerState extends State<MiniPlayer>
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 24),
+          icon: const Icon(
+            Icons.skip_previous_rounded,
+            color: Colors.white,
+            size: 24,
+          ),
           onPressed: widget.onPrevious,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -288,9 +325,12 @@ class _MiniPlayerState extends State<MiniPlayer>
           child: IconButton(
             icon: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+              transitionBuilder: (child, anim) =>
+                  ScaleTransition(scale: anim, child: child),
               child: Icon(
-                widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                widget.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
                 key: ValueKey(widget.isPlaying),
                 color: Colors.black,
                 size: 26,
@@ -301,7 +341,11 @@ class _MiniPlayerState extends State<MiniPlayer>
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 24),
+          icon: const Icon(
+            Icons.skip_next_rounded,
+            color: Colors.white,
+            size: 24,
+          ),
           onPressed: widget.onNext,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -323,13 +367,13 @@ class _MiniPlayerState extends State<MiniPlayer>
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           );
         },
@@ -362,9 +406,10 @@ class _PlayingWaveAnimationState extends State<_PlayingWaveAnimation>
     });
 
     _animations = _controllers.map((controller) {
-      return Tween<double>(begin: 0.3, end: 1.0).animate(
-        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-      );
+      return Tween<double>(
+        begin: 0.3,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
     }).toList();
   }
 

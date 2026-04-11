@@ -1,4 +1,3 @@
-
 class Song {
   final String id;
   final String title;
@@ -27,23 +26,49 @@ class Song {
   });
 
   /// Duration as Duration object for audio player
-  Duration? get durationAsDuration => duration != null 
-      ? Duration(milliseconds: (duration! * 1000).toInt()) 
+  Duration? get durationAsDuration => duration != null
+      ? Duration(milliseconds: (duration! * 1000).toInt())
       : null;
 
+  static List<String> _parseArtists(dynamic rawArtists, dynamic rawArtist) {
+    final parsedArtists = <String>[];
 
-  factory Song.fromJson(Map<String, dynamic> json) {
-    List<String> artists = [];
-    if (json['artists'] != null && json['artists'] is List) {
-      for (var a in json['artists']) {
-        if (a is String) {
-          artists.add(a);
-        } else if (a is Map && a['name'] != null) {
-          artists.add(a['name'].toString());
+    if (rawArtists is List) {
+      for (final artist in rawArtists) {
+        if (artist is String) {
+          final value = artist.trim();
+          if (value.isNotEmpty) parsedArtists.add(value);
+        } else if (artist is Map) {
+          final value =
+              (artist['name'] ??
+                      artist['artistName'] ??
+                      artist['artist_name'] ??
+                      artist['fullName'])
+                  ?.toString()
+                  .trim();
+          if (value != null && value.isNotEmpty) parsedArtists.add(value);
         }
       }
+    } else if (rawArtists is String && rawArtists.trim().isNotEmpty) {
+      parsedArtists.addAll(
+        rawArtists.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty),
+      );
     }
-    
+
+    if (parsedArtists.isEmpty &&
+        rawArtist is String &&
+        rawArtist.trim().isNotEmpty) {
+      parsedArtists.addAll(
+        rawArtist.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty),
+      );
+    }
+
+    return parsedArtists;
+  }
+
+  factory Song.fromJson(Map<String, dynamic> json) {
+    final artists = _parseArtists(json['artists'], json['artist']);
+
     List<String> topicIds = [];
     if (json['topicIds'] != null && json['topicIds'] is List) {
       for (var t in json['topicIds']) {
@@ -54,7 +79,7 @@ class Song {
         }
       }
     }
-    
+
     return Song(
       id: json['_id'],
       title: json['title'],
@@ -69,7 +94,6 @@ class Song {
       topicIds: topicIds,
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return {

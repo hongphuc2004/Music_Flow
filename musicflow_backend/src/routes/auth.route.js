@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/user.model");
 const RefreshToken = require("../models/refreshToken.model");
+const { verifyGoogleCredential } = require("../utils/googleAuth");
 
 const router = express.Router();
 
@@ -138,14 +139,8 @@ router.post("/login", async (req, res) => {
 
 router.post("/google", async (req, res) => {
   try {
-    const { googleId, email, name, avatar } = req.body;
-
-    if (!googleId || !email || !name) {
-      return res.status(400).json({
-        success: false,
-        message: "Thieu thong tin tu Google",
-      });
-    }
+    const { credential } = req.body;
+    const { googleId, email, name, avatar } = await verifyGoogleCredential(credential);
 
     let user = await User.findOne({
       $or: [{ googleId }, { email }],
@@ -182,9 +177,9 @@ router.post("/google", async (req, res) => {
     });
   } catch (error) {
     console.error("Google login error:", error);
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Dang nhap Google that bai",
+      message: error.statusCode ? error.message : "Dang nhap Google that bai",
       error: error.message,
     });
   }

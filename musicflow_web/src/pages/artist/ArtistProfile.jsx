@@ -19,7 +19,7 @@ import {
   RadioRounded as RadioIcon,
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
-import ArtistProfileDialog from '../../components/artist/ArtistProfileDialog';
+import ArtistProfileDialog from './ArtistProfileDialog';
 import { artistApi } from '../../services/api';
 import { syncArtistSession } from '../../utils/artistSession';
 import { buildArtistProfilePayload, createArtistProfileForm } from '../../utils/artistProfile';

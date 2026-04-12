@@ -34,9 +34,9 @@ api.interceptors.response.use(
       localStorage.removeItem('role');
       if (currentRole === 'artist') {
         clearArtistSession();
-        window.location.href = '/artist/login';
+        window.location.href = '/artistlogin';
       } else {
-        window.location.href = '/user/login';
+        window.location.href = '/accountlogin';
       }
     }
     return Promise.reject(error);
@@ -46,6 +46,10 @@ api.interceptors.response.use(
 // Auth API
 export const authApi = {
   login: (credentials) => api.post('/admin/auth/login', credentials),
+};
+
+export const clientAuthApi = {
+  profile: () => api.get('/auth/profile'),
 };
 
 export const artistApi = {
@@ -124,5 +128,38 @@ export const topicsApi = {
   delete: (id) => api.delete(`/admin/topics/${id}`),
   getSongsByTopic: (id) => api.get(`/admin/topics/${id}/songs`),
 };
+
+export const clientSongsApi = {
+  getAllPublic: () => api.get('/songs'),
+  getRecommended: (params) => api.get('/songs/recommended', { params }),
+  search: (params) => api.get('/songs/search', { params }),
+  getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
+};
+
+export const clientFavoritesApi = {
+  getAll: () => api.get('/favorites'),
+  toggle: (songId) => api.post(`/favorites/toggle/${songId}`),
+  check: (songId) => api.get(`/favorites/check/${songId}`),
+  remove: (songId) => api.delete(`/favorites/remove/${songId}`),
+};
+
+export const clientPlaylistsApi = {
+  getMine: () => api.get('/playlists'),
+  getSystem: (params) => api.get('/playlists/system', { params }),
+};
+
+export const clientTopicsApi = {
+  getAll: () => api.get('/topics'),
+  getSongsByTopic: (topicId) => api.get(`/topics/${topicId}/songs`),
+};
+
+export const clientUserApi = {
+  getMe: () => api.get('/users/me'),
+  updateMe: (payload) => api.put('/users/update', payload, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
+
+export const resolveSongStreamUrl = (songId) => `${API_BASE_URL}/songs/${songId}/stream`;
 
 export default api;

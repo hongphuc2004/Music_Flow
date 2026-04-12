@@ -1,5 +1,8 @@
 const Artist = require("../models/artist.model");
 const jwt = require("jsonwebtoken");
+const { verifyGoogleCredential } = require("../utils/googleAuth");
+
+const JWT_SECRET = process.env.JWT_SECRET || "musicflow_secret_key_2024";
 
 // Đăng ký artist
 exports.register = async (req, res) => {
@@ -35,11 +38,62 @@ exports.login = async (req, res) => {
     // Tạo JWT
     const token = jwt.sign(
       { id: artist._id, role: artist.role },
-      process.env.JWT_SECRET || "secretkey",
+      JWT_SECRET,
       { expiresIn: "7d" }
     );
     res.json({ message: "Đăng nhập thành công", token, artist: artist.toJSON() });
   } catch (err) {
     res.status(500).json({ message: "Lỗi server", error: err.message });
+  }
+};
+
+// Đăng nhập artist bằng Google
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    const { googleId, email, name, avatar } = await verifyGoogleCredential(credential);
+
+    let artist = await Artist.findOne({
+      $or: [{ googleId }, { email }],
+    });
+
+    if (artist) {
+      if (!artist.googleId) {
+        artist.googleId = googleId;
+      }
+      artist.provider = "google";
+      if (avatar && !artist.avatar) {
+        artist.avatar = avatar;
+      }
+      if (name && !artist.name) {
+        artist.name = name;
+      }
+      await artist.save();
+    } else {
+      artist = await Artist.create({
+        googleId,
+        email,
+        name,
+        avatar: avatar || "",
+        provider: "google",
+      });
+    }
+
+    const token = jwt.sign(
+      { id: artist._id, role: artist.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      message: "Đăng nhập Google thành công",
+      token,
+      artist: artist.toJSON(),
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({
+      message: err.statusCode ? err.message : "Lỗi server",
+      error: err.message,
+    });
   }
 };

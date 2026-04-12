@@ -25,6 +25,8 @@ const safeUnlink = (filePath) => {
 router.post("/register", artistController.register);
 // Đăng nhập artist
 router.post("/login", artistController.login);
+// Đăng nhập artist bằng Google
+router.post("/google", artistController.googleLogin);
 
 router.get("/me", authMiddleware, async (req, res) => {
   try {

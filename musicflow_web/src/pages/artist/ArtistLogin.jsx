@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
+  Divider,
   Paper,
   Typography,
   TextField,
@@ -13,10 +14,13 @@ import {
 import {
   Visibility,
   VisibilityOff,
+  Google as GoogleIcon,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { syncArtistSession } from '../../utils/artistSession';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function ArtistLogin() {
   const navigate = useNavigate();
@@ -27,6 +31,54 @@ function ArtistLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    const existing = document.querySelector('script[data-google-gsi="true"]');
+    if (existing && window.google?.accounts?.id) {
+      setGoogleReady(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleGsi = 'true';
+    script.onload = () => setGoogleReady(true);
+    script.onerror = () => setError('Không thể tải Google SDK.');
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!googleReady || !window.google || !GOOGLE_CLIENT_ID) return;
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        try {
+          setGoogleLoading(true);
+          setError('');
+          const res = await axios.post('/api/artist/google', {
+            credential: response.credential,
+          });
+
+          const { token, artist } = res.data;
+          localStorage.setItem('token', token);
+          localStorage.setItem('role', artist.role);
+          syncArtistSession(artist);
+          navigate('/artist/dashboard');
+        } catch (err) {
+          setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
+        } finally {
+          setGoogleLoading(false);
+        }
+      },
+    });
+  }, [googleReady, navigate]);
 
   const handleChange = (field) => (event) => {
     setFormData({ ...formData, [field]: event.target.value });
@@ -49,6 +101,18 @@ function ArtistLogin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    if (!googleReady || !window.google?.accounts?.id) {
+      setError('Google SDK chưa sẵn sàng. Vui lòng thử lại sau.');
+      return;
+    }
+
+    setError('');
+    window.google.accounts.id.prompt();
   };
 
   return (
@@ -112,6 +176,22 @@ function ArtistLogin() {
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </form>
+        <Divider sx={{ my: 2.5 }}>Hoặc đăng nhập nhanh</Divider>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<GoogleIcon />}
+          disabled={!GOOGLE_CLIENT_ID || googleLoading}
+          onClick={handleGoogleLogin}
+          sx={{ borderColor: '#db4437', color: '#db4437', fontWeight: 600 }}
+        >
+          {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
+        </Button>
+        {!GOOGLE_CLIENT_ID && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            Chua cau hinh VITE_GOOGLE_CLIENT_ID nen tam thoi an Google Login.
+          </Typography>
+        )}
         <Box sx={{ mt: 4, textAlign: 'center' }}>
           <Typography variant="body1" fontWeight={500} mb={1}>
             Bạn chưa có tài khoản nghệ sĩ?

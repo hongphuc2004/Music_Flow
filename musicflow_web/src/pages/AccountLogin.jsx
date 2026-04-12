@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
+  Divider,
   Paper,
   Typography,
   TextField,
@@ -13,9 +14,12 @@ import {
 import {
   Visibility,
   VisibilityOff,
+  Google as GoogleIcon,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function AccountLogin() {
   const navigate = useNavigate();
@@ -26,10 +30,72 @@ function AccountLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    const existing = document.querySelector('script[data-google-gsi="true"]');
+    if (existing && window.google?.accounts?.id) {
+      setGoogleReady(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleGsi = 'true';
+    script.onload = () => setGoogleReady(true);
+    script.onerror = () => setError('Không thể tải Google SDK.');
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!googleReady || !window.google || !GOOGLE_CLIENT_ID) return;
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        try {
+          setGoogleLoading(true);
+          setError('');
+
+          const res = await axios.post('/api/auth/google', {
+            credential: response.credential,
+          });
+          const { token, user } = res.data;
+          localStorage.setItem('token', token);
+          localStorage.setItem('role', user.role);
+          localStorage.setItem('userName', user.name || 'Listener');
+          localStorage.setItem('email', user.email || '');
+          localStorage.setItem('userId', user._id || '');
+          navigate('/client/home');
+        } catch (err) {
+          setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
+        } finally {
+          setGoogleLoading(false);
+        }
+      },
+    });
+  }, [googleReady, navigate]);
 
   const handleChange = (field) => (event) => {
     setFormData({ ...formData, [field]: event.target.value });
     setError('');
+  };
+
+  const handleGoogleLogin = () => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    if (!googleReady || !window.google?.accounts?.id) {
+      setError('Google SDK chưa sẵn sàng. Vui lòng thử lại sau.');
+      return;
+    }
+
+    setError('');
+    window.google.accounts.id.prompt();
   };
 
   const handleSubmit = async (e) => {
@@ -42,8 +108,11 @@ function AccountLogin() {
       const { token, user } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('role', user.role);
+      localStorage.setItem('userName', user.name || 'Listener');
+      localStorage.setItem('email', user.email || '');
+      localStorage.setItem('userId', user._id || '');
       if (user.role === 'user') {
-        navigate('/');
+        navigate('/client/home');
       } else {
         setError('Bạn không có quyền truy cập trang này!');
       }
@@ -153,6 +222,27 @@ function AccountLogin() {
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </form>
+
+        <Divider sx={{ my: 2.5 }}>Hoặc đăng nhập nhanh</Divider>
+
+        <Box sx={{ display: 'flex', gap: 1.25, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<GoogleIcon />}
+            disabled={!GOOGLE_CLIENT_ID || googleLoading}
+            onClick={handleGoogleLogin}
+            sx={{ borderColor: '#db4437', color: '#db4437', fontWeight: 600 }}
+          >
+            {googleLoading ? 'Đang xử lý...' : 'Đăng nhập bằng Google'}
+          </Button>
+        </Box>
+        {!GOOGLE_CLIENT_ID && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            Chua cau hinh VITE_GOOGLE_CLIENT_ID nen tam thoi an Google Login.
+          </Typography>
+        )}
+
         <Box sx={{ mt: 4, textAlign: 'center' }}>
           <Typography variant="body1" fontWeight={500} mb={1}>
             Bạn chưa có tài khoản?

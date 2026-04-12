@@ -7,4 +7,9 @@ export { default as Songs } from './admin/Songs';
 export { default as Settings } from './admin/Settings';
 export { default as Playlists } from './admin/Playlists';
 export { default as ArtistDashboard } from './artist/ArtistDashboard';
+export { default as ClientHome } from './client/ClientHome';
+export { default as ClientDiscover } from './client/ClientDiscover';
+export { default as ClientLibrary } from './client/ClientLibrary';
+export { default as ClientFavorites } from './client/ClientFavorites';
+export { default as ClientProfile } from './client/ClientProfile';
 

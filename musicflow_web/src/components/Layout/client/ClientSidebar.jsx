@@ -27,11 +27,11 @@ import {
 const drawerWidth = 260;
 
 const menuItems = [
-  { text: 'Trang chu', icon: <HomeIcon />, path: '/client/home' },
-  { text: 'Kham pha', icon: <ExploreIcon />, path: '/client/discover' },
-  { text: 'Thu vien', icon: <LibraryMusicIcon />, path: '/client/library' },
-  { text: 'Yeu thich', icon: <FavoriteIcon />, path: '/client/favorites' },
-  { text: 'Tai khoan', icon: <PersonIcon />, path: '/client/profile' },
+  { text: 'Trang chủ', icon: <HomeIcon />, path: '/client/home' },
+  { text: 'Khám phá', icon: <ExploreIcon />, path: '/client/discover' },
+  { text: 'Thư viện', icon: <LibraryMusicIcon />, path: '/client/library' },
+  { text: 'Yêu thích', icon: <FavoriteIcon />, path: '/client/favorites' },
+  { text: 'Tài khoản', icon: <PersonIcon />, path: '/client/profile' },
 ];
 
 function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
@@ -62,7 +62,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2.5 }}>
             <HeadphonesIcon sx={{ color: '#22d3ee', fontSize: 30 }} />
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 800, letterSpacing: -0.3 }}>
-              MusicFlow Client
+              MusicFlow 
             </Typography>
           </Box>
           <Box
@@ -81,16 +81,6 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
                 <Typography fontWeight={700} noWrap>
                   {userName}
                 </Typography>
-                <Chip
-                  label="User"
-                  size="small"
-                  sx={{
-                    mt: 0.75,
-                    height: 22,
-                    color: '#ccfbf1',
-                    backgroundColor: 'rgba(20,184,166,0.18)',
-                  }}
-                />
               </Box>
             </Box>
           </Box>

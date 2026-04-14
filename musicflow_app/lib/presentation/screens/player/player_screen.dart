@@ -32,19 +32,20 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderStateMixin {
+class _PlayerScreenState extends State<PlayerScreen>
+    with SingleTickerProviderStateMixin {
   final AudioPlayerService _audioService = AudioPlayerService();
   final GlobalAudioState _globalAudioState = GlobalAudioState();
   final PageController _pageController = PageController(initialPage: 0);
-  
+
   bool _isPlaying = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-  int _currentPage = 0;  // 0 = Player, 1 = Queue
+  int _currentPage = 0; // 0 = Player, 1 = Queue
 
   late Song _currentSong;
   late int _currentIndex;
-  bool _isChangingSong = false;  // Debounce
+  bool _isChangingSong = false; // Debounce
   bool _isFavorite = false;
   int _likeCount = 0;
   int _commentCount = 0;
@@ -56,41 +57,69 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   String _rawLyricsContent = '';
   List<LrcLine> _lyricsLines = const [];
 
-  List<Song> get _activePlaylist =>
-      _globalAudioState.playlist.isNotEmpty ? _globalAudioState.playlist : widget.playlist;
-  
+  List<Song> get _activePlaylist => _globalAudioState.playlist.isNotEmpty
+      ? _globalAudioState.playlist
+      : widget.playlist;
+
   // Animation cho đĩa xoay
   late AnimationController _discRotationController;
-  
+
+  void _resumeDiscRotation() {
+    if (_discRotationController.isAnimating) return;
+
+    if (_discRotationController.value >= 1.0) {
+      _discRotationController.value = 0.0;
+    }
+
+    _discRotationController.forward();
+  }
+
+  void _pauseDiscRotation() {
+    if (_discRotationController.isAnimating) {
+      _discRotationController.stop();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _currentSong = widget.song;
     _currentIndex = widget.currentIndex;
-    
+
     // Khởi tạo animation controller cho đĩa xoay
     _discRotationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10), // Xoay 1 vòng trong 10 giây
     );
-    
+
+    _discRotationController.addStatusListener((status) {
+      if (!mounted) return;
+
+      if (status == AnimationStatus.completed) {
+        _discRotationController.value = 0.0;
+        if (_isPlaying) {
+          _discRotationController.forward();
+        }
+      }
+    });
+
     _initPlayer();
     _loadLikeStatus();
     _loadCommentCount();
     _loadLyricsForCurrentSong();
-    
+
     // Lắng nghe GlobalAudioState để sync khi auto-next
     _globalAudioState.addListener(_onGlobalAudioStateChanged);
   }
-  
+
   /// Sync local state khi GlobalAudioState thay đổi (auto-next)
   void _onGlobalAudioStateChanged() {
     final globalSong = _globalAudioState.currentSong;
     final globalIndex = _globalAudioState.currentIndex;
-    
+
     // Chỉ sync nếu bài hát khác với local state
-    if (globalSong != null && 
-        globalSong.id != _currentSong.id && 
+    if (globalSong != null &&
+        globalSong.id != _currentSong.id &&
         !_isChangingSong) {
       setState(() {
         _currentSong = globalSong;
@@ -98,6 +127,12 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         _position = Duration.zero;
         _duration = globalSong.durationAsDuration ?? Duration.zero;
       });
+
+      _discRotationController.value = 0.0;
+      if (_isPlaying) {
+        _resumeDiscRotation();
+      }
+
       _loadLikeStatus();
       _loadCommentCount();
       _loadLyricsForCurrentSong();
@@ -144,7 +179,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         _isLyricsSynced = estimatedLines.isNotEmpty;
         _isEstimatedLyrics = true;
         _lyricsLines = estimatedLines;
-        _lyricsError = estimatedLines.isEmpty ? 'Bai hat chua co lyrics.' : null;
+        _lyricsError = estimatedLines.isEmpty
+            ? 'Bai hat chua co lyrics.'
+            : null;
       });
       return;
     }
@@ -158,7 +195,10 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     });
   }
 
-  List<LrcLine> _buildEstimatedTimedLyrics(String rawLyrics, Duration totalDuration) {
+  List<LrcLine> _buildEstimatedTimedLyrics(
+    String rawLyrics,
+    Duration totalDuration,
+  ) {
     final lines = rawLyrics
         .split('\n')
         .map((line) => line.trim())
@@ -170,7 +210,10 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     }
 
     final weights = lines
-        .map((line) => line.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length)
+        .map(
+          (line) =>
+              line.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length,
+        )
         .map((wordCount) => wordCount <= 0 ? 1 : wordCount)
         .toList();
 
@@ -243,7 +286,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
       setState(() {
         _likeCount = result.likeCount ?? _likeCount;
       });
-      _showActionMessage(nextFavorite ? 'Da like bai hat' : 'Da bo like bai hat');
+      _showActionMessage(
+        nextFavorite ? 'Da like bai hat' : 'Da bo like bai hat',
+      );
     } else {
       // Hoàn tác nếu server báo lỗi
       setState(() {
@@ -292,7 +337,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 
   void _shareSong() {
-    _showActionMessage('Chia se: ${_currentSong.title} - ${_currentSong.artists.join(', ')}');
+    _showActionMessage(
+      'Chia se: ${_currentSong.title} - ${_currentSong.artists.join(', ')}',
+    );
   }
 
   Future<void> _downloadCurrentSong() async {
@@ -316,18 +363,20 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   Future<void> _toggleFavoriteFromMenu() async {
     final result = await FavoriteService.toggleFavorite(_currentSong.id);
     if (!mounted) return;
-    _showActionMessage(result.message ?? 'Khong the cap nhat yeu thich luc nay');
+    _showActionMessage(
+      result.message ?? 'Khong the cap nhat yeu thich luc nay',
+    );
   }
 
   void _openCurrentArtist() {
-    final artistName = _currentSong.artists.isNotEmpty ? _currentSong.artists.first : '';
+    final artistName = _currentSong.artists.isNotEmpty
+        ? _currentSong.artists.first
+        : '';
     if (artistName.isEmpty) return;
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ArtistScreen(artistName: artistName),
-      ),
+      MaterialPageRoute(builder: (_) => ArtistScreen(artistName: artistName)),
     );
   }
 
@@ -345,20 +394,35 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
             children: [
               ListTile(
                 leading: const Icon(Icons.queue_music, color: Colors.white70),
-                title: const Text('Them vao danh sach phat', style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  'Them vao danh sach phat',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () => Navigator.pop(context),
               ),
               ListTile(
-                leading: const Icon(Icons.favorite_border, color: Colors.white70),
-                title: const Text('Them/Xoa bai hat yeu thich', style: TextStyle(color: Colors.white)),
+                leading: const Icon(
+                  Icons.favorite_border,
+                  color: Colors.white70,
+                ),
+                title: const Text(
+                  'Them/Xoa bai hat yeu thich',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _toggleFavoriteFromMenu();
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.person_outline, color: Colors.white70),
-                title: const Text('Xem nghe si', style: TextStyle(color: Colors.white)),
+                leading: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white70,
+                ),
+                title: const Text(
+                  'Xem nghe si',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _openCurrentArtist();
@@ -366,7 +430,10 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
               ),
               ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.white70),
-                title: const Text('Thong tin bai hat', style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  'Thong tin bai hat',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () => Navigator.pop(context),
               ),
               const SizedBox(height: 8),
@@ -389,17 +456,18 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   Future<void> _initPlayer() async {
     // KHÔNG gọi play() ở đây nữa - nhạc đã được phát từ MainScreen rồi
     // Chỉ setup listeners
-    
+
     // Lấy trạng thái hiện tại
     _isPlaying = _audioService.isPlaying;
     _position = _audioService.player.position;
-    
+
     // Ưu tiên lấy duration từ song metadata (có sẵn từ backend)
     // Fallback về player duration nếu không có
-    _duration = _currentSong.durationAsDuration ?? 
-                _audioService.player.duration ?? 
-                Duration.zero;
-    
+    _duration =
+        _currentSong.durationAsDuration ??
+        _audioService.player.duration ??
+        Duration.zero;
+
     // Lắng nghe trạng thái playing
     _audioService.player.playerStateStream.listen((state) {
       if (mounted) {
@@ -408,16 +476,16 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         });
         // Điều khiển đĩa xoay
         if (state.playing) {
-          _discRotationController.repeat();
+          _resumeDiscRotation();
         } else {
-          _discRotationController.stop();
+          _pauseDiscRotation();
         }
       }
     });
-    
+
     // Bắt đầu xoay nếu đang phát
     if (_isPlaying) {
-      _discRotationController.repeat();
+      _resumeDiscRotation();
     }
 
     // Lắng nghe vị trí hiện tại
@@ -464,10 +532,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.grey.shade900,
-              Colors.black,
-            ],
+            colors: [Colors.grey.shade900, Colors.black],
           ),
         ),
         child: SafeArea(
@@ -543,7 +608,9 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? Colors.greenAccent.withOpacity(0.2) : Colors.transparent,
+          color: isActive
+              ? Colors.greenAccent.withOpacity(0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
@@ -621,12 +688,15 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
               itemBuilder: (context, index) {
                 final song = _activePlaylist[index];
                 final isCurrentSong = index == _currentIndex;
-                
+
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: isCurrentSong 
-                        ? Colors.greenAccent.withOpacity(0.15) 
+                    color: isCurrentSong
+                        ? Colors.greenAccent.withOpacity(0.15)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -674,8 +744,12 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                     title: Text(
                       song.title,
                       style: TextStyle(
-                        color: isCurrentSong ? Colors.greenAccent : Colors.white,
-                        fontWeight: isCurrentSong ? FontWeight.bold : FontWeight.normal,
+                        color: isCurrentSong
+                            ? Colors.greenAccent
+                            : Colors.white,
+                        fontWeight: isCurrentSong
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -683,14 +757,20 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
                     subtitle: Text(
                       song.artists.join(', '),
                       style: TextStyle(
-                        color: isCurrentSong ? Colors.greenAccent.withOpacity(0.7) : Colors.grey,
+                        color: isCurrentSong
+                            ? Colors.greenAccent.withOpacity(0.7)
+                            : Colors.grey,
                         fontSize: 13,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: isCurrentSong
-                        ? const Icon(Icons.volume_up, color: Colors.greenAccent, size: 20)
+                        ? const Icon(
+                            Icons.volume_up,
+                            color: Colors.greenAccent,
+                            size: 20,
+                          )
                         : null,
                     onTap: () {
                       if (!isCurrentSong) {
@@ -714,15 +794,19 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 32),
+            icon: const Icon(
+              Icons.keyboard_arrow_down,
+              color: Colors.white,
+              size: 32,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           Text(
             _currentPage == 0
                 ? 'DANG PHAT'
                 : _currentPage == 1
-                    ? 'LYRICS DONG BO'
-                    : 'DANH SACH CHO',
+                ? 'LYRICS DONG BO'
+                : 'DANH SACH CHO',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
@@ -742,48 +826,48 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   Widget _buildAlbumArt() {
     return Center(
       child: LayoutBuilder(
-          builder: (context, constraints) {
-            final discSize = (constraints.maxWidth * 0.72).clamp(220.0, 320.0);
+        builder: (context, constraints) {
+          final discSize = (constraints.maxWidth * 0.72).clamp(220.0, 320.0);
 
-            return Hero(
-              tag: 'album_art',
-              child: AnimatedBuilder(
-                animation: _discRotationController,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: _discRotationController.value * 2 * 3.14159,
-                    child: child,
-                  );
-                },
-                child: SizedBox(
-                  width: discSize,
-                  height: discSize,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 30,
-                          spreadRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: _currentSong.imageUrl.isNotEmpty
-                          ? Image.network(
-                              _currentSong.imageUrl,
-                              fit: BoxFit.cover,
-                              filterQuality: FilterQuality.high,
-                              errorBuilder: (_, __, ___) => _buildDefaultArt(),
-                            )
-                          : _buildDefaultArt(),
-                    ),
+          return Hero(
+            tag: 'album_art',
+            child: AnimatedBuilder(
+              animation: _discRotationController,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _discRotationController.value * 2 * 3.14159,
+                  child: child,
+                );
+              },
+              child: SizedBox(
+                width: discSize,
+                height: discSize,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 30,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: _currentSong.imageUrl.isNotEmpty
+                        ? Image.network(
+                            _currentSong.imageUrl,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                            errorBuilder: (_, __, ___) => _buildDefaultArt(),
+                          )
+                        : _buildDefaultArt(),
                   ),
                 ),
               ),
-            );
-          },
+            ),
+          );
+        },
       ),
     );
   }
@@ -861,7 +945,10 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
             ),
             child: Slider(
               value: _duration.inMilliseconds > 0
-                  ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+                  ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(
+                      0.0,
+                      1.0,
+                    )
                   : 0.0,
               onChanged: (value) {
                 final newPosition = Duration(
@@ -898,9 +985,13 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
     final isShuffleEnabled = _globalAudioState.isShuffleEnabled;
     final repeatMode = _globalAudioState.repeatMode;
     final canUsePlaylistModes = _activePlaylist.isNotEmpty;
-    final canTriggerPrevious = canGoPrevious || isShuffleEnabled || repeatMode == PlaybackRepeatMode.all;
-    final canTriggerNext = canGoNext || isShuffleEnabled || repeatMode == PlaybackRepeatMode.all;
-    
+    final canTriggerPrevious =
+        canGoPrevious ||
+        isShuffleEnabled ||
+        repeatMode == PlaybackRepeatMode.all;
+    final canTriggerNext =
+        canGoNext || isShuffleEnabled || repeatMode == PlaybackRepeatMode.all;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -919,7 +1010,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         ),
         IconButton(
           icon: Icon(
-            Icons.skip_previous_rounded, 
+            Icons.skip_previous_rounded,
             color: canTriggerPrevious ? Colors.white : Colors.white38,
           ),
           iconSize: 40,
@@ -956,7 +1047,7 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
         ),
         IconButton(
           icon: Icon(
-            Icons.skip_next_rounded, 
+            Icons.skip_next_rounded,
             color: canTriggerNext ? Colors.white : Colors.white38,
           ),
           iconSize: 40,
@@ -967,8 +1058,12 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
             clipBehavior: Clip.none,
             children: [
               Icon(
-                repeatMode == PlaybackRepeatMode.one ? Icons.repeat_one : Icons.repeat,
-                color: repeatMode == PlaybackRepeatMode.off ? Colors.white54 : Colors.greenAccent,
+                repeatMode == PlaybackRepeatMode.one
+                    ? Icons.repeat_one
+                    : Icons.repeat,
+                color: repeatMode == PlaybackRepeatMode.off
+                    ? Colors.white54
+                    : Colors.greenAccent,
               ),
               if (repeatMode == PlaybackRepeatMode.all)
                 Positioned(

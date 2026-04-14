@@ -11,7 +11,7 @@ import '../models/user_model.dart';
 class AuthService {
   static const String baseUrl = ApiConfig.authEndpoint;
   static const Duration timeout = Duration(seconds: 15);
-  
+
   // Keys cho SharedPreferences
   static const String _tokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
@@ -27,15 +27,17 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/register"),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-        }),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse("$baseUrl/register"),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': name,
+              'email': email,
+              'password': password,
+            }),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -69,14 +71,13 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/login"),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse("$baseUrl/login"),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -105,7 +106,12 @@ class AuthService {
   }
 
   // ================= GOOGLE SIGN IN =================
+  // Phải là Web client ID (cùng giá trị GOOGLE_CLIENT_ID trên backend)
+  static const String _googleServerClientId =
+      '1030096415860-tsli9gc3ba61m86svamuhp2npv6icubb.apps.googleusercontent.com';
+
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: _googleServerClientId,
     scopes: ['email', 'profile'],
   );
 
@@ -113,33 +119,40 @@ class AuthService {
     try {
       // Đăng xuất trước để đảm bảo chọn tài khoản mới
       await _googleSignIn.signOut();
-      
+
       // Bắt đầu đăng nhập Google
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+
       if (googleUser == null) {
         // User hủy đăng nhập
         return AuthResult(success: false, message: 'Đăng nhập đã bị hủy');
       }
 
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        return AuthResult(
+          success: false,
+          message: 'Không lấy được Google token. Kiểm tra cấu hình OAuth.',
+        );
+      }
+
       // Gửi thông tin lên backend
-      final response = await http.post(
-        Uri.parse("$baseUrl/google"),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'googleId': googleUser.id,
-          'email': googleUser.email,
-          'name': googleUser.displayName ?? googleUser.email.split('@').first,
-          'avatar': googleUser.photoUrl ?? '',
-        }),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse("$baseUrl/google"),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'credential': idToken}),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
         // Lưu token và user
         await _saveAuthData(data['token'], data['refreshToken'], data['user']);
-        
+
         return AuthResult(
           success: true,
           message: data['message'],
@@ -167,7 +180,7 @@ class AuthService {
     try {
       await _googleSignIn.signOut();
     } catch (_) {}
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_refreshTokenKey);
@@ -207,7 +220,11 @@ class AuthService {
   }
 
   // ================= SAVE AUTH DATA =================
-  static Future<void> _saveAuthData(String token, String? refreshToken, Map<String, dynamic> user) async {
+  static Future<void> _saveAuthData(
+    String token,
+    String? refreshToken,
+    Map<String, dynamic> user,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     if (refreshToken != null) {
@@ -257,21 +274,20 @@ class AuthService {
         return AuthResult(success: false, message: 'Chưa đăng nhập');
       }
 
-      final response = await http.get(
-        Uri.parse("$baseUrl/profile"),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(timeout);
+      final response = await http
+          .get(
+            Uri.parse("$baseUrl/profile"),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        return AuthResult(
-          success: true,
-          user: User.fromJson(data['user']),
-        );
+        return AuthResult(success: true, user: User.fromJson(data['user']));
       } else {
         return AuthResult(
           success: false,
@@ -291,10 +307,5 @@ class AuthResult {
   final User? user;
   final String? token;
 
-  AuthResult({
-    required this.success,
-    this.message,
-    this.user,
-    this.token,
-  });
+  AuthResult({required this.success, this.message, this.user, this.token});
 }

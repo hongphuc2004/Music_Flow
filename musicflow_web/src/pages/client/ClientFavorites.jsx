@@ -77,7 +77,7 @@ function ClientFavorites() {
             }}
           >
             <FavoriteIcon sx={{ color: '#ef4444' }} />
-            <Typography fontWeight={700}>Danh sach bai hat da tim cua ban</Typography>
+            <Typography fontWeight={700}>Danh sách bài hát yêu thích của bạn</Typography>
           </Paper>
         </Grid>
 
@@ -140,7 +140,7 @@ function ClientFavorites() {
                     </Stack>
                   </Paper>
                 ))}
-                {!favorites.length && <Typography color="text.secondary">Ban chua co bai hat yeu thich nao.</Typography>}
+                {!favorites.length && <Typography color="text.secondary">Bạn chưa có bài hát yêu thích nào.</Typography>}
               </Stack>
             )}
           </Paper>

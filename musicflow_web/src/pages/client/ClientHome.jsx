@@ -340,9 +340,21 @@ function ClientHome() {
                 >
                   <Stack alignItems="center" spacing={1.25}>
                     <Avatar
+                      key={currentSong._id}
                       src={currentSong.imageUrl}
                       variant="rounded"
-                      sx={{ width: 190, height: 190, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.16)' }}
+                      sx={{
+                        width: 190,
+                        height: 190,
+                        borderRadius: '50%',
+                        border: '3px solid rgba(255,255,255,0.16)',
+                        animation: 'spinDisc 10s linear infinite',
+                        animationPlayState: isPlaying ? 'running' : 'paused',
+                        '@keyframes spinDisc': {
+                          from: { transform: 'rotate(0deg)' },
+                          to: { transform: 'rotate(360deg)' },
+                        },
+                      }}
                     >
                       {currentSong.title?.charAt(0)}
                     </Avatar>

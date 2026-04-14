@@ -108,7 +108,6 @@ function ClientProfile() {
               </Avatar>
             )}
             <Typography variant="h6" sx={{ fontWeight: 800 }}>{userName}</Typography>
-            <Typography color="text.secondary">User</Typography>
           </Paper>
         </Grid>
 
@@ -122,12 +121,6 @@ function ClientProfile() {
                 fullWidth
               />
               <TextField label="Email" value={form.email} fullWidth disabled />
-              <TextField
-                label="Avatar URL"
-                value={form.avatarUrl}
-                onChange={(event) => setForm((prev) => ({ ...prev, avatarUrl: event.target.value }))}
-                fullWidth
-              />
               <Button variant="outlined" component="label" sx={{ width: 'fit-content' }}>
                 {avatarFile ? `Anh da chon: ${avatarFile.name}` : 'Tai len avatar (tuy chon)'}
                 <input hidden type="file" accept="image/*" onChange={(event) => setAvatarFile(event.target.files?.[0] || null)} />

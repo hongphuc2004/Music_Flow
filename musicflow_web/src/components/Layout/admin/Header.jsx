@@ -66,7 +66,6 @@ function Header({ title }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('role');
     window.location.replace('/adminlogin');
   };

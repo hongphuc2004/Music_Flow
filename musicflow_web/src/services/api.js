@@ -5,17 +5,52 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+let refreshPromise = null;
+let accessToken = null;
+
+export const setAccessToken = (token) => {
+  accessToken = token || null;
+};
+
+const refreshAccessToken = async () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(
+        `${API_BASE_URL}/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+      .then((res) => {
+        const token = res?.data?.token;
+        const role = res?.data?.user?.role;
+        accessToken = token || null;
+        if (role) {
+          localStorage.setItem('role', role);
+        }
+        return token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+};
+
 // Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
@@ -27,10 +62,33 @@ api.interceptors.request.use(
 // Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const requestUrl = originalRequest?.url || '';
+
+    if (
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !requestUrl.includes('/auth/refresh')
+    ) {
+      originalRequest._retry = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        }
+      } catch (_) {
+      }
+    }
+
+    if (status === 401) {
       const currentRole = localStorage.getItem('role');
-      localStorage.removeItem('token');
+      accessToken = null;
       localStorage.removeItem('role');
       if (currentRole === 'artist') {
         clearArtistSession();
@@ -39,6 +97,7 @@ api.interceptors.response.use(
         window.location.href = '/accountlogin';
       }
     }
+
     return Promise.reject(error);
   }
 );

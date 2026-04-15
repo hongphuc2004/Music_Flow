@@ -17,8 +17,9 @@ import {
   Google as GoogleIcon,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../../services/api';
 import { syncArtistSession } from '../../utils/artistSession';
+import { setAccessToken } from '../../services/api';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -62,12 +63,12 @@ function ArtistLogin() {
         try {
           setGoogleLoading(true);
           setError('');
-          const res = await axios.post('/api/artist/google', {
+          const res = await api.post('/artist/google', {
             credential: response.credential,
           });
 
           const { token, artist } = res.data;
-          localStorage.setItem('token', token);
+          setAccessToken(token);
           localStorage.setItem('role', artist.role);
           syncArtistSession(artist);
           navigate('/artist/dashboard');
@@ -90,9 +91,9 @@ function ArtistLogin() {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.post('/api/artist/login', formData);
+      const res = await api.post('/artist/login', formData);
       const { token, artist } = res.data;
-      localStorage.setItem('token', token);
+      setAccessToken(token);
       localStorage.setItem('role', artist.role);
       syncArtistSession(artist);
       navigate('/artist/dashboard');

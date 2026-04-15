@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "musicflow_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("Missing JWT_SECRET environment variable");
+}
 
 const authMiddleware = (req, res, next) => {
   try {

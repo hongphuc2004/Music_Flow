@@ -50,7 +50,6 @@ const theme = createTheme({
 });
 
 const ProtectedRoute = ({ children, role }) => {
-  const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
   const roleDefaultRoute = {
     admin: '/',
@@ -58,7 +57,7 @@ const ProtectedRoute = ({ children, role }) => {
     user: '/client/home',
   };
 
-  if (!token) {
+  if (!userRole) {
     return <Navigate to={role === 'artist' ? '/artistlogin' : '/accountlogin'} replace />;
   }
 
@@ -70,19 +69,17 @@ const ProtectedRoute = ({ children, role }) => {
 };
 
 const PublicRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
-  if (token && userRole === 'admin') return <Navigate to="/" replace />;
-  if (token && userRole === 'artist') return <Navigate to="/artist/dashboard" replace />;
-  if (token && userRole === 'user') return <Navigate to="/client/home" replace />;
+  if (userRole === 'admin') return <Navigate to="/" replace />;
+  if (userRole === 'artist') return <Navigate to="/artist/dashboard" replace />;
+  if (userRole === 'user') return <Navigate to="/client/home" replace />;
   return children;
 };
 
 const HomeRedirect = () => {
-  const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
 
-  if (!token) return <Navigate to="/accountlogin" replace />;
+  if (!userRole) return <Navigate to="/accountlogin" replace />;
   if (userRole === 'artist') return <Navigate to="/artist/dashboard" replace />;
   if (userRole === 'user') return <Navigate to="/client/home" replace />;
   return <Navigate to="/" replace />;

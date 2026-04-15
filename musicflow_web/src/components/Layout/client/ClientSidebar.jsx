@@ -46,7 +46,6 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('userName');
     localStorage.removeItem('email');

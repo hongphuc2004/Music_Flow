@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/user_model.dart';
@@ -16,6 +17,7 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
+  static final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   static final ValueNotifier<User?> currentUserNotifier = ValueNotifier<User?>(
     null,
   );
@@ -182,8 +184,8 @@ class AuthService {
     } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
+    await _secureStorage.delete(key: _tokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
     await prefs.remove(_userKey);
     currentUserNotifier.value = null;
   }
@@ -196,8 +198,7 @@ class AuthService {
 
   // ================= GET TOKEN =================
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    return _secureStorage.read(key: _tokenKey);
   }
 
   // ================= GET CURRENT USER =================
@@ -226,23 +227,22 @@ class AuthService {
     Map<String, dynamic> user,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
     if (refreshToken != null) {
-      await prefs.setString(_refreshTokenKey, refreshToken);
+      await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
     }
     await prefs.setString(_userKey, jsonEncode(user));
     currentUserNotifier.value = User.fromJson(user);
   }
 
   static Future<String?> getRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_refreshTokenKey);
+    return _secureStorage.read(key: _refreshTokenKey);
   }
 
   static Future<void> clearAuthData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_refreshTokenKey);
+    await _secureStorage.delete(key: _tokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
     await prefs.remove(_userKey);
     currentUserNotifier.value = null;
   }

@@ -17,7 +17,7 @@ import {
   Google as GoogleIcon,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import api, { setAccessToken } from '../services/api';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -62,11 +62,11 @@ function AccountLogin() {
           setGoogleLoading(true);
           setError('');
 
-          const res = await axios.post('/api/auth/google', {
+          const res = await api.post('/auth/google', {
             credential: response.credential,
           });
           const { token, user } = res.data;
-          localStorage.setItem('token', token);
+          setAccessToken(token);
           localStorage.setItem('role', user.role);
           localStorage.setItem('userName', user.name || 'Listener');
           localStorage.setItem('email', user.email || '');
@@ -104,9 +104,9 @@ function AccountLogin() {
     setError('');
     try {
       // Chỉ đăng nhập user
-      const res = await axios.post('/api/auth/login', formData);
+      const res = await api.post('/auth/login', formData);
       const { token, user } = res.data;
-      localStorage.setItem('token', token);
+      setAccessToken(token);
       localStorage.setItem('role', user.role);
       localStorage.setItem('userName', user.name || 'Listener');
       localStorage.setItem('email', user.email || '');

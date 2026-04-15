@@ -13,6 +13,11 @@ const Topic = require("../models/topic.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
 const Artist = require("../models/artist.model");
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("Missing JWT_SECRET environment variable");
+}
 
 // Multer config for image upload
 const upload = multer({ dest: "uploads/" });
@@ -138,7 +143,7 @@ router.post("/auth/login", async (req, res) => {
     // Tạo JWT token cho admin
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: "7d" }
     );
 

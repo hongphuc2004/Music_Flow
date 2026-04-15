@@ -15,7 +15,7 @@ import {
   VisibilityOff,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import { authApi } from '../../services/api';
+import { authApi, setAccessToken } from '../../services/api';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ function AdminLogin() {
         setLoading(false);
         return;
       }
-      localStorage.setItem('token', token);
+      setAccessToken(token);
       localStorage.setItem('role', user.role);
       navigate('/');
     } catch (err) {

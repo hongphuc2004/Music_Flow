@@ -46,7 +46,6 @@ function ArtistHeader({ title }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('role');
     clearArtistSession();
     window.location.replace('/artistlogin');

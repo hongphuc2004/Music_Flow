@@ -2,7 +2,10 @@ const Artist = require("../models/artist.model");
 const jwt = require("jsonwebtoken");
 const { verifyGoogleCredential } = require("../utils/googleAuth");
 
-const JWT_SECRET = process.env.JWT_SECRET || "musicflow_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("Missing JWT_SECRET environment variable");
+}
 
 // Đăng ký artist
 exports.register = async (req, res) => {

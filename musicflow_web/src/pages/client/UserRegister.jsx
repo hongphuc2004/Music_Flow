@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import axios from "axios";
+import api from '../../services/api';
 import {
   Box,
   Paper,
@@ -28,10 +28,9 @@ const UserRegister = () => {
     setMessage("");
     setError("");
     try {
-      const res = await axios.post("/api/auth/register", form);
+      const res = await api.post('/auth/register', form);
       setMessage(res.data.message || "Đăng ký thành công!");
       // Xóa token cũ nếu có
-      localStorage.removeItem('token');
       localStorage.removeItem('role');
       setTimeout(() => {
         window.location.replace('/accountlogin');

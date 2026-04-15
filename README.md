@@ -77,3 +77,62 @@ docker compose down
 ```
 
 If you run Flutter app on a physical device, keep API host as your machine LAN IP with port `5000`.
+
+## Deploy 
+- Frontend React: Vercel
+- Backend Node.js: Render
+- Database: MongoDB Atlas (M0 free)
+
+### 1. Deploy Backend len Render
+1. Tao Web Service moi tren Render, ket noi repository nay.
+2. Root Directory: `musicflow_backend`
+3. Build Command: `npm install`
+4. Start Command: `npm start`
+5. Them Environment Variables:
+
+```bash
+PORT=5000
+NODE_ENV=production
+MONGO_URI=<mongodb-atlas-connection-string>
+JWT_SECRET=<random-long-secret>
+CORS_ORIGINS=https://<your-vercel-domain>
+REFRESH_COOKIE_NAME=mf_refresh_token
+CLOUDINARY_CLOUD_NAME=<cloudinary-cloud-name>
+CLOUDINARY_API_KEY=<cloudinary-api-key>
+CLOUDINARY_API_SECRET=<cloudinary-api-secret>
+GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
+```
+
+6. Sau khi deploy xong, luu lai URL backend, vi du:
+`https://musicflow-backend.onrender.com`
+
+### 2. Deploy Web len Vercel
+1. Import project vao Vercel.
+2. Root Directory: `musicflow_web`
+3. Build Command: `npm run build`
+4. Output Directory: `dist`
+5. Them environment variable:
+
+```bash
+VITE_API_URL=https://musicflow-backend.onrender.com/api
+VITE_GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
+```
+
+### 3. Cap nhat CORS sau khi co domain Vercel
+Tai Render, sua lai `CORS_ORIGINS` theo domain that cua Vercel:
+
+```bash
+CORS_ORIGINS=https://<your-project>.vercel.app
+```
+
+Neu can cho nhieu domain (preview + production):
+
+```bash
+CORS_ORIGINS=https://<prod-domain>.vercel.app,https://<preview-domain>.vercel.app
+```
+
+### 4. Test nhanh sau deploy
+1. Dang ky / dang nhap web.
+2. Goi cac API can auth (profile, playlist, favorites).
+3. Dang xuat va dang nhap lai.
+

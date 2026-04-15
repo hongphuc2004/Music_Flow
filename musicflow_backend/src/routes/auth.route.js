@@ -1,6 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const authMiddleware = require("../middleware/auth.middleware");
 
 const User = require("../models/user.model");
 const RefreshToken = require("../models/refreshToken.model");
@@ -8,9 +9,46 @@ const { verifyGoogleCredential } = require("../utils/googleAuth");
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "musicflow_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("Missing JWT_SECRET environment variable");
+}
+
 const JWT_EXPIRES_IN = "2h";
 const REFRESH_EXPIRES_IN = 30;
+const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "mf_refresh_token";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+function parseCookies(req) {
+  const rawCookie = req.headers.cookie;
+  if (!rawCookie) return {};
+
+  return rawCookie.split(";").reduce((acc, part) => {
+    const [name, ...valueParts] = part.trim().split("=");
+    if (!name) return acc;
+    acc[name] = decodeURIComponent(valueParts.join("="));
+    return acc;
+  }, {});
+}
+
+function setRefreshCookie(res, refreshToken) {
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: IS_PRODUCTION ? "none" : "lax",
+    maxAge: REFRESH_EXPIRES_IN * 24 * 60 * 60 * 1000,
+    path: "/api/auth",
+  });
+}
+
+function clearRefreshCookie(res) {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: IS_PRODUCTION ? "none" : "lax",
+    path: "/api/auth",
+  });
+}
 
 function generateRefreshToken() {
   const token = crypto.randomBytes(64).toString("hex");
@@ -18,6 +56,10 @@ function generateRefreshToken() {
     Date.now() + REFRESH_EXPIRES_IN * 24 * 60 * 60 * 1000
   );
   return { token, expiresAt };
+}
+
+function hashRefreshToken(token) {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
 }
 
 function signAccessToken(userId) {
@@ -28,13 +70,13 @@ function signAccessToken(userId) {
 
 async function rotateRefreshToken(userId, existingToken = null) {
   if (existingToken) {
-    await RefreshToken.deleteOne({ token: existingToken });
+    await RefreshToken.deleteOne({ tokenHash: hashRefreshToken(existingToken) });
   } else {
     await RefreshToken.findOneAndDelete({ userId });
   }
 
   const { token, expiresAt } = generateRefreshToken();
-  await RefreshToken.create({ userId, token, expiresAt });
+  await RefreshToken.create({ userId, tokenHash: hashRefreshToken(token), expiresAt });
   return token;
 }
 
@@ -72,6 +114,7 @@ router.post("/register", async (req, res) => {
 
     const token = signAccessToken(user._id);
     const refreshToken = await rotateRefreshToken(user._id);
+    setRefreshCookie(res, refreshToken);
 
     res.status(201).json({
       success: true,
@@ -119,6 +162,7 @@ router.post("/login", async (req, res) => {
 
     const token = signAccessToken(user._id);
     const refreshToken = await rotateRefreshToken(user._id);
+    setRefreshCookie(res, refreshToken);
 
     res.json({
       success: true,
@@ -167,6 +211,7 @@ router.post("/google", async (req, res) => {
 
     const token = signAccessToken(user._id);
     const refreshToken = await rotateRefreshToken(user._id);
+    setRefreshCookie(res, refreshToken);
 
     res.json({
       success: true,
@@ -187,7 +232,9 @@ router.post("/google", async (req, res) => {
 
 router.post("/refresh", async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshTokenFromBody = req.body?.refreshToken;
+    const refreshTokenFromCookie = parseCookies(req)[REFRESH_COOKIE_NAME];
+    const refreshToken = refreshTokenFromBody || refreshTokenFromCookie;
 
     if (!refreshToken) {
       return res.status(400).json({
@@ -196,7 +243,7 @@ router.post("/refresh", async (req, res) => {
       });
     }
 
-    const found = await RefreshToken.findOne({ token: refreshToken });
+    const found = await RefreshToken.findOne({ tokenHash: hashRefreshToken(refreshToken) });
     if (!found || found.expiresAt < new Date()) {
       return res.status(401).json({
         success: false,
@@ -214,6 +261,7 @@ router.post("/refresh", async (req, res) => {
 
     const token = signAccessToken(user._id);
     const newRefreshToken = await rotateRefreshToken(user._id, refreshToken);
+    setRefreshCookie(res, newRefreshToken);
 
     res.json({
       success: true,
@@ -225,6 +273,30 @@ router.post("/refresh", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Loi refresh token",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/logout", async (req, res) => {
+  try {
+    const refreshTokenFromBody = req.body?.refreshToken;
+    const refreshTokenFromCookie = parseCookies(req)[REFRESH_COOKIE_NAME];
+    const refreshToken = refreshTokenFromBody || refreshTokenFromCookie;
+
+    if (refreshToken) {
+      await RefreshToken.deleteOne({ tokenHash: hashRefreshToken(refreshToken) });
+    }
+
+    clearRefreshCookie(res);
+    return res.json({
+      success: true,
+      message: "Dang xuat thanh cong",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Dang xuat that bai",
       error: error.message,
     });
   }
@@ -251,37 +323,6 @@ router.get("/profile", authMiddleware, async (req, res) => {
     });
   }
 });
-
-function authMiddleware(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Khong co token",
-      });
-    }
-
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const resolvedUserId = decoded.userId || decoded.id || decoded._id || null;
-
-    if (!resolvedUserId) {
-      return res.status(401).json({
-        success: false,
-        message: "Token khong chua thong tin user",
-      });
-    }
-
-    req.userId = resolvedUserId;
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: "Token khong hop le",
-    });
-  }
-}
 
 router.authMiddleware = authMiddleware;
 

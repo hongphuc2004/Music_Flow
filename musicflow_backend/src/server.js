@@ -17,8 +17,57 @@ const commentRoute = require("./routes/comment.route");
 const artistRoute = require("./routes/artist.route");
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function createRateLimiter({ windowMs, max, message }) {
+  const hitsByKey = new Map();
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = `${req.ip || "unknown"}:${req.path}`;
+    const bucket = hitsByKey.get(key);
+
+    if (!bucket || now > bucket.resetAt) {
+      hitsByKey.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    if (bucket.count >= max) {
+      return res.status(429).json({
+        success: false,
+        message,
+      });
+    }
+
+    bucket.count += 1;
+    return next();
+  };
+}
+
+const authRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: "Too many authentication requests. Please try again later.",
+});
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(express.json());
+
+app.use("/api/auth", authRateLimiter);
+app.use("/api/admin/auth/login", authRateLimiter);
+app.use("/api/artist/login", authRateLimiter);
+app.use("/api/artist/google", authRateLimiter);
 
 // routes
 app.use("/api/upload", uploadRoute);

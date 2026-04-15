@@ -55,7 +55,6 @@ function ArtistSidebar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('role');
     clearArtistSession();
     navigate('/artistlogin');

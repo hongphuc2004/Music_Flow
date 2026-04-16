@@ -47,9 +47,13 @@ You can create a root `.env` file (next to `docker-compose.yml`) to override def
 ```bash
 MONGO_URI=mongodb://mongo:27017/musicflow
 JWT_SECRET=your_jwt_secret
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:5173,http://localhost:8080
+REFRESH_COOKIE_NAME=mf_refresh_token
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+GOOGLE_CLIENT_ID=your_google_oauth_web_client_id.apps.googleusercontent.com
 ```
 
 ### 2. Start production profile
@@ -64,7 +68,8 @@ docker compose --profile dev up --build
 
 Dev URLs:
 - Web (Vite HMR): `http://localhost:5173`
-- Backend API (nodemon): `http://localhost:5000`
+- Backend API (nodemon): `http://localhost:5001`
+- MongoDB: `mongodb://localhost:27017`
 
 ### 4. Access services (production profile)
 - Web app: `http://localhost:8080`
@@ -79,23 +84,36 @@ docker compose down
 If you run Flutter app on a physical device, keep API host as your machine LAN IP with port `5000`.
 
 ## Deploy 
-- Frontend React: Vercel
-- Backend Node.js: Render
-- Database: MongoDB Atlas (M0 free)
+- Frontend: Vercel
+- Backend: Render
+- Database: MongoDB Atlas (M0)
 
-### 1. Deploy Backend len Render
-1. Tao Web Service moi tren Render, ket noi repository nay.
-2. Root Directory: `musicflow_backend`
-3. Build Command: `npm install`
-4. Start Command: `npm start`
-5. Them Environment Variables:
+### 1. MongoDB Atlas 
+1. Tạo cluster M0.
+2. Tạo database user.
+3. Network Access:
+	- Với đồ án/demo: cho phép `0.0.0.0/0` để Render kết nối ổn định.
+4. Lấy connection string dạng:
 
 ```bash
-PORT=5000
+mongodb+srv://<user>:<password-encoded>@<cluster-host>/musicflow_db?retryWrites=true&w=majority&appName=Cluster0
+```
+
+Lưu ý: nếu password có `@` thì encode thành `%40`.
+
+### 2. Backend trên Render
+1. Tạo `Web Service` từ repo này.
+2. `Runtime`: `Node`.
+3. `Root Directory`: `musicflow_backend`.
+4. `Build Command`: `npm install`.
+5. `Start Command`: `npm start`.
+6. Khai báo biến môi trường:
+
+```bash
 NODE_ENV=production
-MONGO_URI=<mongodb-atlas-connection-string>
+MONGO_URI=<atlas-connection-string>
 JWT_SECRET=<random-long-secret>
-CORS_ORIGINS=https://<your-vercel-domain>
+CORS_ORIGINS=https://<vercel-prod-domain>,https:/<vercel-preview-domain>
 REFRESH_COOKIE_NAME=mf_refresh_token
 CLOUDINARY_CLOUD_NAME=<cloudinary-cloud-name>
 CLOUDINARY_API_KEY=<cloudinary-api-key>
@@ -103,36 +121,49 @@ CLOUDINARY_API_SECRET=<cloudinary-api-secret>
 GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
 ```
 
-6. Sau khi deploy xong, luu lai URL backend, vi du:
-`https://musicflow-backend.onrender.com`
+7. Deploy và kiểm tra log có:
+- `MongoDB connected`
+- `Server running on port ...`
 
-### 2. Deploy Web len Vercel
-1. Import project vao Vercel.
-2. Root Directory: `musicflow_web`
-3. Build Command: `npm run build`
-4. Output Directory: `dist`
-5. Them environment variable:
+### 3. Frontend trên Vercel
+1. Import project vào Vercel.
+2. `Root Directory`: `musicflow_web`.
+3. `Build Command`: `npm run build`.
+4. `Output Directory`: `dist`.
+5. Biến môi trường:
 
 ```bash
-VITE_API_URL=https://musicflow-backend.onrender.com/api
+VITE_API_URL=https://<your-render-domain>.onrender.com/api
 VITE_GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
 ```
 
-### 3. Cap nhat CORS sau khi co domain Vercel
-Tai Render, sua lai `CORS_ORIGINS` theo domain that cua Vercel:
+6. Deploy.
+
+### 4. Google OAuth
+Trong Google Cloud Console -> OAuth Client:
+1. Thêm tất cả domain web đang dùng vào `Authorized JavaScript origins`.
+2. Ví dụ:
 
 ```bash
-CORS_ORIGINS=https://<your-project>.vercel.app
+https://<vercel-prod-domain>
+https://<vercel-preview-domain>
+http://localhost:5173
 ```
 
-Neu can cho nhieu domain (preview + production):
+### 5. Cấu hình route SPA trên Vercel
+Project đã có `musicflow_web/vercel.json` để rewrite route về `index.html`.
+Nhờ đó các URL như `/accountlogin`, `/client/home` không bị 404.
 
-```bash
-CORS_ORIGINS=https://<prod-domain>.vercel.app,https://<preview-domain>.vercel.app
-```
+### 6. Lỗi hay gặp
+1. `origin_mismatch` (Google): thiếu domain trong JavaScript origins.
+2. `Not allowed by CORS`: thiếu domain trong `CORS_ORIGINS` hoặc sai 1 ký tự.
+3. `No Access-Control-Allow-Origin`: backend chưa redeploy sau khi đổi env.
+4. `querySrv ENOTFOUND _mongodb._tcp...`: sai `MONGO_URI` (thường do password chưa encode).
+5. `/accountlogin 404` trên Vercel: thiếu rewrite SPA (đã fix bằng `vercel.json`).
 
-### 4. Test nhanh sau deploy
-1. Dang ky / dang nhap web.
-2. Goi cac API can auth (profile, playlist, favorites).
-3. Dang xuat va dang nhap lai.
+### 7. Checklist sau deploy
+1. Đăng nhập email/password.
+2. Đăng nhập Google.
+3. Gọi API cần auth (profile, playlist, favorites).
+4. Logout và login lại.
 

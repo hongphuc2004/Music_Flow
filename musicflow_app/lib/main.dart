@@ -3,6 +3,7 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/mini_player.dart';
 import 'package:musicflow_app/presentation/screens/splash/splash_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_screen.dart';
+import 'package:musicflow_app/presentation/screens/chart/flowchart_screen.dart';
 import 'package:musicflow_app/presentation/screens/search/search_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/library_screen.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
@@ -53,6 +54,7 @@ class MainScreen extends StatefulWidget {
 
 class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  int _flowchartRefreshTrigger = 0;
   final GlobalAudioState _audioState = GlobalAudioState();
   final GlobalKey<LibraryScreenState> _libraryKey = GlobalKey<LibraryScreenState>();
 
@@ -98,6 +100,12 @@ class MainScreenState extends State<MainScreen> {
                 onSongTap: playSong,
                 onPlayAll: playPlaylist,
               ),
+              FlowchartScreen(
+                onSongTap: playSong,
+                onPlayWithQueue: (songs, startIndex) =>
+                    playPlaylist(songs, startIndex: startIndex),
+                refreshTrigger: _flowchartRefreshTrigger,
+              ),
               SearchScreen(onSongTap: playSong),
               LibraryScreen(
                 key: _libraryKey,
@@ -135,9 +143,12 @@ class MainScreenState extends State<MainScreen> {
         onTap: (index) {
           setState(() {
             _currentIndex = index;
+            if (index == 1) {
+              _flowchartRefreshTrigger++;
+            }
           });
           // Refresh Library khi chuyển sang tab Library
-          if (index == 2) {
+          if (index == 3) {
             _libraryKey.currentState?.refreshFavorites();
           }
         },
@@ -146,6 +157,7 @@ class MainScreenState extends State<MainScreen> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.trending_up_rounded), label: 'Trending'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(icon: Icon(Icons.library_music), label: 'Library'),
         ],

@@ -5,6 +5,7 @@ const fs = require("fs");
 const artistController = require("../controllers/artist.controller");
 const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
+const SongPlayEvent = require("../models/song-play-event.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const cloudinary = require("../config/cloudinary");
@@ -177,19 +178,31 @@ router.get("/profile", async (req, res) => {
       });
     }
 
-    const [songs, totalSongs, followerCount] = await Promise.all([
-      Song.find({ artists: artist._id, isPublic: true })
+    const publicSongFilter = { artists: artist._id, isPublic: true };
+
+    const [songs, totalSongs, followerCount, totalLikesAgg, songIds] = await Promise.all([
+      Song.find(publicSongFilter)
         .populate("artists", "name avatar")
         .sort({ createdAt: -1 })
         .limit(20),
-      Song.countDocuments({ artists: artist._id, isPublic: true }),
+      Song.countDocuments(publicSongFilter),
       User.countDocuments({ followedArtists: artist._id }),
+      Song.aggregate([
+        { $match: publicSongFilter },
+        { $group: { _id: null, totalLikes: { $sum: { $ifNull: ["$likeCount", 0] } } } },
+      ]),
+      Song.find(publicSongFilter).select("_id").lean(),
     ]);
 
-    const totalLikes = songs.reduce(
-      (sum, song) => sum + (Number(song.likeCount) || 0),
-      0,
-    );
+    const totalLikes = (totalLikesAgg[0]?.totalLikes || 0);
+
+    const songIdList = songIds.map((song) => song._id);
+    const monthlyListeners = songIdList.length > 0
+      ? await SongPlayEvent.countDocuments({
+          songId: { $in: songIdList },
+          playedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        })
+      : 0;
 
     return res.json({
       success: true,
@@ -201,7 +214,7 @@ router.get("/profile", async (req, res) => {
         bio: artist.bio || "",
         totalSongs,
         totalLikes,
-        monthlyListeners: totalLikes * 37 + totalSongs * 125,
+        monthlyListeners,
         followers: followerCount,
         latestReleaseLabel:
           songs.length > 0 && songs[0].createdAt

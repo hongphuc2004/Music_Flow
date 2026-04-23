@@ -74,6 +74,101 @@ class SongApiService {
     }
   }
 
+  /// Lấy dữ liệu Flowchart theo giờ (real data từ backend)
+  static Future<FlowchartDataResult> fetchFlowchartData({
+    int hours = 12,
+    int limit = 50,
+    String mode = 'flow',
+  }) async {
+    final queryParams = <String, String>{
+      'hours': '$hours',
+      'limit': '$limit',
+      'mode': mode,
+    };
+
+    final uri = Uri.parse('$baseUrl/flowchart').replace(queryParameters: queryParams);
+    final response = await _getWithRetry(uri);
+
+    if (response.statusCode != 200) {
+      throw NetworkException('Khong the tai du lieu Flowchart (${response.statusCode})');
+    }
+
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    List<String> timeSlots;
+    final timestampSlots = (data['timeSlotTimestamps'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    if (timestampSlots.isNotEmpty) {
+      timeSlots = timestampSlots.map(_toLocalHourLabel).toList();
+    } else {
+      timeSlots = (data['timeSlots'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList();
+    }
+
+    final topSongs = (data['topSongs'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(Song.fromJson)
+        .toList();
+
+    final chartSeriesBySongId = <String, List<double>>{};
+    final rawSeries = (data['chartSeries'] as List<dynamic>? ?? const []);
+    for (final raw in rawSeries) {
+      if (raw is! Map<String, dynamic>) {
+        continue;
+      }
+
+      final songId = raw['songId']?.toString();
+      if (songId == null || songId.isEmpty) {
+        continue;
+      }
+
+      final points = (raw['points'] as List<dynamic>? ?? const [])
+          .map((e) => (e as num?)?.toDouble() ?? 0.0)
+          .toList();
+      chartSeriesBySongId[songId] = points;
+    }
+
+    final songMetricsBySongId = <String, FlowchartSongMetrics>{};
+    final rawMetrics = (data['songMetrics'] as List<dynamic>? ?? const []);
+    for (final raw in rawMetrics) {
+      if (raw is! Map<String, dynamic>) {
+        continue;
+      }
+
+      final songId = raw['songId']?.toString();
+      if (songId == null || songId.isEmpty) {
+        continue;
+      }
+
+      songMetricsBySongId[songId] = FlowchartSongMetrics(
+        last24h: (raw['last24h'] as num?)?.toInt() ?? 0,
+        previous24h: (raw['previous24h'] as num?)?.toInt() ?? 0,
+        risingScore: (raw['risingScore'] as num?)?.toInt() ?? 0,
+      );
+    }
+
+    return FlowchartDataResult(
+      hours: (data['hours'] as num?)?.toInt() ?? hours,
+      rankingMode: data['rankingMode']?.toString() ?? mode,
+      timeSlots: timeSlots,
+      topSongs: topSongs,
+      chartSeriesBySongId: chartSeriesBySongId,
+      songMetricsBySongId: songMetricsBySongId,
+    );
+  }
+
+  static String _toLocalHourLabel(String rawIso) {
+    try {
+      final local = DateTime.parse(rawIso).toLocal();
+      return local.hour.toString().padLeft(2, '0');
+    } catch (_) {
+      return rawIso;
+    }
+  }
+
   /// Tìm kiếm bài hát theo query (tên bài hát hoặc ca sĩ)
   static Future<List<Song>> searchSongs({
     String? query,
@@ -448,6 +543,37 @@ class DownloadSongApiResult {
     required this.success,
     required this.message,
     this.audioUrl,
+  });
+}
+
+/// Kết quả lấy dữ liệu Flowchart
+class FlowchartDataResult {
+  final int hours;
+  final String rankingMode;
+  final List<String> timeSlots;
+  final List<Song> topSongs;
+  final Map<String, List<double>> chartSeriesBySongId;
+  final Map<String, FlowchartSongMetrics> songMetricsBySongId;
+
+  FlowchartDataResult({
+    required this.hours,
+    required this.rankingMode,
+    required this.timeSlots,
+    required this.topSongs,
+    required this.chartSeriesBySongId,
+    required this.songMetricsBySongId,
+  });
+}
+
+class FlowchartSongMetrics {
+  final int last24h;
+  final int previous24h;
+  final int risingScore;
+
+  FlowchartSongMetrics({
+    required this.last24h,
+    required this.previous24h,
+    required this.risingScore,
   });
 }
 

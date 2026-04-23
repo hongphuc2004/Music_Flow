@@ -6,9 +6,41 @@ const https = require("https");
 const http = require("http");
 const cloudinary = require("../config/cloudinary");
 const Song = require("../models/song.model");
+const SongPlayEvent = require("../models/song-play-event.model");
 const Artist = require("../models/artist.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const { downloadSong } = require("../controllers/song.controller");
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const TRACK_PLAY_COOLDOWN_MS = 30 * 1000;
+const recentPlayTrackByKey = new Map();
+
+const truncateToHour = (date) => {
+  const d = new Date(date);
+  d.setMinutes(0, 0, 0);
+  return d;
+};
+
+const buildHourlySlots = (hours) => {
+  const nowHour = truncateToHour(new Date());
+  return Array.from({ length: hours }, (_, index) => {
+    const offset = hours - 1 - index;
+    return new Date(nowHour.getTime() - offset * ONE_HOUR_MS);
+  });
+};
+
+const shouldTrackPlayRequest = (songId, ipAddress) => {
+  const key = `${songId}:${ipAddress || "unknown"}`;
+  const now = Date.now();
+  const lastTrackedAt = recentPlayTrackByKey.get(key) || 0;
+
+  if (now - lastTrackedAt < TRACK_PLAY_COOLDOWN_MS) {
+    return false;
+  }
+
+  recentPlayTrackByKey.set(key, now);
+  return true;
+};
 
 // 📋 GET SONGS BY ARTIST NAME (PUBLIC + ADMIN UPLOAD)
 // Tìm bài hát theo artistId (ObjectId)
@@ -112,6 +144,199 @@ const parseArrayField = (value) => {
   return [];
 };
 
+const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
+
+// =================================================
+// 📈 GET FLOWCHART DATA (REAL HOURLY STREAM COUNTS)
+router.get("/flowchart", async (req, res) => {
+  try {
+    const requestedHours = parseInt(req.query.hours, 10);
+    const requestedLimit = parseInt(req.query.limit, 10);
+    const requestedMode = String(req.query.mode || "flow").trim().toLowerCase();
+    const rankingMode = requestedMode === "rising" ? "rising" : "flow";
+
+    const hours = Number.isFinite(requestedHours)
+      ? Math.min(Math.max(requestedHours, 6), 48)
+      : 12;
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 10), 50)
+      : 50;
+
+    const publicSongs = await Song.find({ isPublic: true })
+      .select("_id playCount likeCount")
+      .lean();
+
+    const songIds = publicSongs.map((song) => song._id.toString());
+    const now = new Date();
+    const day24Ms = 24 * ONE_HOUR_MS;
+    const startLast24h = new Date(now.getTime() - day24Ms);
+    const startPrev24h = new Date(now.getTime() - 2 * day24Ms);
+
+    const defaultMetricsBySongId = new Map(
+      publicSongs.map((song) => [song._id.toString(), {
+        last24h: 0,
+        previous24h: 0,
+        risingScore: 0,
+      }])
+    );
+
+    if (songIds.length > 0) {
+      const recentEvents = await SongPlayEvent.find({
+        songId: { $in: songIds },
+        playedAt: { $gte: startPrev24h },
+      })
+        .select("songId playedAt -_id")
+        .lean();
+
+      for (const event of recentEvents) {
+        const songId = event.songId?.toString();
+        if (!songId || !defaultMetricsBySongId.has(songId)) {
+          continue;
+        }
+
+        const metric = defaultMetricsBySongId.get(songId);
+        const playedAt = new Date(event.playedAt);
+        if (playedAt >= startLast24h) {
+          metric.last24h += 1;
+        } else {
+          metric.previous24h += 1;
+        }
+      }
+
+      for (const metric of defaultMetricsBySongId.values()) {
+        metric.risingScore = metric.last24h - metric.previous24h;
+      }
+    }
+
+    const rankedSongIds = [...publicSongs]
+      .sort((a, b) => {
+        const songAId = a._id.toString();
+        const songBId = b._id.toString();
+        const metricA = defaultMetricsBySongId.get(songAId) || {
+          last24h: 0,
+          previous24h: 0,
+          risingScore: 0,
+        };
+        const metricB = defaultMetricsBySongId.get(songBId) || {
+          last24h: 0,
+          previous24h: 0,
+          risingScore: 0,
+        };
+
+        if (rankingMode === "rising") {
+          if (metricB.risingScore !== metricA.risingScore) {
+            return metricB.risingScore - metricA.risingScore;
+          }
+          if (metricB.last24h !== metricA.last24h) {
+            return metricB.last24h - metricA.last24h;
+          }
+        }
+
+        if (b.playCount !== a.playCount) {
+          return b.playCount - a.playCount;
+        }
+        return (b.likeCount || 0) - (a.likeCount || 0);
+      })
+      .slice(0, limit)
+      .map((song) => song._id.toString());
+
+    const rankedSongs = await Song.find({ _id: { $in: rankedSongIds } })
+      .populate("artists")
+      .populate("topicIds");
+
+    const songById = new Map(rankedSongs.map((song) => [song._id.toString(), song]));
+    const topSongs = rankedSongIds
+      .map((songId) => songById.get(songId))
+      .filter(Boolean);
+
+    if (topSongs.length === 0) {
+      return res.json({
+        rankingMode,
+        hours,
+        limit,
+        timeSlots: [],
+        timeSlotTimestamps: [],
+        topSongs: [],
+        chartSeries: [],
+        songMetrics: [],
+        generatedAt: new Date().toISOString(),
+      });
+    }
+
+    const slots = buildHourlySlots(hours);
+    const startTime = slots[0];
+    const songIdSet = topSongs.map((song) => song._id.toString());
+
+    const events = await SongPlayEvent.find({
+      songId: { $in: songIdSet },
+      playedAt: { $gte: startTime },
+    })
+      .select("songId playedAt -_id")
+      .lean();
+
+    const seriesBySongId = new Map(
+      songIdSet.map((songId) => [songId, Array(hours).fill(0)])
+    );
+
+    for (const event of events) {
+      const songId = event.songId?.toString();
+      if (!songId || !seriesBySongId.has(songId)) {
+        continue;
+      }
+
+      const eventHour = truncateToHour(event.playedAt).getTime();
+      const index = Math.floor((eventHour - startTime.getTime()) / ONE_HOUR_MS);
+      if (index < 0 || index >= hours) {
+        continue;
+      }
+
+      const points = seriesBySongId.get(songId);
+      points[index] += 1;
+    }
+
+    const chartSeries = topSongs.map((song) => {
+      const songId = song._id.toString();
+      return {
+        songId,
+        points: seriesBySongId.get(songId) || Array(hours).fill(0),
+      };
+    });
+
+    const songMetrics = topSongs.map((song) => {
+      const songId = song._id.toString();
+      const metric = defaultMetricsBySongId.get(songId) || {
+        last24h: 0,
+        previous24h: 0,
+        risingScore: 0,
+      };
+      return {
+        songId,
+        last24h: metric.last24h,
+        previous24h: metric.previous24h,
+        risingScore: metric.risingScore,
+      };
+    });
+
+    res.json({
+      rankingMode,
+      hours,
+      limit,
+      timeSlots: slots.map((slot) => slot.getHours().toString().padStart(2, "0")),
+      timeSlotTimestamps: slots.map((slot) => slot.toISOString()),
+      topSongs,
+      chartSeries,
+      songMetrics,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Get flowchart data error:", error);
+    res.status(500).json({
+      message: "Get flowchart data failed",
+      error: error.message,
+    });
+  }
+});
+
 // =================================================
 // 🎤 GET LYRICS BY SONG ID
 router.get("/:id/lyrics", async (req, res) => {
@@ -153,6 +378,18 @@ router.get("/:id/stream", async (req, res) => {
     const song = await Song.findById(id);
     if (!song) {
       return res.status(404).json({ message: "Song not found" });
+    }
+
+    const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const shouldTrackPlay = shouldTrackPlayRequest(id, ipAddress);
+    if (shouldTrackPlay) {
+      Song.updateOne({ _id: id }, { $inc: { playCount: 1 } }).catch((err) => {
+        console.error("Increase playCount failed:", err.message);
+      });
+
+      SongPlayEvent.create({ songId: id, playedAt: new Date() }).catch((err) => {
+        console.error("Create song play event failed:", err.message);
+      });
     }
 
     const audioUrl = song.audioUrl;
@@ -378,6 +615,8 @@ router.post(
         imageUrl = imageUpload.secure_url;
         imagePublicId = imageUpload.public_id;
         fs.unlinkSync(imageFile.path);
+      } else if (imageUrlInput && isHttpUrl(imageUrlInput)) {
+        imageUrl = imageUrlInput;
       }
 
       // Xoá file tạm sau khi upload
@@ -418,53 +657,101 @@ router.post(
 
 // =================================================
 // ✏️ UPDATE SONG (AUTH REQUIRED - OWNER OR ARTIST)
-router.put("/:id", authMiddleware, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, artists, lyrics, topicIds, isPublic } = req.body;
+router.put(
+  "/:id",
+  authMiddleware,
+  upload.fields([
+    { name: "audio", maxCount: 1 },
+    { name: "image", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const audioFile = req.files?.audio?.[0] || null;
+    const imageFile = req.files?.image?.[0] || null;
 
-    const song = await Song.findById(id);
-    
-    if (!song) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy bài hát"
+    try {
+      const { id } = req.params;
+      const body = req.body || {};
+      const song = await Song.findById(id);
+
+      if (!song) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy bài hát",
+        });
+      }
+
+      // Kiểm tra quyền sở hữu
+      const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
+      const isArtist = song.artists && song.artists.some((a) => a.toString() === req.userId);
+
+      if (!isUploader && !isArtist) {
+        return res.status(403).json({
+          success: false,
+          message: "Bạn không có quyền sửa bài hát này",
+        });
+      }
+
+      const parsedArtists = parseArrayField(body.artists);
+      const parsedTopicIds = parseArrayField(body.topicIds);
+      const imageUrlInput =
+        typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+
+      if (typeof body.title !== "undefined") {
+        song.title = String(body.title).trim();
+      }
+      if (parsedArtists.length > 0) {
+        song.artists = parsedArtists;
+      }
+      if (typeof body.lyrics !== "undefined") {
+        song.lyrics = body.lyrics;
+      }
+      if (typeof body.topicIds !== "undefined") {
+        song.topicIds = parsedTopicIds;
+      }
+      if (typeof body.isPublic !== "undefined") {
+        song.isPublic = body.isPublic === "true" || body.isPublic === true;
+      }
+
+      if (audioFile) {
+        const audioUpload = await cloudinary.uploader.upload(audioFile.path, {
+          resource_type: "video",
+          folder: "musicflow/audio",
+        });
+        song.audioUrl = audioUpload.secure_url;
+        song.audioPublicId = audioUpload.public_id;
+        song.duration = audioUpload.duration;
+      }
+
+      if (imageFile) {
+        const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
+          folder: "musicflow/images",
+        });
+        song.imageUrl = imageUpload.secure_url;
+        song.imagePublicId = imageUpload.public_id;
+      } else if (imageUrlInput && isHttpUrl(imageUrlInput)) {
+        song.imageUrl = imageUrlInput;
+      }
+
+      await song.save();
+
+      res.json({
+        success: true,
+        message: "Cập nhật thành công",
+        song,
       });
-    }
-
-    // Kiểm tra quyền sở hữu
-    const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
-    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId);
-
-    if (!isUploader && !isArtist) {
-      return res.status(403).json({
+    } catch (error) {
+      console.error("Update song error:", error);
+      res.status(500).json({
         success: false,
-        message: "Bạn không có quyền sửa bài hát này"
+        message: "Cập nhật thất bại",
+        error: error.message,
       });
+    } finally {
+      safeUnlink(audioFile?.path);
+      safeUnlink(imageFile?.path);
     }
-
-    // Cập nhật
-    if (title !== undefined) song.title = title;
-    if (artists && Array.isArray(artists)) song.artists = artists;
-    if (lyrics !== undefined) song.lyrics = lyrics;
-    if (topicIds && Array.isArray(topicIds)) song.topicIds = topicIds;
-    if (isPublic !== undefined) song.isPublic = isPublic;
-
-    await song.save();
-
-    res.json({
-      success: true,
-      message: "Cập nhật thành công",
-      song
-    });
-  } catch (error) {
-    console.error("Update song error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Cập nhật thất bại"
-    });
   }
-});
+);
 
 // =================================================
 // 🔄 TOGGLE PUBLIC/PRIVATE (AUTH REQUIRED - OWNER OR ARTIST)

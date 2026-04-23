@@ -15,10 +15,10 @@ class HomeTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = TimeOfDay.now();
     final greeting = now.hour < 12
-        ? 'Chao buoi sang'
+        ? 'Chào buổi sáng'
         : now.hour < 18
-            ? 'Chao buoi chieu'
-            : 'Chao buoi toi';
+            ? 'Chào buổi chiều'
+            : 'Chào buổi tối';
 
     return Row(
       children: [
@@ -69,7 +69,7 @@ class HomeTopBar extends StatelessWidget {
           child: IconButton(
             onPressed: () {},
             icon: const Icon(Icons.search_rounded, color: Colors.white),
-            tooltip: 'Tim kiem',
+            tooltip: 'Tìm kiếm',
           ),
         ),
       ],
@@ -124,14 +124,14 @@ class HomeHeroSection extends StatelessWidget {
             children: [
               HomeTag(
                 icon: Icons.auto_awesome,
-                label: 'Noi bat',
+                label: 'Nổi bật',
                 background: HomePalette.accent.withOpacity(0.18),
                 foreground: HomePalette.accent,
               ),
               const SizedBox(width: 8),
               HomeTag(
                 icon: Icons.graphic_eq,
-                label: 'Tap trung',
+                label: 'Tập trung',
                 background: HomePalette.secondaryAccent.withOpacity(0.14),
                 foreground: HomePalette.secondaryAccent,
               ),
@@ -210,7 +210,7 @@ class HomeHeroSection extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () => onPlaySong(featuredSong),
                   icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('Phat ngay'),
+                  label: const Text('Phát ngay'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: HomePalette.accent,
                     foregroundColor: Colors.black,
@@ -278,8 +278,8 @@ class HomeQuickActions extends StatelessWidget {
         Expanded(
           child: _QuickActionCard(
             icon: Icons.play_circle_fill_rounded,
-            title: 'Phat nhanh',
-            subtitle: 'Bai noi bat',
+            title: 'Phát nhanh',
+            subtitle: 'Bài nổi bật',
             color: HomePalette.accent,
             onTap: featuredSong == null ? null : onPlayFeatured,
           ),
@@ -289,7 +289,7 @@ class HomeQuickActions extends StatelessWidget {
           child: _QuickActionCard(
             icon: Icons.library_music_rounded,
             title: 'Playlist',
-            subtitle: '$playlistCount bo suu tap',
+            subtitle: '$playlistCount bộ sưu tập',
             color: const Color(0xFF76A9FF),
             onTap: playlistCount == 0 ? null : onOpenPlaylists,
           ),
@@ -298,8 +298,8 @@ class HomeQuickActions extends StatelessWidget {
         Expanded(
           child: _QuickActionCard(
             icon: Icons.auto_awesome_motion_rounded,
-            title: 'Goi y',
-            subtitle: '$recommendedCount bai hat',
+            title: 'Gợi ý',
+            subtitle: '$recommendedCount bài hát',
             color: HomePalette.secondaryAccent,
             onTap: recommendedCount == 0 ? null : onPlayRecommended,
           ),

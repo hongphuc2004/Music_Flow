@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/user_model.dart';
+import 'package:musicflow_app/data/services/artist_api_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Song> songs = [];
   List<Playlist> systemPlaylists = [];
   List<Song> recommendedSongs = [];
+  final Map<String, String> _artistAvatarByName = {};
   User? _currentUser;
   bool isLoading = true;
   String? errorMessage;
@@ -54,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
         artists.add(
           HomeArtistPreview(
             name: artistName.trim(),
-            imageUrl: song.imageUrl,
+            imageUrl: _artistAvatarByName[normalized] ?? song.imageUrl,
           ),
         );
 
@@ -124,6 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
         systemPlaylists = systemPlaylistResult.playlists ?? [];
         isLoading = false;
       });
+
+      _loadFeaturedArtistAvatars();
     } on NetworkException catch (e) {
       setState(() {
         errorMessage = e.message;
@@ -145,7 +149,73 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         recommendedSongs = newRecommended;
       });
+      _loadFeaturedArtistAvatars();
     } catch (_) {}
+  }
+
+  Future<void> _loadFeaturedArtistAvatars() async {
+    final mergedSongs = [
+      ...recommendedSongs,
+      ...songs,
+    ];
+
+    final normalizedNames = <String>[];
+    final queryNameByNormalized = <String, String>{};
+    final seen = <String>{};
+
+    for (final song in mergedSongs) {
+      for (final artistName in song.artists) {
+        final normalized = artistName.trim().toLowerCase();
+        if (normalized.isEmpty || seen.contains(normalized)) continue;
+
+        seen.add(normalized);
+        normalizedNames.add(normalized);
+        queryNameByNormalized[normalized] = artistName.trim();
+
+        if (normalizedNames.length >= 16) {
+          break;
+        }
+      }
+      if (normalizedNames.length >= 16) {
+        break;
+      }
+    }
+
+    final targets = normalizedNames
+        .where((name) => !_artistAvatarByName.containsKey(name))
+        .toList();
+
+    if (targets.isEmpty) {
+      return;
+    }
+
+    final responses = await Future.wait(
+      targets.map((name) {
+        final queryName = queryNameByNormalized[name] ?? name;
+        return ArtistApiService.fetchArtistProfileByName(queryName);
+      }),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    final updates = <String, String>{};
+    for (var i = 0; i < targets.length; i++) {
+      final result = responses[i];
+      final avatar = result.artist?.avatarUrl ?? '';
+      if (result.success && avatar.isNotEmpty) {
+        updates[targets[i]] = avatar;
+      }
+    }
+
+    if (updates.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _artistAvatarByName.addAll(updates);
+    });
   }
 
   void _onSongTap(Song song) {
@@ -351,7 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: HomePalette.card,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -8,6 +8,7 @@ class Song {
   final String? uploadedBy;
   final bool isPublic;
   final double? duration; // Duration in seconds from backend
+  final int playCount;
   final int likeCount;
   final List<String> topicIds;
 
@@ -21,6 +22,7 @@ class Song {
     this.uploadedBy,
     this.isPublic = false,
     this.duration,
+    this.playCount = 0,
     this.likeCount = 0,
     this.topicIds = const [],
   });
@@ -68,6 +70,13 @@ class Song {
 
   factory Song.fromJson(Map<String, dynamic> json) {
     final artists = _parseArtists(json['artists'], json['artist']);
+    final playCount =
+        (json['playCount'] as num?)?.toInt() ??
+        (json['listenCount'] as num?)?.toInt() ??
+        (json['streamCount'] as num?)?.toInt() ??
+        (json['viewCount'] as num?)?.toInt() ??
+        (json['views'] as num?)?.toInt() ??
+        0;
 
     List<String> topicIds = [];
     if (json['topicIds'] != null && json['topicIds'] is List) {
@@ -90,6 +99,7 @@ class Song {
       uploadedBy: json['uploadedBy'],
       isPublic: json['isPublic'] ?? false,
       duration: json['duration']?.toDouble(),
+      playCount: playCount,
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       topicIds: topicIds,
     );
@@ -106,6 +116,7 @@ class Song {
       'uploadedBy': uploadedBy,
       'isPublic': isPublic,
       'duration': duration,
+      'playCount': playCount,
       'likeCount': likeCount,
       'topicIds': topicIds,
     };
@@ -117,6 +128,7 @@ class Song {
     List<String>? artists,
     String? lyrics,
     bool? isPublic,
+    int? playCount,
     int? likeCount,
     List<String>? topicIds,
   }) {
@@ -130,6 +142,7 @@ class Song {
       uploadedBy: uploadedBy,
       isPublic: isPublic ?? this.isPublic,
       duration: duration,
+      playCount: playCount ?? this.playCount,
       likeCount: likeCount ?? this.likeCount,
       topicIds: topicIds ?? this.topicIds,
     );

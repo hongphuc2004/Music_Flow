@@ -794,7 +794,7 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
                               onChanged: (value) {
                                 setState(() => _isPublic = value);
                               },
-                              activeColor: const Color(0xFF1DB954),
+                              activeThumbColor: const Color(0xFF1DB954),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 4,

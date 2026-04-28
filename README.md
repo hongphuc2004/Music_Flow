@@ -41,8 +41,49 @@ npm run dev
 ```
 
 ## Run with Docker
-### 1. Optional env setup
-You can create a root `.env` file (next to `docker-compose.yml`) to override defaults:
+### Folder split: local vs production
+When you keep two copies of this repo, use each folder for one environment:
+
+- `musicflow/`: local development.
+- `musicflow_prod/`: production build/run.
+
+Docker Compose now lets Docker scope container and volume names by the folder/project name, so the two folders do not reuse the same `musicflow_*` containers. Host ports are configurable with a root `.env` file if you need both folders running on the same machine.
+
+Recommended commands:
+
+```bash
+# In musicflow/
+docker compose --profile dev up --build
+
+# In musicflow_prod/
+docker compose --profile prod up --build -d
+```
+
+Optional root `.env` overrides:
+
+```bash
+# Use these only when a port is already taken.
+MUSICFLOW_MONGO_PORT=27018
+MUSICFLOW_BACKEND_DEV_PORT=5002
+MUSICFLOW_WEB_DEV_PORT=5174
+MUSICFLOW_BACKEND_PROD_PORT=5000
+MUSICFLOW_WEB_PROD_PORT=8080
+```
+
+For Flutter, choose backend per run/build:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://<your-lan-ip>:5001
+flutter build apk --dart-define=API_BASE_URL=https://<your-prod-domain>
+```
+
+### 1. Backend env setup
+Backend variables are loaded from environment-specific files:
+
+- `musicflow_backend/.env.dev` for `--profile dev`
+- `musicflow_backend/.env.prod` for `--profile prod`
+
+Keep values like these in the matching file:
 
 ```bash
 MONGO_URI=mongodb://mongo:27017/musicflow
@@ -51,6 +92,8 @@ NODE_ENV=development
 CORS_ORIGINS=http://localhost:5173,http://localhost:8080
 REFRESH_COOKIE_NAME=mf_refresh_token
 CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_FOLDER=musicflow
+CLOUDINARY_DEFAULT_SONG_IMAGE_URL=https://res.cloudinary.com/<cloud-name>/image/upload/musicflow/images/<public-id>.jpg
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 GOOGLE_CLIENT_ID=your_google_oauth_web_client_id.apps.googleusercontent.com
@@ -166,4 +209,3 @@ Nhờ đó các URL như `/accountlogin`, `/client/home` không bị 404.
 2. Đăng nhập Google.
 3. Gọi API cần auth (profile, playlist, favorites).
 4. Logout và login lại.
-

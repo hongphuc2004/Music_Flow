@@ -5,6 +5,7 @@ const fs = require("fs");
 const https = require("https");
 const http = require("http");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryFolders");
 const Song = require("../models/song.model");
 const SongPlayEvent = require("../models/song-play-event.model");
 const Artist = require("../models/artist.model");
@@ -597,19 +598,19 @@ router.post(
         audioFile.path,
         {
           resource_type: "video", 
-          folder: "musicflow/audio",
+          folder: cloudinaryFolder("audio"),
         }
       );
 
       // Upload image nếu có, không thì dùng ảnh mặc định
-      let imageUrl = "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg";
+      let imageUrl = defaultSongImageUrl();
       let imagePublicId = null;
       
       if (imageFile) {
         const imageUpload = await cloudinary.uploader.upload(
           imageFile.path,
           {
-            folder: "musicflow/images",
+            folder: cloudinaryFolder("images"),
           }
         );
         imageUrl = imageUpload.secure_url;
@@ -715,7 +716,7 @@ router.put(
       if (audioFile) {
         const audioUpload = await cloudinary.uploader.upload(audioFile.path, {
           resource_type: "video",
-          folder: "musicflow/audio",
+          folder: cloudinaryFolder("audio"),
         });
         song.audioUrl = audioUpload.secure_url;
         song.audioPublicId = audioUpload.public_id;
@@ -724,7 +725,7 @@ router.put(
 
       if (imageFile) {
         const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
-          folder: "musicflow/images",
+          folder: cloudinaryFolder("images"),
         });
         song.imageUrl = imageUpload.secure_url;
         song.imagePublicId = imageUpload.public_id;

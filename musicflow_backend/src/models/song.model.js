@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { defaultSongImageUrl } = require("../config/cloudinaryFolders");
 
 const songSchema = new mongoose.Schema(
   {
@@ -52,8 +53,7 @@ const songSchema = new mongoose.Schema(
     // 🖼️ IMAGE
     imageUrl: {
       type: String,
-      default:
-        "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg",
+      default: defaultSongImageUrl,
     },
     imagePublicId: {
       type: String,

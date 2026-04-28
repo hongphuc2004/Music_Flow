@@ -45,7 +45,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   late Song _currentSong;
   late int _currentIndex;
-  bool _isChangingSong = false; // Debounce
+  final bool _isChangingSong = false; // Debounce
   bool _isFavorite = false;
   int _likeCount = 0;
   int _commentCount = 0;

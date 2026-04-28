@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryFolders");
 const User = require("../models/user.model");
 const Song = require("../models/song.model");
 const Playlist = require("../models/playlist.model");
@@ -158,7 +159,8 @@ router.post("/auth/login", async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Admin login error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -570,7 +572,7 @@ router.post(
       if (audioFile) {
         const audioUpload = await cloudinary.uploader.upload(audioFile.path, {
           resource_type: "video",
-          folder: "musicflow/audio",
+          folder: cloudinaryFolder("audio"),
         });
         finalAudioUrl = audioUpload.secure_url;
         audioPublicId = audioUpload.public_id;
@@ -584,12 +586,11 @@ router.post(
       }
 
       // Xử lý image: ưu tiên file, nếu không có thì lấy URL hoặc default
-      let finalImageUrl =
-        "https://res.cloudinary.com/dvhpcqpkq/image/upload/v1735403257/musicflow/images/tgdfbp3zivuqoxqxpltj.jpg";
+      let finalImageUrl = defaultSongImageUrl();
       let imagePublicId = null;
       if (imageFile) {
         const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
-          folder: "musicflow/images",
+          folder: cloudinaryFolder("images"),
         });
         finalImageUrl = imageUpload.secure_url;
         imagePublicId = imageUpload.public_id;
@@ -597,7 +598,7 @@ router.post(
         // Nếu có imageUrl là URL, upload lên Cloudinary
         try {
           const imageUpload = await cloudinary.uploader.upload(imageUrl.trim(), {
-            folder: "musicflow/images",
+            folder: cloudinaryFolder("images"),
           });
           finalImageUrl = imageUpload.secure_url;
           imagePublicId = imageUpload.public_id;
@@ -701,7 +702,7 @@ router.put(
       if (audioFile) {
         const audioUpload = await cloudinary.uploader.upload(audioFile.path, {
           resource_type: "video",
-          folder: "musicflow/audio",
+          folder: cloudinaryFolder("audio"),
         });
         song.audioUrl = audioUpload.secure_url;
         song.audioPublicId = audioUpload.public_id;
@@ -710,7 +711,7 @@ router.put(
 
       if (imageFile) {
         const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
-          folder: "musicflow/images",
+          folder: cloudinaryFolder("images"),
         });
         song.imageUrl = imageUpload.secure_url;
         song.imagePublicId = imageUpload.public_id;
@@ -838,13 +839,13 @@ router.post("/playlists", authMiddleware, requireAdmin, upload.single("coverImag
     let finalCoverImage = coverImage ? String(coverImage).trim() : "";
     if (coverImageFile) {
       const uploadResult = await cloudinary.uploader.upload(coverImageFile.path, {
-        folder: "musicflow/playlists",
+        folder: cloudinaryFolder("playlists"),
       });
       finalCoverImage = uploadResult.secure_url;
     } else if (isHttpUrl(finalCoverImage) && !finalCoverImage.includes("res.cloudinary.com")) {
       try {
         const uploadResult = await cloudinary.uploader.upload(finalCoverImage, {
-          folder: "musicflow/playlists",
+          folder: cloudinaryFolder("playlists"),
         });
         finalCoverImage = uploadResult.secure_url;
       } catch (error) {
@@ -897,7 +898,7 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
       ) {
         try {
           const uploadResult = await cloudinary.uploader.upload(updateData.coverImage, {
-            folder: "musicflow/playlists",
+            folder: cloudinaryFolder("playlists"),
           });
           updateData.coverImage = uploadResult.secure_url;
         } catch (error) {
@@ -909,7 +910,7 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
     }
     if (coverImageFile) {
       const uploadResult = await cloudinary.uploader.upload(coverImageFile.path, {
-        folder: "musicflow/playlists",
+        folder: cloudinaryFolder("playlists"),
       });
       updateData.coverImage = uploadResult.secure_url;
     }
@@ -1012,7 +1013,7 @@ router.post("/topics", upload.single("avatar"), async (req, res) => {
     // Ưu tiên file upload
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "musicflow/topics",
+        folder: cloudinaryFolder("topics"),
         transformation: [{ width: 500, height: 500, crop: "fill" }],
       });
       avatar = result.secure_url;
@@ -1020,7 +1021,7 @@ router.post("/topics", upload.single("avatar"), async (req, res) => {
     } else if (avatarUrl && /^https?:\/\//i.test(avatarUrl.trim())) {
       // Nếu có avatarUrl là URL, upload lên Cloudinary
       const result = await cloudinary.uploader.upload(avatarUrl.trim(), {
-        folder: "musicflow/topics",
+        folder: cloudinaryFolder("topics"),
         transformation: [{ width: 500, height: 500, crop: "fill" }],
       });
       avatar = result.secure_url;
@@ -1055,14 +1056,14 @@ router.put("/topics/:id", upload.single("avatar"), async (req, res) => {
 
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "musicflow/topics",
+        folder: cloudinaryFolder("topics"),
         transformation: [{ width: 500, height: 500, crop: "fill" }],
       });
       updateData.avatar = result.secure_url;
       fs.unlinkSync(req.file.path);
     } else if (avatarUrl && /^https?:\/\//i.test(avatarUrl.trim())) {
       const result = await cloudinary.uploader.upload(avatarUrl.trim(), {
-        folder: "musicflow/topics",
+        folder: cloudinaryFolder("topics"),
         transformation: [{ width: 500, height: 500, crop: "fill" }],
       });
       updateData.avatar = result.secure_url;

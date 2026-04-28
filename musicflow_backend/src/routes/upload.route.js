@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolders");
 
 // multer config
 const upload = multer({ dest: "uploads/" });
@@ -18,7 +19,7 @@ router.post("/audio", upload.single("audio"), async (req, res) => {
 
     const result = await cloudinary.uploader.upload(req.file.path, {
       resource_type: "video", // BẮT BUỘC cho mp3
-      folder: "musicflow/audio",
+      folder: cloudinaryFolder("audio"),
     });
 
     res.json({

@@ -9,6 +9,7 @@ const SongPlayEvent = require("../models/song-play-event.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolders");
 
 const upload = multer({ dest: "uploads/" });
 
@@ -112,7 +113,7 @@ router.put("/profile", authMiddleware, upload.single("avatarFile"), async (req, 
 
     if (req.file) {
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: "musicflow/artists",
+        folder: cloudinaryFolder("artists"),
         transformation: [{ width: 500, height: 500, crop: "fill" }],
       });
       artist.avatar = uploadResult.secure_url;
@@ -120,7 +121,7 @@ router.put("/profile", authMiddleware, upload.single("avatarFile"), async (req, 
       if (normalizedAvatarUrl.startsWith("http") && !normalizedAvatarUrl.includes("cloudinary.com")) {
         try {
           const uploadResult = await cloudinary.uploader.upload(normalizedAvatarUrl, {
-            folder: "musicflow/artists",
+            folder: cloudinaryFolder("artists"),
             transformation: [{ width: 500, height: 500, crop: "fill" }],
           });
           artist.avatar = uploadResult.secure_url;

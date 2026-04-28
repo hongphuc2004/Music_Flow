@@ -4,7 +4,6 @@ import 'package:musicflow_app/main.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
 
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -29,11 +28,11 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 2));
-    
+    await Future.delayed(const Duration(milliseconds: 600));
+
     // Kiểm tra đã đăng nhập chưa
     final isLoggedIn = await AuthService.isLoggedIn();
-    
+
     if (mounted) {
       Navigator.pushReplacement(
         context,
@@ -60,28 +59,18 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF121212),
-              Color(0xFF1E1E1E),
-            ],
+            colors: [Color(0xFF121212), Color(0xFF1E1E1E)],
           ),
         ),
         child: Center(
           child: ScaleTransition(
             scale: Tween(begin: 0.9, end: 1.0).animate(
-              CurvedAnimation(
-                parent: _controller,
-                curve: Curves.easeOut,
-              ),
+              CurvedAnimation(parent: _controller, curve: Curves.easeOut),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 250, 
-                  height: 250,
-                ),
+                Image.asset('assets/images/logo.png', width: 250, height: 250),
                 const SizedBox(height: 16),
               ],
             ),
@@ -91,4 +80,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-

@@ -5,6 +5,7 @@ const multer = require("multer");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolders");
 
 const router = express.Router();
 
@@ -58,12 +59,12 @@ router.put("/update", authMiddleware, upload.single("avatar"), async (req, res) 
 
     if (req.file) {
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: "musicflow/avatars",
+        folder: cloudinaryFolder("avatars"),
       });
       user.avatar = uploadResult.secure_url;
     } else if (avatarUrl && /^https?:\/\//i.test(avatarUrl)) {
       const uploadResult = await cloudinary.uploader.upload(avatarUrl, {
-        folder: "musicflow/avatars",
+        folder: cloudinaryFolder("avatars"),
       });
       user.avatar = uploadResult.secure_url;
     }

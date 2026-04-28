@@ -15,6 +15,8 @@ const userRoute = require("./routes/user.route");
 const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
 const artistRoute = require("./routes/artist.route");
+const aiRoute = require("./routes/ai.route");
+const { cloudinaryRootFolder } = require("./config/cloudinaryFolders");
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:3000")
@@ -85,6 +87,9 @@ app.use("/api/comments", commentRoute);
 // Artist routes
 app.use("/api/artist", artistRoute);
 
+// AI DJ routes
+app.use("/api/ai", aiRoute);
+
 // Return JSON for unknown API routes so clients do not receive HTML error pages.
 app.use("/api", (req, res) => {
   return res.status(404).json({
@@ -95,11 +100,25 @@ app.use("/api", (req, res) => {
 
 // connect DB
 mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error(err));
+  .connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000
+  })
+  .then((conn) => {
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`MongoDB connected: ${conn.connection.host}`);
+  })
+  .catch((err) => console.error("MongoDB connection error on startup:", err));
+
+mongoose.connection.on('error', err => {
+  console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('Mongoose disconnected');
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Cloudinary folder: ${cloudinaryRootFolder}`);
 });

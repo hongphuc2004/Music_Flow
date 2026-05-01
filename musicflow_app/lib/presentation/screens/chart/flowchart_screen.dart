@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
+import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
 class FlowchartScreen extends StatefulWidget {
   final void Function(Song song)? onSongTap;
@@ -258,7 +259,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                   child: _FeedTile(
                     rank: index + 1,
                     song: song,
-                    subtitle: '${_formatCount(song.playCount)} luot nghe',
+                    subtitle: '${_formatCount(song.playCount)}',
                     onTap: () => _playFromQueue(flowTop50, index),
                   ),
                 );
@@ -568,6 +569,14 @@ class _FeedTile extends StatelessWidget {
     required this.onTap,
   });
 
+  String _formatDuration(double? durationInSeconds) {
+    if (durationInSeconds == null) return "0:00";
+    final int totalSeconds = durationInSeconds.toInt();
+    final int minutes = totalSeconds ~/ 60;
+    final int seconds = totalSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final rankColor = switch (rank) {
@@ -612,36 +621,60 @@ class _FeedTile extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       song.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       song.artists.join(', '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(color: Colors.white60, fontSize: 13),
                     ),
-                    const SizedBox(height: 1),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: subtitleColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.play_arrow_rounded, color: Colors.white60, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: subtitleColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text('·', style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatDuration(song.duration),
+                          style: const TextStyle(color: Colors.white60, fontSize: 13),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 20),
+              IconButton(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 20),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
+                    builder: (context) => SongOptionsMenu(song: song),
+                  );
+                },
+              ),
             ],
           ),
         ),

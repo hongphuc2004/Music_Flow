@@ -3,8 +3,8 @@ const router = express.Router();
 const aiController = require("../controllers/ai.controller");
 const authMiddleware = require("../middleware/auth.middleware");
 
-// route: POST /api/ai/playlist
-// Cần authMiddleware nếu bạn muốn chỉ user đăng nhập mới được dùng
 router.post("/playlist", authMiddleware, aiController.aiPlaylist);
+router.get("/mood/history", authMiddleware, aiController.getMoodHistory);
+router.get("/mood/conversations/:conversationId", authMiddleware, aiController.getMoodConversation);
 
 module.exports = router;

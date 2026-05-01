@@ -177,10 +177,11 @@ router.put("/:id", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (playlist.userId.toString() !== req.userId) {
+    // Check for ownership
+    if (playlist.userId.toString() !== req.userId && playlist.userId._id?.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền chỉnh sửa playlist này",
+        message: "Bạn không có quyền sửa bài hát trong playlist này",
       });
     }
 
@@ -221,7 +222,7 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (playlist.userId.toString() !== req.userId) {
+    if (playlist.userId.toString() !== req.userId && playlist.userId._id?.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền xóa playlist này",
@@ -271,7 +272,7 @@ router.post("/:id/songs", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (playlist.userId.toString() !== req.userId) {
+    if (playlist.userId.toString() !== req.userId && playlist.userId._id.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền thêm bài hát vào playlist này",
@@ -320,7 +321,7 @@ router.delete("/:id/songs/:songId", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (playlist.userId.toString() !== req.userId) {
+    if (playlist.userId.toString() !== req.userId && playlist.userId._id?.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền xóa bài hát khỏi playlist này",
@@ -371,7 +372,7 @@ router.put("/:id/reorder", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    if (playlist.userId.toString() !== req.userId) {
+    if (playlist.userId.toString() !== req.userId && playlist.userId._id?.toString() !== req.userId) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền sắp xếp lại playlist này",

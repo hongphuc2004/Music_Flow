@@ -89,7 +89,7 @@ exports.googleLogin = async (req, res) => {
     );
 
     res.json({
-      message: "Đăng nhập Google thành công",
+      message: "Đăng nhập thành công",
       token,
       artist: artist.toJSON(),
     });

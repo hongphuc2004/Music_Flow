@@ -173,12 +173,8 @@ class HomeHeroSection extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         HomeMetaPill(
-                          icon: Icons.music_note_rounded,
-                          label: '$librarySongCount bai trong thu vien',
-                        ),
-                        HomeMetaPill(
                           icon: Icons.favorite_outline,
-                          label: '${featuredSong.likeCount} luot thich',
+                          label: '${featuredSong.likeCount} lượt thích',
                         ),
                       ],
                     ),
@@ -193,15 +189,6 @@ class HomeHeroSection extends StatelessWidget {
                 iconSize: 44,
               ),
             ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Bat dau buoi nghe voi bai hat noi bat, hoac phat luon danh sach goi y da duoc chuan bi san cho ban.',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 13,
-              height: 1.45,
-            ),
           ),
           const SizedBox(height: 18),
           Row(
@@ -230,7 +217,7 @@ class HomeHeroSection extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: recommendedSongs.isEmpty ? null : onPlayRecommended,
                   icon: const Icon(Icons.shuffle_rounded),
-                  label: const Text('Mix goi y'),
+                  label: const Text('Mix gợi ý'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: BorderSide(color: Colors.white.withOpacity(0.12)),

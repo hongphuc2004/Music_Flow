@@ -90,9 +90,9 @@ function ClientHome() {
   }, []);
 
   const quickStats = useMemo(() => ([
-    { label: 'Bai hat goi y', value: songs.length, icon: <GraphicEqIcon /> },
-    { label: 'Playlist he thong', value: playlists.length, icon: <PlaylistIcon /> },
-    { label: 'Dang thinh hanh', value: songs.filter((song) => (song.playCount || 0) > 0).length, icon: <TrendingUpIcon /> },
+    { label: 'Bài hát gợi ý', value: songs.length, icon: <GraphicEqIcon /> },
+    { label: 'Playlist hệ thống', value: playlists.length, icon: <PlaylistIcon /> },
+    { label: 'Đang thịnh hành', value: songs.filter((song) => (song.playCount || 0) > 0).length, icon: <TrendingUpIcon /> },
   ]), [songs, playlists]);
 
   const topSongs = useMemo(
@@ -256,7 +256,7 @@ function ClientHome() {
 
             <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                Goi y danh cho ban
+                Gợi ý dành cho bạn
               </Typography>
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final systemPlaylistResult = results[2] as PlaylistResult;
       if (!systemPlaylistResult.success) {
         throw Exception(
-          systemPlaylistResult.message ?? 'Khong the tai playlist he thong',
+          systemPlaylistResult.message ?? 'Không thể tải playlist hệ thống',
         );
       }
 
@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'Da xay ra loi: $e';
+        errorMessage = 'Đã xảy ra lỗi: $e';
         isLoading = false;
       });
     }
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
             CircularProgressIndicator(color: HomePalette.accent),
             SizedBox(height: 16),
             Text(
-              'Dang tai khong gian am nhac...',
+              'Đang tải không gian âm nhạc...',
               style: TextStyle(color: Colors.white70),
             ),
           ],
@@ -344,8 +344,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 28),
                   if (systemPlaylists.isNotEmpty) ...[
                     HomeSectionHeader(
-                      title: 'Playlist cho hom nay',
-                      subtitle: 'Chon nhanh mot mood de bat dau nghe',
+                      title: 'Playlist cho hôm nay',
+                      subtitle: 'Chọn nhanh một mood để bắt đầu nghe',
                       trailing: Text(
                         '${systemPlaylists.length} playlist',
                         style: TextStyle(
@@ -364,11 +364,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                   if (recommendedSongs.isNotEmpty) ...[
                     HomeSectionHeader(
-                      title: 'Goi y danh cho ban',
-                      subtitle: 'Nhung bai hat de vao mood nhanh hon',
+                      title: 'Gợi ý dành cho bạn',
+                      subtitle: 'Những bài hát để vào mood nhanh hơn',
                       trailing: HomeGhostButton(
                         icon: Icons.refresh,
-                        label: 'Lam moi',
+                        label: 'Làm mới',
                         onTap: _refreshRecommendedSongs,
                       ),
                     ),
@@ -382,8 +382,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                   if (_featuredArtists.isNotEmpty) ...[
                     HomeSectionHeader(
-                      title: 'Nghe si noi bat',
-                      subtitle: 'Luot ngang de kham pha nhanh nhung cai ten dang hot',
+                      title: 'Nghệ sĩ nổi bật',
+                      subtitle: 'Lướt ngang để khám phá nhanh những cái tên đang hot',
                     ),
                     const SizedBox(height: 14),
                     HomeArtistCarousel(
@@ -393,9 +393,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 28),
                   ],
                   HomeSectionHeader(
-                    title: 'Tat ca bai hat',
-                    subtitle: 'Thu vien dang co san cho buoi nghe cua ban',
-                    trailing: HomeCountBadge(label: '${songs.length} bai'),
+                    title: 'Tất cả bài hát',
+                    subtitle: 'Thư viện đang có sẵn cho buổi nghe của bạn',
+                    trailing: HomeCountBadge(label: '${songs.length} bài'),
                   ),
                   const SizedBox(height: 14),
                   HomeSongList(
@@ -450,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ElevatedButton.icon(
                 onPressed: fetchData,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Thu lai'),
+                label: const Text('Thử lại'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: HomePalette.accent,
                   foregroundColor: Colors.black,

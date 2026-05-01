@@ -334,13 +334,17 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
   }
 
   void _showAddToPlaylistDialog(BuildContext context) async {
-    Navigator.pop(context); // Close bottom sheet first
+    // Lưu trước context ngoại vi qua Navigator để tránh lỗi mounted = false sau khi pop
+    final rootContext = Navigator.of(context).context;
+    
+    // Đóng menu bottom sheet hiện tại
+    Navigator.pop(context);
     
     // Check if logged in
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (rootContext.mounted) {
+        ScaffoldMessenger.of(rootContext).showSnackBar(
           const SnackBar(
             content: Text('Vui lòng đăng nhập để sử dụng tính năng này'),
             duration: Duration(seconds: 2),
@@ -350,10 +354,10 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
       return;
     }
 
-    if (!context.mounted) return;
+    if (!rootContext.mounted) return;
     
     showModalBottomSheet(
-      context: context,
+      context: rootContext,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => _PlaylistSelectionSheet(

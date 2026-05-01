@@ -1,16 +1,47 @@
-# musicflow_app
+# MusicFlow App
 
-A new Flutter project.
+Flutter client for MusicFlow.
 
-## Getting Started
+## API Environment
 
-This project is a starting point for a Flutter application.
+The app reads the backend host from the compile-time variable `API_BASE_URL`:
 
-A few resources to get you started if this is your first Flutter project:
+```dart
+String.fromEnvironment("API_BASE_URL")
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+If you do not pass this value, the app falls back to the local development backend in
+`lib/core/config/api_config.dart`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Run Development
+
+Use your computer LAN IP when running on a physical phone:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.1.53:5001
+```
+
+If you changed the backend dev port, update the URL accordingly.
+
+## Build Production
+
+For production builds, use `APP_ENV=prod` to select `baseUrlProd` from
+`lib/core/config/api_config.dart`.
+
+```bash
+flutter build apk --release --dart-define=APP_ENV=prod
+```
+
+You can still override the URL directly when needed. Do not include `/api`,
+because the app endpoints already append `/api/...`.
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://music-flow-30us.onrender.com
+flutter build appbundle --release --dart-define=APP_ENV=prod
+```
+
+## Quick Checks
+
+- Backend must be reachable from the device browser at `https://your-backend-domain.onrender.com/api/songs`.
+- For Android release, use HTTPS in production.
+- If using Google Sign-In, configure the production OAuth client/origins in Google Cloud.

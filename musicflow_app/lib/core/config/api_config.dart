@@ -1,11 +1,18 @@
-/// Cấu hình API chung cho toàn bộ app
+/// API config for the whole app.
 class ApiConfig {
-  // Base URL của backend - thay đổi khi deploy
+  static const String baseUrlDev = "http://192.168.1.148:5001";
+  static const String baseUrlProd = "https://music-flow-30us.onrender.com";
+
+  static const String appEnv = String.fromEnvironment(
+    "APP_ENV",
+    defaultValue: "dev",
+  );
+
   static const String baseUrl = String.fromEnvironment(
     "API_BASE_URL",
-    defaultValue: "http://10.240.145.153:5001",
+    defaultValue: appEnv == "prod" ? baseUrlProd : baseUrlDev,
   );
-  
+
   // API endpoints
   static const String songsEndpoint = "$baseUrl/api/songs";
   static const String authEndpoint = "$baseUrl/api/auth";
@@ -16,6 +23,9 @@ class ApiConfig {
   static const String commentsEndpoint = "$baseUrl/api/comments";
   static const String artistEndpoint = "$baseUrl/api/artist";
   static const String aiPlaylistEndpoint = "$baseUrl/api/ai/playlist";
+  static const String aiMoodHistoryEndpoint = "$baseUrl/api/ai/mood/history";
+  static const String aiMoodConversationEndpoint =
+      "$baseUrl/api/ai/mood/conversations";
   static const String usersMeEndpoint = "$baseUrl/api/users/me";
   static const String usersUpdateEndpoint = "$baseUrl/api/users/update";
 

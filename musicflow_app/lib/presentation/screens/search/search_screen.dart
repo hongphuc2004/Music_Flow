@@ -771,34 +771,102 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // 🎵 Widget hiển thị một bài hát
   Widget _buildSongTile(Song song) {
-    return ListTile(
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          song.imageUrl,
-          width: 48,
-          height: 48,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade800,
+    return InkWell(
+      onTap: () => widget.onSongTap?.call(song),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            ClipRRect(
               borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                song.imageUrl,
+                width: 54,
+                height: 54,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade800,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.music_note, color: Colors.white),
+                ),
+              ),
             ),
-            child: const Icon(Icons.music_note, color: Colors.white),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    song.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    song.artists.join(', '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                     children: [
+                        const Icon(Icons.play_arrow_rounded, color: Colors.grey, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${song.playCount}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text('·', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatDuration(song.duration),
+                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                     ],
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 20),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (context) => SongOptionsMenu(song: song),
+                );
+              },
+            ),
+          ],
         ),
       ),
-      title: Text(song.title, style: const TextStyle(color: Colors.white)),
-      subtitle: Text(
-        song.artists.join(', '),
-        style: const TextStyle(color: Colors.grey),
-      ),
-      trailing: SongOptionsMenu(song: song),
-      onTap: () {
-        widget.onSongTap?.call(song);
-      },
     );
+  }
+
+  String _formatDuration(double? durationInSeconds) {
+    if (durationInSeconds == null) return "0:00";
+    final int totalSeconds = durationInSeconds.toInt();
+    final int minutes = totalSeconds ~/ 60;
+    final int seconds = totalSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }

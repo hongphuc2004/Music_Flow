@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Cai dat'),
+        title: const Text('Cài đ'),
         elevation: 0,
       ),
       body: _isLoading
@@ -217,77 +217,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
             )
           : ListView(
               children: [
-                _buildSectionHeader('Tai khoan'),
+                _buildSectionHeader('Tài khoản'),
                 if (_isLoggedIn && _currentUser != null)
                   _buildAccountCard()
                 else
                   _buildLoginPrompt(),
                 const SizedBox(height: 16),
-                _buildSectionHeader('Phat nhac'),
+                _buildSectionHeader('Phát nhạc'),
                 _buildSwitchTile(
                   icon: Icons.high_quality,
-                  title: 'Chat luong cao',
-                  subtitle: 'Phat nhac o chat luong cao nhat',
+                  title: 'Chất lượng cao',
+                  subtitle: 'Phát nhạc ở chất lượng cao nhất',
                   value: _highQualityStreaming,
                   onChanged: (value) => setState(() => _highQualityStreaming = value),
                 ),
                 _buildSwitchTile(
                   icon: Icons.lyrics,
-                  title: 'Hien thi loi bai hat',
-                  subtitle: 'Hien thi loi khi phat nhac',
+                  title: 'Hiển thị lời bài hát',
+                  subtitle: 'Hiển thị lời khi phát nhạc',
                   value: _showLyrics,
                   onChanged: (value) => setState(() => _showLyrics = value),
                 ),
                 _buildSwitchTile(
                   icon: Icons.play_circle_outline,
-                  title: 'Tu dong phat',
-                  subtitle: 'Tu dong phat bai hat tiep theo',
+                  title: 'Tự động phát',
+                  subtitle: 'Tự động phát bài hát tiếp theo',
                   value: _autoPlay,
                   onChanged: (value) => setState(() => _autoPlay = value),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionHeader('Tai xuong'),
+                _buildSectionHeader('Tải xuống'),
                 _buildSwitchTile(
                   icon: Icons.wifi,
-                  title: 'Chi tai qua Wi-Fi',
-                  subtitle: 'Tai nhac chi khi co Wi-Fi',
+                  title: 'Chỉ tải qua Wi-Fi',
+                  subtitle: 'Tải nhạc chỉ khi có Wi-Fi',
                   value: _downloadOverWifiOnly,
                   onChanged: (value) => setState(() => _downloadOverWifiOnly = value),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionHeader('Bo nho'),
+                _buildSectionHeader('Bộ nhớ'),
                 _buildActionTile(
                   icon: Icons.history,
-                  title: 'Xoa lich su phat',
-                  subtitle: 'Xoa toan bo lich su nghe nhac',
+                  title: 'Xóa lịch sử phát',
+                  subtitle: 'Xóa toàn bộ lịch sử nghe nhạc',
                   onTap: _clearPlayHistory,
                 ),
                 _buildActionTile(
                   icon: Icons.cached,
-                  title: 'Xoa bo nho cache',
-                  subtitle: 'Giai phong dung luong',
+                  title: 'Xóa bộ nhớ cache',
+                  subtitle: 'Giải phóng dung lượng',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Da xoa cache')),
+                      const SnackBar(content: Text('Đã xóa cache')),
                     );
                   },
                 ),
                 const SizedBox(height: 16),
-                _buildSectionHeader('Khac'),
+                _buildSectionHeader('Khác'),
                 _buildActionTile(
                   icon: Icons.info_outline,
-                  title: 'Ve ung dung',
-                  subtitle: 'Phien ban 1.0.0',
+                  title: 'Về ứng dụng',
+                  subtitle: 'Phiên bản 1.0.0',
                   onTap: _showAboutDialog,
                 ),
                 _buildActionTile(
                   icon: Icons.privacy_tip_outlined,
-                  title: 'Chinh sach bao mat',
+                  title: 'Chính sách bảo mật',
                   onTap: () {},
                 ),
                 _buildActionTile(
                   icon: Icons.description_outlined,
-                  title: 'Dieu khoan su dung',
+                  title: 'Điều khoản sử dụng',
                   onTap: () {},
                 ),
                 if (_isLoggedIn) ...[
@@ -297,7 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _logout,
                       icon: const Icon(Icons.logout),
-                      label: const Text('Dang xuat'),
+                      label: const Text('Đăng xuất'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.withOpacity(0.2),
                         foregroundColor: Colors.redAccent,
@@ -369,7 +369,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _currentUser?.name ?? 'Nguoi dung',
+                  _currentUser?.name ?? 'Người dùng',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -409,12 +409,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icon(Icons.account_circle_outlined, size: 48, color: Colors.grey[600]),
           const SizedBox(height: 12),
           const Text(
-            'Dang nhap de dong bo du lieu',
+            'Đăng nhập để sử dụng các tính năng của MusicFlow',
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
-            'Playlist va yeu thich se duoc luu tru an toan',
+            'Playlist và yêu thích sẽ được lưu trữ an toàn',
             style: TextStyle(color: Colors.grey[500], fontSize: 13),
             textAlign: TextAlign.center,
           ),
@@ -434,7 +434,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-            child: const Text('Dang nhap'),
+            child: const Text('Đăng nhập'),
           ),
         ],
       ),

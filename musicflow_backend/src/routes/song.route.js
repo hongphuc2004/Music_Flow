@@ -682,8 +682,8 @@ router.put(
       }
 
       // Kiểm tra quyền sở hữu
-      const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
-      const isArtist = song.artists && song.artists.some((a) => a.toString() === req.userId);
+      const isUploader = song.uploadedBy && (song.uploadedBy.toString() === req.userId || song.uploadedBy._id?.toString() === req.userId);
+      const isArtist = song.artists && song.artists.some((a) => a.toString() === req.userId || a._id?.toString() === req.userId);
 
       if (!isUploader && !isArtist) {
         return res.status(403).json({
@@ -770,8 +770,8 @@ router.patch("/:id/toggle-public", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
-    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId);
+    const isUploader = song.uploadedBy && (song.uploadedBy.toString() === req.userId || song.uploadedBy._id?.toString() === req.userId);
+    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId || a._id?.toString() === req.userId);
 
     if (!isUploader && !isArtist) {
       return res.status(403).json({
@@ -813,8 +813,8 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     }
 
     // Kiểm tra quyền sở hữu
-    const isUploader = song.uploadedBy && song.uploadedBy.toString() === req.userId;
-    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId);
+    const isUploader = song.uploadedBy && (song.uploadedBy.toString() === req.userId || song.uploadedBy._id?.toString() === req.userId);
+    const isArtist = song.artists && song.artists.some(a => a.toString() === req.userId || a._id?.toString() === req.userId);
 
     if (!isUploader && !isArtist) {
       return res.status(403).json({

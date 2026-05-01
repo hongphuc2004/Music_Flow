@@ -97,7 +97,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     if (widget.lyrics.isEmpty) {
       return const Center(
         child: Text(
-          'Khong co lyrics dong bo',
+          'Khong co lyrics',
           style: TextStyle(color: Colors.white54, fontSize: 16),
         ),
       );

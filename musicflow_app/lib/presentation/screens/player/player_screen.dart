@@ -805,7 +805,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             _currentPage == 0
                 ? 'DANG PHAT'
                 : _currentPage == 1
-                ? 'LYRICS DONG BO'
+                ? 'LYRICS'
                 : 'DANH SACH CHO',
             style: const TextStyle(
               color: Colors.white70,

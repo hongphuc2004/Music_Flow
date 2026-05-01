@@ -119,7 +119,7 @@ class AuthService {
     scopes: ['email', 'profile'],
   );
 
-  static Future<AuthResult> signInWithGoogle() async {
+  static Future<AuthResult> signInWithGoogle() async {  
     try {
       // Đăng xuất trước để đảm bảo chọn tài khoản mới
       await _googleSignIn.signOut();
@@ -195,7 +195,29 @@ class AuthService {
   // ================= CHECK LOGIN STATUS =================
   static Future<bool> isLoggedIn() async {
     final token = await getToken();
-    return token != null && token.isNotEmpty;
+    if (token == null || token.isEmpty) return false;
+
+    try {
+      final parts = token.split('.');
+      if (parts.length == 3) {
+        final payload = jsonDecode(
+            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+        final exp = payload['exp'] as int?;
+        if (exp != null) {
+          final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+          final now = DateTime.now();
+          
+          if (now.isAfter(expiry)) {
+            print("Access token đã hết hạn, tự động gọi tryRefreshToken()...");
+            return await tryRefreshToken();
+          } else {
+            getProfile(); // Gọi ngầm để cập nhật dữ liệu user mới nhất nếu có
+          }
+        }
+      }
+    } catch (_) {}
+
+    return true;
   }
 
   // ================= GET TOKEN =================

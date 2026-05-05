@@ -261,7 +261,7 @@ function AccountLogin() {
 
           <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/user/register')}>
-              Tạo tài khoản user
+              Tạo tài khoản 
             </Button>
             <Button variant="text" sx={{ color: '#14a7b7', fontWeight: 800 }} onClick={() => navigate('/artistlogin')}>
               Đăng nhập artist

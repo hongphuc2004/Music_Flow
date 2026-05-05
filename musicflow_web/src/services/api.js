@@ -205,6 +205,8 @@ export const clientFavoritesApi = {
 export const clientPlaylistsApi = {
   getMine: () => api.get('/playlists'),
   getSystem: (params) => api.get('/playlists/system', { params }),
+  getSystemById: (id) => api.get(`/playlists/system/${id}`),
+  getById: (id) => api.get(`/playlists/${id}`),
 };
 
 export const clientTopicsApi = {

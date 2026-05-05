@@ -23,6 +23,8 @@ import ClientLibrary from './pages/client/ClientLibrary';
 import ClientFavorites from './pages/client/ClientFavorites';
 import ClientProfile from './pages/client/ClientProfile';
 import ClientArtist from './pages/client/ClientArtist';
+import ClientCollection from './pages/client/ClientCollection';
+import ClientPlaylist from './pages/client/ClientPlaylist';
 import { ClientPlayerProvider } from './components/Layout/client/ClientPlayerProvider';
 
 const theme = createTheme({
@@ -182,6 +184,22 @@ function App() {
             element={
               <ProtectedRoute role="user">
                 <ClientArtist />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/collections/:collectionId"
+            element={
+              <ProtectedRoute role="user">
+                <ClientCollection />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/playlists/:playlistId"
+            element={
+              <ProtectedRoute role="user">
+                <ClientPlaylist />
               </ProtectedRoute>
             }
           />

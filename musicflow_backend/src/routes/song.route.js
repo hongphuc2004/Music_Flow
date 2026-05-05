@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const fs = require("fs");
+const path = require("path");
 const https = require("https");
 const http = require("http");
 const cloudinary = require("../config/cloudinary");
@@ -146,6 +147,73 @@ const parseArrayField = (value) => {
 };
 
 const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
+const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const normalizeSearchText = (value) => String(value || "").trim().replace(/\s+/g, " ");
+const escapeRegexChar = (char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const VIET_CHAR_GROUPS = {
+  a: "aáàảãạăắằẳẵặâấầẩẫậ",
+  A: "AÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬ",
+  e: "eéèẻẽẹêếềểễệ",
+  E: "EÉÈẺẼẸÊẾỀỂỄỆ",
+  i: "iíìỉĩị",
+  I: "IÍÌỈĨỊ",
+  o: "oóòỏõọôốồổỗộơớờởỡợ",
+  O: "OÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢ",
+  u: "uúùủũụưứừửữự",
+  U: "UÚÙỦŨỤƯỨỪỬỮỰ",
+  y: "yýỳỷỹỵ",
+  Y: "YÝỲỶỸỴ",
+  d: "dđ",
+  D: "DĐ",
+};
+const toAccentInsensitivePattern = (text) =>
+  String(text || "")
+    .split("")
+    .map((char) => {
+      if (char === " ") return "\\s+";
+      const grouped = VIET_CHAR_GROUPS[char];
+      if (grouped) {
+        return `[${grouped}]`;
+      }
+      return escapeRegexChar(char);
+    })
+    .join("");
+const buildSearchRegexes = (rawQuery) => {
+  const normalized = normalizeSearchText(rawQuery);
+  if (!normalized) return [];
+
+  const phraseRegex = new RegExp(toAccentInsensitivePattern(normalized), "i");
+
+  const tokens = normalized
+    .split(" ")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map(toAccentInsensitivePattern);
+
+  if (tokens.length <= 1) {
+    return [phraseRegex];
+  }
+
+  const allTokensRegex = new RegExp(`^(?=.*${tokens.join(")(?=.*")}).*$`, "i");
+  return [phraseRegex, allTokensRegex];
+};
+const decodeUploadFileName = (fileName) => {
+  const raw = String(fileName || "").trim();
+  if (!raw) return "";
+  try {
+    return Buffer.from(raw, "latin1").toString("utf8").trim();
+  } catch (error) {
+    return raw;
+  }
+};
+const toSafeSongTitleFromFileName = (originalName) => {
+  const decodedName = decodeUploadFileName(originalName);
+  const baseName = path
+    .basename(String(decodedName || ""), path.extname(String(decodedName || "")))
+    .trim();
+  if (!baseName) return "Untitled";
+  return baseName.replace(/\s+/g, " ").slice(0, 255);
+};
 
 // =================================================
 // 📈 GET FLOWCHART DATA (REAL HOURLY STREAM COUNTS)
@@ -511,12 +579,37 @@ router.get("/recommended", async (req, res) => {
 router.get("/search", async (req, res) => {
   try {
     const { query, artistId, topicId, letter } = req.query;
+    const includeArtists = String(req.query.includeArtists || "").toLowerCase() === "true";
 
     const conditions = [{ isPublic: true }];
+    let matchedArtists = [];
 
     if (query) {
-      const searchRegex = new RegExp(query, "i");
-      conditions.push({ title: searchRegex });
+      const regexes = buildSearchRegexes(query);
+      if (regexes.length > 0) {
+        matchedArtists = await Artist.find({
+          $or: regexes.map((regex) => ({ name: regex })),
+        })
+          .select("_id name avatar")
+          .sort({ name: 1 })
+          .limit(12)
+          .lean();
+      }
+
+      if (regexes.length > 0) {
+        const titleConditions = regexes.map((regex) => ({ title: regex }));
+        const queryOrConditions = [...titleConditions];
+
+        if (matchedArtists.length > 0) {
+          queryOrConditions.push({
+            artists: { $in: matchedArtists.map((artist) => artist._id) },
+          });
+        }
+
+        conditions.push({
+          $or: queryOrConditions,
+        });
+      }
     }
 
     if (artistId) {
@@ -534,6 +627,13 @@ router.get("/search", async (req, res) => {
     const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
     const songs = await Song.find(filter).sort({ createdAt: -1 }).populate("artists").populate("topicIds");
+    if (includeArtists) {
+      return res.json({
+        songs,
+        artists: matchedArtists,
+      });
+    }
+
     res.json(songs);
   } catch (error) {
     console.error("Search songs error:", error);
@@ -581,17 +681,13 @@ router.post(
       const topicIds = parseArrayField(req.body.topicIds);
       const imageUrlInput = typeof req.body.imageUrl === "string" ? req.body.imageUrl.trim() : "";
 
-      if (!title || !artists || !Array.isArray(artists) || artists.length === 0) {
-        return res.status(400).json({
-          message: "Missing required fields (title, artists)",
-        });
-      }
-
       if (!audioFile) {
         return res.status(400).json({
           message: "Audio file is required",
         });
       }
+
+      const normalizedTitle = String(title || "").trim() || toSafeSongTitleFromFileName(audioFile.originalname);
 
       // ================= CLOUDINARY UPLOAD =================
       const audioUpload = await cloudinary.uploader.upload(
@@ -625,7 +721,7 @@ router.post(
 
       // ================= SAVE MONGODB =================
       const songData = {
-        title,
+        title: normalizedTitle,
         artists,
         topicIds,
         lyrics,

@@ -204,6 +204,69 @@ class _AiDjScreenState extends State<AiDjScreen> {
     } catch (_) {}
   }
 
+  Future<void> _deleteConversation(String conversationId) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey.shade900,
+        title: const Text('Xoa mood?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Ban co chac chan muon xoa hoi thoai mood nay khong?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Huy', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Xoa', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
+    final headers = await _authHeaders();
+    if (headers == null) return;
+
+    try {
+      final response = await http.delete(
+        Uri.parse(ApiConfig.aiMoodConversationByIdEndpoint(conversationId)),
+        headers: headers,
+      );
+      final data = json.decode(response.body);
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        setState(() {
+          _conversations.removeWhere((item) => item.id == conversationId);
+          if (_activeConversationId == conversationId) {
+            _activeConversationId = null;
+            _messages = [];
+            _playlists = [];
+          }
+        });
+
+        if (_activeConversationId == null && _conversations.isNotEmpty) {
+          await _loadConversation(_conversations.first.id);
+        }
+      } else {
+        setState(() {
+          _errorMessage = data['message']?.toString() ?? 'Xoa mood that bai.';
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Loi ket noi. Vui long thu lai.';
+      });
+    }
+  }
+
   Future<void> _fetchAiPlaylist() async {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) return;
@@ -434,10 +497,12 @@ class _AiDjScreenState extends State<AiDjScreen> {
           }
           final conversation = _conversations[index - 1];
           final selected = conversation.id == _activeConversationId;
-          return ChoiceChip(
+          return InputChip(
             label: Text(conversation.title, overflow: TextOverflow.ellipsis),
             selected: selected,
             onSelected: (_) => _loadConversation(conversation.id),
+            onDeleted: () => _deleteConversation(conversation.id),
+            deleteIcon: const Icon(Icons.close, size: 18, color: Colors.white70),
             selectedColor: Colors.purpleAccent,
             backgroundColor: Colors.grey.shade900,
             labelStyle: TextStyle(
@@ -481,13 +546,41 @@ class _AiDjScreenState extends State<AiDjScreen> {
       );
     }
 
+    final playlistsById = <String, MoodPlaylist>{
+      for (final playlist in _playlists) playlist.id: playlist,
+    };
+    final usedPlaylistIds = <String>{};
+    final timelineWidgets = <Widget>[];
+
+    for (final message in _messages) {
+      timelineWidgets.add(_buildMessageBubble(message));
+
+      final playlistId = message.playlistId;
+      if (playlistId == null || playlistId.isEmpty) {
+        continue;
+      }
+
+      final playlist = playlistsById[playlistId];
+      if (playlist == null) {
+        continue;
+      }
+
+      usedPlaylistIds.add(playlistId);
+      timelineWidgets.add(_buildPlaylistCard(playlist));
+    }
+
+    for (final playlist in _playlists) {
+      if (usedPlaylistIds.contains(playlist.id)) {
+        continue;
+      }
+      timelineWidgets.add(_buildPlaylistCard(playlist));
+    }
+
     return Expanded(
       child: ListView(
         controller: _scrollController,
         children: [
-          ..._messages.map(_buildMessageBubble),
-          const SizedBox(height: 8),
-          ..._playlists.map(_buildPlaylistCard),
+          ...timelineWidgets,
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18),

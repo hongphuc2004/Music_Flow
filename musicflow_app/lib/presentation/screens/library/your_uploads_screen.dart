@@ -728,10 +728,8 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
                           // Title
                           _buildTextField(
                             controller: _titleController,
-                            label: 'Tên bài hát *',
-                            hint: 'Nhập tên bài hát',
-                            validator: (v) =>
-                                v?.trim().isEmpty == true ? 'Bắt buộc' : null,
+                            label: 'Tên bài hát (tuỳ chọn)',
+                            hint: 'Bỏ trống để dùng tên file',
                           ),
 
                           const SizedBox(height: 16),
@@ -739,10 +737,8 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
                           // Artist
                           _buildTextField(
                             controller: _artistController,
-                            label: 'Nghệ sĩ *',
-                            hint: 'Nhập tên nghệ sĩ',
-                            validator: (v) =>
-                                v?.trim().isEmpty == true ? 'Bắt buộc' : null,
+                            label: 'Nghệ sĩ (tuỳ chọn)',
+                            hint: 'Có thể bỏ trống',
                           ),
 
                           const SizedBox(height: 16),
@@ -996,3 +992,4 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
     );
   }
 }
+

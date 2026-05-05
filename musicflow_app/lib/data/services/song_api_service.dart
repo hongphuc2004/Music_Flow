@@ -6,6 +6,36 @@ import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/song_model.dart';
 import 'auth_service.dart';
 
+class SearchArtist {
+  final String id;
+  final String name;
+  final String avatar;
+
+  const SearchArtist({
+    required this.id,
+    required this.name,
+    required this.avatar,
+  });
+
+  factory SearchArtist.fromJson(Map<String, dynamic> json) {
+    return SearchArtist(
+      id: json['_id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      avatar: json['avatar']?.toString() ?? '',
+    );
+  }
+}
+
+class SearchResult {
+  final List<Song> songs;
+  final List<SearchArtist> artists;
+
+  const SearchResult({
+    required this.songs,
+    required this.artists,
+  });
+}
+
 class SongApiService {
     /// Lấy headers với token
     static Future<Map<String, String>> _getAuthHeaders() async {
@@ -198,12 +228,56 @@ class SongApiService {
     }
   }
 
+  static Future<SearchResult> searchAll({
+    String? query,
+    String? artist,
+    String? letter,
+  }) async {
+    final queryParams = <String, String>{
+      'includeArtists': 'true',
+    };
+
+    if (query != null && query.isNotEmpty) {
+      queryParams['query'] = query;
+    }
+    if (artist != null && artist.isNotEmpty) {
+      queryParams['artist'] = artist;
+    }
+    if (letter != null && letter.isNotEmpty) {
+      queryParams['letter'] = letter;
+    }
+
+    final uri = Uri.parse("$baseUrl/search").replace(queryParameters: queryParams);
+    final response = await _getWithRetry(uri);
+
+    if (response.statusCode != 200) {
+      throw NetworkException("Tìm kiếm thất bại");
+    }
+
+    final dynamic decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      return const SearchResult(songs: [], artists: []);
+    }
+
+    final songs = (decoded['songs'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(Song.fromJson)
+        .toList();
+
+    final artists = (decoded['artists'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SearchArtist.fromJson)
+        .toList();
+
+    return SearchResult(songs: songs, artists: artists);
+  }
+
   /// Upload bài hát mới (audio + image) - YÊU CẦU ĐĂNG NHẬP
   static Future<UploadResult> uploadSong({
     required File audioFile,
     File? imageFile,
-    required String title,
-    required String artist,
+    String? title,
+    String? artist,
     String? topicId,
     String? lyrics,
     bool isPublic = false,
@@ -234,11 +308,18 @@ class SongApiService {
       request.headers['Authorization'] = 'Bearer $token';
 
       // Thêm text fields
-      request.fields['title'] = title;
-      request.fields['artist'] = artist;
+      final normalizedTitle = (title ?? '').trim();
+      final normalizedArtist = (artist ?? '').trim();
+
+      if (normalizedTitle.isNotEmpty) {
+        request.fields['title'] = normalizedTitle;
+      }
+      if (normalizedArtist.isNotEmpty) {
+        request.fields['artists'] = jsonEncode([normalizedArtist]);
+      }
       request.fields['isPublic'] = isPublic.toString();
       if (topicId != null && topicId.isNotEmpty) {
-        request.fields['topicId'] = topicId;
+        request.fields['topicIds'] = jsonEncode([topicId]);
       }
       if (lyrics != null && lyrics.isNotEmpty) {
         request.fields['lyrics'] = lyrics;
@@ -351,7 +432,7 @@ class SongApiService {
 
       final body = <String, dynamic>{};
       if (title != null) body['title'] = title;
-      if (artist != null) body['artist'] = artist;
+      if (artist != null) body['artists'] = [artist];
       if (lyrics != null) body['lyrics'] = lyrics;
 
       final response = await http.put(

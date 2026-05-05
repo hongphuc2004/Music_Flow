@@ -222,7 +222,7 @@ exports.deleteComment = async (req, res) => {
       });
     }
 
-    const comment = await Comment.findById(commentId).select("_id userId");
+    const comment = await Comment.findById(commentId).select("_id userId songId");
     if (!comment) {
       return res.status(404).json({
         success: false,

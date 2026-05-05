@@ -119,7 +119,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
         <ListItem disablePadding>
           <ListItemButton onClick={handleLogout} sx={{ borderRadius: 3 }}>
             <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}><LogoutIcon /></ListItemIcon>
-            <ListItemText primary="Dang xuat" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary="Đăng xuất" primaryTypographyProps={{ fontWeight: 600 }} />
           </ListItemButton>
         </ListItem>
       </List>

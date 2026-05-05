@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Cài đ'),
+        title: const Text('Cài đặt'),
         elevation: 0,
       ),
       body: _isLoading

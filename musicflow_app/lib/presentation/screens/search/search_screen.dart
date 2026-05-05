@@ -8,6 +8,7 @@ import '../../../data/services/topic_api_service.dart';
 import '../../../data/models/song_model.dart';
 import '../../../data/models/topic_model.dart';
 import '../../widgets/song_options_menu.dart';
+import '../artist/artist_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -24,6 +25,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final SpeechToText _speechToText = SpeechToText();
 
   List<Song> _searchResults = [];
+  List<SearchArtist> _artistResults = [];
   List<String> _searchHistory = [];
   List<Topic> _topics = [];
   List<Song> _topicSongs = [];
@@ -258,6 +260,7 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _hasSearched = false;
         _searchResults = [];
+        _artistResults = [];
       });
       return;
     }
@@ -279,9 +282,10 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      final songs = await SongApiService.searchSongs(query: query);
+      final result = await SongApiService.searchAll(query: query);
       setState(() {
-        _searchResults = songs;
+        _searchResults = result.songs;
+        _artistResults = result.artists;
         _isLoading = false;
       });
       _saveToHistory(query);
@@ -306,6 +310,7 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _hasSearched = false;
         _searchResults = [];
+        _artistResults = [];
         _searchController.clear();
       });
       return false;
@@ -386,6 +391,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           setState(() {
                             _hasSearched = false;
                             _searchResults = [];
+                            _artistResults = [];
                           });
                         },
                       ),
@@ -421,6 +427,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 setState(() {
                   _hasSearched = false;
                   _searchResults = [];
+                  _artistResults = [];
                   _isSearchFocused = false;
                 });
               },
@@ -744,32 +751,88 @@ class _SearchScreenState extends State<SearchScreen> {
             ElevatedButton(
               onPressed: () => _performSearch(_searchController.text),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('Thử lại'),
+              child: const Text('Thu lai'),
             ),
           ],
         ),
       );
     }
 
-    if (_searchResults.isEmpty) {
+    if (_searchResults.isEmpty && _artistResults.isEmpty) {
       return const Center(
         child: Text(
-          'Không tìm thấy kết quả',
+          'Khong tim thay ket qua',
           style: TextStyle(color: Colors.grey),
         ),
       );
     }
 
-    return ListView.builder(
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final song = _searchResults[index];
-        return _buildSongTile(song);
-      },
+    return ListView(
+      children: [
+        if (_artistResults.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Text(
+              'Nghệ sĩ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          ..._artistResults.map(_buildArtistTile),
+          const SizedBox(height: 6),
+        ],
+        if (_searchResults.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Text(
+              'Bài hát',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          ..._searchResults.map(_buildSongTile),
+        ],
+      ],
     );
   }
 
-  // 🎵 Widget hiển thị một bài hát
+  Widget _buildArtistTile(SearchArtist artist) {
+    return ListTile(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ArtistScreen(artistName: artist.name),
+          ),
+        );
+      },
+      leading: CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.grey.shade800,
+        backgroundImage: artist.avatar.isNotEmpty ? NetworkImage(artist.avatar) : null,
+        child: artist.avatar.isEmpty
+            ? const Icon(Icons.person, color: Colors.white70)
+            : null,
+      ),
+      title: Text(
+        artist.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
+      subtitle: const Text(
+        'Nghe si',
+        style: TextStyle(color: Colors.grey),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+    );
+  }
+
   Widget _buildSongTile(Song song) {
     return InkWell(
       onTap: () => widget.onSongTap?.call(song),
@@ -870,3 +933,5 @@ class _SearchScreenState extends State<SearchScreen> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
+
+

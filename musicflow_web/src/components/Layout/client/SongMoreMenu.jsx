@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IconButton, Menu, MenuItem } from '@mui/material';
 import { MoreHorizRounded as MoreIcon } from '@mui/icons-material';
 import { clientFavoritesApi } from '../../../services/api';
 import { useClientPlayer } from './ClientPlayerProvider';
 
 function SongMoreMenu({ song, buttonSx }) {
+  const navigate = useNavigate();
   const { playSong } = useClientPlayer();
   const [anchorEl, setAnchorEl] = useState(null);
   const [favorite, setFavorite] = useState(false);
@@ -12,6 +14,10 @@ function SongMoreMenu({ song, buttonSx }) {
   const open = Boolean(anchorEl);
 
   const songId = useMemo(() => song?._id || '', [song?._id]);
+  const primaryArtistId = useMemo(() => {
+    const firstArtist = Array.isArray(song?.artists) ? song.artists[0] : null;
+    return firstArtist?._id || '';
+  }, [song?.artists]);
 
   const handleOpen = async (event) => {
     event.stopPropagation();
@@ -44,16 +50,11 @@ function SongMoreMenu({ song, buttonSx }) {
     }
   };
 
-  const handleCopyTitle = async (event) => {
+  const handleViewArtist = (event) => {
     event.stopPropagation();
-    const title = song?.title || '';
 
-    if (title && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(title);
-      } catch {
-        // Ignore clipboard errors to keep menu flow smooth.
-      }
+    if (primaryArtistId) {
+      navigate(`/client/artists/${primaryArtistId}`);
     }
 
     handleClose(event);
@@ -89,9 +90,9 @@ function SongMoreMenu({ song, buttonSx }) {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={handlePlay}>Phat ngay</MenuItem>
-        <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bo yeu thich' : 'Them yeu thich'}</MenuItem>
-        <MenuItem onClick={handleCopyTitle}>Sao chep ten bai hat</MenuItem>
+        <MenuItem onClick={handlePlay}>Phát ngay</MenuItem>
+        <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'}</MenuItem>
+        <MenuItem onClick={handleViewArtist} disabled={!primaryArtistId}>Xem nghệ sĩ</MenuItem>
       </Menu>
     </>
   );

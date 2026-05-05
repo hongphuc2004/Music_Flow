@@ -546,3 +546,44 @@ exports.getMoodConversation = async (req, res) => {
     });
   }
 };
+
+exports.deleteMoodConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation không hợp lệ.",
+      });
+    }
+
+    const existing = await MoodConversation.findOne({
+      _id: conversationId,
+      userId: req.userId,
+    }).select("_id");
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy hội thoại.",
+      });
+    }
+
+    await Promise.all([
+      MoodMessage.deleteMany({ conversationId, userId: req.userId }),
+      MoodPlaylist.deleteMany({ conversationId, userId: req.userId }),
+      MoodConversation.deleteOne({ _id: conversationId, userId: req.userId }),
+    ]);
+
+    return res.json({
+      success: true,
+      message: "Đã xóa mood conversation.",
+    });
+  } catch (error) {
+    console.error("Delete mood conversation error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể xóa hội thoại Mood Music.",
+    });
+  }
+};

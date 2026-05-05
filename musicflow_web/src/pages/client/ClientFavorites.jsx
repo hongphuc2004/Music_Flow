@@ -57,7 +57,7 @@ function ClientFavorites() {
       await clientFavoritesApi.remove(songId);
       setFavorites((prev) => prev.filter((song) => song._id !== songId));
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the xoa bai hat khoi yeu thich.');
+      setError(err.response?.data?.message || 'Không thể xóa bài hát khỏi yêu thích.');
     }
   };
 
@@ -135,7 +135,7 @@ function ClientFavorites() {
                           handleRemove(song._id);
                         }}
                       >
-                        Xoa
+                        Xóa
                       </Button>
                     </Stack>
                   </Paper>

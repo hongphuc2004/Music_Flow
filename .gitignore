@@ -75,3 +75,6 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 backup
+
+# Backend temporary uploads (multer)
+musicflow_backend/uploads/

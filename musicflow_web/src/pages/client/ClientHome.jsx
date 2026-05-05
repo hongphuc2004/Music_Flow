@@ -14,9 +14,6 @@ import {
   Typography,
 } from '@mui/material';
 import {
-  TrendingUp as TrendingUpIcon,
-  GraphicEq as GraphicEqIcon,
-  PlaylistPlay as PlaylistIcon,
   PlayArrowRounded as PlayIcon,
   PauseRounded as PauseIcon,
   RepeatRounded as RepeatIcon,
@@ -49,6 +46,7 @@ function ClientHome() {
   const [error, setError] = useState('');
   const lyricItemRefs = useRef([]);
   const lyricsContainerRef = useRef(null);
+  const [nowPlayingColors, setNowPlayingColors] = useState(null);
 
   const interactiveCardSx = {
     border: '1px solid #e2e8f0',
@@ -89,11 +87,96 @@ function ClientHome() {
     fetchData();
   }, []);
 
-  const quickStats = useMemo(() => ([
-    { label: 'Bài hát gợi ý', value: songs.length, icon: <GraphicEqIcon /> },
-    { label: 'Playlist hệ thống', value: playlists.length, icon: <PlaylistIcon /> },
-    { label: 'Đang thịnh hành', value: songs.filter((song) => (song.playCount || 0) > 0).length, icon: <TrendingUpIcon /> },
-  ]), [songs, playlists]);
+  useEffect(() => {
+    let cancelled = false;
+
+    const extractColors = async () => {
+      const imageUrl = currentSong?.imageUrl;
+      if (!imageUrl) {
+        setNowPlayingColors(null);
+        return;
+      }
+
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        await new Promise((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('load_failed'));
+          img.src = imageUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) throw new Error('no_canvas');
+
+        const size = 48;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(img, 0, 0, size, size);
+
+        const { data } = ctx.getImageData(0, 0, size, size);
+        const buckets = {
+          dark: { r: 0, g: 0, b: 0, n: 0 },
+          mid: { r: 0, g: 0, b: 0, n: 0 },
+          bright: { r: 0, g: 0, b: 0, n: 0 },
+          all: { r: 0, g: 0, b: 0, n: 0 },
+        };
+
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i + 3];
+          if (a < 40) continue;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          const key = lum < 85 ? 'dark' : lum > 170 ? 'bright' : 'mid';
+
+          buckets[key].r += r;
+          buckets[key].g += g;
+          buckets[key].b += b;
+          buckets[key].n += 1;
+
+          buckets.all.r += r;
+          buckets.all.g += g;
+          buckets.all.b += b;
+          buckets.all.n += 1;
+        }
+
+        const avg = (bucket) => {
+          const n = bucket.n || 1;
+          return {
+            r: Math.round(bucket.r / n),
+            g: Math.round(bucket.g / n),
+            b: Math.round(bucket.b / n),
+          };
+        };
+
+        const fallback = avg(buckets.all);
+        const dark = buckets.dark.n ? avg(buckets.dark) : fallback;
+        const mid = buckets.mid.n ? avg(buckets.mid) : fallback;
+        const bright = buckets.bright.n ? avg(buckets.bright) : fallback;
+
+        if (!cancelled) {
+          setNowPlayingColors({
+            dark,
+            mid,
+            bright,
+          });
+        }
+      } catch {
+        if (!cancelled) setNowPlayingColors(null);
+      }
+    };
+
+    extractColors();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentSong?._id, currentSong?.imageUrl]);
 
   const topSongs = useMemo(
     () => [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 6),
@@ -176,22 +259,6 @@ function ClientHome() {
               </Button>
             </Paper>
 
-            <Grid container spacing={2}>
-              {quickStats.map((item) => (
-                <Grid size={{ xs: 12, sm: 4 }} key={item.label}>
-                  <Paper sx={{ ...interactiveCardSx, p: 2.25, borderRadius: 3, height: '100%' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#0f766e', mb: 1 }}>
-                      {item.icon}
-                      <Typography fontWeight={700}>{item.label}</Typography>
-                    </Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                      {item.value}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-
             <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
                 Top artists
@@ -238,11 +305,36 @@ function ClientHome() {
               <Grid container spacing={1.5}>
                 {playlists.slice(0, 4).map((playlist) => (
                   <Grid size={{ xs: 12, sm: 6 }} key={playlist._id}>
-                    <Paper variant="outlined" sx={{ ...interactiveCardSx, p: 1.5, borderRadius: 2.5 }}>
-                      <Typography fontWeight={700} noWrap>{playlist.name || 'Untitled playlist'}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {(playlist.songs || []).length} songs
-                      </Typography>
+                    <Paper
+                      variant="outlined"
+                      onClick={() => navigate(`/client/collections/${playlist._id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          navigate(`/client/collections/${playlist._id}`);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      sx={{ ...interactiveCardSx, p: 1.5, borderRadius: 2.5, cursor: 'pointer' }}
+                    >
+                      <Stack direction="row" spacing={1.25} alignItems="center">
+                        <Avatar
+                          src={playlist.coverImage || ''}
+                          variant="rounded"
+                          sx={{ width: 52, height: 52, bgcolor: '#14b8a6' }}
+                        >
+                          {(playlist.name || 'C').charAt(0)}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={700} noWrap>
+                            {playlist.name || 'Untitled playlist'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {(playlist.songs || []).length} songs
+                          </Typography>
+                        </Box>
+                      </Stack>
                     </Paper>
                   </Grid>
                 ))}
@@ -331,11 +423,32 @@ function ClientHome() {
                     p: 2,
                     borderRadius: 3,
                     overflow: 'hidden',
+                    position: 'relative',
                     border: '1px solid rgba(255,255,255,0.16)',
-                    backgroundImage: `linear-gradient(155deg, rgba(8,47,73,0.96), rgba(15,23,42,0.96), rgba(16,42,67,0.94)), url(${currentSong.imageUrl || ''})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+                    backgroundColor: '#0f172a',
                     color: '#fff',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundImage: `url(${currentSong.imageUrl || ''})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      filter: 'blur(34px) saturate(0.9)',
+                      transform: 'scale(1.12)',
+                      opacity: 0.65,
+                      zIndex: 0,
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundImage: nowPlayingColors
+                        ? `linear-gradient(155deg, rgba(${nowPlayingColors.bright.r},${nowPlayingColors.bright.g},${nowPlayingColors.bright.b},0.28), rgba(${nowPlayingColors.mid.r},${nowPlayingColors.mid.g},${nowPlayingColors.mid.b},0.45), rgba(${nowPlayingColors.dark.r},${nowPlayingColors.dark.g},${nowPlayingColors.dark.b},0.92))`
+                        : 'linear-gradient(155deg, rgba(8,47,73,0.86), rgba(15,23,42,0.9), rgba(16,42,67,0.92))',
+                      zIndex: 1,
+                    },
+                    '& > *': { position: 'relative', zIndex: 2 },
                   }}
                 >
                   <Stack alignItems="center" spacing={1.25}>

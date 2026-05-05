@@ -169,25 +169,30 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
 
   Future<void> _editComment(SongComment comment) async {
     final isLoggedIn = await AuthService.isLoggedIn();
+    if (!mounted) return;
     if (!isLoggedIn) {
-      _setStatus('Vui long dang nhap de sua binh luan', isError: true);
+      _setStatus('Vui lòng đăng nhập để sửa bình luận', isError: true);
       return;
     }
-
-    final controller = TextEditingController(text: comment.content);
+    if (_currentUserId.isEmpty || comment.user.id != _currentUserId) {
+      _setStatus('Bạn không có quyền sửa bình luận này', isError: true);
+      return;
+    }
+    String draftContent = comment.content;
 
     final nextContent = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1B1B1B),
-          title: const Text('Sua binh luan', style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: controller,
+          title: const Text('Sửa bình luận', style: TextStyle(color: Colors.white)),
+          content: TextFormField(
+            initialValue: draftContent,
             style: const TextStyle(color: Colors.white),
             maxLines: 4,
+            onChanged: (value) => draftContent = value,
             decoration: const InputDecoration(
-              hintText: 'Nhap noi dung',
+              hintText: 'Nhập nội dung',
               hintStyle: TextStyle(color: Colors.white38),
             ),
           ),
@@ -197,22 +202,20 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
               child: const Text('Huy'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Luu'),
+              onPressed: () => Navigator.pop(context, draftContent.trim()),
+              child: const Text('Lưu'),
             ),
           ],
         );
       },
     );
 
-    controller.dispose();
-
     if (nextContent == null || nextContent.isEmpty) return;
 
     final result = await CommentService.updateComment(commentId: comment.id, content: nextContent);
     if (!mounted) return;
 
-    _setStatus(result.message ?? 'Cap nhat binh luan', isError: !result.success);
+    _setStatus(result.message ?? 'Cập nhật bình luận', isError: !result.success);
     if (result.success) {
       await _loadComments(reset: true);
     }
@@ -220,8 +223,13 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
 
   Future<void> _deleteComment(SongComment comment) async {
     final isLoggedIn = await AuthService.isLoggedIn();
+    if (!mounted) return;
     if (!isLoggedIn) {
-      _setStatus('Vui long dang nhap de xoa binh luan', isError: true);
+      _setStatus('Vui lòng đăng nhập để xóa bình luận', isError: true);
+      return;
+    }
+    if (_currentUserId.isEmpty || comment.user.id != _currentUserId) {
+      _setStatus('Bạn không có quyền xóa bình luận này', isError: true);
       return;
     }
 
@@ -229,14 +237,14 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1B1B1B),
-        title: const Text('Xoa binh luan?', style: TextStyle(color: Colors.white)),
+        title: const Text('Xóa bình luận?', style: TextStyle(color: Colors.white)),
         content: const Text(
-          'Binh luan va cac tra loi con se bi xoa.',
+          'Bình luận và các trả lời con sẽ bị xóa.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Huy')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xoa')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
         ],
       ),
     );
@@ -246,10 +254,21 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     final result = await CommentService.deleteComment(comment.id);
     if (!mounted) return;
 
-    _setStatus(result.message ?? 'Xoa binh luan', isError: !result.success);
+    _setStatus(result.message ?? 'Xóa bình luận', isError: !result.success);
     if (result.success) {
       await _loadComments(reset: true);
     }
+  }
+
+  void _handleOwnCommentAction(String action, SongComment comment) {
+    Future<void>.delayed(Duration.zero, () {
+      if (!mounted) return;
+      if (action == 'edit') {
+        _editComment(comment);
+      } else if (action == 'delete') {
+        _deleteComment(comment);
+      }
+    });
   }
 
   void _setStatus(String message, {required bool isError}) {
@@ -326,7 +345,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                                 padding: EdgeInsets.only(top: 32),
                                 child: Center(
                                   child: Text(
-                                    'Chua co binh luan nao',
+                                    'Chưa có bình luận nào',
                                     style: TextStyle(color: Colors.white54),
                                   ),
                                 ),
@@ -345,7 +364,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                                           height: 16,
                                           child: CircularProgressIndicator(strokeWidth: 2),
                                         )
-                                      : const Text('Xem them binh luan'),
+                                      : const Text('Xem thêm bình luận'),
                                 ),
                               ),
                           ],
@@ -365,7 +384,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Dang tra loi ${_replyingTo!.user.name}',
+                          'Đang trả lời ${_replyingTo!.user.name}',
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ),
@@ -497,17 +516,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                             PopupMenuButton<String>(
                               icon: const Icon(Icons.more_horiz, color: Colors.white54, size: 18),
                               color: const Color(0xFF222222),
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _editComment(comment);
-                                }
-                                if (value == 'delete') {
-                                  _deleteComment(comment);
-                                }
-                              },
+                              onSelected: (value) => _handleOwnCommentAction(value, comment),
                               itemBuilder: (context) => const [
-                                PopupMenuItem(value: 'edit', child: Text('Sua')),
-                                PopupMenuItem(value: 'delete', child: Text('Xoa')),
+                                PopupMenuItem<String>(value: 'edit', child: Text('Sửa')),
+                                PopupMenuItem<String>(value: 'delete', child: Text('Xóa')),
                               ],
                             ),
                         ],

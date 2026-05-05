@@ -1,6 +1,6 @@
 /// API config for the whole app.
 class ApiConfig {
-  static const String baseUrlDev = "http://192.168.1.148:5001";
+  static const String baseUrlDev = "http://192.168.100.217:5001";
   static const String baseUrlProd = "https://music-flow-30us.onrender.com";
 
   static const String appEnv = String.fromEnvironment(
@@ -26,6 +26,8 @@ class ApiConfig {
   static const String aiMoodHistoryEndpoint = "$baseUrl/api/ai/mood/history";
   static const String aiMoodConversationEndpoint =
       "$baseUrl/api/ai/mood/conversations";
+  static String aiMoodConversationByIdEndpoint(String conversationId) =>
+      "$aiMoodConversationEndpoint/$conversationId";
   static const String usersMeEndpoint = "$baseUrl/api/users/me";
   static const String usersUpdateEndpoint = "$baseUrl/api/users/update";
 

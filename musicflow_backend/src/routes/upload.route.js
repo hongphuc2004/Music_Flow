@@ -1,11 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
 const { cloudinaryFolder } = require("../config/cloudinaryFolders");
 
 // multer config
 const upload = multer({ dest: "uploads/" });
+
+const safeUnlink = (filePath) => {
+  if (!filePath) return;
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (_) {}
+};
 
 // POST /api/upload/audio
 router.post("/audio", upload.single("audio"), async (req, res) => {
@@ -28,6 +38,8 @@ router.post("/audio", upload.single("audio"), async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Upload failed" });
+  } finally {
+    safeUnlink(req.file?.path);
   }
 });
 

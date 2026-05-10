@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "migrate:song-source:dry": "node src/scripts/fix-song-source-by-role.js --env=dev",
+    "migrate:song-source:apply": "node src/scripts/fix-song-source-by-role.js --env=dev --apply",
+    "migrate:song-source:dry:prod": "node src/scripts/fix-song-source-by-role.js --env=prod",
+    "migrate:song-source:apply:prod": "node src/scripts/fix-song-source-by-role.js --env=prod --apply"
   },
   "keywords": [],
   "author": "",

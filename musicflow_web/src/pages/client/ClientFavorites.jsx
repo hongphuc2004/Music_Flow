@@ -62,7 +62,7 @@ function ClientFavorites() {
   };
 
   return (
-    <ClientLayout title="Bai hat yeu thich">
+    <ClientLayout title="Bài hát yêu thích">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>

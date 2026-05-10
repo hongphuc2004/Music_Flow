@@ -395,7 +395,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               ListTile(
                 leading: const Icon(Icons.queue_music, color: Colors.white70),
                 title: const Text(
-                  'Them vao danh sach phat',
+                  'Thêm vào danh sách phát',
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () => Navigator.pop(context),
@@ -406,7 +406,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   color: Colors.white70,
                 ),
                 title: const Text(
-                  'Them/Xoa bai hat yeu thich',
+                  'Thêm/Xóa bài hát yêu thích',
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
@@ -420,7 +420,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   color: Colors.white70,
                 ),
                 title: const Text(
-                  'Xem nghe si',
+                  'Xem nghệ sĩ',
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
@@ -431,7 +431,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.white70),
                 title: const Text(
-                  'Thong tin bai hat',
+                  'Thông tin bài hát',
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () => Navigator.pop(context),
@@ -574,9 +574,9 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPageIndicator() {
     final labels = <String>[
-      'Dang phat',
+      'Đang phát',
       'Lyrics',
-      if (_activePlaylist.isNotEmpty) 'Danh sach cho',
+      if (_activePlaylist.isNotEmpty) 'Danh sách chờ',
     ];
 
     return Padding(
@@ -803,10 +803,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           ),
           Text(
             _currentPage == 0
-                ? 'DANG PHAT'
+                ? 'ĐANG PHÁT'
                 : _currentPage == 1
                 ? 'LYRICS'
-                : 'DANH SACH CHO',
+                : 'DANH SÁCH CHỜ',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,

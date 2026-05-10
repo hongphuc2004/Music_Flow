@@ -30,6 +30,7 @@ import {
   Select,
   MenuItem,
   FormControlLabel,
+  Autocomplete,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -42,11 +43,11 @@ import {
   CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { songsApi, topicsApi } from '../../services/api';
+import { songsApi, topicsApi, accountsApi } from '../../services/api';
 
 const emptyFormData = {
   title: '',
-  artist: '',
+  artists: [],
   topicId: '',
   lyrics: '',
   isPublic: true,
@@ -72,6 +73,7 @@ function Songs() {
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [showFullLyrics, setShowFullLyrics] = useState(false);
+  const [artistOptions, setArtistOptions] = useState([]);
 
   const fetchSongs = useCallback(async () => {
     try {
@@ -107,6 +109,19 @@ function Songs() {
   useEffect(() => {
     fetchTopics();
   }, [fetchTopics]);
+
+  useEffect(() => {
+    const fetchArtists = async () => {
+      try {
+        const res = await accountsApi.getAll();
+        const artists = (res.data?.accounts || []).filter((acc) => acc.role === 'artist');
+        setArtistOptions(artists);
+      } catch (_) {
+        setArtistOptions([]);
+      }
+    };
+    fetchArtists();
+  }, []);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -173,7 +188,7 @@ function Songs() {
     setEditingSong(song);
     setFormData({
       title: song.title || '',
-      artist: song.artist || '',
+      artists: Array.isArray(song.artists) ? song.artists.map((a) => a.name).filter(Boolean) : [],
       topicId: song.topicId?._id || song.topicId || '',
       lyrics: song.lyrics || '',
       isPublic: !!song.isPublic,
@@ -188,8 +203,8 @@ function Songs() {
   };
 
   const handleCreateSong = async () => {
-    if (!formData.title.trim() || !formData.artist.trim()) {
-      setError('Title and artist are required.');
+    if (!formData.title.trim() || formData.artists.length === 0) {
+      setError('Title and at least one artist are required.');
       return;
     }
 
@@ -202,7 +217,7 @@ function Songs() {
       setCreateLoading(true);
       const payload = new FormData();
       payload.append('title', formData.title.trim());
-      payload.append('artist', formData.artist.trim());
+      payload.append('artist', formData.artists.join(', '));
       payload.append('lyrics', formData.lyrics || '');
       payload.append('isPublic', String(formData.isPublic));
       payload.append('topicId', formData.topicId || '');
@@ -419,12 +434,21 @@ function Songs() {
               />
             </Grid>
             <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Artist"
-                value={formData.artist}
-                onChange={(e) => setFormData((prev) => ({ ...prev, artist: e.target.value }))}
-                helperText="Artist name must already exist in the artist accounts list. You can enter multiple names separated by commas."
+              <Autocomplete
+                multiple
+                options={artistOptions}
+                getOptionLabel={(option) => option.name || ''}
+                value={artistOptions.filter((opt) => formData.artists.includes(opt.name))}
+                onChange={(_, selected) =>
+                  setFormData((prev) => ({ ...prev, artists: selected.map((item) => item.name) }))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Artists"
+                    helperText="Select one or more artists"
+                  />
+                )}
               />
             </Grid>
             <Grid size={12}>

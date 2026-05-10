@@ -62,7 +62,7 @@ function ClientDiscover() {
       setSongs(nextSongs);
       setSuggestions(nextSongs.slice(0, 6));
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai du lieu kham pha.');
+      setError(err.response?.data?.message || 'Không thể tải dữ liệu khám phá.');
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ function ClientDiscover() {
         <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Chu de dang hot
+              Chủ đề đang hót
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mb: 1.5 }}>
               <ClickAwayListener onClickAway={() => setShowSuggestions(false)}>
@@ -158,7 +158,7 @@ function ClientDiscover() {
                         handleSearch();
                       }
                     }}
-                    placeholder="Tim bai hat..."
+                    placeholder="Tìm bài hát..."
                     fullWidth
                     InputProps={{
                       startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 0.75 }} />,
@@ -228,7 +228,7 @@ function ClientDiscover() {
         <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, minHeight: 220, border: '1px solid #e2e8f0' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Ket qua kham pha
+              Kết quả khám phá
             </Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -238,7 +238,7 @@ function ClientDiscover() {
               <>
                 {searching && (
                   <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
-                    Dang cap nhat ket qua...
+                    Đang cập nhật kết quả...
                   </Typography>
                 )}
                 <Grid container spacing={1.5}>

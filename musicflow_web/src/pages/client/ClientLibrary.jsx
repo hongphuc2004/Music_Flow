@@ -67,7 +67,7 @@ function ClientLibrary() {
         <Grid size={{ xs: 12, md: 7 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Playlist cua ban
+              Playlist của bạn
             </Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>

@@ -54,7 +54,7 @@ function ArtistSong() {
   
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
-  const [formData, setFormData] = useState({ title: '', lyrics: '', imageUrl: '' });
+  const [formData, setFormData] = useState({ title: '', lyrics: '', imageUrl: '', collaborators: '' });
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [createLoading, setCreateLoading] = useState(false);
@@ -97,7 +97,7 @@ function ArtistSong() {
 
   const openCreateDialog = () => {
     setEditingSong(null);
-    setFormData({ title: '', lyrics: '', imageUrl: '' });
+    setFormData({ title: '', lyrics: '', imageUrl: '', collaborators: '' });
     setAudioFile(null);
     setImageFile(null);
     setShowFullLyrics(false);
@@ -112,6 +112,10 @@ function ArtistSong() {
       title: song.title || '',
       lyrics: song.lyrics || '',
       imageUrl: song.imageUrl || '',
+      collaborators: song.artists
+        ?.map((a) => a?._id)
+        .filter((id) => id && id !== localStorage.getItem('artistId'))
+        .join(', ') || '',
     });
     setAudioFile(null);
     setImageFile(null);
@@ -140,7 +144,11 @@ function ArtistSong() {
 
       const uploadData = new FormData();
       uploadData.append('title', formData.title.trim());
-      uploadData.append('artists', JSON.stringify([artistId]));
+      const collaboratorTokens = String(formData.collaborators || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      uploadData.append('artists', JSON.stringify([artistId, ...collaboratorTokens]));
       uploadData.append('lyrics', formData.lyrics || '');
       uploadData.append('imageUrl', formData.imageUrl || '');
       uploadData.append('isPublic', 'true');
@@ -438,6 +446,16 @@ function ArtistSong() {
               label="Tiêu đề bài hát *"
               value={formData.title}
               onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+              InputProps={{ sx: { borderRadius: 3 } }}
+            />
+
+            <TextField
+              fullWidth
+              label="Collaborators (tên/email/ID)"
+              value={formData.collaborators}
+              onChange={(e) => setFormData((prev) => ({ ...prev, collaborators: e.target.value }))}
+              placeholder="VD: artist2@email.com, Nguyen Van A"
+              helperText="Nhập nhiều collaborator, cách nhau bằng dấu phẩy"
               InputProps={{ sx: { borderRadius: 3 } }}
             />
             

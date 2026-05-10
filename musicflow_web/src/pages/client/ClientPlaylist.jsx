@@ -48,7 +48,7 @@ function ClientPlaylist() {
   }, [playlistId]);
 
   return (
-    <ClientLayout title="Playlist cua ban">
+    <ClientLayout title="Playlist của bạn">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={2.5}>

@@ -761,7 +761,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_searchResults.isEmpty && _artistResults.isEmpty) {
       return const Center(
         child: Text(
-          'Khong tim thay ket qua',
+          'Không tìm thấy kết quả',
           style: TextStyle(color: Colors.grey),
         ),
       );

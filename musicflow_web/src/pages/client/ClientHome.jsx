@@ -245,17 +245,17 @@ function ClientHome() {
           <Stack spacing={2.5}>
             <Paper sx={{ p: 3, borderRadius: 3, background: 'linear-gradient(120deg, #06b6d4, #14b8a6)', color: '#fff' }}>
               <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                Chao mung ban quay lai
+                Chào mừng bạn quay lại
               </Typography>
               <Typography variant="body1" sx={{ opacity: 0.92, mb: 2 }}>
-                Kham pha nhac moi, playlist ca nhan va theo doi xu huong ngay hom nay.
+                Khám phá nhạc mới, playlist cá nhân và theo dõi xu hướng ngày hôm nay.
               </Typography>
               <Button
                 variant="contained"
                 onClick={() => navigate('/client/discover')}
                 sx={{ bgcolor: '#fff', color: '#0f766e', '&:hover': { bgcolor: '#f0fdfa' } }}
               >
-                Bat dau nghe
+                Bắt đầu nghe
               </Button>
             </Paper>
 
@@ -294,7 +294,7 @@ function ClientHome() {
                     </Stack>
                   </Paper>
                 ))}
-                {!topArtists.length && <Typography color="text.secondary">Chua co du lieu artist.</Typography>}
+                {!topArtists.length && <Typography color="text.secondary">Chưa có dữ liệu artist.</Typography>}
               </Stack>
             </Paper>
 
@@ -340,7 +340,7 @@ function ClientHome() {
                 ))}
                 {!playlists.length && (
                   <Grid size={{ xs: 12 }}>
-                    <Typography color="text.secondary">Chua co collection he thong.</Typography>
+                    <Typography color="text.secondary">Chưa có collection hệ thống.</Typography>
                   </Grid>
                 )}
               </Grid>
@@ -401,7 +401,7 @@ function ClientHome() {
                   ))}
                   {!songs.length && (
                     <Grid size={{ xs: 12 }}>
-                      <Typography color="text.secondary">Chua co bai hat de xuat.</Typography>
+                      <Typography color="text.secondary">Chưa có bài hát để đề xuất.</Typography>
                     </Grid>
                   )}
                 </Grid>

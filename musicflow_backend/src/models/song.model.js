@@ -69,7 +69,7 @@ const songSchema = new mongoose.Schema(
     // Phân biệt admin upload hay user upload
     source: {
       type: String,
-      enum: ["admin", "user"],
+      enum: ["admin", "artist", "user"],
       default: "admin",
     },
 

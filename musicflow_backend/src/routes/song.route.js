@@ -10,6 +10,7 @@ const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryF
 const Song = require("../models/song.model");
 const SongPlayEvent = require("../models/song-play-event.model");
 const Artist = require("../models/artist.model");
+const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const { downloadSong } = require("../controllers/song.controller");
 
@@ -145,9 +146,42 @@ const parseArrayField = (value) => {
   }
   return [];
 };
+const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const isObjectIdLike = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || "").trim());
+
+const resolveArtistIds = async (rawArtists) => {
+  const tokens = parseArrayField(rawArtists)
+    .flatMap((item) => String(item || "").split(","))
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (tokens.length === 0) return [];
+
+  const idTokens = [...new Set(tokens.filter(isObjectIdLike))];
+  const textTokens = [...new Set(tokens.filter((item) => !isObjectIdLike(item)))];
+
+  const [byIds, byText] = await Promise.all([
+    idTokens.length
+      ? Artist.find({ _id: { $in: idTokens } }).select("_id").lean()
+      : Promise.resolve([]),
+    textTokens.length
+      ? Artist.find({
+          $or: textTokens.map((token) => ({
+            $or: [
+              { name: { $regex: new RegExp(`^${escapeRegex(token)}$`, "i") } },
+              { email: { $regex: new RegExp(`^${escapeRegex(token)}$`, "i") } },
+            ],
+          })),
+        })
+          .select("_id")
+          .lean()
+      : Promise.resolve([]),
+  ]);
+
+  return [...new Set([...byIds, ...byText].map((artist) => String(artist._id)))];
+};
 
 const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
-const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const normalizeSearchText = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const escapeRegexChar = (char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const VIET_CHAR_GROUPS = {
@@ -213,6 +247,21 @@ const toSafeSongTitleFromFileName = (originalName) => {
     .trim();
   if (!baseName) return "Untitled";
   return baseName.replace(/\s+/g, " ").slice(0, 255);
+};
+
+const resolveAuthenticatedRole = async (req) => {
+  const tokenRole = String(req.userRole || "").trim().toLowerCase();
+  if (tokenRole === "admin" || tokenRole === "user" || tokenRole === "artist") {
+    return tokenRole;
+  }
+
+  const user = await User.findById(req.userId).select("role").lean();
+  if (user?.role) return String(user.role).trim().toLowerCase();
+
+  const artist = await Artist.findById(req.userId).select("role").lean();
+  if (artist?.role) return String(artist.role).trim().toLowerCase();
+
+  return "user";
 };
 
 // =================================================
@@ -677,7 +726,7 @@ router.post(
     const imageFile = req.files?.image?.[0] || null;
     try {
       const { title, lyrics, isPublic } = req.body;
-      const artists = parseArrayField(req.body.artists);
+      const artists = await resolveArtistIds(req.body.artists);
       const topicIds = parseArrayField(req.body.topicIds);
       const imageUrlInput = typeof req.body.imageUrl === "string" ? req.body.imageUrl.trim() : "";
 
@@ -720,11 +769,18 @@ router.post(
       fs.unlinkSync(audioFile.path);
 
       // ================= SAVE MONGODB =================
+      const accountRole = await resolveAuthenticatedRole(req);
+      const source = accountRole === "admin"
+        ? "admin"
+        : accountRole === "artist"
+          ? "artist"
+          : "user";
       const songData = {
         title: normalizedTitle,
         artists,
         topicIds,
         lyrics,
+        source,
         uploadedBy: req.userId,
         isPublic: isPublic === 'true' || isPublic === true,
         audioUrl: audioUpload.secure_url,
@@ -788,7 +844,7 @@ router.put(
         });
       }
 
-      const parsedArtists = parseArrayField(body.artists);
+      const parsedArtists = await resolveArtistIds(body.artists);
       const parsedTopicIds = parseArrayField(body.topicIds);
       const imageUrlInput =
         typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
@@ -796,7 +852,7 @@ router.put(
       if (typeof body.title !== "undefined") {
         song.title = String(body.title).trim();
       }
-      if (parsedArtists.length > 0) {
+      if (typeof body.artists !== "undefined") {
         song.artists = parsedArtists;
       }
       if (typeof body.lyrics !== "undefined") {

@@ -452,11 +452,11 @@ function ArtistSong() {
 
             <TextField
               fullWidth
-              label="Collaborators (tên/email/ID)"
+              label="Thêm nghệ sĩ"
               value={formData.collaborators}
               onChange={(e) => setFormData((prev) => ({ ...prev, collaborators: e.target.value }))}
               placeholder="VD: artist2@email.com, Nguyen Van A"
-              helperText="Nhập nhiều collaborator, cách nhau bằng dấu phẩy"
+              helperText="Nhập nhiều nghệ sĩ, cách nhau bằng dấu phẩy"
               InputProps={{ sx: { borderRadius: 3 } }}
             />
             
@@ -548,7 +548,7 @@ function ArtistSong() {
               value={formData.imageUrl}
               onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
               placeholder="https://..."
-              helperText="Nếu có sẵn link ảnh. Ưu tiên upload file ảnh hơn."
+              helperText="Nếu có sẵn link ảnh."
               InputProps={{ sx: { borderRadius: 3 } }}
             />          
           </Stack>

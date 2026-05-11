@@ -762,7 +762,11 @@ router.post(
         imagePublicId = imageUpload.public_id;
         fs.unlinkSync(imageFile.path);
       } else if (imageUrlInput && isHttpUrl(imageUrlInput)) {
-        imageUrl = imageUrlInput;
+        const imageUpload = await cloudinary.uploader.upload(imageUrlInput, {
+          folder: cloudinaryFolder("images"),
+        });
+        imageUrl = imageUpload.secure_url;
+        imagePublicId = imageUpload.public_id;
       }
 
       // Xoá file tạm sau khi upload
@@ -882,7 +886,11 @@ router.put(
         song.imageUrl = imageUpload.secure_url;
         song.imagePublicId = imageUpload.public_id;
       } else if (imageUrlInput && isHttpUrl(imageUrlInput)) {
-        song.imageUrl = imageUrlInput;
+        const imageUpload = await cloudinary.uploader.upload(imageUrlInput, {
+          folder: cloudinaryFolder("images"),
+        });
+        song.imageUrl = imageUpload.secure_url;
+        song.imagePublicId = imageUpload.public_id;
       }
 
       await song.save();

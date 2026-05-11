@@ -595,17 +595,11 @@ router.post(
         finalImageUrl = imageUpload.secure_url;
         imagePublicId = imageUpload.public_id;
         } else if (imageUrl && isHttpUrl(imageUrl)) {
-        // Nếu có imageUrl là URL, upload lên Cloudinary
-        try {
-          const imageUpload = await cloudinary.uploader.upload(imageUrl.trim(), {
-            folder: cloudinaryFolder("images"),
-          });
-          finalImageUrl = imageUpload.secure_url;
-          imagePublicId = imageUpload.public_id;
-        } catch (err) {
-          // Nếu upload thất bại, fallback dùng link gốc
-          finalImageUrl = imageUrl.trim();
-        }
+        const imageUpload = await cloudinary.uploader.upload(imageUrl.trim(), {
+          folder: cloudinaryFolder("images"),
+        });
+        finalImageUrl = imageUpload.secure_url;
+        imagePublicId = imageUpload.public_id;
         }
 
         const { artistIds, missingNames } = await resolveArtistsByNames(artist);
@@ -716,7 +710,11 @@ router.put(
         song.imageUrl = imageUpload.secure_url;
         song.imagePublicId = imageUpload.public_id;
       } else if (imageUrl && isHttpUrl(imageUrl)) {
-        song.imageUrl = imageUrl.trim();
+        const imageUpload = await cloudinary.uploader.upload(imageUrl.trim(), {
+          folder: cloudinaryFolder("images"),
+        });
+        song.imageUrl = imageUpload.secure_url;
+        song.imagePublicId = imageUpload.public_id;
       }
 
       await song.save();

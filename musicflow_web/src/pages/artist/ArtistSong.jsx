@@ -113,8 +113,9 @@ function ArtistSong() {
       lyrics: song.lyrics || '',
       imageUrl: song.imageUrl || '',
       collaborators: song.artists
-        ?.map((a) => a?._id)
-        .filter((id) => id && id !== localStorage.getItem('artistId'))
+        ?.filter((a) => a?._id && a._id !== localStorage.getItem('artistId'))
+        .map((a) => a?.name || a?.email || a?._id)
+        .filter(Boolean)
         .join(', ') || '',
     });
     setAudioFile(null);

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/user_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
@@ -480,3 +480,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+

@@ -22,19 +22,6 @@ function ClientFavorites() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const interactiveCardSx = {
-    p: 1.5,
-    borderRadius: 2.5,
-    border: '1px solid #e2e8f0',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
-    '&:hover': {
-      transform: 'translateY(-2px)',
-      borderColor: '#14b8a6',
-      backgroundColor: '#f0fdfa',
-      boxShadow: '0 14px 28px -24px rgba(13, 95, 89, 0.7)',
-    },
-  };
-
   const fetchFavorites = async () => {
     try {
       setLoading(true);
@@ -57,12 +44,12 @@ function ClientFavorites() {
       await clientFavoritesApi.remove(songId);
       setFavorites((prev) => prev.filter((song) => song._id !== songId));
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể xóa bài hát khỏi yêu thích.');
+      setError(err.response?.data?.message || 'Khong the xoa bai hat khoi yeu thich.');
     }
   };
 
   return (
-    <ClientLayout title="Bài hát yêu thích">
+    <ClientLayout title="Bai hat yeu thich">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
@@ -77,7 +64,7 @@ function ClientFavorites() {
             }}
           >
             <FavoriteIcon sx={{ color: '#ef4444' }} />
-            <Typography fontWeight={700}>Danh sách bài hát yêu thích của bạn</Typography>
+            <Typography fontWeight={700}>Danh sach bai hat yeu thich cua ban</Typography>
           </Paper>
         </Grid>
 
@@ -94,15 +81,9 @@ function ClientFavorites() {
                     key={song._id}
                     variant="outlined"
                     onClick={() => playSong(song)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        playSong(song);
-                      }
-                    }}
                     role="button"
                     tabIndex={0}
-                    sx={{ ...interactiveCardSx, cursor: 'pointer' }}
+                    sx={{ p: 1.5, borderRadius: 2.5, border: '1px solid #e2e8f0', cursor: 'pointer' }}
                   >
                     <Stack direction="row" spacing={1.25} alignItems="center">
                       <Avatar src={song.imageUrl} variant="rounded" sx={{ width: 48, height: 48 }}>
@@ -116,17 +97,10 @@ function ClientFavorites() {
                             : 'Unknown artist'}
                         </Typography>
                       </Box>
-                      <Button
-                        size="small"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          playSong(song);
-                        }}
-                        sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
-                      >
+                      <Button size="small" onClick={(event) => { event.stopPropagation(); playSong(song); }}>
                         Play
                       </Button>
-                      <SongMoreMenu song={song} buttonSx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }} />
+                      <SongMoreMenu song={song} />
                       <Button
                         size="small"
                         color="error"
@@ -135,12 +109,12 @@ function ClientFavorites() {
                           handleRemove(song._id);
                         }}
                       >
-                        Xóa
+                        Xoa
                       </Button>
                     </Stack>
                   </Paper>
                 ))}
-                {!favorites.length && <Typography color="text.secondary">Bạn chưa có bài hát yêu thích nào.</Typography>}
+                {!favorites.length && <Typography color="text.secondary">Ban chua co bai hat yeu thich nao.</Typography>}
               </Stack>
             )}
           </Paper>

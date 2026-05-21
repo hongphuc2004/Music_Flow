@@ -54,7 +54,7 @@ function ClientPlaylist() {
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
-            Quay lai
+            Quay lại
           </Button>
         </Grid>
 
@@ -83,7 +83,7 @@ function ClientPlaylist() {
         <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0', minHeight: 280 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Danh sach bai hat
+              Danh sách bài hát
             </Typography>
 
             {loading ? (

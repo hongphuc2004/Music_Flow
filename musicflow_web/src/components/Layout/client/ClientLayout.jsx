@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Box, Toolbar } from '@mui/material';
 import ClientSidebar from './ClientSidebar';
 import ClientHeader from './ClientHeader';
@@ -8,6 +9,17 @@ const drawerWidth = 260;
 
 function ClientLayout({ children, title }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  const titleByPath = {
+    '/client/home': 'Trang chủ',
+    '/client/discover': 'Khám Phá',
+    '/client/library': 'Thư Viện ',
+    '/client/genres': 'Chủ Đề & Thể Loại',
+    '/client/rankings': 'Bảng Xếp Hạng',
+    '/client/profile': 'Tài Khoản',
+  };
+  const resolvedTitle = titleByPath[location.pathname] || title || 'MusicFlow';
 
   const handleToggleSidebar = () => {
     setMobileOpen((prev) => !prev);
@@ -28,7 +40,7 @@ function ClientLayout({ children, title }) {
       }}
     >
       <ClientSidebar mobileOpen={mobileOpen} onClose={handleCloseSidebar} />
-      <ClientHeader title={title} onToggleSidebar={handleToggleSidebar} />
+      <ClientHeader title={resolvedTitle} onToggleSidebar={handleToggleSidebar} />
       <Box
         component="main"
         sx={{

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_artist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_shared.dart';
@@ -168,3 +168,4 @@ class _AllArtistGridCard extends StatelessWidget {
     );
   }
 }
+

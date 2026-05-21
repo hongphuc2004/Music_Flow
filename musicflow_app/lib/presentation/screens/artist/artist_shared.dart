@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class ArtistPalette {
   static const Color accent = Color(0xFF66F2C5);
@@ -261,3 +261,4 @@ class ArtistGhostButton extends StatelessWidget {
     );
   }
 }
+

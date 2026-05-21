@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../data/models/song_model.dart';
@@ -446,7 +446,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
         children: [
           Expanded(
             child: Text(
-              song.artists.join(', '),
+              song.artists.isNotEmpty ? song.artists.join(', ') : 'Bạn tải lên',
               style: TextStyle(color: Colors.grey[400], fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -992,4 +992,5 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
     );
   }
 }
+
 

@@ -19,6 +19,7 @@ class OfflineSongService {
   static const int _maxOfflineSongCount = 500;
 
   static bool _hiveInitialized = false;
+  DateTime? _lastServerSyncAt;
   Box<dynamic>? _box;
 
   Future<Box<dynamic>> get box async {
@@ -76,6 +77,7 @@ class OfflineSongService {
   Future<List<DownloadedSong>> getAllDownloadedSongs() async {
     final items = await _getAllDownloadedSongs();
     items.sort((a, b) => b.downloadedAt.compareTo(a.downloadedAt));
+    await _syncDownloadedSongsToServer(items);
     return items;
   }
 
@@ -250,6 +252,20 @@ class OfflineSongService {
 
     final boxRef = await box;
     await boxRef.delete(songId);
+  }
+
+  Future<void> _syncDownloadedSongsToServer(List<DownloadedSong> items) async {
+    if (items.isEmpty) return;
+
+    final now = DateTime.now();
+    if (_lastServerSyncAt != null &&
+        now.difference(_lastServerSyncAt!) < const Duration(minutes: 2)) {
+      return;
+    }
+
+    _lastServerSyncAt = now;
+    final songIds = items.map((item) => item.songId).toList();
+    await SongApiService.syncDownloadHistory(songIds);
   }
 }
 

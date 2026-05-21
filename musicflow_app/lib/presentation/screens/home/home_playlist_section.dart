@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 
 import 'home_shared.dart';
@@ -167,3 +167,4 @@ class _PlaylistCard extends StatelessWidget {
     );
   }
 }
+

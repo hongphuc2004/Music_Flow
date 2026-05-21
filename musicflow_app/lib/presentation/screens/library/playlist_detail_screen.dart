@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -305,7 +305,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         child: const Icon(Icons.delete, color: Colors.redAccent),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog<bool>(
+        return await showDialog<bool>(  
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: const Color(0xFF1E1E1E),
@@ -543,3 +543,4 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     );
   }
 }
+

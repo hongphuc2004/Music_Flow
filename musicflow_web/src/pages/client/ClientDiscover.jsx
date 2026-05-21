@@ -1,300 +1,307 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Avatar,
   Box,
-  ClickAwayListener,
-  Chip,
+  Button,
   CircularProgress,
-  Grid,
-  List,
-  ListItemButton,
-  ListItemText,
   Paper,
   Stack,
-  TextField,
   Typography,
-  Button,
 } from '@mui/material';
-import { SearchRounded as SearchIcon } from '@mui/icons-material';
+import { RefreshRounded as RefreshIcon, ChevronRightRounded as ArrowIcon } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientSongsApi, clientTopicsApi } from '../../services/api';
+import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../services/api';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+
+const getRecentPlayedStorageKey = () => {
+  const userId = localStorage.getItem('userId') || 'anonymous';
+  return `musicflow_recent_played_${userId}`;
+};
+
+const readRecentPlayedSongs = () => {
+  try {
+    const raw = localStorage.getItem(getRecentPlayedStorageKey());
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 function ClientDiscover() {
   const { playSong } = useClientPlayer();
-  const [topics, setTopics] = useState([]);
-  const [defaultSongs, setDefaultSongs] = useState([]);
   const [songs, setSongs] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [query, setQuery] = useState('');
+  const [suggestedSongs, setSuggestedSongs] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searching, setSearching] = useState(false);
+  const [refreshingSuggestions, setRefreshingSuggestions] = useState(false);
   const [error, setError] = useState('');
 
-  const interactiveCardSx = {
-    p: 1.25,
-    borderRadius: 2.5,
-    border: '1px solid #e2e8f0',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
-    '&:hover': {
-      transform: 'translateY(-2px)',
-      borderColor: '#14b8a6',
-      backgroundColor: '#f0fdfa',
-      boxShadow: '0 14px 28px -24px rgba(13, 95, 89, 0.7)',
-    },
-  };
-
-  const loadDefault = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError('');
-      const [topicsRes, songsRes] = await Promise.all([
+      const [songsRes, topicsRes, playlistsRes] = await Promise.all([
+        clientSongsApi.getRecommended({ limit: 24 }),
         clientTopicsApi.getAll(),
-        clientSongsApi.getRecommended({ limit: 12 }),
+        clientPlaylistsApi.getSystem({ limit: 20 }),
       ]);
 
-      setTopics(topicsRes.data || []);
       const nextSongs = Array.isArray(songsRes.data) ? songsRes.data : [];
-      setDefaultSongs(nextSongs);
       setSongs(nextSongs);
-      setSuggestions(nextSongs.slice(0, 6));
+      setSuggestedSongs(nextSongs.slice(0, 9));
+      setTopics(Array.isArray(topicsRes.data) ? topicsRes.data : []);
+      setPlaylists(playlistsRes.data?.playlists || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể tải dữ liệu khám phá.');
+      setError(err.response?.data?.message || 'Khong the tai du lieu kham pha.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadDefault();
+    loadData();
   }, []);
 
-  const runSearch = async (keyword, { withLoading = false } = {}) => {
-    const normalized = keyword.trim();
-
-    if (!normalized) {
-      setSongs(defaultSongs);
-      setSuggestions(defaultSongs.slice(0, 6));
-      return;
-    }
-
+  const refreshSuggestedSongsOnly = async () => {
     try {
-      if (withLoading) setLoading(true);
-      else setSearching(true);
+      setRefreshingSuggestions(true);
       setError('');
-      const response = await clientSongsApi.search({ query: normalized, limit: 24 });
-      const nextSongs = Array.isArray(response.data) ? response.data : [];
-      setSongs(nextSongs);
-      setSuggestions(nextSongs.slice(0, 6));
+      const songsRes = await clientSongsApi.getRecommended({ limit: 24 });
+      const nextSongs = Array.isArray(songsRes.data) ? songsRes.data : [];
+      setSuggestedSongs(nextSongs.slice(0, 9));
     } catch (err) {
-      setError(err.response?.data?.message || 'Tim kiem that bai.');
+      setError(err.response?.data?.message || 'Khong the lam moi goi y bai hat.');
     } finally {
-      if (withLoading) setLoading(false);
-      else setSearching(false);
+      setRefreshingSuggestions(false);
     }
   };
 
-  const handleSearch = async () => {
-    await runSearch(query, { withLoading: true });
-    setShowSuggestions(false);
+  const recentSongs = useMemo(() => readRecentPlayedSongs().slice(0, 6), []);
+
+  const top100Cards = useMemo(() => {
+    return [...songs]
+      .sort((a, b) => (b.playCount || 0) - (a.playCount || 0))
+      .slice(0, 5);
+  }, [songs]);
+
+  const chillCards = useMemo(() => {
+    const chillTopics = new Set(['chill', 'lofi', 'sleep', 'piano']);
+    const matched = playlists.filter((playlist) => {
+      const name = String(playlist?.name || '').toLowerCase();
+      return [...chillTopics].some((keyword) => name.includes(keyword));
+    });
+    return (matched.length > 0 ? matched : playlists).slice(0, 5);
+  }, [playlists]);
+
+  const artistMixCards = useMemo(() => {
+    const artistMap = new Map();
+    songs.forEach((song) => {
+      if (!Array.isArray(song.artists)) return;
+      song.artists.forEach((artist) => {
+        if (!artist?._id || artistMap.has(artist._id)) return;
+        artistMap.set(artist._id, {
+          id: artist._id,
+          name: artist.name || 'Unknown artist',
+          avatar: artist.avatar || song.imageUrl || '',
+          subtitle: (song.artists || []).map((a) => a?.name).filter(Boolean).join(', '),
+        });
+      });
+    });
+    return [...artistMap.values()].slice(0, 5);
+  }, [songs]);
+
+  const shellSx = {
+    borderRadius: 4,
+    p: { xs: 2, md: 3 },
+    background: '#ffffff',
+    border: '1px solid #dfe8f2',
+    color: '#0f172a',
   };
 
-  useEffect(() => {
-    const normalized = query.trim();
+  const sectionHeader = (title) => (
+    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
+      <Typography sx={{ fontWeight: 800, fontSize: 24 }}>{title}</Typography>
+      <Button size="small" endIcon={<ArrowIcon />} sx={{ color: '#0f766e', fontWeight: 700 }}>
+        Tat ca
+      </Button>
+    </Stack>
+  );
 
-    if (!normalized) {
-      setSongs(defaultSongs);
-      setSuggestions(defaultSongs.slice(0, 6));
-      setShowSuggestions(false);
-      return;
-    }
-
-    setShowSuggestions(true);
-    const timer = setTimeout(() => {
-      runSearch(normalized);
-    }, 260);
-
-    return () => clearTimeout(timer);
-  }, [query, defaultSongs]);
-
-  const handleChooseTopic = async (topicId) => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await clientTopicsApi.getSongsByTopic(topicId);
-      setSongs(response.data || []);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai bai hat theo chu de.');
-    } finally {
-      setLoading(false);
-    }
+  const cardSx = {
+    borderRadius: 2.5,
+    p: 1,
+    background: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    minWidth: 210,
+    maxWidth: 210,
+    flexShrink: 0,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      borderColor: '#14b8a6',
+      backgroundColor: '#f0fdfa',
+      boxShadow: '0 16px 30px -22px rgba(20, 184, 166, 0.7)',
+    },
   };
 
   return (
     <ClientLayout title="Kham pha">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12 }}>
-          <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Chủ đề đang hót
-            </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mb: 1.5 }}>
-              <ClickAwayListener onClickAway={() => setShowSuggestions(false)}>
-                <Box sx={{ position: 'relative', flexGrow: 1 }}>
-                  <TextField
-                    size="small"
-                    value={query}
-                    onFocus={() => {
-                      if (query.trim() && suggestions.length) setShowSuggestions(true);
-                    }}
-                    onChange={(event) => setQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        handleSearch();
-                      }
-                    }}
-                    placeholder="Tìm bài hát..."
-                    fullWidth
-                    InputProps={{
-                      startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 0.75 }} />,
-                    }}
-                  />
-                  {showSuggestions && suggestions.length > 0 && (
-                    <Paper
-                      sx={{
-                        position: 'absolute',
-                        top: 'calc(100% + 6px)',
-                        left: 0,
-                        right: 0,
-                        zIndex: 8,
-                        borderRadius: 2,
-                        border: '1px solid #dbeafe',
-                        maxHeight: 260,
-                        overflowY: 'auto',
-                      }}
-                    >
-                      <List dense disablePadding>
-                        {suggestions.map((song) => (
-                          <ListItemButton
-                            key={song._id}
-                            onClick={() => {
-                              setQuery(song.title || '');
-                              setShowSuggestions(false);
-                              playSong(song);
-                            }}
-                            sx={{ py: 0.75 }}
-                          >
-                            <Avatar src={song.imageUrl} variant="rounded" sx={{ width: 28, height: 28, mr: 1 }}>
-                              {song.title?.charAt(0)}
-                            </Avatar>
-                            <ListItemText
-                              primary={song.title || 'Unknown song'}
-                              secondary={Array.isArray(song.artists)
-                                ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
-                                : 'Unknown artist'}
-                              primaryTypographyProps={{ noWrap: true, fontWeight: 700, fontSize: 13 }}
-                              secondaryTypographyProps={{ noWrap: true, fontSize: 12 }}
-                            />
-                          </ListItemButton>
-                        ))}
-                      </List>
-                    </Paper>
-                  )}
-                </Box>
-              </ClickAwayListener>
-              <Button variant="contained" onClick={handleSearch} sx={{ minWidth: 120, bgcolor: '#0f766e', '&:hover': { bgcolor: '#0d5f59' } }}>
-                Tim
+
+      <Paper sx={shellSx}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
+            <CircularProgress size={34} sx={{ color: '#16a34a' }} />
+          </Box>
+        ) : (
+          <Stack spacing={4}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography sx={{ fontWeight: 900, fontSize: 26 }}>Goi Y Bai Hat</Typography>
+              <Button
+                onClick={refreshSuggestedSongsOnly}
+                startIcon={<RefreshIcon />}
+                sx={{ color: '#0f766e', borderColor: '#9dd5ce' }}
+                variant="outlined"
+                disabled={refreshingSuggestions}
+              >
+                {refreshingSuggestions ? 'Dang lam moi...' : 'Lam moi'}
               </Button>
             </Stack>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {topics.map((topic) => (
-                <Chip
-                  key={topic._id}
-                  clickable
-                  onClick={() => handleChooseTopic(topic._id)}
-                  label={topic.name}
-                  sx={{ bgcolor: '#ecfeff', color: '#0f766e', fontWeight: 700 }}
-                />
-              ))}
-            </Stack>
-          </Paper>
-        </Grid>
 
-        <Grid size={{ xs: 12 }}>
-          <Paper sx={{ p: 2.5, borderRadius: 3, minHeight: 220, border: '1px solid #e2e8f0' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Kết quả khám phá
-            </Typography>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-                <CircularProgress size={28} />
-              </Box>
-            ) : (
-              <>
-                {searching && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
-                    Đang cập nhật kết quả...
-                  </Typography>
-                )}
-                <Grid container spacing={1.5}>
-                {songs.map((song) => (
-                  <Grid size={{ xs: 12, md: 6 }} key={song._id}>
-                    <Paper
-                      variant="outlined"
-                      onClick={() => playSong(song)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          playSong(song);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      sx={{ ...interactiveCardSx, cursor: 'pointer' }}
-                    >
-                      <Stack direction="row" spacing={1.25} alignItems="center">
-                        <Avatar src={song.imageUrl} variant="rounded" sx={{ width: 48, height: 48 }}>
-                          {song.title?.charAt(0)}
-                        </Avatar>
-                        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                          <Typography fontWeight={700} noWrap>{song.title}</Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap>
-                            {Array.isArray(song.artists)
-                              ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
-                              : 'Unknown artist'}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            playSong(song);
-                          }}
-                          sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
-                        >
-                          Play
-                        </Button>
-                        <SongMoreMenu song={song} buttonSx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }} />
-                      </Stack>
-                    </Paper>
-                  </Grid>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 1.5 }}>
+              {suggestedSongs.map((song) => (
+                <Stack
+                  key={`quick-${song._id}`}
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{
+                    p: 0.75,
+                    borderRadius: 2,
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: '#14b8a6',
+                      backgroundColor: '#f0fdfa',
+                      transform: 'translateY(-2px)',
+                    },
+                  }}
+                  onClick={() => playSong(song)}
+                >
+                  <Avatar src={song.imageUrl} variant="rounded" sx={{ width: 44, height: 44 }} />
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{song.title}</Typography>
+                    <Typography variant="caption" noWrap sx={{ color: '#64748b' }}>
+                      {Array.isArray(song.artists)
+                        ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
+                        : 'Unknown artist'}
+                    </Typography>
+                  </Box>
+                </Stack>
+              ))}
+            </Box>
+
+            <Box>
+              {sectionHeader('Nghe Gan Day')}
+              <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
+                {(recentSongs.length > 0 ? recentSongs : songs.slice(0, 5)).map((song) => (
+                  <Box key={`recent-${song._id}`} sx={cardSx} onClick={() => playSong(song)}>
+                    <Box component="img" src={song.imageUrl} alt={song.title} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{song.title}</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
+                      {Array.isArray(song.artists)
+                        ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
+                        : 'Unknown artist'}
+                    </Typography>
+                  </Box>
                 ))}
-                {!songs.length && (
-                  <Grid size={{ xs: 12 }}>
-                    <Typography color="text.secondary">Khong tim thay bai hat phu hop.</Typography>
-                  </Grid>
-                )}
-                </Grid>
-              </>
+              </Stack>
+            </Box>
+
+            <Box>
+              {sectionHeader('Danh Rieng Cho Ban')}
+              <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
+                {artistMixCards.map((artist) => (
+                  <Box key={`mix-${artist.id}`} sx={{ ...cardSx, minWidth: 230, maxWidth: 230, background: 'linear-gradient(145deg, #2563eb, #14b8a6)' }}>
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Avatar src={artist.avatar} sx={{ width: 72, height: 72 }} />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 900, color: '#fff' }}>{artist.name} Mix</Typography>
+                        <Typography variant="caption" sx={{ color: '#e2e8f0' }}>
+                          {artist.subtitle || 'Artist selection'}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+
+            <Box>
+              {sectionHeader('Top 100')}
+              <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
+                {top100Cards.map((song, index) => (
+                  <Box key={`top-${song._id}`} sx={cardSx}>
+                    <Box component="img" src={song.imageUrl} alt={song.title} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
+                    <Typography sx={{ fontWeight: 900, color: '#0f766e' }}>TOP {index + 1}</Typography>
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{song.title}</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
+                      {song.playCount || 0} plays
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+
+            <Box>
+              {sectionHeader('Goi Y Playlist')}
+              <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
+                {playlists.slice(0, 5).map((playlist) => (
+                  <Box key={`playlist-${playlist._id}`} sx={cardSx}>
+                    <Box component="img" src={playlist.coverImage || ''} alt={playlist.name} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{playlist.name}</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
+                      {(playlist.songs || []).length} bai hat
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+
+            <Box>
+              {sectionHeader('Chill')}
+              <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
+                {chillCards.map((playlist) => (
+                  <Box key={`chill-${playlist._id}`} sx={cardSx}>
+                    <Box component="img" src={playlist.coverImage || ''} alt={playlist.name} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{playlist.name}</Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
+                      {(playlist.songs || []).length} bai hat
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+
+            {topics.length > 0 && (
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {topics.slice(0, 10).map((topic) => (
+                  <Button key={topic._id} size="small" sx={{ color: '#0f766e', borderColor: '#9dd5ce' }} variant="outlined">
+                    {topic.name}
+                  </Button>
+                ))}
+              </Stack>
             )}
-          </Paper>
-        </Grid>
-      </Grid>
+          </Stack>
+        )}
+      </Paper>
     </ClientLayout>
   );
 }

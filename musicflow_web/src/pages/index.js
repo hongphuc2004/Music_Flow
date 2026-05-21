@@ -11,5 +11,6 @@ export { default as ClientHome } from './client/ClientHome';
 export { default as ClientDiscover } from './client/ClientDiscover';
 export { default as ClientLibrary } from './client/ClientLibrary';
 export { default as ClientFavorites } from './client/ClientFavorites';
+export { default as ClientGenres } from './client/ClientGenres';
+export { default as ClientRankings } from './client/ClientRankings';
 export { default as ClientProfile } from './client/ClientProfile';
-

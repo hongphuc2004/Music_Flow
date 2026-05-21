@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -210,16 +210,18 @@ function Topics() {
       setFormLoading(false);
     }
   };
+  
   // Song picker logic (reuse from playlist)
   const fetchSongOptions = useCallback(async () => {
     try {
       setSongOptionsLoading(true);
       const response = await songsApi.getAll({
-        page: songOptionsPage + 1,
-        limit: songOptionsRowsPerPage,
-        search: songOptionsSearch,
+        page: 1,
+        limit: 2000,
+        search: songOptionsSearch.trim(),
       });
-      const songs = response.data?.songs || [];
+      let songs = response.data?.songs || [];
+      
       setSongOptions(songs);
       setSongOptionsTotal(response.data?.pagination?.total || 0);
       setSelectedSongMap((prev) => {
@@ -232,19 +234,32 @@ function Topics() {
         });
         return next;
       });
-    } catch {
+    } catch (err) {
+      console.error('Failed to fetch song options:', err);
       setSongOptions([]);
       setSongOptionsTotal(0);
     } finally {
       setSongOptionsLoading(false);
     }
-  }, [songOptionsPage, songOptionsRowsPerPage, songOptionsSearch]);
+  }, [songOptionsSearch]);
 
   useEffect(() => {
     if (songPickerOpen) {
       fetchSongOptions();
     }
   }, [songPickerOpen, fetchSongOptions]);
+
+  const displayedSongOptions = React.useMemo(() => {
+    const sorted = [...songOptions].sort((a, b) => {
+      const aSelected = formData.songs.includes(a._id);
+      const bSelected = formData.songs.includes(b._id);
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      return 0;
+    });
+    const startIndex = songOptionsPage * songOptionsRowsPerPage;
+    return sorted.slice(startIndex, startIndex + songOptionsRowsPerPage);
+  }, [songOptions, formData.songs, songOptionsPage, songOptionsRowsPerPage]);
 
   const handleSongSearchChange = (event) => {
     const value = event.target.value;
@@ -279,6 +294,12 @@ function Topics() {
       ...prev,
       songs: prev.songs.filter((id) => id !== songId),
     }));
+  };
+
+  const handleOpenSongPicker = () => {
+    setSongOptionsPage(0);
+    setSongOptionsSearch('');
+    setSongPickerOpen(true);
   };
 
   const handleSongOptionsPageChange = (event, newPage) => {
@@ -510,7 +531,7 @@ function Topics() {
                   <Typography variant="subtitle2">Songs in topic</Typography>
                   <Chip label={`${formData.songs.length} selected`} size="small" color="primary" />
                 </Stack>
-                <Button variant="outlined" onClick={() => setSongPickerOpen(true)}>
+                <Button variant="outlined" onClick={handleOpenSongPicker}>
                   Choose Songs
                 </Button>
               </Box>
@@ -555,14 +576,14 @@ function Topics() {
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {songOptions.length === 0 ? (
+                              {displayedSongOptions.length === 0 ? (
                                 <TableRow>
                                   <TableCell colSpan={3} align="center">
                                     No songs found
                                   </TableCell>
                                 </TableRow>
                               ) : (
-                                songOptions.map((song) => {
+                                displayedSongOptions.map((song) => {
                                   const checked = formData.songs.includes(song._id);
                                   return (
                                     <TableRow key={song._id} hover>

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_shared.dart';
 
@@ -125,3 +125,4 @@ class _MetaCard extends StatelessWidget {
     );
   }
 }
+

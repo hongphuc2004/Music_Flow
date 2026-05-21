@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
@@ -308,3 +308,4 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 }
+

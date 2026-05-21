@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -524,7 +524,7 @@ class LibraryScreenState extends State<LibraryScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        artistText.isNotEmpty ? artistText : 'Khong ro nghe si',
+        artistText.isNotEmpty ? artistText : 'Không rõ nghệ sĩ',
         style: TextStyle(color: Colors.grey[400]),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -537,3 +537,4 @@ class LibraryScreenState extends State<LibraryScreen> {
     );
   }
 }
+

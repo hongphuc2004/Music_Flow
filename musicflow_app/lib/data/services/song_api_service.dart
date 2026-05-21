@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -37,7 +37,7 @@ class SearchResult {
 }
 
 class SongApiService {
-    /// Lấy headers với token
+    /// Lay headers voi token
     static Future<Map<String, String>> _getAuthHeaders() async {
       final token = await AuthService.getToken();
       return {
@@ -46,10 +46,10 @@ class SongApiService {
       };
     }
   static const String baseUrl = ApiConfig.songsEndpoint;
-  static const Duration timeout = Duration(seconds: 15);  // Timeout 15 giây
-  static const int maxRetries = 3;  // Số lần retry tối đa
+  static const Duration timeout = Duration(seconds: 15); // Timeout 15 giay
+  static const int maxRetries = 3; // So lan retry toi da
 
-  /// Fetch với retry và timeout
+  /// Fetch voi retry va timeout
   static Future<http.Response> _getWithRetry(Uri uri) async {
     int attempts = 0;
     
@@ -73,7 +73,7 @@ class SongApiService {
         }
       }
       
-      // Chờ trước khi retry (exponential backoff)
+      // Ch? tru?c khi retry (exponential backoff)
       await Future.delayed(Duration(milliseconds: 500 * attempts));
     }
     
@@ -87,11 +87,11 @@ class SongApiService {
       final List data = json.decode(response.body);
       return data.map((e) => Song.fromJson(e)).toList();
     } else {
-      throw NetworkException("Server lỗi (${response.statusCode})");
+      throw NetworkException("Server l?i (${response.statusCode})");
     }
   }
 
-  /// Lấy danh sách bài hát gợi ý (random)
+  /// Lay danh sach bai hat goi y (random)
   static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
     final uri = Uri.parse("$baseUrl/recommended?limit=$limit");
     final response = await _getWithRetry(uri);
@@ -104,7 +104,7 @@ class SongApiService {
     }
   }
 
-  /// Lấy dữ liệu Flowchart theo giờ (real data từ backend)
+  /// L?y d? li?u Flowchart theo gi? (real data t? backend)
   static Future<FlowchartDataResult> fetchFlowchartData({
     int hours = 12,
     int limit = 50,
@@ -199,7 +199,7 @@ class SongApiService {
     }
   }
 
-  /// Tìm kiếm bài hát theo query (tên bài hát hoặc ca sĩ)
+  /// Tim kiem bai hat theo query (ten bai hat hoac ca si)
   static Future<List<Song>> searchSongs({
     String? query,
     String? artist,
@@ -272,7 +272,7 @@ class SongApiService {
     return SearchResult(songs: songs, artists: artists);
   }
 
-  /// Upload bài hát mới (audio + image) - YÊU CẦU ĐĂNG NHẬP
+  /// Upload bai hat moi (audio + image) - YEU CAU DANG NHAP
   static Future<UploadResult> uploadSong({
     required File audioFile,
     File? imageFile,
@@ -284,7 +284,7 @@ class SongApiService {
     void Function(double)? onProgress,
   }) async {
     try {
-      // Lấy token
+      // L?y token
       final token = await AuthService.getToken();
       if (token == null) {
         return UploadResult(
@@ -293,7 +293,7 @@ class SongApiService {
         );
       }
 
-      // Kiểm tra file tồn tại
+      // Ki?m tra file t?n t?i
       if (!await audioFile.exists()) {
         return UploadResult(
           success: false,
@@ -304,10 +304,10 @@ class SongApiService {
       final uri = Uri.parse(baseUrl);
       final request = http.MultipartRequest('POST', uri);
       
-      // Thêm auth header
+      // Them auth header
       request.headers['Authorization'] = 'Bearer $token';
 
-      // Thêm text fields
+      // Them text fields
       final normalizedTitle = (title ?? '').trim();
       final normalizedArtist = (artist ?? '').trim();
 
@@ -325,13 +325,13 @@ class SongApiService {
         request.fields['lyrics'] = lyrics;
       }
 
-      // Thêm file audio
+      // Them file audio
       request.files.add(await http.MultipartFile.fromPath(
         'audio',
         audioFile.path,
       ));
 
-      // Thêm file image nếu có
+      // Them file image neu co
       if (imageFile != null && await imageFile.exists()) {
         request.files.add(await http.MultipartFile.fromPath(
           'image',
@@ -339,7 +339,7 @@ class SongApiService {
         ));
       }
 
-      // Gửi request
+      // G?i request
       final streamedResponse = await request.send().timeout(
         const Duration(minutes: 5),
       );
@@ -378,7 +378,7 @@ class SongApiService {
     }
   }
 
-  /// Lấy danh sách bài hát user đã upload
+  /// Lay danh sach bai hat user da upload
   static Future<MyUploadsResult> getMyUploads() async {
     try {
       final token = await AuthService.getToken();
@@ -417,7 +417,7 @@ class SongApiService {
     }
   }
 
-  /// Cập nhật thông tin bài hát
+  /// Cap nhat thong tin bai hat
   static Future<UploadResult> updateSong({
     required String songId,
     String? title,
@@ -494,7 +494,7 @@ class SongApiService {
     }
   }
 
-  /// Xóa bài hát
+  /// Xoa bai hat
   static Future<DeleteResult> deleteSong(String songId) async {
     try {
       final token = await AuthService.getToken();
@@ -518,7 +518,7 @@ class SongApiService {
     }
   }
 
-  /// Xin quyền tải bài hát từ backend
+  /// Xin quyen tai bai hat tu backend
   static Future<DownloadSongApiResult> requestDownloadSong(String songId) async {
     try {
       final token = await AuthService.getToken();
@@ -565,9 +565,37 @@ class SongApiService {
       );
     }
   }
+
+  /// Dong bo danh sach bai da tai local len server de web/mobile cung thay
+  static Future<bool> syncDownloadHistory(List<String> songIds) async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null) return false;
+
+      final normalized = songIds
+          .map((id) => id.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
+      if (normalized.isEmpty) return true;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/download-history/sync'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'songIds': normalized}),
+      ).timeout(timeout);
+
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
-/// Kết quả upload
+/// K?t qu? upload
 class UploadResult {
   final bool success;
   final String message;
@@ -580,7 +608,7 @@ class UploadResult {
   });
 }
 
-/// Kết quả lấy danh sách upload
+/// Ket qua lay danh sach upload
 class MyUploadsResult {
   final bool success;
   final String? message;
@@ -593,7 +621,7 @@ class MyUploadsResult {
   });
 }
 
-/// Kết quả toggle public
+/// K?t qu? toggle public
 class TogglePublicResult {
   final bool success;
   final String message;
@@ -606,7 +634,7 @@ class TogglePublicResult {
   });
 }
 
-/// Kết quả xóa
+/// Ket qua xoa
 class DeleteResult {
   final bool success;
   final String message;
@@ -614,7 +642,7 @@ class DeleteResult {
   DeleteResult({required this.success, required this.message});
 }
 
-/// Kết quả xin quyền tải bài hát từ backend
+/// Ket qua xin quyen tai bai hat tu backend
 class DownloadSongApiResult {
   final bool success;
   final String message;
@@ -627,7 +655,7 @@ class DownloadSongApiResult {
   });
 }
 
-/// Kết quả lấy dữ liệu Flowchart
+/// K?t qu? l?y d? li?u Flowchart
 class FlowchartDataResult {
   final int hours;
   final String rankingMode;

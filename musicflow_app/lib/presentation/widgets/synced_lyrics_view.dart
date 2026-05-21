@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/lrc_line_model.dart';
 
 class SyncedLyricsView extends StatefulWidget {

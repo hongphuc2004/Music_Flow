@@ -245,9 +245,10 @@ function Songs() {
   };
 
   const formatDuration = (seconds) => {
-    if (!seconds) return '--:--';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
+    const num = Number(seconds);
+    if (isNaN(num) || num < 0) return '--:--';
+    const mins = Math.floor(num / 60);
+    const secs = Math.floor(num % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -353,14 +354,23 @@ function Songs() {
                     <TableCell>{song.artist}</TableCell>
                     <TableCell>{formatDuration(song.duration)}</TableCell>
                     <TableCell>
-                      {song.uploadedBy ? (
+                      {song.source === 'admin' ? (
+                        <Chip label="Admin" size="small" color="primary" />
+                      ) : song.source === 'artist' ? (
+                        <Chip 
+                          label={song.uploadedBy?.name || song.artist || 'Artist'} 
+                          size="small" 
+                          color="secondary" 
+                          variant="outlined" 
+                        />
+                      ) : song.uploadedBy ? (
                         <Chip
                           label={song.uploadedBy.name}
                           size="small"
                           variant="outlined"
                         />
                       ) : (
-                        <Chip label="Admin" size="small" color="primary" />
+                        <Chip label="Unknown" size="small" color="default" variant="outlined" />
                       )}
                     </TableCell>
                     <TableCell>

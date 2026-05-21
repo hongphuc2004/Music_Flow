@@ -193,6 +193,12 @@ export const clientSongsApi = {
   getRecommended: (params) => api.get('/songs/recommended', { params }),
   search: (params) => api.get('/songs/search', { params }),
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
+  getMyUploads: () => api.get('/songs/my-uploads'),
+  getMyDownloadHistory: (params) => api.get('/songs/download-history', { params }),
+  requestDownload: (songId) => api.post(`/songs/${songId}/download`),
+  uploadSong: (formData) => api.post('/songs', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 export const clientFavoritesApi = {

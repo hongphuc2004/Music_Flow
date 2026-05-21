@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
@@ -933,5 +933,6 @@ class _SearchScreenState extends State<SearchScreen> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
+
 
 

@@ -12,13 +12,13 @@ import {
   Box,
   Divider,
   Avatar,
-  Chip,
 } from '@mui/material';
 import {
   Home as HomeIcon,
   Explore as ExploreIcon,
   LibraryMusic as LibraryMusicIcon,
-  Favorite as FavoriteIcon,
+  CategoryOutlined as CategoryIcon,
+  EqualizerRounded as EqualizerIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
   Headphones as HeadphonesIcon,
@@ -27,11 +27,12 @@ import {
 const drawerWidth = 260;
 
 const menuItems = [
-  { text: 'Trang chủ', icon: <HomeIcon />, path: '/client/home' },
-  { text: 'Khám phá', icon: <ExploreIcon />, path: '/client/discover' },
-  { text: 'Thư viện', icon: <LibraryMusicIcon />, path: '/client/library' },
-  { text: 'Yêu thích', icon: <FavoriteIcon />, path: '/client/favorites' },
-  { text: 'Tài khoản', icon: <PersonIcon />, path: '/client/profile' },
+  { text: 'Trang Chủ', icon: <HomeIcon />, path: '/client/home' },
+  { text: 'Khám Phá', icon: <ExploreIcon />, path: '/client/discover' },
+  { text: 'Thư Viện ', icon: <LibraryMusicIcon />, path: '/client/library' },
+  { text: 'Chủ Đề & Thể Loại', icon: <CategoryIcon />, path: '/client/genres' },
+  { text: 'Bảng Xếp Hạng', icon: <EqualizerIcon />, path: '/client/rankings' },
+  { text: 'Tài Khoản', icon: <PersonIcon />, path: '/client/profile' },
 ];
 
 function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
@@ -61,7 +62,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2.5 }}>
             <HeadphonesIcon sx={{ color: '#22d3ee', fontSize: 30 }} />
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 800, letterSpacing: -0.3 }}>
-              MusicFlow 
+              MusicFlow
             </Typography>
           </Box>
           <Box
@@ -119,7 +120,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
         <ListItem disablePadding>
           <ListItemButton onClick={handleLogout} sx={{ borderRadius: 3 }}>
             <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}><LogoutIcon /></ListItemIcon>
-            <ListItemText primary="Đăng xuất" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary="Dang xuat" primaryTypographyProps={{ fontWeight: 600 }} />
           </ListItemButton>
         </ListItem>
       </List>

@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
@@ -284,3 +284,4 @@ class _ArtistScreenState extends State<ArtistScreen> {
     );
   }
 }
+

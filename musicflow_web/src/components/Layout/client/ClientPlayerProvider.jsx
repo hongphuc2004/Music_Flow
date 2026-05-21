@@ -3,6 +3,29 @@ import { clientSongsApi, resolveSongStreamUrl } from '../../../services/api';
 import { findActiveLyricIndex, parseLyrics } from '../../../utils/lyrics';
 
 const ClientPlayerContext = createContext(null);
+const MAX_RECENT_PLAYED = 40;
+
+function getRecentPlayedStorageKey() {
+  const userId = localStorage.getItem('userId') || 'anonymous';
+  return `musicflow_recent_played_${userId}`;
+}
+
+function saveRecentPlayedSong(song) {
+  if (!song?._id) return;
+  try {
+    const key = getRecentPlayedStorageKey();
+    const current = JSON.parse(localStorage.getItem(key) || '[]');
+    const next = [
+      {
+        ...song,
+        playedAt: new Date().toISOString(),
+      },
+      ...current.filter((item) => item?._id !== song._id),
+    ].slice(0, MAX_RECENT_PLAYED);
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+  }
+}
 
 function normalizeSong(song) {
   if (!song) return null;
@@ -84,6 +107,8 @@ export function ClientPlayerProvider({ children }) {
       setCurrentTime(0);
       loadLyrics(nextSong._id);
     }
+
+    saveRecentPlayedSong(song);
 
     try {
       await audio.play();

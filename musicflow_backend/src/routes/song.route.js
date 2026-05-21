@@ -9,6 +9,7 @@ const cloudinary = require("../config/cloudinary");
 const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryFolders");
 const Song = require("../models/song.model");
 const SongPlayEvent = require("../models/song-play-event.model");
+const SongDownloadEvent = require("../models/song-download-event.model");
 const Artist = require("../models/artist.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
@@ -697,17 +698,130 @@ router.get("/my-uploads", authMiddleware, async (req, res) => {
     const songs = await Song.find({ uploadedBy: req.userId })
       .populate("artists")
       .sort({ createdAt: -1 });
+
+    const sanitizedSongs = songs.map((songDoc) => {
+      const song = songDoc.toObject();
+      if (song.source === "user") {
+        song.artists = [];
+      }
+      return song;
+    });
     
     res.json({
       success: true,
-      songs,
-      count: songs.length
+      songs: sanitizedSongs,
+      count: sanitizedSongs.length
     });
   } catch (error) {
     console.error("Get my uploads error:", error);
     res.status(500).json({ 
       success: false, 
       message: "Lấy danh sách thất bại" 
+    });
+  }
+});
+
+// =================================================
+// ⬇️ GET MY DOWNLOAD HISTORY (AUTH REQUIRED)
+router.get("/download-history", authMiddleware, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+
+    const events = await SongDownloadEvent.find({ userId: req.userId })
+      .sort({ downloadedAt: -1 })
+      .populate({
+        path: "songId",
+        match: { isPublic: true },
+        populate: { path: "artists" },
+      })
+      .limit(400)
+      .lean();
+
+    const uniqueSongs = [];
+    const seenSongIds = new Set();
+
+    for (const event of events) {
+      const song = event.songId;
+      if (!song?._id) continue;
+      const songId = String(song._id);
+      if (seenSongIds.has(songId)) continue;
+      seenSongIds.add(songId);
+      uniqueSongs.push({
+        ...song,
+        downloadedAt: event.downloadedAt,
+      });
+      if (uniqueSongs.length >= limit) break;
+    }
+
+    return res.json({
+      success: true,
+      songs: uniqueSongs,
+      count: uniqueSongs.length,
+    });
+  } catch (error) {
+    console.error("Get download history error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lay lich su tai bai hat that bai",
+      error: error.message,
+    });
+  }
+});
+
+// =================================================
+// 🔄 SYNC MY DOWNLOAD HISTORY FROM CLIENT (AUTH REQUIRED)
+router.post("/download-history/sync", authMiddleware, async (req, res) => {
+  try {
+    const songIds = Array.isArray(req.body?.songIds) ? req.body.songIds : [];
+    const normalizedSongIds = [...new Set(
+      songIds
+        .map((id) => String(id || "").trim())
+        .filter((id) => isObjectIdLike(id))
+    )];
+
+    if (normalizedSongIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Danh sach songIds khong hop le",
+      });
+    }
+
+    const existingEvents = await SongDownloadEvent.find({
+      userId: req.userId,
+      songId: { $in: normalizedSongIds },
+    }).select("songId").lean();
+
+    const existingSongIdSet = new Set(existingEvents.map((event) => String(event.songId)));
+    const missingSongIds = normalizedSongIds.filter((id) => !existingSongIdSet.has(id));
+
+    if (missingSongIds.length > 0) {
+      const existingSongs = await Song.find({ _id: { $in: missingSongIds } }).select("_id").lean();
+      const existingSongIds = new Set(existingSongs.map((song) => String(song._id)));
+      const docs = missingSongIds
+        .filter((id) => existingSongIds.has(id))
+        .map((songId) => ({
+          userId: req.userId,
+          songId,
+          downloadedAt: new Date(),
+        }));
+
+      if (docs.length > 0) {
+        await SongDownloadEvent.insertMany(docs, { ordered: false });
+      }
+    }
+
+    return res.json({
+      success: true,
+      synced: missingSongIds.length,
+      totalReceived: normalizedSongIds.length,
+      message: "Dong bo lich su tai bai hat thanh cong",
+    });
+  } catch (error) {
+    console.error("Sync download history error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Dong bo lich su tai bai hat that bai",
+      error: error.message,
     });
   }
 });
@@ -726,7 +840,10 @@ router.post(
     const imageFile = req.files?.image?.[0] || null;
     try {
       const { title, lyrics, isPublic } = req.body;
-      const artists = await resolveArtistIds(req.body.artists);
+      const accountRole = await resolveAuthenticatedRole(req);
+      const artists = accountRole === "user"
+        ? []
+        : await resolveArtistIds(req.body.artists);
       const topicIds = parseArrayField(req.body.topicIds);
       const imageUrlInput = typeof req.body.imageUrl === "string" ? req.body.imageUrl.trim() : "";
 
@@ -773,7 +890,6 @@ router.post(
       fs.unlinkSync(audioFile.path);
 
       // ================= SAVE MONGODB =================
-      const accountRole = await resolveAuthenticatedRole(req);
       const source = accountRole === "admin"
         ? "admin"
         : accountRole === "artist"
@@ -848,7 +964,11 @@ router.put(
         });
       }
 
-      const parsedArtists = await resolveArtistIds(body.artists);
+      const accountRole = await resolveAuthenticatedRole(req);
+      const canEditArtists = accountRole === "admin" || accountRole === "artist";
+      const parsedArtists = canEditArtists
+        ? await resolveArtistIds(body.artists)
+        : song.artists;
       const parsedTopicIds = parseArrayField(body.topicIds);
       const imageUrlInput =
         typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
@@ -856,7 +976,7 @@ router.put(
       if (typeof body.title !== "undefined") {
         song.title = String(body.title).trim();
       }
-      if (typeof body.artists !== "undefined") {
+      if (typeof body.artists !== "undefined" && canEditArtists) {
         song.artists = parsedArtists;
       }
       if (typeof body.lyrics !== "undefined") {

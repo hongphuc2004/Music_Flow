@@ -1,4 +1,5 @@
 const Song = require("../models/song.model");
+const SongDownloadEvent = require("../models/song-download-event.model");
 
 exports.downloadSong = async (req, res) => {
   try {
@@ -19,6 +20,16 @@ exports.downloadSong = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Bai hat nay khong duoc phep tai xuong",
+      });
+    }
+
+    if (req.userId) {
+      SongDownloadEvent.create({
+        userId: req.userId,
+        songId: song._id,
+        downloadedAt: new Date(),
+      }).catch((err) => {
+        console.error("Create song download event failed:", err.message);
       });
     }
 

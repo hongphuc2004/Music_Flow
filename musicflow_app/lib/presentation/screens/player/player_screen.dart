@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/core/utils/lrc_parser.dart';
@@ -1111,3 +1111,4 @@ class _PlayerScreenState extends State<PlayerScreen>
     return '$minutes:$seconds';
   }
 }
+

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'dart:math';
 import 'package:musicflow_app/core/config/api_config.dart';
@@ -9,8 +9,8 @@ import 'package:musicflow_app/data/services/play_history_service.dart';
 
 enum PlaybackRepeatMode { off, all, one }
 
-/// Global audio state notifier để quản lý trạng thái phát nhạc
-/// Có thể truy cập từ bất kỳ đâu trong app
+/// Global audio state notifier de quan ly trang thai phat nhac
+/// Co the truy cap tu bat ky dau trong app
 class GlobalAudioState extends ChangeNotifier {
   static final GlobalAudioState _instance = GlobalAudioState._internal();
   factory GlobalAudioState() => _instance;
@@ -105,7 +105,7 @@ class GlobalAudioState extends ChangeNotifier {
   void _playCurrentSong() {
     if (_currentSong == null) return;
 
-    // Reset position và set duration từ metadata ngay lập tức
+    // Reset position va set duration tu metadata ngay lap tuc
     _currentPosition = Duration.zero;
     _totalDuration = _currentSong!.durationAsDuration ?? Duration.zero;
     _progress = 0.0;

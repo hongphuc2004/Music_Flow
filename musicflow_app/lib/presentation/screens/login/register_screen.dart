@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
 
@@ -210,3 +210,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

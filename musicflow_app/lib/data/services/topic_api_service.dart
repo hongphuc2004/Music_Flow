@@ -17,7 +17,7 @@ class TopicApiService {
     try {
       return json.decode(body);
     } catch (e) {
-      throw TopicException('Du lieu chu de khong hop le: $e');
+      throw TopicException('Dữ liệu chủ đề không hợp lệ: $e');
     }
   }
 
@@ -26,7 +26,7 @@ class TopicApiService {
     if (decoded is Map<String, dynamic> && key != null && decoded[key] is List) {
       return decoded[key] as List<dynamic>;
     }
-    throw TopicException('Dinh dang du lieu chu de khong dung');
+    throw TopicException('Định dạng dữ liệu chủ đề không đúng');
   }
 
   static Future<http.Response> _getWithRetry(Uri uri) async {
@@ -38,29 +38,29 @@ class TopicApiService {
         return await http.get(uri).timeout(timeout);
       } on TimeoutException {
         if (attempts >= maxRetries) {
-          throw TopicException('Ket noi qua cham. Vui long kiem tra mang.');
+          throw TopicException(' Kết nối quá chậm. Vui lòng kiểm tra mạng.');
         }
       } on SocketException {
         if (attempts >= maxRetries) {
-          throw TopicException('Khong co ket noi mang.');
+          throw TopicException('Không có kết nối mạng.');
         }
       } catch (e) {
         if (attempts >= maxRetries) {
-          throw TopicException('Loi ket noi: $e');
+          throw TopicException('Lỗi kết nối: $e');
         }
       }
 
       await Future.delayed(Duration(milliseconds: 500 * attempts));
     }
 
-    throw TopicException('Khong the ket noi sau $maxRetries lan thu.');
+    throw TopicException('Không thể kết nối sau $maxRetries lần thử.');
   }
 
   static Future<List<Topic>> fetchTopics() async {
     final response = await _getWithRetry(Uri.parse(baseUrl));
 
     if (response.statusCode != 200) {
-      throw TopicException('Khong the tai danh sach chu de');
+      throw TopicException('Không thể tải danh sách chủ đề');
     }
 
     final List<dynamic> data = _extractList(
@@ -77,7 +77,7 @@ class TopicApiService {
     final response = await _getWithRetry(Uri.parse('$baseUrl/$topicId/songs'));
 
     if (response.statusCode != 200) {
-      throw TopicException('Khong the tai bai hat theo chu de');
+      throw TopicException('Không thể tải bài hát theo chủ đề');
     }
 
     final List<dynamic> data = _extractList(

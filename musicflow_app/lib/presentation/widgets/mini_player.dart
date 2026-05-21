@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/player/player_screen.dart';
 
@@ -444,3 +444,5 @@ class _PlayingWaveAnimationState extends State<_PlayingWaveAnimation>
     );
   }
 }
+
+

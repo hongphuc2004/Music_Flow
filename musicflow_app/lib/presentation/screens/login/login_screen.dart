@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:musicflow_app/main.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/login/register_screen.dart';
@@ -226,3 +226,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

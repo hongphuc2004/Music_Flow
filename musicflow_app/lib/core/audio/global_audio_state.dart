@@ -28,6 +28,8 @@ class GlobalAudioState extends ChangeNotifier {
   bool _isInitialized = false;
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
+  Duration _lastNotifiedPosition = Duration.zero;
+  DateTime _lastProgressNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isShuffleEnabled = false;
   PlaybackRepeatMode _repeatMode = PlaybackRepeatMode.off;
   final Random _random = Random();
@@ -72,7 +74,18 @@ class GlobalAudioState extends ChangeNotifier {
         _totalDuration = duration;
         _progress = position.inMilliseconds / duration.inMilliseconds;
       }
-      notifyListeners();
+
+      final now = DateTime.now();
+      final notifyByTime =
+          now.difference(_lastProgressNotifyAt).inMilliseconds >= 250;
+      final notifyByDistance =
+          (position - _lastNotifiedPosition).inMilliseconds.abs() >= 300;
+
+      if (notifyByTime || notifyByDistance) {
+        _lastProgressNotifyAt = now;
+        _lastNotifiedPosition = position;
+        notifyListeners();
+      }
     });
 
     // Listen to completion

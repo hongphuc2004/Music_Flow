@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -51,16 +51,6 @@ const INITIAL_FORM_DATA = {
 };
 
 function Playlists() {
-
-const INITIAL_FORM_DATA = {
-  name: '',
-  description: '',
-  isPublic: true,
-  coverImage: '',
-  songs: [],
-};
-
-
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -76,14 +66,35 @@ const INITIAL_FORM_DATA = {
   const [songOptionsLoading, setSongOptionsLoading] = useState(false);
   const [songOptionsPage, setSongOptionsPage] = useState(0);
   const [songOptionsRowsPerPage, setSongOptionsRowsPerPage] = useState(10);
-  const [songOptionsTotal, setSongOptionsTotal] = useState(0);
   const [songOptionsSearch, setSongOptionsSearch] = useState('');
-  const [songOptionsSearchTimeout, setSongOptionsSearchTimeout] = useState(null);
   const [selectedSongMap, setSelectedSongMap] = useState({});
   const [formDialog, setFormDialog] = useState({ open: false, mode: 'create', playlist: null });
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [coverImageFile, setCoverImageFile] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const filteredSongOptions = useMemo(() => {
+    const keyword = songOptionsSearch.trim().toLowerCase();
+    if (!keyword) return songOptions;
+    return songOptions.filter((song) => {
+      const title = String(song.title || '').toLowerCase();
+      const artist = String(song.artist || '').toLowerCase();
+      return title.includes(keyword) || artist.includes(keyword);
+    });
+  }, [songOptions, songOptionsSearch]);
+
+  const displayedSongOptions = useMemo(() => {
+    const selectedSet = new Set(formData.songs);
+    const sorted = [...filteredSongOptions].sort((a, b) => {
+      const aSelected = selectedSet.has(a._id) ? 1 : 0;
+      const bSelected = selectedSet.has(b._id) ? 1 : 0;
+      if (aSelected !== bSelected) return bSelected - aSelected;
+      return String(a.title || '').localeCompare(String(b.title || ''), undefined, {
+        sensitivity: 'base',
+      });
+    });
+    const startIndex = songOptionsPage * songOptionsRowsPerPage;
+    return sorted.slice(startIndex, startIndex + songOptionsRowsPerPage);
+  }, [filteredSongOptions, formData.songs, songOptionsPage, songOptionsRowsPerPage]);
 
   const fetchPlaylists = useCallback(async () => {
     try {
@@ -111,13 +122,11 @@ const INITIAL_FORM_DATA = {
     try {
       setSongOptionsLoading(true);
       const response = await songsApi.getAll({
-        page: songOptionsPage + 1,
-        limit: songOptionsRowsPerPage,
-        search: songOptionsSearch,
+        page: 1,
+        limit: 2000,
       });
       const songs = response.data?.songs || [];
       setSongOptions(songs);
-      setSongOptionsTotal(response.data?.pagination?.total || 0);
       setSelectedSongMap((prev) => {
         const next = { ...prev };
         songs.forEach((song) => {
@@ -130,11 +139,10 @@ const INITIAL_FORM_DATA = {
       });
     } catch {
       setSongOptions([]);
-      setSongOptionsTotal(0);
     } finally {
       setSongOptionsLoading(false);
     }
-  }, [songOptionsPage, songOptionsRowsPerPage, songOptionsSearch]);
+  }, []);
 
   useEffect(() => {
     if (songPickerOpen) {
@@ -217,13 +225,8 @@ const INITIAL_FORM_DATA = {
   };
 
   const handleSongSearchChange = (event) => {
-    const value = event.target.value;
-    setSongOptionsSearch(value);
-
-    if (songOptionsSearchTimeout) clearTimeout(songOptionsSearchTimeout);
-    setSongOptionsSearchTimeout(setTimeout(() => {
-      setSongOptionsPage(0);
-    }, 400));
+    setSongOptionsSearch(event.target.value);
+    setSongOptionsPage(0);
   };
 
   const toggleSongSelection = (song) => {
@@ -260,6 +263,12 @@ const INITIAL_FORM_DATA = {
   const handleSongOptionsRowsChange = (event) => {
     setSongOptionsRowsPerPage(parseInt(event.target.value, 10));
     setSongOptionsPage(0);
+  };
+
+  const handleOpenSongPicker = () => {
+    setSongOptionsPage(0);
+    setSongOptionsSearch('');
+    setSongPickerOpen(true);
   };
 
   const handleSavePlaylist = async () => {
@@ -553,7 +562,7 @@ const INITIAL_FORM_DATA = {
                 <Typography variant="subtitle2">Songs in playlist</Typography>
                 <Chip label={`${formData.songs.length} selected`} size="small" color="primary" />
               </Stack>
-              <Button variant="outlined" onClick={() => setSongPickerOpen(true)}>
+              <Button variant="outlined" onClick={handleOpenSongPicker}>
                 Choose Songs
               </Button>
               {/* Đã ẩn phần hiển thị danh sách bài hát đã chọn để tránh bị dài khi chọn nhiều bài hát */}
@@ -616,14 +625,14 @@ const INITIAL_FORM_DATA = {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {songOptions.length === 0 ? (
+                    {displayedSongOptions.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} align="center">
                           No songs found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      songOptions.map((song) => {
+                      displayedSongOptions.map((song) => {
                         const checked = formData.songs.includes(song._id);
                         return (
                           <TableRow key={song._id} hover>
@@ -646,7 +655,7 @@ const INITIAL_FORM_DATA = {
               <TablePagination
                 rowsPerPageOptions={[10, 20, 50]}
                 component="div"
-                count={songOptionsTotal}
+                count={filteredSongOptions.length}
                 rowsPerPage={songOptionsRowsPerPage}
                 page={songOptionsPage}
                 onPageChange={handleSongOptionsPageChange}

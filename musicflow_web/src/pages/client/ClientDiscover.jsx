@@ -40,17 +40,26 @@ function ClientDiscover() {
   const [refreshingSuggestions, setRefreshingSuggestions] = useState(false);
   const [error, setError] = useState('');
 
+  const fetchRecommendedSongs = async ({ forceFresh = false } = {}) => {
+    const params = {
+      limit: 24,
+      ...(forceFresh ? { _t: Date.now() } : {}),
+    };
+    const songsRes = await clientSongsApi.getRecommended(params);
+    return Array.isArray(songsRes.data) ? songsRes.data : [];
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
       setError('');
       const [songsRes, topicsRes, playlistsRes] = await Promise.all([
-        clientSongsApi.getRecommended({ limit: 24 }),
+        fetchRecommendedSongs(),
         clientTopicsApi.getAll(),
         clientPlaylistsApi.getSystem({ limit: 20 }),
       ]);
 
-      const nextSongs = Array.isArray(songsRes.data) ? songsRes.data : [];
+      const nextSongs = songsRes;
       setSongs(nextSongs);
       setSuggestedSongs(nextSongs.slice(0, 9));
       setTopics(Array.isArray(topicsRes.data) ? topicsRes.data : []);
@@ -70,8 +79,7 @@ function ClientDiscover() {
     try {
       setRefreshingSuggestions(true);
       setError('');
-      const songsRes = await clientSongsApi.getRecommended({ limit: 24 });
-      const nextSongs = Array.isArray(songsRes.data) ? songsRes.data : [];
+      const nextSongs = await fetchRecommendedSongs({ forceFresh: true });
       setSuggestedSongs(nextSongs.slice(0, 9));
     } catch (err) {
       setError(err.response?.data?.message || 'Khong the lam moi goi y bai hat.');

@@ -56,6 +56,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isEstimatedLyrics = false;
   String _rawLyricsContent = '';
   List<LrcLine> _lyricsLines = const [];
+  Duration _lastUiPosition = Duration.zero;
+  DateTime _lastUiPositionAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   List<Song> get _activePlaylist => _globalAudioState.playlist.isNotEmpty
       ? _globalAudioState.playlist
@@ -137,8 +139,6 @@ class _PlayerScreenState extends State<PlayerScreen>
       _loadCommentCount();
       _loadLyricsForCurrentSong();
       widget.onSongChanged?.call(globalIndex);
-    } else if (mounted) {
-      setState(() {});
     }
   }
 
@@ -492,7 +492,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     _audioService.player.positionStream.listen((pos) {
       if (mounted) {
         _position = pos;
-        setState(() {}); // Rebuild UI
+        final now = DateTime.now();
+        final notifyByTime =
+            now.difference(_lastUiPositionAt).inMilliseconds >= 250;
+        final notifyByDistance =
+            (pos - _lastUiPosition).inMilliseconds.abs() >= 300;
+
+        if (notifyByTime || notifyByDistance) {
+          _lastUiPositionAt = now;
+          _lastUiPosition = pos;
+          setState(() {});
+        }
       }
     });
 

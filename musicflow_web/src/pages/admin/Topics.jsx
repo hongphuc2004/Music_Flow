@@ -62,9 +62,7 @@ function Topics() {
   const [songOptionsLoading, setSongOptionsLoading] = useState(false);
   const [songOptionsPage, setSongOptionsPage] = useState(0);
   const [songOptionsRowsPerPage, setSongOptionsRowsPerPage] = useState(10);
-  const [songOptionsTotal, setSongOptionsTotal] = useState(0);
   const [songOptionsSearch, setSongOptionsSearch] = useState('');
-  const [songOptionsSearchTimeout, setSongOptionsSearchTimeout] = useState(null);
   const [selectedSongMap, setSelectedSongMap] = useState({});
 
   const fetchTopics = useCallback(async () => {
@@ -218,12 +216,10 @@ function Topics() {
       const response = await songsApi.getAll({
         page: 1,
         limit: 2000,
-        search: songOptionsSearch.trim(),
       });
       let songs = response.data?.songs || [];
       
       setSongOptions(songs);
-      setSongOptionsTotal(response.data?.pagination?.total || 0);
       setSelectedSongMap((prev) => {
         const next = { ...prev };
         songs.forEach((song) => {
@@ -237,11 +233,10 @@ function Topics() {
     } catch (err) {
       console.error('Failed to fetch song options:', err);
       setSongOptions([]);
-      setSongOptionsTotal(0);
     } finally {
       setSongOptionsLoading(false);
     }
-  }, [songOptionsSearch]);
+  }, []);
 
   useEffect(() => {
     if (songPickerOpen) {
@@ -249,8 +244,18 @@ function Topics() {
     }
   }, [songPickerOpen, fetchSongOptions]);
 
+  const filteredSongOptions = React.useMemo(() => {
+    const keyword = songOptionsSearch.trim().toLowerCase();
+    if (!keyword) return songOptions;
+    return songOptions.filter((song) => {
+      const title = String(song.title || '').toLowerCase();
+      const artist = String(song.artist || '').toLowerCase();
+      return title.includes(keyword) || artist.includes(keyword);
+    });
+  }, [songOptions, songOptionsSearch]);
+
   const displayedSongOptions = React.useMemo(() => {
-    const sorted = [...songOptions].sort((a, b) => {
+    const sorted = [...filteredSongOptions].sort((a, b) => {
       const aSelected = formData.songs.includes(a._id);
       const bSelected = formData.songs.includes(b._id);
       if (aSelected && !bSelected) return -1;
@@ -259,15 +264,11 @@ function Topics() {
     });
     const startIndex = songOptionsPage * songOptionsRowsPerPage;
     return sorted.slice(startIndex, startIndex + songOptionsRowsPerPage);
-  }, [songOptions, formData.songs, songOptionsPage, songOptionsRowsPerPage]);
+  }, [filteredSongOptions, formData.songs, songOptionsPage, songOptionsRowsPerPage]);
 
   const handleSongSearchChange = (event) => {
-    const value = event.target.value;
-    setSongOptionsSearch(value);
-    if (songOptionsSearchTimeout) clearTimeout(songOptionsSearchTimeout);
-    setSongOptionsSearchTimeout(setTimeout(() => {
-      setSongOptionsPage(0);
-    }, 400));
+    setSongOptionsSearch(event.target.value);
+    setSongOptionsPage(0);
   };
 
   const toggleSongSelection = (song) => {
@@ -605,7 +606,7 @@ function Topics() {
                         <TablePagination
                           rowsPerPageOptions={[10, 20, 50]}
                           component="div"
-                          count={songOptionsTotal}
+                          count={filteredSongOptions.length}
                           rowsPerPage={songOptionsRowsPerPage}
                           page={songOptionsPage}
                           onPageChange={handleSongOptionsPageChange}

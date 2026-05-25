@@ -1,11 +1,11 @@
 /// API config for the whole app.
 class ApiConfig {
-  static const String baseUrlDev = "http://172.16.28.90:5001";
+  static const String baseUrlDev = "http://172.16.28.140:5001";
   static const String baseUrlProd = "https://music-flow-30us.onrender.com";
 
   static const String appEnv = String.fromEnvironment(
     "APP_ENV",
-    defaultValue: "prod",
+    defaultValue: "dev",
   );
 
   static const String baseUrl = String.fromEnvironment(

@@ -66,7 +66,7 @@ exports.createComment = async (req, res) => {
     if (!req.userId || !isValidObjectId(req.userId)) {
       return res.status(401).json({
         success: false,
-        message: "Token không hợp lệ hoặc đã hết hạn",
+        message: "Vui lòng đăng nhập để thực hiện hành động này",
       });
     }
 

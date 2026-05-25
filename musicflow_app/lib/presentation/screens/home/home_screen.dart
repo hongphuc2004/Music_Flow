@@ -6,7 +6,7 @@ import 'package:musicflow_app/data/services/artist_api_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
-import 'package:musicflow_app/presentation/screens/home/album_detail_screen.dart';
+import 'package:musicflow_app/presentation/screens/home/home_playlist_detail_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_artist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_playlist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_recommended_section.dart';

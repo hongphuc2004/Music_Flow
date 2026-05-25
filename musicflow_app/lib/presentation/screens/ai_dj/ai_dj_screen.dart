@@ -301,6 +301,10 @@ class _AiDjScreenState extends State<AiDjScreen> {
             .whereType<Map>()
             .map((item) => MoodMessage.fromJson(Map<String, dynamic>.from(item)))
             .toList();
+        final responseSongs = (data['songs'] as List? ?? [])
+            .whereType<Map>()
+            .map((item) => Song.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
         final playlistJson = data['playlist'];
         final playlist = playlistJson is Map
             ? MoodPlaylist.fromJson(Map<String, dynamic>.from(playlistJson))
@@ -321,6 +325,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
           }
           _promptController.clear();
         });
+        if (playlist == null && responseSongs.isNotEmpty) {
+          widget.onPlayAll(responseSongs, startIndex: 0);
+        }
         _scrollToBottom();
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         setState(() => _errorMessage = 'Yêu cầu đăng nhập để chat với AI.');

@@ -108,6 +108,7 @@ function AccountLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
     setError('');
     try {
@@ -222,7 +223,7 @@ function AccountLogin() {
 
           {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <TextField fullWidth label="Email" type="email" value={formData.email} onChange={handleChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
             <TextField
               fullWidth
@@ -236,7 +237,7 @@ function AccountLogin() {
                 startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                    <IconButton type="button" onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
@@ -250,7 +251,7 @@ function AccountLogin() {
 
           <Divider sx={{ my: 2.5 }}>Hoặc</Divider>
 
-          <Button fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={!GOOGLE_CLIENT_ID || googleLoading} onClick={handleGoogleLogin} sx={{ py: 1.2, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+          <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={!GOOGLE_CLIENT_ID || googleLoading} onClick={handleGoogleLogin} sx={{ py: 1.2, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
             {googleLoading ? 'Đang xử lý...' : 'Đăng nhập bằng Google'}
           </Button>
           {!GOOGLE_CLIENT_ID && (
@@ -260,10 +261,10 @@ function AccountLogin() {
           )}
 
           <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/user/register')}>
+            <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/user/register')}>
               Tạo tài khoản 
             </Button>
-            <Button variant="text" sx={{ color: '#14a7b7', fontWeight: 800 }} onClick={() => navigate('/artistlogin')}>
+            <Button type="button" variant="text" sx={{ color: '#14a7b7', fontWeight: 800 }} onClick={() => navigate('/artistlogin')}>
               Đăng nhập artist
             </Button>
           </Box>
@@ -274,3 +275,5 @@ function AccountLogin() {
 }
 
 export default AccountLogin;
+
+

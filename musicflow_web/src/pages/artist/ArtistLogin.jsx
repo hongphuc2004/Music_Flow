@@ -95,6 +95,7 @@ function ArtistLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
     setError('');
     try {
@@ -171,7 +172,7 @@ function ArtistLogin() {
 
           {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <TextField fullWidth label="Email" type="email" value={formData.email} onChange={handleChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
             <TextField
               fullWidth
@@ -185,7 +186,7 @@ function ArtistLogin() {
                 startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                    <IconButton type="button" onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
@@ -198,7 +199,7 @@ function ArtistLogin() {
           </form>
 
           <Divider sx={{ my: 2.5 }}>Hoặc</Divider>
-          <Button fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={!GOOGLE_CLIENT_ID || googleLoading} onClick={handleGoogleLogin} sx={{ py: 1.2, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+          <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={!GOOGLE_CLIENT_ID || googleLoading} onClick={handleGoogleLogin} sx={{ py: 1.2, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
             {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
           </Button>
           {!GOOGLE_CLIENT_ID && (
@@ -207,10 +208,10 @@ function ArtistLogin() {
             </Typography>
           )}
           <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="text" sx={{ color: '#00a9bd', fontWeight: 800 }} onClick={() => navigate('/artist/register')}>
+            <Button type="button" variant="text" sx={{ color: '#00a9bd', fontWeight: 800 }} onClick={() => navigate('/artist/register')}>
               Đăng ký Artist
             </Button>
-            <Button variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/accountlogin')}>
+            <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/accountlogin')}>
               Login User
             </Button>
           </Box>
@@ -221,3 +222,5 @@ function ArtistLogin() {
 }
 
 export default ArtistLogin;
+
+

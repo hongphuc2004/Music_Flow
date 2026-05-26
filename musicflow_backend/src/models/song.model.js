@@ -105,4 +105,10 @@ const songSchema = new mongoose.Schema(
   }
 );
 
+songSchema.index({ isPublic: 1, createdAt: -1 });
+songSchema.index({ artists: 1, createdAt: -1 });
+songSchema.index({ topicIds: 1, createdAt: -1 });
+songSchema.index({ uploadedBy: 1, createdAt: -1 });
+songSchema.index({ title: "text" });
+
 module.exports = mongoose.model("Song", songSchema);

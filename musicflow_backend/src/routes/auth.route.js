@@ -183,8 +183,8 @@ router.post("/login", async (req, res) => {
 
 router.post("/google", async (req, res) => {
   try {
-    const { credential } = req.body;
-    const { googleId, email, name, avatar } = await verifyGoogleCredential(credential);
+    const { credential, tokenType } = req.body;
+    const { googleId, email, name, avatar } = await verifyGoogleCredential(credential, tokenType);
 
     let user = await User.findOne({
       $or: [{ googleId }, { email }],

@@ -53,8 +53,8 @@ exports.login = async (req, res) => {
 // Đăng nhập artist bằng Google
 exports.googleLogin = async (req, res) => {
   try {
-    const { credential } = req.body;
-    const { googleId, email, name, avatar } = await verifyGoogleCredential(credential);
+    const { credential, tokenType } = req.body;
+    const { googleId, email, name, avatar } = await verifyGoogleCredential(credential, tokenType);
 
     let artist = await Artist.findOne({
       $or: [{ googleId }, { email }],

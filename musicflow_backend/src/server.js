@@ -1,7 +1,19 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
+const path = require("path");
+const dotenv = require("dotenv");
+
+const envFileFromVar = process.env.ENV_FILE;
+const envFileName = envFileFromVar
+  || (process.env.NODE_ENV === "production" ? ".env.prod" : ".env.dev");
+const envPath = path.resolve(__dirname, "..", envFileName);
+const envFallbackPath = path.resolve(__dirname, "..", ".env");
+
+dotenv.config({ path: envPath });
+if (!process.env.GEMINI_API_KEY || !process.env.JWT_SECRET) {
+  dotenv.config({ path: envFallbackPath });
+}
 
 const uploadRoute = require("./routes/upload.route");
 const songRoute = require("./routes/song.route");
@@ -120,5 +132,6 @@ mongoose.connection.on('disconnected', () => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Env file: ${envFileName}`);
   console.log(`Cloudinary folder: ${cloudinaryRootFolder}`);
 });

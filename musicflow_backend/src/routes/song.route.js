@@ -18,6 +18,8 @@ const { downloadSong } = require("../controllers/song.controller");
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TRACK_PLAY_COOLDOWN_MS = 30 * 1000;
 const recentPlayTrackByKey = new Map();
+const SONG_PUBLIC_SELECT =
+  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl lyrics source allowDownload playCount likeCount commentCount shareCount createdAt updatedAt";
 
 const truncateToHour = (date) => {
   const d = new Date(date);
@@ -587,8 +589,14 @@ router.post("/:songId/download", authMiddleware, downloadSong);
 // 📌 GET ALL SONGS (PUBLIC ONLY)
 router.get("/", async (req, res) => {
   try {
+    res.set("Cache-Control", "public, max-age=30");
     // Public thực sự cho cả admin và user upload
-    const songs = await Song.find({ isPublic: true }).sort({ createdAt: -1 }).populate("artists").populate("topicIds");
+    const songs = await Song.find({ isPublic: true })
+      .select(SONG_PUBLIC_SELECT)
+      .sort({ createdAt: -1 })
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name avatar")
+      .lean();
 
     res.json(songs);
   } catch (error) {
@@ -602,17 +610,49 @@ router.get("/", async (req, res) => {
 router.get("/recommended", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 12;
+    res.set("Cache-Control", "public, max-age=30");
     
     // Public thực sự cho cả admin và user upload
     const songs = await Song.aggregate([
       { $match: { isPublic: true } },
       { $sample: { size: limit } },
       {
+        $project: {
+          title: 1,
+          artists: 1,
+          topicIds: 1,
+          uploadedBy: 1,
+          isPublic: 1,
+          audioUrl: 1,
+          duration: 1,
+          imageUrl: 1,
+          lyrics: 1,
+          source: 1,
+          allowDownload: 1,
+          playCount: 1,
+          likeCount: 1,
+          commentCount: 1,
+          shareCount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+      {
         $lookup: {
           from: "artists",
           localField: "artists",
           foreignField: "_id",
-          as: "artists"
+          as: "artists",
+          pipeline: [{ $project: { name: 1, avatar: 1 } }],
+        }
+      },
+      {
+        $lookup: {
+          from: "topics",
+          localField: "topicIds",
+          foreignField: "_id",
+          as: "topicIds",
+          pipeline: [{ $project: { name: 1, avatar: 1 } }],
         }
       }
     ]);
@@ -676,7 +716,12 @@ router.get("/search", async (req, res) => {
 
     const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
-    const songs = await Song.find(filter).sort({ createdAt: -1 }).populate("artists").populate("topicIds");
+    const songs = await Song.find(filter)
+      .select(SONG_PUBLIC_SELECT)
+      .sort({ createdAt: -1 })
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name avatar")
+      .lean();
     if (includeArtists) {
       return res.json({
         songs,

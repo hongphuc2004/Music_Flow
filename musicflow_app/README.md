@@ -10,14 +10,15 @@ The app reads the backend host from the compile-time variable `API_BASE_URL`:
 String.fromEnvironment("API_BASE_URL")
 ```
 
-If you do not pass this value, the app falls back to the local development backend in
-`lib/core/config/api_config.dart`.
+If you do not pass this value, the app falls back to the production backend in
+`lib/core/config/api_config.dart` (`APP_ENV` defaults to `prod`).
 
 ## Run Development
 
 Use your computer LAN IP when running on a physical phone:
 
 ```bash
+flutter run --dart-define=APP_ENV=dev
 flutter run --dart-define=API_BASE_URL=http://192.168.1.53:5001
 ```
 

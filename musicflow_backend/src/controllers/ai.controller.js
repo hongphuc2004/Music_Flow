@@ -9,6 +9,7 @@ const MoodMessage = require("../models/mood-message.model");
 const MoodPlaylist = require("../models/mood-playlist.model");
 
 const MAX_PLAYLIST_SONGS = 20;
+const PLAYLIST_MIN_TARGET_SONGS = 15;
 const GEMINI_MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL,
   "gemini-2.5-flash",
@@ -30,7 +31,7 @@ const MOOD_TOPIC_MAP = {
     keywords: ["chill", "thu gian", "relax", "nhe nhang", "binh yen", "cafe", "acoustic"],
   },
   focus: {
-    topics: ["Study", "Lofi", "Piano", "Chill"],
+    topics: ["Study", "Piano", "Lofi", "Chill"],
     keywords: ["tap trung", "focus", "hoc bai", "study", " piano", "lam viec", "work", "productive"],
   },
   energetic: {
@@ -124,10 +125,30 @@ function analyzeMood(prompt) {
 
   return {
     mood: bestMood,
+    score: bestScore,
     keywords: unique([...matchedKeywords, ...words, ...mapped.keywords]).slice(0, 18),
     topics: mapped.topics,
     energy: highEnergy.includes(bestMood) ? "high" : lowEnergy.includes(bestMood) ? "low" : "medium",
   };
+}
+
+function resolveStrictMoodTopics(allTopics, analysis) {
+  const mappedNames = (MOOD_TOPIC_MAP[analysis.mood]?.topics || []).map(normalizeText);
+  if (!mappedNames.length) return [];
+  const byName = new Map(allTopics.map((topic) => [normalizeText(topic.name), topic]));
+  return mappedNames.map((name) => byName.get(name)).filter(Boolean);
+}
+
+function mergeTopicsInOrder(primaryTopics = [], secondaryTopics = []) {
+  const seen = new Set();
+  const merged = [];
+  for (const topic of [...primaryTopics, ...secondaryTopics]) {
+    const id = topic?._id?.toString();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    merged.push(topic);
+  }
+  return merged;
 }
 
 function topicMatches(topic, terms) {
@@ -191,7 +212,7 @@ function findExplicitTopicsFromPrompt(allTopics, promptTerms) {
 async function findMatchedArtists(prompt) {
   const normalizedPrompt = normalizeText(prompt);
   const terms = normalizedPrompt
-    .replace(/\b(nhac|bai|hat|cua|di|cho|minh|toi|nghe)\b/g, " ")
+    .replace(/\b(nhac|bai|hat|cua|di|cho|minh|toi|nghe|playlist|tao|goi|y|ve|theo|ca|si|singer|artist)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .split(" ")
@@ -202,7 +223,12 @@ async function findMatchedArtists(prompt) {
     const artistName = normalizeText(artist.name);
     if (!artistName) return false;
     if (normalizedPrompt.includes(artistName)) return true;
-    return terms.length >= 2 && terms.every((term) => artistName.includes(term));
+    const artistNameTerms = artistName.split(" ").filter((w) => w.length >= 2);
+    if (terms.length >= 2 && terms.every((term) => artistName.includes(term))) return true;
+    // Fuzzy: nới điều kiện để bắt các prompt như "nhạc sơn tùng" => "sơn tùng m tp"
+    const overlap = terms.filter((term) => artistNameTerms.includes(term)).length;
+    if (terms.length >= 2 && overlap >= 2) return true;
+    return artistNameTerms.length >= 2 && artistNameTerms.slice(0, 2).every((part) => normalizedPrompt.includes(part));
   });
 }
 
@@ -220,7 +246,50 @@ async function findSongsByArtists(artists, limit = MAX_PLAYLIST_SONGS) {
     .lean();
 }
 
-async function findSongsByMood(analysis, matchedTopics, prioritizedTopics = [], limit = MAX_PLAYLIST_SONGS) {
+function extractArtistHintFromPrompt(prompt = "") {
+  const normalized = normalizeText(prompt);
+  const artistHint = normalized
+    .replace(/\b(tao|cho|toi|minh|mot|1|playlist|nhac|bai|hat|luon|di|ve|theo|ca|si|artist|singer|nghe)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const terms = artistHint.split(" ").filter((w) => w.length >= 2);
+  return { artistHint, terms };
+}
+
+async function findSongsByArtistHint(prompt = "", limit = MAX_PLAYLIST_SONGS) {
+  const { terms } = extractArtistHintFromPrompt(prompt);
+  if (terms.length < 2) return [];
+
+  const songs = await Song.find({ isPublic: true })
+    .populate("artists", "name avatar")
+    .populate("topicIds", "name description")
+    .lean();
+
+  const scored = songs
+    .map((song) => {
+      const artistText = normalizeText(artistNames(song).join(" "));
+      if (!artistText) return null;
+      const overlap = terms.filter((t) => artistText.includes(t)).length;
+      if (overlap < 2) return null;
+      const score = overlap * 10 + Math.min((song.playCount || 0) / 100, 5) + Math.min((song.likeCount || 0) / 50, 4);
+      return { song, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((item) => item.song);
+
+  return scored;
+}
+
+async function findSongsByMood(
+  analysis,
+  matchedTopics,
+  prioritizedTopics = [],
+  limit = MAX_PLAYLIST_SONGS,
+  options = {}
+) {
+  const { strictTopicOnly = false } = options;
   const matchedTopicIds = matchedTopics.map((topic) => topic._id);
   if (matchedTopicIds.length === 0) {
     return [];
@@ -252,10 +321,12 @@ async function findSongsByMood(analysis, matchedTopics, prioritizedTopics = [], 
     if (hasPriorityTopic) {
       score += 8;
     }
-    for (const keyword of analysis.keywords) {
-      const term = normalizeText(keyword);
-      if (term && title.includes(term)) score += 3;
-      if (term && lyrics.includes(term)) score += 1;
+    if (!strictTopicOnly) {
+      for (const keyword of analysis.keywords) {
+        const term = normalizeText(keyword);
+        if (term && title.includes(term)) score += 3;
+        if (term && lyrics.includes(term)) score += 1;
+      }
     }
 
     score += Math.min((song.playCount || 0) / 100, 3);
@@ -272,6 +343,50 @@ async function findSongsByMood(analysis, matchedTopics, prioritizedTopics = [], 
   });
 
   return scoredSongs.slice(0, limit).map(({ _score, _hasPriorityTopic, ...song }) => song);
+}
+
+async function findSongsByTopicsSequential(topics = [], limit = MAX_PLAYLIST_SONGS, minTarget = PLAYLIST_MIN_TARGET_SONGS) {
+  const orderedTopics = topics.filter(Boolean);
+  if (!orderedTopics.length) return [];
+
+  const targetCount = Math.min(limit, minTarget);
+  const chosen = [];
+  const seenSongIds = new Set();
+
+  for (const topic of orderedTopics) {
+    if (chosen.length >= targetCount) break;
+    const topicSongs = await Song.find({
+      isPublic: true,
+      topicIds: topic._id,
+    })
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name description")
+      .sort({ playCount: -1, likeCount: -1, createdAt: -1 })
+      .lean();
+
+    for (const song of topicSongs) {
+      const songId = song?._id?.toString();
+      if (!songId || seenSongIds.has(songId)) continue;
+      seenSongIds.add(songId);
+      chosen.push(song);
+      if (chosen.length >= targetCount) break;
+    }
+  }
+
+  return chosen.slice(0, limit);
+}
+
+function shouldPrioritizeArtistFlow(prompt = "") {
+  const text = normalizeText(prompt);
+  const hasArtistPhrase =
+    /\b(ca si|artist|singer|nhac cua|bai cua|ve)\b/.test(text) ||
+    /\btheo\b/.test(text);
+  return hasArtistPhrase;
+}
+
+function hasArtistHintTokens(prompt = "") {
+  const { terms } = extractArtistHintFromPrompt(prompt);
+  return terms.length >= 2;
 }
 
 function artistNames(song) {
@@ -297,6 +412,87 @@ function playlistTitle(prompt, analysis) {
   return `Mood ${analysis.mood}`;
 }
 
+function rankArtistsByPrompt(artists = [], prompt = "") {
+  const text = normalizeText(prompt);
+  const promptTerms = new Set(
+    text
+      .split(" ")
+      .map((w) => w.trim())
+      .filter((w) => w.length >= 2)
+  );
+
+  return [...artists]
+    .map((artist) => {
+      const name = normalizeText(artist.name || "");
+      const nameTerms = name.split(" ").filter((w) => w.length >= 2);
+      let score = 0;
+      if (name && text.includes(name)) score += 10;
+      for (const term of promptTerms) {
+        if (nameTerms.includes(term)) score += 2;
+        else if (name.includes(term)) score += 1;
+      }
+      return { artist, score, nameTermsCount: nameTerms.length };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+function hasStrongArtistSignal(prompt = "", rankedMatches = []) {
+  if (!rankedMatches.length) return false;
+  const text = normalizeText(prompt);
+  const top = rankedMatches[0];
+  if (!top || !top.artist) return false;
+
+  const topName = normalizeText(top.artist.name || "");
+  const topNameParts = topName.split(" ").filter((w) => w.length >= 2);
+
+  // Trường hợp user gõ thiếu hậu tố kiểu "son tung" vẫn nhận diện "son tung m tp"
+  const partialNameMatch =
+    topNameParts.length >= 2 &&
+    topNameParts
+      .slice(0, 2)
+      .every((part) => text.includes(part));
+
+  return top.score >= 4 || text.includes(topName) || partialNameMatch;
+}
+
+function buildPlaylistContextPrompt(currentPrompt = "", historyMessages = []) {
+  const current = String(currentPrompt || "").trim();
+  if (!current) return "";
+
+  const normalizedCurrent = normalizeText(current);
+  const needsContextCarry =
+    /(tao|lam|goi y|de xuat).*(playlist)/.test(normalizedCurrent) ||
+    isPlayIntent(normalizedCurrent);
+  if (!needsContextCarry) return current;
+
+  const recentUserHints = historyMessages
+    .filter((m) => m?.role === "user" && typeof m.content === "string")
+    .map((m) => m.content.trim())
+    .filter(Boolean)
+    .slice(-4)
+    .reverse()
+    .find((text) => {
+      const n = normalizeText(text);
+      return !isPlaylistIntent(n) && !isPlayIntent(n);
+    });
+
+  if (!recentUserHints) return current;
+  return `${recentUserHints}. ${current}`;
+}
+
+function isPlayIntent(prompt = "") {
+  const text = normalizeText(prompt);
+  const hasPlayVerb = /\b(bat|phat|mo|nghe|play)\b/.test(text);
+  const hasPlayRequest = /\b(ngau nhien|random|1 bai|mot bai|bai nao|luon di)\b/.test(text);
+  return hasPlayVerb && hasPlayRequest;
+}
+
+function pickRandomSong(songs = []) {
+  if (!songs.length) return null;
+  const randomIndex = Math.floor(Math.random() * songs.length);
+  return songs[randomIndex] || null;
+}
+
 function fallbackAssistantText(matchStatus, songCount, source = "", prompt = "") {
   const normalizedPrompt = prompt?.trim();
   if (source === "artist_match") {
@@ -315,6 +511,19 @@ function fallbackAssistantText(matchStatus, songCount, source = "", prompt = "")
     : "Mình đã tạo playlist theo cảm xúc của bạn.";
 }
 async function generateAssistantText({ prompt, analysis, songs, matchStatus, source = "" }) {
+  const targetArtist = analysis?.targetArtist || "";
+  if (source === "artist_match" || source === "artist_then_topic") {
+    if (songs.length > 0 && targetArtist) {
+      return `Mình đã tạo playlist nhạc của ${targetArtist} cho bạn rồi. Danh sách bên dưới ưu tiên các bài của ${targetArtist}.`;
+    }
+    if (songs.length > 0) {
+      return "Mình đã tạo playlist theo ca sĩ bạn yêu cầu. Danh sách bên dưới là các bài phù hợp nhất trong thư viện.";
+    }
+    return targetArtist
+      ? `Mình chưa tìm thấy bài hát của ${targetArtist} trong thư viện MusicFlow.`
+      : "Mình chưa tìm thấy bài hát của ca sĩ bạn yêu cầu trong thư viện MusicFlow.";
+  }
+
   if (!process.env.GEMINI_API_KEY) {
     return fallbackAssistantText(matchStatus, songs.length, source, prompt);
   }
@@ -336,6 +545,7 @@ async function generateAssistantText({ prompt, analysis, songs, matchStatus, sou
             "Chỉ mô tả đúng kết quả tìm được theo keyword/topic của user, không nói thêm bài ngoài phạm vi.",
             `Yêu cầu user: ${prompt}`,
             `Mood phân tích: ${analysis.mood}`,
+            `Ca sĩ mục tiêu (nếu có): ${targetArtist || "không"}`,
             `Trạng thái match: ${matchStatus}`,
             `Playlist:\n${songList}`,
           ].join("\n")
@@ -483,6 +693,16 @@ exports.aiPlaylist = async (req, res) => {
         .sort({ createdAt: 1 })
         .limit(20)
         .lean();
+      const contextualPrompt = buildPlaylistContextPrompt(cleanPrompt, recentMessages);
+
+      const matchedArtists = await findMatchedArtists(contextualPrompt);
+      const rankedArtistMatches = rankArtistsByPrompt(matchedArtists, contextualPrompt);
+      const rankedArtists = rankedArtistMatches.map((item) => item.artist);
+      const primaryArtist = rankedArtists[0] || null;
+      const allowArtistFlow =
+        shouldPrioritizeArtistFlow(contextualPrompt) ||
+        hasStrongArtistSignal(contextualPrompt, rankedArtistMatches) ||
+        hasArtistHintTokens(contextualPrompt);
 
       const userMessage = await MoodMessage.create({
         conversationId: conversation._id,
@@ -490,8 +710,48 @@ exports.aiPlaylist = async (req, res) => {
         role: "user",
         content: cleanPrompt,
       });
+
+      // Intent "bật/phát ngẫu nhiên": trả về bài thật để app phát luôn, không chỉ chat text.
+      if (isPlayIntent(cleanPrompt) || isPlayIntent(contextualPrompt)) {
+        let playableSongs = [];
+        if (allowArtistFlow && primaryArtist) {
+          playableSongs = await findSongsByArtists([primaryArtist], MAX_PLAYLIST_SONGS);
+        }
+        if (allowArtistFlow && playableSongs.length === 0) {
+          playableSongs = await findSongsByArtistHint(contextualPrompt, MAX_PLAYLIST_SONGS);
+        }
+
+        const randomSong = pickRandomSong(playableSongs);
+        const assistantText = randomSong
+          ? `Được luôn, mình đang bật ngẫu nhiên bài "${randomSong.title}" cho bạn nghe nè.`
+          : primaryArtist
+            ? `Mình chưa tìm thấy bài của ${primaryArtist.name} trong thư viện để bật ngẫu nhiên.`
+            : "Mình chưa tìm thấy bài phù hợp để bật ngẫu nhiên lúc này.";
+
+        const assistantMessage = await MoodMessage.create({
+          conversationId: conversation._id,
+          userId,
+          role: "assistant",
+          content: assistantText,
+          metadata: { type: "chat_play", artist: primaryArtist?.name || "" },
+        });
+        await MoodConversation.updateOne(
+          { _id: conversation._id },
+          { lastMessage: assistantText }
+        );
+        return res.status(200).json({
+          success: true,
+          conversation,
+          messages: [userMessage, assistantMessage],
+          playlist: null,
+          songs: randomSong ? [randomSong] : [],
+          matchStatus: "chat_play",
+          assistantMessage: assistantText,
+        });
+      }
+
       const assistantText = await generateConversationalReply({
-        prompt: cleanPrompt,
+        prompt: contextualPrompt,
         historyMessages: recentMessages,
       });
       const assistantMessage = await MoodMessage.create({
@@ -516,28 +776,102 @@ exports.aiPlaylist = async (req, res) => {
       });
     }
 
+    const recentMessagesForPlaylist = await MoodMessage.find({
+      conversationId: conversation._id,
+      userId,
+    })
+      .sort({ createdAt: 1 })
+      .limit(20)
+      .lean();
+    const contextualPrompt = buildPlaylistContextPrompt(cleanPrompt, recentMessagesForPlaylist);
+
     const allTopics = await Topic.find({}).lean();
-    const analysis = analyzeMood(cleanPrompt);
-    const promptTerms = extractPromptTerms(cleanPrompt);
+    const analysis = analyzeMood(contextualPrompt);
+    const promptTerms = extractPromptTerms(contextualPrompt);
     const explicitTopics = findExplicitTopicsFromPrompt(allTopics, promptTerms);
-    const matchedTopics = explicitTopics.length > 0
-      ? explicitTopics
-      : await findMatchedTopics(analysis, allTopics);
+    const strictMoodTopics = resolveStrictMoodTopics(allTopics, analysis);
+    const hasMoodSignal = analysis.score > 0;
+    const matchedTopics = hasMoodSignal
+      ? strictMoodTopics
+      : explicitTopics.length > 0
+        ? explicitTopics
+        : await findMatchedTopics(analysis, allTopics);
+    const orderedTopics = mergeTopicsInOrder(explicitTopics, matchedTopics);
     const prioritizedTopics = rankTopicsByPromptTerms(matchedTopics, promptTerms);
-    const matchedArtists = await findMatchedArtists(cleanPrompt);
-    let songs = await findSongsByArtists(matchedArtists, MAX_PLAYLIST_SONGS);
-    let source = songs.length > 0 ? "artist_match" : "topic_only";
+    const matchedArtists = await findMatchedArtists(contextualPrompt);
+    const rankedArtistMatches = rankArtistsByPrompt(matchedArtists, contextualPrompt);
+    const rankedArtists = rankedArtistMatches.map((item) => item.artist);
+    const primaryArtist = rankedArtists[0] || null;
+    const allowArtistFlow =
+      shouldPrioritizeArtistFlow(contextualPrompt) ||
+      hasStrongArtistSignal(contextualPrompt, rankedArtistMatches) ||
+      hasArtistHintTokens(contextualPrompt);
+    let songs = [];
+    let source = "topic_only";
+
+    // Nếu user yêu cầu theo ca sĩ, ưu tiên tuyệt đối lấy bài ca sĩ trước
+    if (allowArtistFlow && primaryArtist) {
+      songs = await findSongsByArtists(primaryArtist ? [primaryArtist] : [], MAX_PLAYLIST_SONGS);
+      source = songs.length > 0 ? "artist_match" : "topic_only";
+    }
+
+    // Fallback theo tên ca sĩ từ prompt khi map Artist model không trúng dữ liệu.
+    if (allowArtistFlow && songs.length === 0) {
+      songs = await findSongsByArtistHint(contextualPrompt, MAX_PLAYLIST_SONGS);
+      if (songs.length > 0) {
+        source = "artist_match";
+      }
+    }
+
+    // Nếu user đã yêu cầu theo ca sĩ và đã có bài của ca sĩ đó, không trộn thêm topic.
+    if (!(allowArtistFlow && songs.length > 0) && songs.length < PLAYLIST_MIN_TARGET_SONGS) {
+      const topicSongs = await findSongsByTopicsSequential(
+        orderedTopics,
+        MAX_PLAYLIST_SONGS,
+        PLAYLIST_MIN_TARGET_SONGS
+      );
+      if (songs.length === 0) {
+        songs = topicSongs;
+        source = songs.length > 0 ? "topic_sequence" : "topic_only";
+      } else if (topicSongs.length > 0) {
+        const seen = new Set(songs.map((s) => s?._id?.toString()).filter(Boolean));
+        for (const song of topicSongs) {
+          const id = song?._id?.toString();
+          if (!id || seen.has(id)) continue;
+          songs.push(song);
+          seen.add(id);
+          if (songs.length >= MAX_PLAYLIST_SONGS) break;
+        }
+        source = "artist_then_topic";
+      }
+    }
 
     if (songs.length === 0 && matchedArtists.length === 0) {
-      songs = await findSongsByMood(analysis, matchedTopics, prioritizedTopics, MAX_PLAYLIST_SONGS);
+      songs = await findSongsByMood(
+        analysis,
+        matchedTopics,
+        prioritizedTopics,
+        MAX_PLAYLIST_SONGS,
+        { strictTopicOnly: hasMoodSignal }
+      );
       source = songs.length > 0 ? songs.length < MAX_PLAYLIST_SONGS ? "topic_partial" : "topic_match" : "topic_only";
     }
 
-    let matchStatus = songs.length === 0 ? "fallback" : songs.length < MAX_PLAYLIST_SONGS ? "partial" : "matched";
+    // Với intent theo ca sĩ: không fallback sang playlist chill/topic nếu không tìm ra bài ca sĩ.
+    if (allowArtistFlow && songs.length === 0) {
+      songs = [];
+      source = "artist_match";
+    }
+
+    let matchStatus = songs.length === 0
+      ? "fallback"
+      : songs.length < PLAYLIST_MIN_TARGET_SONGS
+        ? "partial"
+        : "matched";
 
     const assistantText = await generateAssistantText({
-      prompt: cleanPrompt,
-      analysis,
+      prompt: contextualPrompt,
+      analysis: { ...analysis, targetArtist: primaryArtist?.name || "" },
       songs,
       matchStatus,
       source,

@@ -115,8 +115,9 @@ class AuthService {
       '1030096415860-tsli9gc3ba61m86svamuhp2npv6icubb.apps.googleusercontent.com';
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: _googleServerClientId,
-    scopes: ['email', 'profile'],
+    clientId: kIsWeb ? _googleServerClientId : null,
+    serverClientId: kIsWeb ? null : _googleServerClientId,
+    scopes: ['openid', 'email', 'profile'],
   );
 
   static Future<AuthResult> signInWithGoogle() async {  
@@ -134,8 +135,15 @@ class AuthService {
 
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+      final credential = (idToken != null && idToken.isNotEmpty)
+          ? idToken
+          : accessToken;
+      final tokenType = (idToken != null && idToken.isNotEmpty)
+          ? 'id_token'
+          : 'access_token';
 
-      if (idToken == null || idToken.isEmpty) {
+      if (credential == null || credential.isEmpty) {
         return AuthResult(
           success: false,
           message: 'Không lấy được Google token. Kiểm tra cấu hình OAuth.',
@@ -147,7 +155,10 @@ class AuthService {
           .post(
             Uri.parse("$baseUrl/google"),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'credential': idToken}),
+            body: jsonEncode({
+              'credential': credential,
+              'tokenType': tokenType,
+            }),
           )
           .timeout(timeout);
 
@@ -333,3 +344,4 @@ class AuthResult {
 
   AuthResult({required this.success, this.message, this.user, this.token});
 }
+

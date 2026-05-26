@@ -1,0 +1,8 @@
+# Ghi chú cá nhân — không commit
+CLAUDE.local.md
+
+# Settings private (MCP tokens, API keys cá nhân) — không commit
+settings.local.json
+
+# Logs sinh ra trong quá trình làm việc — không commit
+*.log

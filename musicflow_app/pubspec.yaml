@@ -49,6 +49,7 @@ dependencies:
   audio_service: ^0.18.18
   audio_session: ^0.2.2
   speech_to_text: ^7.0.0
+  lottie: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/logo.png
+    - assets/lottie/
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

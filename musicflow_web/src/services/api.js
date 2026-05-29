@@ -49,6 +49,13 @@ const refreshAccessToken = async () => {
 // Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
+    if (config.data instanceof FormData) {
+      // Let browser/axios set multipart boundary automatically.
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }

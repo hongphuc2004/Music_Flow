@@ -158,14 +158,10 @@ function ArtistSong() {
       if (imageFile) uploadData.append('image', imageFile);
 
       if (editingSong) {
-        await api.put(`/songs/${editingSong._id}`, uploadData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.put(`/songs/${editingSong._id}`, uploadData);
         setSuccess('Đã cập nhật bài hát thành công!');
       } else {
-        await api.post('/songs', uploadData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.post('/songs', uploadData);
         setSuccess('Đã thêm bài mới thành công!');
       }
       setCreateDialogOpen(false);

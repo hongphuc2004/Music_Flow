@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const multer = require("multer");
 const path = require("path");
 const dotenv = require("dotenv");
 
@@ -107,6 +108,31 @@ app.use("/api", (req, res) => {
   return res.status(404).json({
     success: false,
     message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// Normalize multipart and unexpected server errors into JSON for frontend.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: `Upload error: ${err.message}`,
+    });
+  }
+
+  if (typeof err?.message === "string" && err.message.includes("Multipart: Boundary not found")) {
+    return res.status(400).json({
+      success: false,
+      message: "Upload error: multipart boundary is missing. Please submit FormData without overriding Content-Type.",
+    });
+  }
+
+  console.error("Unhandled server error:", err);
+  return res.status(500).json({
+    success: false,
+    message: "Internal server error",
   });
 });
 

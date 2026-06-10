@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
@@ -21,6 +20,7 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
+import useAppToast from '../../common/useAppToast';
 
 const drawerWidth = 260;
 
@@ -36,10 +36,18 @@ const menuItems = [
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useAppToast();
 
   const handleLogout = () => {
     localStorage.removeItem('role');
-    navigate('/adminlogin');
+    showToast({
+      severity: 'success',
+      title: 'Success!',
+      message: 'Admin signed out successfully.',
+    });
+    window.setTimeout(() => {
+      navigate('/adminlogin');
+    }, 650);
   };
 
   return (

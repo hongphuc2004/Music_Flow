@@ -514,6 +514,9 @@ router.get("/:id/stream", async (req, res) => {
     }
 
     const audioUrl = song.audioUrl;
+    if (!audioUrl || !isHttpUrl(audioUrl)) {
+      return res.status(404).json({ message: "Audio source not found" });
+    }
     
     // Parse URL để xác định protocol
     const urlObj = new URL(audioUrl);
@@ -531,6 +534,17 @@ router.get("/:id/stream", async (req, res) => {
 
     // Proxy request đến Cloudinary
     const proxyReq = protocol.get(audioUrl, { headers }, (proxyRes) => {
+      if (proxyRes.statusCode >= 400) {
+        if (!res.headersSent) {
+          res.status(proxyRes.statusCode).json({
+            message: "Audio source unavailable",
+            statusCode: proxyRes.statusCode,
+          });
+        }
+        proxyRes.resume();
+        return;
+      }
+
       const contentType = proxyRes.headers["content-type"] || "audio/mpeg";
       const contentLength = proxyRes.headers["content-length"];
       const contentRange = proxyRes.headers["content-range"];
@@ -542,6 +556,8 @@ router.get("/:id/stream", async (req, res) => {
         "Accept-Ranges": acceptRanges,
         "Cache-Control": "public, max-age=86400", // Cache 1 ngày
         "X-Content-Duration": song.duration || 0,
+        "Access-Control-Allow-Origin": req.headers.origin || "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       };
       
       if (contentLength) {
@@ -553,7 +569,7 @@ router.get("/:id/stream", async (req, res) => {
       }
       
       // HTTP 206 Partial Content nếu có Range request
-      const statusCode = range && proxyRes.statusCode === 206 ? 206 : 200;
+      const statusCode = proxyRes.statusCode || (range ? 206 : 200);
       
       res.writeHead(statusCode, responseHeaders);
       
@@ -815,6 +831,36 @@ router.get("/download-history", authMiddleware, async (req, res) => {
 
 // =================================================
 // 🔄 SYNC MY DOWNLOAD HISTORY FROM CLIENT (AUTH REQUIRED)
+router.delete("/download-history/:songId", authMiddleware, async (req, res) => {
+  try {
+    const { songId } = req.params;
+    if (!isObjectIdLike(songId)) {
+      return res.status(400).json({
+        success: false,
+        message: "SongId khong hop le",
+      });
+    }
+
+    const result = await SongDownloadEvent.deleteMany({
+      userId: req.userId,
+      songId,
+    });
+
+    return res.json({
+      success: true,
+      deletedCount: result.deletedCount || 0,
+      message: "Da xoa bai hat khoi danh sach da tai",
+    });
+  } catch (error) {
+    console.error("Remove download history error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Xoa bai hat da tai that bai",
+      error: error.message,
+    });
+  }
+});
+
 router.post("/download-history/sync", authMiddleware, async (req, res) => {
   try {
     const songIds = Array.isArray(req.body?.songIds) ? req.body.songIds : [];

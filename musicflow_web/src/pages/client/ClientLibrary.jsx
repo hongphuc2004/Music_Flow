@@ -11,20 +11,77 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
+  IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import { UploadFileRounded as UploadIcon } from '@mui/icons-material';
+import {
+  DeleteOutlineRounded as DeleteIcon,
+  MoreHorizRounded as MoreIcon,
+  UploadFileRounded as UploadIcon,
+} from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import useClientToast from '../../components/Layout/client/useClientToast';
+
+function DownloadedSongMenu({ song, onRemove }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (event) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = (event) => {
+    event?.stopPropagation?.();
+    setAnchorEl(null);
+  };
+
+  const handleRemove = (event) => {
+    event.stopPropagation();
+    setAnchorEl(null);
+    onRemove(song);
+  };
+
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={handleOpen}
+        onKeyDown={(event) => event.stopPropagation()}
+        sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
+        aria-label="More"
+      >
+        <MoreIcon sx={{ fontSize: 22 }} />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        onClick={(event) => event.stopPropagation()}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem onClick={handleRemove} sx={{ color: '#dc2626' }}>
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+          Xoa khoi bai hat da tai
+        </MenuItem>
+      </Menu>
+    </>
+  );
+}
 
 function ClientLibrary() {
   const navigate = useNavigate();
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
+  const { showToast } = useClientToast();
 
   const [playlists, setPlaylists] = useState([]);
   const [uploads, setUploads] = useState([]);
@@ -91,19 +148,37 @@ function ClientLibrary() {
     event.stopPropagation();
 
     try {
-      const response = await clientSongsApi.requestDownload(song._id);
-      const audioUrl = response.data?.audioUrl;
-      if (!audioUrl) return;
-
-      const link = document.createElement('a');
-      link.href = audioUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.click();
-
+      await clientSongsApi.requestDownload(song._id);
       await loadLibrary();
+      showToast({
+        severity: 'success',
+        title: 'Da tai xuong',
+        message: 'Bai hat da duoc them vao danh sach bai hat da tai.',
+      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai bai hat.');
+      showToast({
+        severity: 'error',
+        title: 'Khong the tai bai hat',
+        message: err.response?.data?.message || 'Vui long thu lai sau.',
+      });
+    }
+  };
+
+  const handleRemoveDownloadedSong = async (song) => {
+    try {
+      await clientSongsApi.removeFromDownloadHistory(song._id);
+      setDownloadedSongs((prev) => prev.filter((item) => item._id !== song._id));
+      showToast({
+        severity: 'success',
+        title: 'Da xoa',
+        message: `"${song.title}" da duoc xoa khoi bai hat da tai.`,
+      });
+    } catch (err) {
+      showToast({
+        severity: 'error',
+        title: 'Khong the xoa',
+        message: err.response?.data?.message || 'Vui long thu lai sau.',
+      });
     }
   };
 
@@ -146,11 +221,11 @@ function ClientLibrary() {
     <Paper
       key={`${keyPrefix}-${song._id}`}
       variant="outlined"
-      onClick={() => playSong(song)}
+      onClick={() => playSong(song, { queue: options.queue || [song] })}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          playSong(song);
+          playSong(song, { queue: options.queue || [song] });
         }
       }}
       role="button"
@@ -166,7 +241,7 @@ function ClientLibrary() {
           size="small"
           onClick={(event) => {
             event.stopPropagation();
-            playSong(song);
+            playSong(song, { queue: options.queue || [song] });
           }}
           sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
         >
@@ -183,6 +258,9 @@ function ClientLibrary() {
         )}
         {options.showMore && (
           <SongMoreMenu song={song} buttonSx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }} />
+        )}
+        {options.showDownloadedMenu && (
+          <DownloadedSongMenu song={song} onRemove={handleRemoveDownloadedSong} />
         )}
       </Stack>
     </Paper>
@@ -265,7 +343,7 @@ function ClientLibrary() {
               <Stack spacing={1.25}>
                 <Box sx={listViewportSx}>
                   <Stack spacing={1.25}>
-                    {uploads.slice(0, 5).map((song) => renderSongRow(song, 'upload', { showMore: true, showDownload: true }))}
+                    {uploads.slice(0, 5).map((song) => renderSongRow(song, 'upload', { showMore: true, showDownload: true, queue: uploads }))}
                   </Stack>
                 </Box>
                 {!uploads.length && <Typography color="text.secondary">Ban chua upload bai hat nao.</Typography>}
@@ -287,7 +365,7 @@ function ClientLibrary() {
               <Stack spacing={1.25}>
                 <Box sx={listViewportSx}>
                   <Stack spacing={1.25}>
-                    {downloadedSongs.slice(0, 5).map((song) => renderSongRow(song, 'downloaded', { showMore: false, showDownload: false }))}
+                    {downloadedSongs.slice(0, 5).map((song) => renderSongRow(song, 'downloaded', { showMore: false, showDownload: false, showDownloadedMenu: true, queue: downloadedSongs }))}
                   </Stack>
                 </Box>
                 {!downloadedSongs.length && <Typography color="text.secondary">Ban chua tai bai hat nao.</Typography>}
@@ -309,7 +387,7 @@ function ClientLibrary() {
               <Stack spacing={1.25}>
                 <Box sx={listViewportSx}>
                   <Stack spacing={1.25}>
-                    {favoriteSongs.slice(0, 5).map((song) => renderSongRow(song, 'favorite', { showMore: true, showDownload: false }))}
+                    {favoriteSongs.slice(0, 5).map((song) => renderSongRow(song, 'favorite', { showMore: true, showDownload: false, queue: favoriteSongs }))}
                   </Stack>
                 </Box>
                 {!favoriteSongs.length && <Typography color="text.secondary">Ban chua co bai hat yeu thich.</Typography>}

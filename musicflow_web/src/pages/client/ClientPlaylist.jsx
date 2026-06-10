@@ -14,13 +14,13 @@ import {
 import { ArrowBackRounded as ArrowBackIcon, PlayArrowRounded as PlayIcon } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientPlaylistsApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 
 function ClientPlaylist() {
   const navigate = useNavigate();
   const { playlistId } = useParams();
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
 
   const [playlist, setPlaylist] = useState(null);
   const [songs, setSongs] = useState([]);
@@ -33,12 +33,15 @@ function ClientPlaylist() {
         setLoading(true);
         setError('');
 
-        const response = await clientPlaylistsApi.getById(playlistId);
+        const isLoggedIn = localStorage.getItem('role') === 'user';
+        const response = isLoggedIn
+          ? await clientPlaylistsApi.getById(playlistId)
+          : await clientPlaylistsApi.getSystemById(playlistId);
         const playlistData = response.data?.playlist || null;
         setPlaylist(playlistData);
         setSongs(Array.isArray(playlistData?.songs) ? playlistData.songs : []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Không thể tải dữ liệu playlist.');
+        setError(err.response?.data?.message || 'Khong the tai du lieu playlist.');
       } finally {
         setLoading(false);
       }
@@ -47,35 +50,56 @@ function ClientPlaylist() {
     if (playlistId) fetchPlaylist();
   }, [playlistId]);
 
+  const playAll = () => {
+    if (!songs.length) return;
+    playSong(songs[0], { queue: songs });
+  };
+
   return (
-    <ClientLayout title="Playlist của bạn">
+    <ClientLayout title="Playlist cua ban">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
-            Quay lại
+            Quay lai
           </Button>
         </Grid>
 
         <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Avatar
-                src={playlist?.coverImage || ''}
-                variant="rounded"
-                sx={{ width: 64, height: 64, bgcolor: '#14b8a6', fontSize: 28 }}
+            <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
+                <Avatar
+                  src={playlist?.coverImage || ''}
+                  variant="rounded"
+                  sx={{ width: 64, height: 64, bgcolor: '#14b8a6', fontSize: 28 }}
+                >
+                  {(playlist?.name || 'Playlist').charAt(0)}
+                </Avatar>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }} noWrap>
+                    {playlist?.name || 'Untitled playlist'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {songs.length} bai hat
+                  </Typography>
+                </Box>
+              </Stack>
+              <Button
+                variant="contained"
+                startIcon={<PlayIcon />}
+                disabled={!songs.length}
+                onClick={playAll}
+                sx={{
+                  bgcolor: '#14b8a6',
+                  color: '#fff',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { bgcolor: '#0f766e' },
+                }}
               >
-                {(playlist?.name || 'Playlist').charAt(0)}
-              </Avatar>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="h5" sx={{ fontWeight: 800 }} noWrap>
-                  {playlist?.name || 'Untitled playlist'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {songs.length} bài hát
-                </Typography>
-              </Box>
+                Phat tat ca
+              </Button>
             </Stack>
           </Paper>
         </Grid>
@@ -83,7 +107,7 @@ function ClientPlaylist() {
         <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0', minHeight: 280 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Danh sách bài hát
+              Danh sach bai hat
             </Typography>
 
             {loading ? (
@@ -96,11 +120,11 @@ function ClientPlaylist() {
                   <Paper
                     key={song._id}
                     variant="outlined"
-                    onClick={() => playSong(song)}
+                    onClick={() => playSong(song, { queue: songs })}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        playSong(song);
+                        playSong(song, { queue: songs });
                       }
                     }}
                     role="button"
@@ -134,7 +158,7 @@ function ClientPlaylist() {
                         startIcon={<PlayIcon />}
                         onClick={(event) => {
                           event.stopPropagation();
-                          playSong(song);
+                          playSong(song, { queue: songs });
                         }}
                         sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
                       >
@@ -145,7 +169,7 @@ function ClientPlaylist() {
                   </Paper>
                 ))}
 
-                {!songs.length && <Typography color="text.secondary">Playlist này chưa có bài hát.</Typography>}
+                {!songs.length && <Typography color="text.secondary">Playlist nay chua co bai hat.</Typography>}
               </Stack>
             )}
           </Paper>
@@ -156,4 +180,3 @@ function ClientPlaylist() {
 }
 
 export default ClientPlaylist;
-

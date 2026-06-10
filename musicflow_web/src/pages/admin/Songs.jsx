@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { songsApi, topicsApi, accountsApi } from '../../services/api';
+import useAppToast from '../../components/common/useAppToast';
 
 const emptyFormData = {
   title: '',
@@ -55,6 +56,7 @@ const emptyFormData = {
 };
 
 function Songs() {
+  const { showToast } = useAppToast();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -101,7 +103,7 @@ function Songs() {
     try {
       const response = await topicsApi.getAll({ page: 1, limit: 1000 });
       setTopics(response.data.topics || []);
-    } catch (err) {
+    } catch {
       setTopics([]);
     }
   }, []);
@@ -116,7 +118,7 @@ function Songs() {
         const res = await accountsApi.getAll();
         const artists = (res.data?.accounts || []).filter((acc) => acc.role === 'artist');
         setArtistOptions(artists);
-      } catch (_) {
+      } catch {
         setArtistOptions([]);
       }
     };
@@ -155,9 +157,12 @@ function Songs() {
       await songsApi.delete(deleteDialog.song._id);
       setDeleteDialog({ open: false, song: null });
       setSuccess('Song deleted successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Song deleted successfully.' });
       fetchSongs();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete song.');
+      const message = err.response?.data?.message || 'Failed to delete song.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Delete failed', message });
     } finally {
       setDeleteLoading(false);
     }
@@ -167,9 +172,12 @@ function Songs() {
     try {
       await songsApi.updateVisibility(song._id, !song.isPublic);
       setSuccess('Song visibility updated successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Song visibility updated successfully.' });
       fetchSongs();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update song visibility.');
+      const message = err.response?.data?.message || 'Failed to update song visibility.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Update failed', message });
     }
   };
 
@@ -204,12 +212,16 @@ function Songs() {
 
   const handleCreateSong = async () => {
     if (!formData.title.trim() || formData.artists.length === 0) {
-      setError('Title and at least one artist are required.');
+      const message = 'Title and at least one artist are required.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing information', message });
       return;
     }
 
     if (!editingSong && !audioFile) {
-      setError('Audio file is required when creating a song.');
+      const message = 'Audio file is required when creating a song.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing audio', message });
       return;
     }
 
@@ -230,15 +242,19 @@ function Songs() {
       if (editingSong) {
         await songsApi.update(editingSong._id, payload);
         setSuccess('Song updated successfully.');
+        showToast({ severity: 'success', title: 'Success!', message: 'Song updated successfully.' });
       } else {
         await songsApi.create(payload);
         setSuccess('Song created successfully.');
+        showToast({ severity: 'success', title: 'Success!', message: 'Song created successfully.' });
       }
 
       resetSongDialog();
       fetchSongs();
     } catch (err) {
-      setError(err.response?.data?.message || (editingSong ? 'Failed to update song.' : 'Failed to create song.'));
+      const message = err.response?.data?.message || (editingSong ? 'Failed to update song.' : 'Failed to create song.');
+      setError(message);
+      showToast({ severity: 'error', title: editingSong ? 'Update failed' : 'Create failed', message });
     } finally {
       setCreateLoading(false);
     }

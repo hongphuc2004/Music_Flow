@@ -14,9 +14,9 @@ import {
 import {
   Notifications as NotificationsIcon,
   Search as SearchIcon,
-  AccountCircle,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
+import useAppToast from '../../common/useAppToast';
 
 const drawerWidth = 260;
 
@@ -55,6 +55,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 
 function Header({ title }) {
   const [anchorEl, setAnchorEl] = useState(null);
+  const { showToast } = useAppToast();
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -67,7 +68,14 @@ function Header({ title }) {
 
   const handleLogout = () => {
     localStorage.removeItem('role');
-    window.location.replace('/adminlogin');
+    showToast({
+      severity: 'success',
+      title: 'Success!',
+      message: 'Admin signed out successfully.',
+    });
+    window.setTimeout(() => {
+      window.location.replace('/adminlogin');
+    }, 650);
   };
 
   return (

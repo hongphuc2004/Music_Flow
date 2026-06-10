@@ -291,12 +291,12 @@ router.post("/logout", async (req, res) => {
     clearRefreshCookie(res);
     return res.json({
       success: true,
-      message: "Dang xuat thanh cong",
+      message: "Đăng xuất thành công",
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Dang xuat that bai",
+      message: "Đăng xuất thất bại",
       error: error.message,
     });
   }

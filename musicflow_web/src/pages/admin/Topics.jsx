@@ -38,8 +38,10 @@ import {
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { topicsApi, songsApi } from '../../services/api';
+import useAppToast from '../../components/common/useAppToast';
 
 function Topics() {
+  const { showToast } = useAppToast();
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,7 +65,6 @@ function Topics() {
   const [songOptionsPage, setSongOptionsPage] = useState(0);
   const [songOptionsRowsPerPage, setSongOptionsRowsPerPage] = useState(10);
   const [songOptionsSearch, setSongOptionsSearch] = useState('');
-  const [selectedSongMap, setSelectedSongMap] = useState({});
 
   const fetchTopics = useCallback(async () => {
     try {
@@ -76,7 +77,7 @@ function Topics() {
       setTopics(response.data.topics);
       setTotal(response.data.pagination.total);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Failed to load topics. Make sure the backend is running.');
     } finally {
       setLoading(false);
@@ -113,9 +114,12 @@ function Topics() {
       setDeleteLoading(true);
       await topicsApi.delete(deleteDialog.topic._id);
       setDeleteDialog({ open: false, topic: null });
+      showToast({ severity: 'success', title: 'Success!', message: 'Topic deleted successfully.' });
       fetchTopics();
-    } catch (err) {
-      setError('Failed to delete topic');
+    } catch {
+      const message = 'Failed to delete topic';
+      setError(message);
+      showToast({ severity: 'error', title: 'Delete failed', message });
     } finally {
       setDeleteLoading(false);
     }
@@ -135,7 +139,7 @@ function Topics() {
           songs: songIds,
         });
         setAvatarPreview(topic.avatar || '');
-      } catch (err) {
+      } catch {
         setFormData({
           name: topic.name,
           description: topic.description || '',
@@ -197,13 +201,17 @@ function Topics() {
       }
       if (editDialog.topic) {
         await topicsApi.update(editDialog.topic._id, submitData);
+        showToast({ severity: 'success', title: 'Success!', message: 'Topic updated successfully.' });
       } else {
         await topicsApi.create(submitData);
+        showToast({ severity: 'success', title: 'Success!', message: 'Topic created successfully.' });
       }
       handleCloseDialog();
       fetchTopics();
-    } catch (err) {
-      setError('Failed to save topic');
+    } catch {
+      const message = 'Failed to save topic';
+      setError(message);
+      showToast({ severity: 'error', title: 'Save failed', message });
     } finally {
       setFormLoading(false);
     }
@@ -220,16 +228,6 @@ function Topics() {
       let songs = response.data?.songs || [];
       
       setSongOptions(songs);
-      setSelectedSongMap((prev) => {
-        const next = { ...prev };
-        songs.forEach((song) => {
-          next[song._id] = {
-            title: song.title,
-            artist: song.artist,
-          };
-        });
-        return next;
-      });
     } catch (err) {
       console.error('Failed to fetch song options:', err);
       setSongOptions([]);
@@ -281,20 +279,6 @@ function Topics() {
           : [...prev.songs, song._id],
       };
     });
-    setSelectedSongMap((prev) => ({
-      ...prev,
-      [song._id]: {
-        title: song.title,
-        artist: song.artist,
-      },
-    }));
-  };
-
-  const removeSelectedSong = (songId) => {
-    setFormData((prev) => ({
-      ...prev,
-      songs: prev.songs.filter((id) => id !== songId),
-    }));
   };
 
   const handleOpenSongPicker = () => {

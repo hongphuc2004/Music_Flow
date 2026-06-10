@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Avatar,
@@ -12,7 +13,7 @@ import {
 import { RefreshRounded as RefreshIcon, ChevronRightRounded as ArrowIcon } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 
 const getRecentPlayedStorageKey = () => {
   const userId = localStorage.getItem('userId') || 'anonymous';
@@ -31,7 +32,8 @@ const readRecentPlayedSongs = () => {
 };
 
 function ClientDiscover() {
-  const { playSong } = useClientPlayer();
+  const navigate = useNavigate();
+  const { playSong } = useClientPlayerActions();
   const [songs, setSongs] = useState([]);
   const [suggestedSongs, setSuggestedSongs] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -40,16 +42,16 @@ function ClientDiscover() {
   const [refreshingSuggestions, setRefreshingSuggestions] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchRecommendedSongs = async ({ forceFresh = false } = {}) => {
+  const fetchRecommendedSongs = useCallback(async ({ forceFresh = false } = {}) => {
     const params = {
       limit: 24,
       ...(forceFresh ? { _t: Date.now() } : {}),
     };
     const songsRes = await clientSongsApi.getRecommended(params);
     return Array.isArray(songsRes.data) ? songsRes.data : [];
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -69,11 +71,11 @@ function ClientDiscover() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchRecommendedSongs]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const refreshSuggestedSongsOnly = async () => {
     try {
@@ -89,6 +91,7 @@ function ClientDiscover() {
   };
 
   const recentSongs = useMemo(() => readRecentPlayedSongs().slice(0, 6), []);
+  const recentQueue = recentSongs.length > 0 ? recentSongs : songs.slice(0, 5);
 
   const top100Cards = useMemo(() => {
     return [...songs]
@@ -201,7 +204,7 @@ function ClientDiscover() {
                       transform: 'translateY(-2px)',
                     },
                   }}
-                  onClick={() => playSong(song)}
+                  onClick={() => playSong(song, { queue: suggestedSongs })}
                 >
                   <Avatar src={song.imageUrl} variant="rounded" sx={{ width: 44, height: 44 }} />
                   <Box sx={{ minWidth: 0, flexGrow: 1 }}>
@@ -219,8 +222,8 @@ function ClientDiscover() {
             <Box>
               {sectionHeader('Nghe Gan Day')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
-                {(recentSongs.length > 0 ? recentSongs : songs.slice(0, 5)).map((song) => (
-                  <Box key={`recent-${song._id}`} sx={cardSx} onClick={() => playSong(song)}>
+                {recentQueue.map((song) => (
+                  <Box key={`recent-${song._id}`} sx={cardSx} onClick={() => playSong(song, { queue: recentQueue })}>
                     <Box component="img" src={song.imageUrl} alt={song.title} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
                     <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{song.title}</Typography>
                     <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
@@ -237,7 +240,11 @@ function ClientDiscover() {
               {sectionHeader('Danh Rieng Cho Ban')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {artistMixCards.map((artist) => (
-                  <Box key={`mix-${artist.id}`} sx={{ ...cardSx, minWidth: 230, maxWidth: 230, background: 'linear-gradient(145deg, #2563eb, #14b8a6)' }}>
+                  <Box
+                    key={`mix-${artist.id}`}
+                    sx={{ ...cardSx, minWidth: 230, maxWidth: 230, background: 'linear-gradient(145deg, #2563eb, #14b8a6)' }}
+                    onClick={() => navigate(`/client/artists/${artist.id}`)}
+                  >
                     <Stack direction="row" spacing={1.25} alignItems="center">
                       <Avatar src={artist.avatar} sx={{ width: 72, height: 72 }} />
                       <Box sx={{ minWidth: 0 }}>
@@ -256,7 +263,7 @@ function ClientDiscover() {
               {sectionHeader('Top 100')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {top100Cards.map((song, index) => (
-                  <Box key={`top-${song._id}`} sx={cardSx}>
+                  <Box key={`top-${song._id}`} sx={cardSx} onClick={() => playSong(song, { queue: top100Cards })}>
                     <Box component="img" src={song.imageUrl} alt={song.title} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
                     <Typography sx={{ fontWeight: 900, color: '#0f766e' }}>TOP {index + 1}</Typography>
                     <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{song.title}</Typography>
@@ -272,7 +279,7 @@ function ClientDiscover() {
               {sectionHeader('Goi Y Playlist')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {playlists.slice(0, 5).map((playlist) => (
-                  <Box key={`playlist-${playlist._id}`} sx={cardSx}>
+                  <Box key={`playlist-${playlist._id}`} sx={cardSx} onClick={() => navigate(`/client/collections/${playlist._id}`)}>
                     <Box component="img" src={playlist.coverImage || ''} alt={playlist.name} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
                     <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{playlist.name}</Typography>
                     <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
@@ -287,7 +294,7 @@ function ClientDiscover() {
               {sectionHeader('Chill')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {chillCards.map((playlist) => (
-                  <Box key={`chill-${playlist._id}`} sx={cardSx}>
+                  <Box key={`chill-${playlist._id}`} sx={cardSx} onClick={() => navigate(`/client/collections/${playlist._id}`)}>
                     <Box component="img" src={playlist.coverImage || ''} alt={playlist.name} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
                     <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{playlist.name}</Typography>
                     <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>

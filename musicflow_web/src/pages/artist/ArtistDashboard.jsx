@@ -31,13 +31,14 @@ import {
   calculateArtistAnalytics,
   createArtistProfileForm,
 } from '../../utils/artistProfile';
+import useAppToast from '../../components/common/useAppToast';
 
 function ArtistDashboard() {
+  const { showToast } = useAppToast();
   const [artist, setArtist] = useState(null);
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [profileForm, setProfileForm] = useState(createArtistProfileForm());
@@ -83,7 +84,6 @@ function ArtistDashboard() {
     setAvatarFile(null);
     setEditOpen(true);
     setError('');
-    setSuccess('');
   };
 
   const handleCloseEdit = () => {
@@ -99,7 +99,9 @@ function ArtistDashboard() {
 
   const handleSaveProfile = async () => {
     if (!profileForm.name.trim() || !profileForm.email.trim()) {
-      setError('Name and email are required.');
+      const message = 'Name and email are required.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing information', message });
       return;
     }
 
@@ -116,10 +118,12 @@ function ArtistDashboard() {
         avatar: updatedArtist.avatar || '',
       }));
       syncArtistSession(updatedArtist);
-      setSuccess('Profile updated successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Profile updated successfully.' });
       handleCloseEdit();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile.');
+      const message = err.response?.data?.message || 'Failed to update profile.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Update failed', message });
     } finally {
       setEditLoading(false);
     }
@@ -163,12 +167,6 @@ function ArtistDashboard() {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
           {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
-          {success}
         </Alert>
       )}
 

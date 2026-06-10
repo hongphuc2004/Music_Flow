@@ -2,16 +2,19 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconButton, Menu, MenuItem } from '@mui/material';
 import { MoreHorizRounded as MoreIcon } from '@mui/icons-material';
-import { clientFavoritesApi } from '../../../services/api';
-import { useClientPlayer } from './ClientPlayerProvider';
+import { clientFavoritesApi, clientSongsApi } from '../../../services/api';
+import { useClientPlayerActions } from './ClientPlayerProvider';
+import useClientToast from './useClientToast';
 
 function SongMoreMenu({ song, buttonSx }) {
   const navigate = useNavigate();
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
+  const { showToast } = useClientToast();
   const [anchorEl, setAnchorEl] = useState(null);
   const [favorite, setFavorite] = useState(false);
 
   const open = Boolean(anchorEl);
+  const isLoggedIn = localStorage.getItem('role') === 'user';
 
   const songId = useMemo(() => song?._id || '', [song?._id]);
   const primaryArtistId = useMemo(() => {
@@ -23,7 +26,7 @@ function SongMoreMenu({ song, buttonSx }) {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
 
-    if (!songId) return;
+    if (!songId || !isLoggedIn) return;
 
     try {
       const response = await clientFavoritesApi.check(songId);
@@ -42,9 +45,35 @@ function SongMoreMenu({ song, buttonSx }) {
     event.stopPropagation();
     if (!songId) return;
 
+    if (!isLoggedIn) {
+      handleClose(event);
+      showToast({
+        severity: 'info',
+        title: 'Can dang nhap',
+        message: 'Vui long dang nhap de them bai hat yeu thich.',
+      });
+      return;
+    }
+
     try {
       await clientFavoritesApi.toggle(songId);
-      setFavorite((prev) => !prev);
+      setFavorite((prev) => {
+        const next = !prev;
+        showToast({
+          severity: 'success',
+          title: 'Thanh cong!',
+          message: next
+            ? 'Da them bai hat vao danh sach yeu thich.'
+            : 'Da bo bai hat khoi danh sach yeu thich.',
+        });
+        return next;
+      });
+    } catch (error) {
+      showToast({
+        severity: 'error',
+        title: 'Co loi xay ra',
+        message: error.response?.data?.message || 'Khong the cap nhat yeu thich.',
+      });
     } finally {
       handleClose(event);
     }
@@ -64,6 +93,38 @@ function SongMoreMenu({ song, buttonSx }) {
     event.stopPropagation();
     playSong(song);
     handleClose(event);
+  };
+
+  const handleDownload = async (event) => {
+    event.stopPropagation();
+    if (!songId) return;
+
+    if (!isLoggedIn) {
+      handleClose(event);
+      showToast({
+        severity: 'info',
+        title: 'Can dang nhap',
+        message: 'Vui long dang nhap de tai bai hat.',
+      });
+      return;
+    }
+
+    try {
+      await clientSongsApi.requestDownload(songId);
+      showToast({
+        severity: 'success',
+        title: 'Da tai xuong',
+        message: 'Bai hat da duoc them vao danh sach bai hat da tai.',
+      });
+    } catch (error) {
+      showToast({
+        severity: 'error',
+        title: 'Khong the tai bai hat',
+        message: error.response?.data?.message || 'Vui long thu lai sau.',
+      });
+    } finally {
+      handleClose(event);
+    }
   };
 
   return (
@@ -90,9 +151,10 @@ function SongMoreMenu({ song, buttonSx }) {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={handlePlay}>Phát ngay</MenuItem>
-        <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'}</MenuItem>
-        <MenuItem onClick={handleViewArtist} disabled={!primaryArtistId}>Xem nghệ sĩ</MenuItem>
+        <MenuItem onClick={handlePlay}>Phat ngay</MenuItem>
+        <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bo yeu thich' : 'Them yeu thich'}</MenuItem>
+        <MenuItem onClick={handleDownload}>Tai bai hat</MenuItem>
+        <MenuItem onClick={handleViewArtist} disabled={!primaryArtistId}>Xem nghe si</MenuItem>
       </Menu>
     </>
   );

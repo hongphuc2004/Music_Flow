@@ -29,6 +29,30 @@ import api, { setAccessToken } from '../services/api';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
+const requestGoogleAccessToken = ({ clientId, onSuccess, onError }) => {
+  if (!window.google?.accounts?.oauth2 || !clientId) {
+    onError?.(new Error('Google OAuth chưa sẵn sàng.'));
+    return;
+  }
+
+  const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'openid email profile',
+    callback: (response) => {
+      if (response?.access_token) {
+        onSuccess(response.access_token);
+        return;
+      }
+      onError?.(new Error(response?.error || 'Không lấy được Google token.'));
+    },
+    error_callback: (error) => {
+      onError?.(new Error(error?.message || error?.type || 'Đăng nhập Google bị hủy.'));
+    },
+  });
+
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
+};
+
 function AccountLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -42,7 +66,10 @@ function AccountLogin() {
   const [googleReady, setGoogleReady] = useState(false);
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Chưa cấu hình Google Login.');
+      return;
+    }
 
     const existing = document.querySelector('script[data-google-gsi="true"]');
     if (existing && window.google?.accounts?.id) {
@@ -103,7 +130,40 @@ function AccountLogin() {
     }
 
     setError('');
-    window.google.accounts.id.prompt();
+    setGoogleLoading(true);
+    window.google.accounts.id.prompt((notification) => {
+      if (!notification?.isNotDisplayed?.() && !notification?.isSkippedMoment?.()) {
+        setGoogleLoading(false);
+        return;
+      }
+
+      requestGoogleAccessToken({
+        clientId: GOOGLE_CLIENT_ID,
+        onSuccess: async (accessToken) => {
+          try {
+            const res = await api.post('/auth/google', {
+              credential: accessToken,
+              tokenType: 'access_token',
+            });
+            const { token, user } = res.data;
+            setAccessToken(token);
+            localStorage.setItem('role', user.role);
+            localStorage.setItem('userName', user.name || 'Listener');
+            localStorage.setItem('email', user.email || '');
+            localStorage.setItem('userId', user._id || '');
+            navigate('/client/home');
+          } catch (err) {
+            setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
+          } finally {
+            setGoogleLoading(false);
+          }
+        },
+        onError: (err) => {
+          setError(err.message || 'Đăng nhập Google thất bại');
+          setGoogleLoading(false);
+        },
+      });
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -261,6 +321,9 @@ function AccountLogin() {
           )}
 
           <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button type="button" variant="text" sx={{ color: '#0f766e', fontWeight: 800 }} onClick={() => navigate('/client/home')}>
+              Nghe với tư cách khách
+            </Button>
             <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/user/register')}>
               Tạo tài khoản 
             </Button>

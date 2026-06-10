@@ -23,12 +23,13 @@ import ArtistProfileDialog from './ArtistProfileDialog';
 import { artistApi } from '../../services/api';
 import { syncArtistSession } from '../../utils/artistSession';
 import { buildArtistProfilePayload, createArtistProfileForm } from '../../utils/artistProfile';
+import useAppToast from '../../components/common/useAppToast';
 
 function ArtistProfile() {
+  const { showToast } = useAppToast();
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [profileForm, setProfileForm] = useState(createArtistProfileForm());
@@ -64,7 +65,6 @@ function ArtistProfile() {
     setAvatarFile(null);
     setEditOpen(true);
     setError('');
-    setSuccess('');
   };
 
   const handleCloseEdit = () => {
@@ -80,7 +80,9 @@ function ArtistProfile() {
 
   const handleSaveProfile = async () => {
     if (!profileForm.name.trim() || !profileForm.email.trim()) {
-      setError('Name and email are required.');
+      const message = 'Name and email are required.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing information', message });
       return;
     }
 
@@ -90,10 +92,12 @@ function ArtistProfile() {
       const updatedArtist = response.data.artist;
       setArtist(updatedArtist);
       syncArtistSession(updatedArtist);
-      setSuccess('Profile updated successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Profile updated successfully.' });
       handleCloseEdit();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update artist profile.');
+      const message = err.response?.data?.message || 'Failed to update artist profile.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Update failed', message });
     } finally {
       setEditLoading(false);
     }
@@ -102,7 +106,6 @@ function ArtistProfile() {
   return (
     <ArtistLayout title="Artist Profile">
       {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
       {loading ? (
         <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

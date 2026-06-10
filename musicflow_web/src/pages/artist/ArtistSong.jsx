@@ -41,12 +41,13 @@ import {
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import api from '../../services/api';
+import useAppToast from '../../components/common/useAppToast';
 
 function ArtistSong() {
+  const { showToast } = useAppToast();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(0);
@@ -103,7 +104,6 @@ function ArtistSong() {
     setShowFullLyrics(false);
     setCreateDialogOpen(true);
     setError(null);
-    setSuccess(null);
   };
 
   const openEditDialog = (song) => {
@@ -123,16 +123,19 @@ function ArtistSong() {
     setShowFullLyrics(false);
     setCreateDialogOpen(true);
     setError(null);
-    setSuccess(null);
   };
 
   const handleCreateSong = async () => {
     if (!formData.title.trim()) {
-      setError('Tiêu đề bài hát không được để trống.');
+      const message = 'Tiêu đề bài hát không được để trống.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Thiếu thông tin', message });
       return;
     }
     if (!editingSong && !audioFile) {
-      setError('File audio (mp3) là bắt buộc khi thêm bài hát.');
+      const message = 'File audio (mp3) là bắt buộc khi thêm bài hát.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Thiếu file audio', message });
       return;
     }
 
@@ -159,16 +162,18 @@ function ArtistSong() {
 
       if (editingSong) {
         await api.put(`/songs/${editingSong._id}`, uploadData);
-        setSuccess('Đã cập nhật bài hát thành công!');
+        showToast({ severity: 'success', title: 'Thành công!', message: 'Đã cập nhật bài hát thành công.' });
       } else {
         await api.post('/songs', uploadData);
-        setSuccess('Đã thêm bài mới thành công!');
+        showToast({ severity: 'success', title: 'Thành công!', message: 'Đã thêm bài hát mới thành công.' });
       }
       setCreateDialogOpen(false);
       fetchSongs();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.message || 'Không thể lưu bài hát.');
+      const message = err.response?.data?.message || err.message || 'Không thể lưu bài hát.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Lưu thất bại', message });
     } finally {
       setCreateLoading(false);
     }
@@ -181,10 +186,12 @@ function ArtistSong() {
     try {
       await api.delete(`/songs/${deleteDialog.song._id}`);
       setDeleteDialog({ open: false, song: null });
-      setSuccess('Đã xóa bài hát thành công!');
+      showToast({ severity: 'success', title: 'Thành công!', message: 'Đã xóa bài hát thành công.' });
       fetchSongs();
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể xóa bài hát.');
+      const message = err.response?.data?.message || 'Không thể xóa bài hát.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Xóa thất bại', message });
     } finally {
       setDeleteLoading(false);
     }
@@ -201,7 +208,6 @@ function ArtistSong() {
     <ArtistLayout title="Songs Management">
       <Stack spacing={3}>
         {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">{success}</Alert>}
 
         {/* Dashboard-style Header Card */}
         <Card
@@ -360,10 +366,20 @@ function ArtistSong() {
                                   // Optimistic Update
                                   setSongs(songs.map(s => s._id === song._id ? { ...s, isPublic: newStatus } : s));
                                   await api.put(`/songs/${song._id}`, { isPublic: newStatus });
+                                  showToast({
+                                    severity: 'success',
+                                    title: 'Thành công!',
+                                    message: newStatus ? 'Bài hát đã được công khai.' : 'Bài hát đã chuyển sang riêng tư.',
+                                  });
                                 } catch (err) {
                                   console.error("Failed to update status", err);
                                   // Revert on failure
                                   setSongs(songs.map(s => s._id === song._id ? { ...s, isPublic: !newStatus } : s));
+                                  showToast({
+                                    severity: 'error',
+                                    title: 'Cập nhật thất bại',
+                                    message: err.response?.data?.message || 'Không thể đổi trạng thái bài hát.',
+                                  });
                                 }
                               }}
                             />

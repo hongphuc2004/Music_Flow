@@ -13,11 +13,11 @@ import {
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 
 function ClientFavorites() {
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -80,7 +80,7 @@ function ClientFavorites() {
                   <Paper
                     key={song._id}
                     variant="outlined"
-                    onClick={() => playSong(song)}
+                    onClick={() => playSong(song, { queue: favorites })}
                     role="button"
                     tabIndex={0}
                     sx={{ p: 1.5, borderRadius: 2.5, border: '1px solid #e2e8f0', cursor: 'pointer' }}
@@ -97,7 +97,7 @@ function ClientFavorites() {
                             : 'Unknown artist'}
                         </Typography>
                       </Box>
-                      <Button size="small" onClick={(event) => { event.stopPropagation(); playSong(song); }}>
+                      <Button size="small" onClick={(event) => { event.stopPropagation(); playSong(song, { queue: favorites }); }}>
                         Play
                       </Button>
                       <SongMoreMenu song={song} />

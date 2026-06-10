@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
@@ -11,7 +10,6 @@ import {
   Typography,
   Box,
   Divider,
-  Avatar,
 } from '@mui/material';
 import {
   Home as HomeIcon,
@@ -21,8 +19,11 @@ import {
   EqualizerRounded as EqualizerIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
+  LoginRounded as LoginIcon,
   Headphones as HeadphonesIcon,
+  MicExternalOnOutlined,
 } from '@mui/icons-material';
+import useClientToast from './useClientToast';
 
 const drawerWidth = 260;
 
@@ -35,13 +36,24 @@ const menuItems = [
   { text: 'Tài Khoản', icon: <PersonIcon />, path: '/client/profile' },
 ];
 
-function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
+function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess = () => {} }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const userName = localStorage.getItem('userName') || localStorage.getItem('name') || 'Listener';
-  const userInitial = useMemo(() => userName.charAt(0).toUpperCase(), [userName]);
+  const { showToast } = useClientToast();
+  const isLoggedIn = localStorage.getItem('role') === 'user';
 
   const handleNavigate = (path) => {
+    const privatePaths = ['/client/library', '/client/profile'];
+    if (!isLoggedIn && privatePaths.includes(path)) {
+      showToast({
+        severity: 'info',
+        title: 'Cần đăng nhập',
+        message: 'Vui lòng đăng nhập để sử dụng chức năng này.',
+      });
+      onClose();
+      return;
+    }
+
     navigate(path);
     onClose();
   };
@@ -52,7 +64,23 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
     onClose();
-    navigate('/accountlogin');
+    onLogoutSuccess();
+    showToast({
+      severity: 'success',
+      title: 'Thành công!',
+      message: 'Bạn đã đăng xuất khỏi tài khoản.',
+    });
+    navigate('/client/home');
+  };
+
+  const handleLogin = () => {
+    onClose();
+    navigate('/client/home?auth=login');
+  };
+
+  const handleArtistLogin = () => {
+    onClose();
+    navigate('/artistlogin');
   };
 
   const sidebarContent = (
@@ -64,25 +92,6 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 800, letterSpacing: -0.3 }}>
               MusicFlow
             </Typography>
-          </Box>
-          <Box
-            sx={{
-              p: 1.5,
-              borderRadius: 3,
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Avatar sx={{ width: 46, height: 46, bgcolor: '#14b8a6' }}>
-                {userInitial}
-              </Avatar>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography fontWeight={700} noWrap>
-                  {userName}
-                </Typography>
-              </Box>
-            </Box>
           </Box>
         </Box>
       </Toolbar>
@@ -118,11 +127,23 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {} }) {
 
       <List sx={{ px: 1.5, pb: 2 }}>
         <ListItem disablePadding>
-          <ListItemButton onClick={handleLogout} sx={{ borderRadius: 3 }}>
-            <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}><LogoutIcon /></ListItemIcon>
-            <ListItemText primary="Dang xuat" primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItemButton onClick={isLoggedIn ? handleLogout : handleLogin} sx={{ borderRadius: 3 }}>
+            <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}>
+              {isLoggedIn ? <LogoutIcon /> : <LoginIcon />}
+            </ListItemIcon>
+            <ListItemText primary={isLoggedIn ? 'Đăng Xuất' : 'Đăng Nhập'} primaryTypographyProps={{ fontWeight: 600 }} />
           </ListItemButton>
         </ListItem>
+        {!isLoggedIn && (
+          <ListItem disablePadding sx={{ mt: 1 }}>
+            <ListItemButton onClick={handleArtistLogin} sx={{ borderRadius: 3 }}>
+              <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}>
+                <MicExternalOnOutlined />
+              </ListItemIcon>
+              <ListItemText primary="Artist Studio" primaryTypographyProps={{ fontWeight: 600 }} />
+            </ListItemButton>
+          </ListItem>
+        )}
       </List>
     </>
   );

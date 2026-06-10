@@ -14,13 +14,13 @@ import {
 import { ArrowBackRounded as ArrowBackIcon, PlayArrowRounded as PlayIcon } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 
 function ClientArtist() {
   const navigate = useNavigate();
   const { artistId } = useParams();
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
 
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,11 +109,11 @@ function ClientArtist() {
                   <Paper
                     key={song._id}
                     variant="outlined"
-                    onClick={() => playSong(song)}
+                    onClick={() => playSong(song, { queue: songs })}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        playSong(song);
+                        playSong(song, { queue: songs });
                       }
                     }}
                     role="button"
@@ -147,7 +147,7 @@ function ClientArtist() {
                         startIcon={<PlayIcon />}
                         onClick={(event) => {
                           event.stopPropagation();
-                          playSong(song);
+                          playSong(song, { queue: songs });
                         }}
                         sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
                       >

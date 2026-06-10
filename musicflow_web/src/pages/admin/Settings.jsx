@@ -13,8 +13,10 @@ import {
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
+import useAppToast from '../../components/common/useAppToast';
 
 function Settings() {
+  const { showToast } = useAppToast();
   const [settings, setSettings] = useState({
     siteName: 'MusicFlow',
     siteDescription: 'Your favorite music streaming platform',
@@ -35,6 +37,7 @@ function Settings() {
   const handleSave = () => {
     // Note: Settings are not persisted to backend yet
     setSaved(true);
+    showToast({ severity: 'success', title: 'Success!', message: 'Settings saved successfully.' });
     setTimeout(() => setSaved(false), 3000);
   };
 

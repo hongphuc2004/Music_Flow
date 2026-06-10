@@ -41,6 +41,7 @@ import {
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { playlistsApi, songsApi } from '../../services/api';
+import useAppToast from '../../components/common/useAppToast';
 
 const INITIAL_FORM_DATA = {
   name: '',
@@ -51,6 +52,7 @@ const INITIAL_FORM_DATA = {
 };
 
 function Playlists() {
+  const { showToast } = useAppToast();
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,7 +69,6 @@ function Playlists() {
   const [songOptionsPage, setSongOptionsPage] = useState(0);
   const [songOptionsRowsPerPage, setSongOptionsRowsPerPage] = useState(10);
   const [songOptionsSearch, setSongOptionsSearch] = useState('');
-  const [selectedSongMap, setSelectedSongMap] = useState({});
   const [formDialog, setFormDialog] = useState({ open: false, mode: 'create', playlist: null });
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [coverImageFile, setCoverImageFile] = useState(null);
@@ -107,7 +108,7 @@ function Playlists() {
       setPlaylists(response.data.playlists);
       setTotal(response.data.pagination.total);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Failed to load playlists. Make sure the backend is running.');
     } finally {
       setLoading(false);
@@ -127,16 +128,6 @@ function Playlists() {
       });
       const songs = response.data?.songs || [];
       setSongOptions(songs);
-      setSelectedSongMap((prev) => {
-        const next = { ...prev };
-        songs.forEach((song) => {
-          next[song._id] = {
-            title: song.title,
-            artist: song.artist,
-          };
-        });
-        return next;
-      });
     } catch {
       setSongOptions([]);
     } finally {
@@ -176,9 +167,12 @@ function Playlists() {
       setDeleteLoading(true);
       await playlistsApi.delete(deleteDialog.playlist._id);
       setDeleteDialog({ open: false, playlist: null });
+      showToast({ severity: 'success', title: 'Success!', message: 'Playlist deleted successfully.' });
       fetchPlaylists();
-    } catch (err) {
-      setError('Failed to delete playlist');
+    } catch {
+      const message = 'Failed to delete playlist';
+      setError(message);
+      showToast({ severity: 'error', title: 'Delete failed', message });
     } finally {
       setDeleteLoading(false);
     }
@@ -187,7 +181,6 @@ function Playlists() {
   const openCreateDialog = () => {
     setFormData(INITIAL_FORM_DATA);
     setCoverImageFile(null);
-    setSelectedSongMap({});
     setSongOptionsSearch('');
     setSongOptionsPage(0);
     setFormDialog({ open: true, mode: 'create', playlist: null });
@@ -203,15 +196,6 @@ function Playlists() {
       songs: songs.map((song) => song._id),
     });
     setCoverImageFile(null);
-    setSelectedSongMap(
-      songs.reduce((acc, song) => {
-        acc[song._id] = {
-          title: song.title,
-          artist: song.artist,
-        };
-        return acc;
-      }, {})
-    );
     setSongOptionsSearch('');
     setSongOptionsPage(0);
     setFormDialog({ open: true, mode: 'edit', playlist });
@@ -240,20 +224,6 @@ function Playlists() {
       };
     });
 
-    setSelectedSongMap((prev) => ({
-      ...prev,
-      [song._id]: {
-        title: song.title,
-        artist: song.artist,
-      },
-    }));
-  };
-
-  const removeSelectedSong = (songId) => {
-    setFormData((prev) => ({
-      ...prev,
-      songs: prev.songs.filter((id) => id !== songId),
-    }));
   };
 
   const handleSongOptionsPageChange = (event, newPage) => {
@@ -273,7 +243,9 @@ function Playlists() {
 
   const handleSavePlaylist = async () => {
     if (!formData.name.trim()) {
-      setError('Playlist name is required');
+      const message = 'Playlist name is required';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing information', message });
       return;
     }
 
@@ -300,14 +272,18 @@ function Playlists() {
       setSaveLoading(true);
       if (formDialog.mode === 'edit' && formDialog.playlist?._id) {
         await playlistsApi.update(formDialog.playlist._id, payload);
+        showToast({ severity: 'success', title: 'Success!', message: 'Playlist updated successfully.' });
       } else {
         await playlistsApi.create(payload);
+        showToast({ severity: 'success', title: 'Success!', message: 'Playlist created successfully.' });
       }
       closeFormDialog();
       fetchPlaylists();
       setError(null);
     } catch {
-      setError('Failed to save playlist');
+      const message = 'Failed to save playlist';
+      setError(message);
+      showToast({ severity: 'error', title: 'Save failed', message });
     } finally {
       setSaveLoading(false);
     }

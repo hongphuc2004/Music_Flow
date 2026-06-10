@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Avatar,
@@ -19,11 +20,12 @@ import {
 import { SearchRounded as SearchIcon } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi, clientTopicsApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 
 function ClientDiscover() {
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
+  const [searchParams] = useSearchParams();
   const [topics, setTopics] = useState([]);
   const [defaultSongs, setDefaultSongs] = useState([]);
   const [songs, setSongs] = useState([]);
@@ -72,7 +74,14 @@ function ClientDiscover() {
     loadDefault();
   }, []);
 
-  const runSearch = async (keyword, { withLoading = false } = {}) => {
+  useEffect(() => {
+    const routeQuery = searchParams.get('query') || '';
+    if (routeQuery && routeQuery !== query) {
+      setQuery(routeQuery);
+    }
+  }, [searchParams, query]);
+
+  const runSearch = useCallback(async (keyword, { withLoading = false } = {}) => {
     const normalized = keyword.trim();
 
     if (!normalized) {
@@ -95,7 +104,7 @@ function ClientDiscover() {
       if (withLoading) setLoading(false);
       else setSearching(false);
     }
-  };
+  }, [defaultSongs]);
 
   const handleSearch = async () => {
     await runSearch(query, { withLoading: true });
@@ -118,7 +127,7 @@ function ClientDiscover() {
     }, 260);
 
     return () => clearTimeout(timer);
-  }, [query, defaultSongs]);
+  }, [query, defaultSongs, runSearch]);
 
   const handleChooseTopic = async (topicId) => {
     try {
@@ -185,7 +194,7 @@ function ClientDiscover() {
                             onClick={() => {
                               setQuery(song.title || '');
                               setShowSuggestions(false);
-                              playSong(song);
+                              playSong(song, { queue: suggestions });
                             }}
                             sx={{ py: 0.75 }}
                           >
@@ -246,11 +255,11 @@ function ClientDiscover() {
                   <Grid size={{ xs: 12, md: 6 }} key={song._id}>
                     <Paper
                       variant="outlined"
-                      onClick={() => playSong(song)}
+                      onClick={() => playSong(song, { queue: songs })}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          playSong(song);
+                          playSong(song, { queue: songs });
                         }
                       }}
                       role="button"
@@ -273,7 +282,7 @@ function ClientDiscover() {
                           size="small"
                           onClick={(event) => {
                             event.stopPropagation();
-                            playSong(song);
+                            playSong(song, { queue: songs });
                           }}
                           sx={{ color: '#0f766e', '&:hover': { backgroundColor: 'rgba(20, 184, 166, 0.14)' } }}
                         >

@@ -30,6 +30,30 @@ import { setAccessToken } from '../../services/api';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
+const requestGoogleAccessToken = ({ clientId, onSuccess, onError }) => {
+  if (!window.google?.accounts?.oauth2 || !clientId) {
+    onError?.(new Error('Google OAuth chưa sẵn sàng.'));
+    return;
+  }
+
+  const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'openid email profile',
+    callback: (response) => {
+      if (response?.access_token) {
+        onSuccess(response.access_token);
+        return;
+      }
+      onError?.(new Error(response?.error || 'Không lấy được Google token.'));
+    },
+    error_callback: (error) => {
+      onError?.(new Error(error?.message || error?.type || 'Đăng nhập Google bị hủy.'));
+    },
+  });
+
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
+};
+
 function ArtistLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -43,7 +67,10 @@ function ArtistLogin() {
   const [googleReady, setGoogleReady] = useState(false);
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Chưa cấu hình Google Login.');
+      return;
+    }
 
     const existing = document.querySelector('script[data-google-gsi="true"]');
     if (existing && window.google?.accounts?.id) {
@@ -121,7 +148,39 @@ function ArtistLogin() {
     }
 
     setError('');
-    window.google.accounts.id.prompt();
+    setGoogleLoading(true);
+    window.google.accounts.id.prompt((notification) => {
+      if (!notification?.isNotDisplayed?.() && !notification?.isSkippedMoment?.()) {
+        setGoogleLoading(false);
+        return;
+      }
+
+      requestGoogleAccessToken({
+        clientId: GOOGLE_CLIENT_ID,
+        onSuccess: async (accessToken) => {
+          try {
+            const res = await api.post('/artist/google', {
+              credential: accessToken,
+              tokenType: 'access_token',
+            });
+
+            const { token, artist } = res.data;
+            setAccessToken(token);
+            localStorage.setItem('role', artist.role);
+            syncArtistSession(artist);
+            navigate('/artist/dashboard');
+          } catch (err) {
+            setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
+          } finally {
+            setGoogleLoading(false);
+          }
+        },
+        onError: (err) => {
+          setError(err.message || 'Đăng nhập Google thất bại');
+          setGoogleLoading(false);
+        },
+      });
+    });
   };
 
   const fieldSx = {
@@ -211,7 +270,7 @@ function ArtistLogin() {
             <Button type="button" variant="text" sx={{ color: '#00a9bd', fontWeight: 800 }} onClick={() => navigate('/artist/register')}>
               Đăng ký Artist
             </Button>
-            <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/accountlogin')}>
+            <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/client/home?auth=login')}>
               Login User
             </Button>
           </Box>

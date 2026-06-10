@@ -92,19 +92,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Dang xuat', style: TextStyle(color: Colors.white)),
+        title: const Text('Đăng Xuất', style: TextStyle(color: Colors.white)),
         content: Text(
-          'Ban co chac muon dang xuat khoi tai khoan?',
+          'Bạn có chắc muốn đăng xuất?',
           style: TextStyle(color: Colors.grey[400]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huy', style: TextStyle(color: Colors.grey)),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Dang xuat', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Đăng xuất', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Da dang xuat')),
+        const SnackBar(content: Text('Đã đăng xuất')),
       );
     }
   }
@@ -126,19 +126,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Xoa lich su phat', style: TextStyle(color: Colors.white)),
+        title: const Text('Xóa lịch sử phát', style: TextStyle(color: Colors.white)),
         content: Text(
-          'Xoa toan bo lich su phat nhac?',
+          'Bạn có chắc muốn xóa toàn bộ lịch sử phát nhạc?',
           style: TextStyle(color: Colors.grey[400]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huy', style: TextStyle(color: Colors.grey)),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xoa', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Xóa', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -148,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await PlayHistoryService.clearHistory();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Da xoa lich su phat')),
+        const SnackBar(content: Text('Đã xóa lịch sử phát')),
       );
     }
   }

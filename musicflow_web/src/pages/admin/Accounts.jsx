@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { accountsApi } from '../../services/api';
+import useAppToast from '../../components/common/useAppToast';
 
 const emptyEditForm = {
   name: '',
@@ -52,6 +53,7 @@ const emptyCreateForm = {
 };
 
 function Accounts() {
+  const { showToast } = useAppToast();
   const [allAccounts, setAllAccounts] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,9 @@ function Accounts() {
     };
 
     if (!payload.name || !payload.email || !payload.password) {
-      setError('Name, email, and password are required.');
+      const message = 'Name, email, and password are required.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing information', message });
       return;
     }
 
@@ -156,10 +160,13 @@ function Accounts() {
       setCreateLoading(true);
       await accountsApi.create(payload);
       setSuccess('Account created successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Account created successfully.' });
       closeCreateDialog();
       fetchAccounts();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create account.');
+      const message = err.response?.data?.message || 'Failed to create account.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Create failed', message });
     } finally {
       setCreateLoading(false);
     }
@@ -197,7 +204,9 @@ function Accounts() {
     };
 
     if (!payload.name || !payload.email) {
-      setError('Name and email are required.');
+      const message = 'Name and email are required.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Missing information', message });
       return;
     }
 
@@ -215,10 +224,13 @@ function Accounts() {
       setEditLoading(true);
       await accountsApi.update(editDialog.user._id, payload);
       setSuccess('Account updated successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Account updated successfully.' });
       handleCloseEdit();
       fetchAccounts();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update account.');
+      const message = err.response?.data?.message || 'Failed to update account.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Update failed', message });
     } finally {
       setEditLoading(false);
     }
@@ -231,9 +243,12 @@ function Accounts() {
       await accountsApi.delete(deleteDialog.user._id);
       setDeleteDialog({ open: false, user: null });
       setSuccess('Account deleted successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Account deleted successfully.' });
       fetchAccounts();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete account.');
+      const message = err.response?.data?.message || 'Failed to delete account.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Delete failed', message });
     } finally {
       setDeleteLoading(false);
     }
@@ -255,7 +270,9 @@ function Accounts() {
   const handleRoleChange = async (userId, newRole) => {
     const user = users.find((item) => item._id === userId);
     if (!user || user.role === 'artist') {
-      setError('Cannot change role of artist account.');
+      const message = 'Cannot change role of artist account.';
+      setError(message);
+      showToast({ severity: 'warning', title: 'Role unchanged', message });
       return;
     }
 
@@ -263,9 +280,12 @@ function Accounts() {
       setRoleLoading(userId);
       await accountsApi.update(userId, { role: newRole });
       setSuccess('Role updated successfully.');
+      showToast({ severity: 'success', title: 'Success!', message: 'Role updated successfully.' });
       fetchAccounts();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update role.');
+      const message = err.response?.data?.message || 'Failed to update role.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Update failed', message });
     } finally {
       setRoleLoading(null);
     }

@@ -12,11 +12,13 @@ import {
   Stack,
 } from '@mui/material';
 import { clearArtistSession } from '../../../utils/artistSession';
+import useAppToast from '../../common/useAppToast';
 
 const drawerWidth = 260;
 
 function ArtistHeader({ title }) {
   const navigate = useNavigate();
+  const { showToast } = useAppToast();
   const [anchorEl, setAnchorEl] = useState(null);
   const [artistName, setArtistName] = useState(localStorage.getItem('artistName') || 'Artist');
   const [artistAvatar, setArtistAvatar] = useState(localStorage.getItem('artistAvatar') || '');
@@ -48,7 +50,14 @@ function ArtistHeader({ title }) {
   const handleLogout = () => {
     localStorage.removeItem('role');
     clearArtistSession();
-    window.location.replace('/artistlogin');
+    showToast({
+      severity: 'success',
+      title: 'Thành công!',
+      message: 'Bạn đã đăng xuất khỏi artist workspace.',
+    });
+    window.setTimeout(() => {
+      window.location.replace('/artistlogin');
+    }, 650);
   };
 
   return (

@@ -18,6 +18,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
       },
-    }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            mui: ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+            http: ['axios'],
+          },
+        },
+      },
+    },
   };
 })

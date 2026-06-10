@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Avatar, Box, IconButton, Slider, Stack, Typography } from '@mui/material';
 import {
-  FavoriteBorderRounded as FavoriteIcon,
+  FavoriteBorderRounded as FavoriteBorderIcon,
+  FavoriteRounded as FavoriteIcon,
   DownloadRounded as DownloadIcon,
   RepeatRounded as RepeatIcon,
+  RepeatOneRounded as RepeatOneIcon,
   SkipPreviousRounded as PrevIcon,
   PauseRounded as PauseIcon,
   PlayArrowRounded as PlayIcon,
@@ -10,6 +13,8 @@ import {
   ShuffleRounded as ShuffleIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
+import { clientFavoritesApi, clientSongsApi } from '../../../services/api';
+import useClientToast from './useClientToast';
 
 function formatDuration(seconds) {
   const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -19,16 +24,158 @@ function formatDuration(seconds) {
 }
 
 function NowPlayingBar() {
+  const { showToast } = useClientToast();
+  const [favorite, setFavorite] = useState(false);
   const {
     currentSong,
     isPlaying,
     currentTime,
     duration,
     hasSong,
-    playSong,
+    shuffle,
+    repeatMode,
     togglePlay,
     seekTo,
+    playPrevious,
+    playNext,
+    toggleShuffle,
+    cycleRepeatMode,
   } = useClientPlayer();
+  const isLoggedIn = localStorage.getItem('role') === 'user';
+
+  useEffect(() => {
+    let ignore = false;
+
+    const checkFavorite = async () => {
+      if (!currentSong?._id || !isLoggedIn) {
+        setFavorite(false);
+        return;
+      }
+
+      try {
+        const response = await clientFavoritesApi.check(currentSong._id);
+        if (!ignore) {
+          setFavorite(Boolean(response.data?.isFavorite));
+        }
+      } catch {
+        if (!ignore) {
+          setFavorite(false);
+        }
+      }
+    };
+
+    checkFavorite();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentSong?._id, isLoggedIn]);
+
+  const requireLogin = () => {
+    showToast({
+      severity: 'info',
+      title: 'Cần đăng nhập',
+      message: 'Vui lòng đăng nhập để sử dụng chức năng này.',
+    });
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!currentSong?._id) return;
+    if (!isLoggedIn) {
+      requireLogin();
+      return;
+    }
+
+    try {
+      const response = await clientFavoritesApi.toggle(currentSong._id);
+      const next = response.data?.isFavorite ?? !favorite;
+      setFavorite(next);
+      showToast({
+        severity: 'success',
+        title: 'Thành công!',
+        message: next
+          ? 'Đã thêm bài hát vào danh sách yêu thích.'
+          : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
+      });
+    } catch (error) {
+      showToast({
+        severity: 'error',
+        title: 'Có lỗi xảy ra',
+        message: error.response?.data?.message || 'Không thể cập nhật yêu thích.',
+      });
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!currentSong?._id) return;
+    if (!isLoggedIn) {
+      requireLogin();
+      return;
+    }
+
+    try {
+      await clientSongsApi.requestDownload(currentSong._id);
+      showToast({
+        severity: 'success',
+        title: 'Đã tải xuống',
+        message: 'Bài hát đã được thêm vào danh sách bài hát đã tải.',
+      });
+    } catch (error) {
+      showToast({
+        severity: 'error',
+        title: 'Không thể tải bài hát',
+        message: error.response?.data?.message || 'Vui lòng thử lại sau.',
+      });
+    }
+  };
+
+  const handlePrevious = async () => {
+    const didPlay = await playPrevious();
+    showToast({
+      severity: didPlay ? 'success' : 'info',
+      title: didPlay ? 'Đang chuyển bài' : 'Không có bài trước',
+      message: didPlay
+        ? 'Đã chuyển về bài trước trong danh sách phát.'
+        : 'Hãy bật lặp toàn bộ hoặc phát từ một danh sách có nhiều bài.',
+    });
+  };
+
+  const handleNext = async () => {
+    const didPlay = await playNext();
+    showToast({
+      severity: didPlay ? 'success' : 'info',
+      title: didPlay ? 'Đang chuyển bài' : 'Không có bài tiếp theo',
+      message: didPlay
+        ? 'Đã chuyển sang bài tiếp theo trong danh sách phát.'
+        : 'Hãy bật lặp toàn bộ hoặc phát từ một danh sách có nhiều bài.',
+    });
+  };
+
+  const handleToggleShuffle = () => {
+    toggleShuffle();
+    showToast({
+      severity: 'info',
+      title: !shuffle ? 'Đã bật phát ngẫu nhiên' : 'Đã tắt phát ngẫu nhiên',
+      message: !shuffle
+        ? 'Các bài tiếp theo sẽ được chọn ngẫu nhiên trong danh sách.'
+        : 'Danh sách sẽ phát theo thứ tự.',
+    });
+  };
+
+  const handleCycleRepeat = () => {
+    const nextMode = cycleRepeatMode();
+    const repeatCopy = {
+      off: ['Đã tắt lặp', 'Danh sách sẽ dừng khi phát hết.'],
+      all: ['Lặp toàn bộ danh sách', 'Khi hết danh sách, player sẽ quay lại bài đầu.'],
+      one: ['Lặp một bài', 'Bài hiện tại sẽ được phát lại liên tục.'],
+    };
+
+    showToast({
+      severity: 'info',
+      title: repeatCopy[nextMode][0],
+      message: repeatCopy[nextMode][1],
+    });
+  };
 
   if (!hasSong) return null;
 
@@ -47,6 +194,7 @@ function NowPlayingBar() {
         boxShadow: '0 16px 38px rgba(2, 6, 23, 0.35)',
         color: '#fff',
         p: { xs: 1.2, md: 1.4 },
+        minHeight: { xs: 78, md: 84 },
       }}
     >
       <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 1.5 }}>
@@ -84,10 +232,14 @@ function NowPlayingBar() {
         </Stack>
 
         <Stack direction="row" alignItems="center" spacing={0.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
-          <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }}>
-            <FavoriteIcon sx={{ fontSize: 25 }} />
+          <IconButton
+            size="small"
+            onClick={handleToggleFavorite}
+            sx={{ color: favorite ? '#fb7185' : 'rgba(255,255,255,0.78)' }}
+          >
+            {favorite ? <FavoriteIcon sx={{ fontSize: 25 }} /> : <FavoriteBorderIcon sx={{ fontSize: 25 }} />}
           </IconButton>
-          <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }}>
+          <IconButton size="small" onClick={handleDownload} sx={{ color: 'rgba(255,255,255,0.78)' }}>
             <DownloadIcon sx={{ fontSize: 25 }} />
           </IconButton>
         </Stack>
@@ -100,10 +252,14 @@ function NowPlayingBar() {
             spacing={{ xs: 0.4, md: 0.8 }}
             sx={{ mb: 1.2 }}
           >
-            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.68)', display: { xs: 'none', sm: 'inline-flex' } }}>
+            <IconButton
+              size="small"
+              onClick={handleToggleShuffle}
+              sx={{ color: shuffle ? '#5eead4' : 'rgba(255,255,255,0.68)', display: { xs: 'none', sm: 'inline-flex' } }}
+            >
               <ShuffleIcon sx={{ fontSize: 25 }} />
             </IconButton>
-            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }} onClick={() => seekTo(0)}>
+            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }} onClick={handlePrevious}>
               <PrevIcon sx={{ fontSize: 25 }} />
             </IconButton>
             <IconButton
@@ -121,11 +277,15 @@ function NowPlayingBar() {
             >
               {isPlaying ? <PauseIcon sx={{ fontSize: 22 }} /> : <PlayIcon sx={{ fontSize: 22 }} />}
             </IconButton>
-            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }} onClick={() => playSong(currentSong)}>
+            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }} onClick={handleNext}>
               <NextIcon sx={{ fontSize: 25 }} />
             </IconButton>
-            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.68)', display: { xs: 'none', sm: 'inline-flex' } }}>
-              <RepeatIcon sx={{ fontSize: 25 }} />
+            <IconButton
+              size="small"
+              onClick={handleCycleRepeat}
+              sx={{ color: repeatMode === 'off' ? 'rgba(255,255,255,0.68)' : '#5eead4', display: { xs: 'none', sm: 'inline-flex' } }}
+            >
+              {repeatMode === 'one' ? <RepeatOneIcon sx={{ fontSize: 25 }} /> : <RepeatIcon sx={{ fontSize: 25 }} />}
             </IconButton>
           </Stack>
 

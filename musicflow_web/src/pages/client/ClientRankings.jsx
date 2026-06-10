@@ -13,11 +13,11 @@ import {
 import { EqualizerRounded as EqualizerIcon } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 
 function ClientRankings() {
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,7 +82,7 @@ function ClientRankings() {
                       <Typography variant="caption" color="text.secondary" sx={{ minWidth: 70, textAlign: 'right' }}>
                         {song.playCount || 0} plays
                       </Typography>
-                      <Button size="small" onClick={() => playSong(song)}>Play</Button>
+                      <Button size="small" onClick={() => playSong(song, { queue: rankedSongs })}>Play</Button>
                       <SongMoreMenu song={song} />
                     </Stack>
                   </Paper>

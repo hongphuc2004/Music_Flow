@@ -47,7 +47,7 @@ const UserRegister = () => {
       setMessage(res.data.message || 'Đăng ký thành công!');
       localStorage.removeItem('role');
       setTimeout(() => {
-        window.location.replace('/accountlogin');
+        window.location.replace('/client/home?auth=login');
       }, 1200);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại');
@@ -125,7 +125,7 @@ const UserRegister = () => {
           </form>
 
           <Box sx={{ mt: 3.5, textAlign: 'center' }}>
-            <Button variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/accountlogin')}>
+            <Button variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/client/home?auth=login')}>
               Đã có tài khoản? Đăng nhập
             </Button>
           </Box>

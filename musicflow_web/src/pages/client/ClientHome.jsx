@@ -182,6 +182,7 @@ function ClientHome() {
     () => [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 6),
     [songs],
   );
+  const recommendedSongs = useMemo(() => songs.slice(0, 6), [songs]);
 
   const formatDuration = (seconds) => {
     const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -356,15 +357,15 @@ function ClientHome() {
                 </Box>
               ) : (
                 <Grid container spacing={2}>
-                  {songs.slice(0, 6).map((song) => (
+                  {recommendedSongs.map((song) => (
                     <Grid size={{ xs: 12, md: 6 }} key={song._id}>
                       <Paper
                         variant="outlined"
-                        onClick={() => playSong(song)}
+                        onClick={() => playSong(song, { queue: recommendedSongs })}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            playSong(song);
+                            playSong(song, { queue: recommendedSongs });
                           }
                         }}
                         role="button"
@@ -388,7 +389,7 @@ function ClientHome() {
                             startIcon={<PlayIcon />}
                             onClick={(event) => {
                               event.stopPropagation();
-                              playSong(song);
+                              playSong(song, { queue: recommendedSongs });
                             }}
                             sx={actionButtonSx}
                           >
@@ -589,7 +590,7 @@ function ClientHome() {
                   <Paper
                     key={song._id}
                     variant="outlined"
-                    onClick={() => playSong(song)}
+                    onClick={() => playSong(song, { queue: topSongs })}
                     sx={{
                       px: 1,
                       py: 0.75,
@@ -643,7 +644,7 @@ function ClientHome() {
                         className="song-play-btn"
                         onClick={(event) => {
                           event.stopPropagation();
-                          playSong(song);
+                          playSong(song, { queue: topSongs });
                         }}
                         sx={{
                           opacity: 0,

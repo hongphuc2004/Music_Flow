@@ -89,7 +89,8 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
-      } catch (_) {
+      } catch {
+        // The final 401 handler below decides whether a logged-in session should be redirected.
       }
     }
 
@@ -100,8 +101,10 @@ api.interceptors.response.use(
       if (currentRole === 'artist') {
         clearArtistSession();
         window.location.href = '/artistlogin';
-      } else {
-        window.location.href = '/accountlogin';
+      } else if (currentRole === 'admin') {
+        window.location.href = '/adminlogin';
+      } else if (currentRole === 'user') {
+        window.location.href = '/client/home?auth=login';
       }
     }
 
@@ -202,6 +205,7 @@ export const clientSongsApi = {
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
   getMyUploads: () => api.get('/songs/my-uploads'),
   getMyDownloadHistory: (params) => api.get('/songs/download-history', { params }),
+  removeFromDownloadHistory: (songId) => api.delete(`/songs/download-history/${songId}`),
   requestDownload: (songId) => api.post(`/songs/${songId}/download`),
   uploadSong: (formData) => api.post('/songs', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

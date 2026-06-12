@@ -142,7 +142,7 @@ class ArtistHeaderSection extends StatelessWidget {
                       ),
                       ArtistStatChip(
                         icon: Icons.music_note_rounded,
-                        label: '${artist.totalSongs} bai hat',
+                        label: '${artist.totalSongs} bài hát',
                       ),
                     ],
                   ),
@@ -154,12 +154,12 @@ class ArtistHeaderSection extends StatelessWidget {
                     children: [
                       ArtistPrimaryButton(
                         icon: Icons.play_arrow_rounded,
-                        label: 'Phat tat ca',
+                        label: 'Phát tất cả',
                         onTap: onPlayAll,
                       ),
                       ArtistGhostButton(
                         icon: Icons.shuffle_rounded,
-                        label: 'Ngau nhien',
+                        label: 'Ngẫu nhiên',
                         onTap: onShuffle,
                       ),
                       ArtistGhostButton(
@@ -169,10 +169,10 @@ class ArtistHeaderSection extends StatelessWidget {
                                 ? Icons.check_circle_outline_rounded
                                 : Icons.person_add_alt_1_rounded,
                         label: isFollowLoading
-                            ? 'Dang cap nhat'
+                            ? 'Đang cập nhật'
                             : isFollowing
-                                ? 'Dang theo doi'
-                                : 'Theo doi',
+                                ? 'Đang theo dõi'
+                                : 'Theo dõi',
                         onTap: onFollow,
                       ),
                     ],

@@ -24,7 +24,7 @@ class CommentService {
 
   static String _extractErrorMessage(http.Response response, Map<String, dynamic> data) {
     if (response.statusCode == 401) {
-      return 'Phien dang nhap het han, vui long dang nhap lai';
+      return 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại';
     }
 
     final detailedError = data['error']?.toString();
@@ -36,7 +36,7 @@ class CommentService {
     if (message != null && message.isNotEmpty) {
       return message;
     }
-    return 'Yeu cau that bai (HTTP ${response.statusCode})';
+    return 'Yêu cầu thất bại (HTTP ${response.statusCode})';
   }
 
   static Future<Map<String, String>> _getAuthHeaders() async {
@@ -106,7 +106,7 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui long dang nhap de binh luan');
+        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập để bình luận');
       }
 
       final body = <String, dynamic>{
@@ -134,7 +134,7 @@ class CommentService {
           data['success'] == true) {
         return CommentActionResult(
           success: true,
-          message: data['message']?.toString() ?? 'Binh luan thanh cong',
+          message: data['message']?.toString() ?? 'Bình luận thành công',
         );
       }
 
@@ -158,7 +158,7 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui long dang nhap');
+        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
       final response = await http
@@ -176,7 +176,7 @@ class CommentService {
       return CommentActionResult(
         success: data['success'] == true,
         message: data['success'] == true
-            ? (data['message']?.toString() ?? 'Cap nhat thanh cong')
+            ? (data['message']?.toString() ?? 'Cập nhật thành công')
             : _extractErrorMessage(response, data),
       );
     } on TimeoutException {
@@ -192,7 +192,7 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui long dang nhap');
+        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
       final response = await http
@@ -209,7 +209,7 @@ class CommentService {
       return CommentActionResult(
         success: data['success'] == true,
         message: data['success'] == true
-            ? (data['message']?.toString() ?? 'Xoa thanh cong')
+            ? (data['message']?.toString() ?? 'Xóa thành công')
             : _extractErrorMessage(response, data),
       );
     } on TimeoutException {
@@ -227,7 +227,7 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui long dang nhap');
+        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
       final response = await http
@@ -245,7 +245,7 @@ class CommentService {
       return CommentActionResult(
         success: data['success'] == true,
         message: data['success'] == true
-            ? (data['message']?.toString() ?? 'Cap nhat cam xuc thanh cong')
+            ? (data['message']?.toString() ?? 'Cập nhật cảm xúc thành công')
             : _extractErrorMessage(response, data),
       );
     } on TimeoutException {
@@ -261,7 +261,7 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui long dang nhap');
+        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
       final response = await http

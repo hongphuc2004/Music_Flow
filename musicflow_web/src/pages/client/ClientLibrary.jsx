@@ -71,7 +71,7 @@ function DownloadedSongMenu({ song, onRemove }) {
       >
         <MenuItem onClick={handleRemove} sx={{ color: '#dc2626' }}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Xoa khoi bai hat da tai
+          Xóa khỏi bài hát đã tải
         </MenuItem>
       </Menu>
     </>
@@ -134,7 +134,7 @@ function ClientLibrary() {
       const favorites = favoritesRes.data?.favorites || [];
       setFavoriteSongs(Array.isArray(favorites) ? favorites : []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai thu vien.');
+      setError(err.response?.data?.message || 'Không thể tải thư viện.');
     } finally {
       setLoading(false);
     }
@@ -153,13 +153,13 @@ function ClientLibrary() {
       showToast({
         severity: 'success',
         title: 'Da tai xuong',
-        message: 'Bai hat da duoc them vao danh sach bai hat da tai.',
+        message: 'Bài hát đã được thêm vào danh sách bài hát đã tải.',
       });
     } catch (err) {
       showToast({
         severity: 'error',
-        title: 'Khong the tai bai hat',
-        message: err.response?.data?.message || 'Vui long thu lai sau.',
+        title: 'Không thể tải bài hát',
+        message: err.response?.data?.message || 'Vui lòng thử lại sau.',
       });
     }
   };
@@ -171,13 +171,13 @@ function ClientLibrary() {
       showToast({
         severity: 'success',
         title: 'Da xoa',
-        message: `"${song.title}" da duoc xoa khoi bai hat da tai.`,
+        message: `"${song.title}" đã được xóa khỏi bài hát đã tải.`,
       });
     } catch (err) {
       showToast({
         severity: 'error',
-        title: 'Khong the xoa',
-        message: err.response?.data?.message || 'Vui long thu lai sau.',
+        title: 'Không thể xóa',
+        message: err.response?.data?.message || 'Vui lòng thử lại sau.',
       });
     }
   };
@@ -191,7 +191,7 @@ function ClientLibrary() {
 
   const handleUploadSubmit = async () => {
     if (!uploadAudioFile) {
-      setError('Vui long chon file audio de upload.');
+      setError('Vui lòng chọn file audio để upload.');
       return;
     }
 
@@ -211,7 +211,7 @@ function ClientLibrary() {
       resetUploadForm();
       await loadLibrary();
     } catch (err) {
-      setError(err.response?.data?.message || 'Upload bai hat that bai.');
+      setError(err.response?.data?.message || 'Upload bài hát thất bại.');
     } finally {
       setUploading(false);
     }
@@ -267,7 +267,7 @@ function ClientLibrary() {
   );
 
   return (
-    <ClientLayout title="Thu vien cua ban">
+    <ClientLayout title="Thư viện của bạn">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={2.5}>
@@ -306,7 +306,7 @@ function ClientLibrary() {
                           <Box sx={{ minWidth: 0 }}>
                             <Typography fontWeight={700} noWrap>{playlist.name}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {playlist.songCount || playlist.songs?.length || 0} bai hat
+                              {playlist.songCount || playlist.songs?.length || 0} bài hát
                             </Typography>
                           </Box>
                         </Stack>
@@ -346,7 +346,7 @@ function ClientLibrary() {
                     {uploads.slice(0, 5).map((song) => renderSongRow(song, 'upload', { showMore: true, showDownload: true, queue: uploads }))}
                   </Stack>
                 </Box>
-                {!uploads.length && <Typography color="text.secondary">Ban chua upload bai hat nao.</Typography>}
+                {!uploads.length && <Typography color="text.secondary">Bạn chưa upload bài hát nào.</Typography>}
               </Stack>
             )}
           </Paper>
@@ -355,7 +355,7 @@ function ClientLibrary() {
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0', minHeight: 260 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Bai hat da tai
+              Bài hát đã tải
             </Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -368,7 +368,7 @@ function ClientLibrary() {
                     {downloadedSongs.slice(0, 5).map((song) => renderSongRow(song, 'downloaded', { showMore: false, showDownload: false, showDownloadedMenu: true, queue: downloadedSongs }))}
                   </Stack>
                 </Box>
-                {!downloadedSongs.length && <Typography color="text.secondary">Ban chua tai bai hat nao.</Typography>}
+                {!downloadedSongs.length && <Typography color="text.secondary">Bạn chưa tải bài hát nào.</Typography>}
               </Stack>
             )}
           </Paper>
@@ -377,7 +377,7 @@ function ClientLibrary() {
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0', minHeight: 260 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Bai hat yeu thich
+              Bài hát yêu thích
             </Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -390,7 +390,7 @@ function ClientLibrary() {
                     {favoriteSongs.slice(0, 5).map((song) => renderSongRow(song, 'favorite', { showMore: true, showDownload: false, queue: favoriteSongs }))}
                   </Stack>
                 </Box>
-                {!favoriteSongs.length && <Typography color="text.secondary">Ban chua co bai hat yeu thich.</Typography>}
+                {!favoriteSongs.length && <Typography color="text.secondary">Bạn chưa có bài hát yêu thích.</Typography>}
               </Stack>
             )}
           </Paper>
@@ -398,17 +398,17 @@ function ClientLibrary() {
       </Grid>
 
       <Dialog open={uploadOpen} onClose={() => !uploading && setUploadOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Upload bai hat</DialogTitle>
+        <DialogTitle>Upload bài hát</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
             <TextField
-              label="Ten bai hat (tuy chon)"
+              label="Tên bài hát (tùy chọn)"
               value={uploadTitle}
               onChange={(event) => setUploadTitle(event.target.value)}
               fullWidth
             />
             <TextField
-              label="Loi bai hat (tuy chon)"
+              label="Lời bài hát (tùy chọn)"
               value={uploadLyrics}
               onChange={(event) => setUploadLyrics(event.target.value)}
               multiline

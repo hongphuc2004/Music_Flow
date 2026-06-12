@@ -52,7 +52,7 @@ function ClientProfile() {
         localStorage.setItem('email', user?.email || '');
         localStorage.setItem('userId', user?._id || '');
       } catch (err) {
-        setError(err.response?.data?.message || 'Khong the tai thong tin tai khoan.');
+        setError(err.response?.data?.message || 'Không thể tải thông tin tài khoản.');
       } finally {
         setLoading(false);
       }
@@ -81,20 +81,20 @@ function ClientProfile() {
         avatarUrl: user?.avatar || prev.avatarUrl,
       }));
       setAvatarFile(null);
-      setSuccess('Da cap nhat thong tin tai khoan.');
+      setSuccess('Đã cập nhật thông tin tài khoản.');
 
       localStorage.setItem('userName', user?.name || form.name || '');
       localStorage.setItem('email', user?.email || form.email || '');
       localStorage.setItem('userId', user?._id || localStorage.getItem('userId') || '');
     } catch (err) {
-      setError(err.response?.data?.message || 'Cap nhat that bai.');
+      setError(err.response?.data?.message || 'Cập nhật thất bại.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <ClientLayout title="Thong tin tai khoan">
+    <ClientLayout title="Thông tin tài khoản">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
       <Grid container spacing={2.5}>

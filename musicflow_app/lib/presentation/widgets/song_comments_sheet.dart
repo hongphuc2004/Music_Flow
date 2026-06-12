@@ -80,7 +80,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
         _isLoading = false;
         _isLoadingMore = false;
         _statusIsError = true;
-        _statusMessage = result.message ?? 'Khong tai duoc binh luan';
+        _statusMessage = result.message ?? 'Không tải được bình luận';
       });
       return;
     }
@@ -111,7 +111,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
   Future<void> _submitComment() async {
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
-      _setStatus('Vui long dang nhap de binh luan', isError: true);
+      _setStatus('Vui lòng đăng nhập để bình luận', isError: true);
       return;
     }
 
@@ -131,20 +131,20 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     setState(() => _isSending = false);
 
     if (!result.success) {
-      _setStatus(result.message ?? 'Gui binh luan that bai', isError: true);
+      _setStatus(result.message ?? 'Gửi bình luận thất bại', isError: true);
       return;
     }
 
     _inputController.clear();
     setState(() => _replyingTo = null);
-    _setStatus('Da gui binh luan', isError: false);
+    _setStatus('Đã gửi bình luận', isError: false);
     await _loadComments(reset: true);
   }
 
   Future<void> _toggleLikeReaction(SongComment comment) async {
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
-      _setStatus('Vui long dang nhap de thao tac like', isError: true);
+      _setStatus('Vui lòng đăng nhập de thao tac like', isError: true);
       return;
     }
 
@@ -159,11 +159,11 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     if (!mounted) return;
 
     if (!result.success) {
-      _setStatus(result.message ?? 'Khong the cap nhat like', isError: true);
+      _setStatus(result.message ?? 'Không thể cập nhật like', isError: true);
       return;
     }
 
-    _setStatus(hasLiked ? 'Da bo like' : 'Da like binh luan', isError: false);
+    _setStatus(hasLiked ? 'Đã bỏ like' : 'Đã like bình luận', isError: false);
     await _loadComments(reset: true);
   }
 
@@ -316,7 +316,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                   const Icon(Icons.chat_bubble_outline, color: Colors.white70),
                   const SizedBox(width: 8),
                   Text(
-                    'Binh luan ($_commentCount)',
+                    'Bình luận ($_commentCount)',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -436,7 +436,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                         minLines: 1,
                         maxLines: 3,
                         decoration: const InputDecoration(
-                          hintText: 'Viet binh luan...',
+                          hintText: 'Viết bình luận...',
                           hintStyle: TextStyle(color: Colors.white38),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 10),

@@ -41,7 +41,7 @@ function ClientPlaylist() {
         setPlaylist(playlistData);
         setSongs(Array.isArray(playlistData?.songs) ? playlistData.songs : []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Khong the tai du lieu playlist.');
+        setError(err.response?.data?.message || 'Không thể tải dữ liệu playlist.');
       } finally {
         setLoading(false);
       }
@@ -82,7 +82,7 @@ function ClientPlaylist() {
                     {playlist?.name || 'Untitled playlist'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {songs.length} bai hat
+                    {songs.length} bài hát
                   </Typography>
                 </Box>
               </Stack>
@@ -98,7 +98,7 @@ function ClientPlaylist() {
                   '&:hover': { bgcolor: '#0f766e' },
                 }}
               >
-                Phat tat ca
+                Phát tất cả
               </Button>
             </Stack>
           </Paper>
@@ -107,7 +107,7 @@ function ClientPlaylist() {
         <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0', minHeight: 280 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-              Danh sach bai hat
+              Danh sách bài hát
             </Typography>
 
             {loading ? (
@@ -169,7 +169,7 @@ function ClientPlaylist() {
                   </Paper>
                 ))}
 
-                {!songs.length && <Typography color="text.secondary">Playlist nay chua co bai hat.</Typography>}
+                {!songs.length && <Typography color="text.secondary">Playlist này chưa có bài hát.</Typography>}
               </Stack>
             )}
           </Paper>

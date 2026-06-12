@@ -35,7 +35,7 @@ class ArtistApiService {
 
       return ArtistProfileResult(
         success: false,
-        message: data['message']?.toString() ?? 'Khong the tai thong tin artist',
+        message: data['message']?.toString() ?? 'Không thể tải thông tin nghệ sĩ',
       );
     } catch (e) {
       return ArtistProfileResult(
@@ -71,7 +71,7 @@ class ArtistApiService {
       return ArtistFollowStatusResult(
         success: false,
         isFollowing: false,
-        message: data['message']?.toString() ?? 'Khong the lay trang thai follow',
+        message: data['message']?.toString() ?? 'Không thể lấy trạng thái follow',
       );
     } catch (e) {
       return ArtistFollowStatusResult(
@@ -90,7 +90,7 @@ class ArtistApiService {
       if (token == null || token.isEmpty) {
         return ToggleArtistFollowResult(
           success: false,
-          message: 'Vui long dang nhap de theo doi artist',
+          message: 'Vui lòng đăng nhập để theo dõi nghệ sĩ',
         );
       }
 
@@ -116,7 +116,7 @@ class ArtistApiService {
 
       return ToggleArtistFollowResult(
         success: false,
-        message: data['message']?.toString() ?? 'Khong the cap nhat follow artist',
+        message: data['message']?.toString() ?? 'Không thể cập nhật follow nghệ sĩ',
       );
     } catch (e) {
       return ToggleArtistFollowResult(

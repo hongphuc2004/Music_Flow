@@ -45,7 +45,7 @@ class ArtistPopularSection extends StatelessWidget {
                 const Icon(Icons.queue_music_rounded, color: Colors.white54, size: 42),
                 const SizedBox(height: 12),
                 Text(
-                  'Artist nay chua co bai hat cong khai',
+                  'Nghệ sĩ này chưa có bài hát cong khai',
                   style: TextStyle(
                     color: Colors.grey[300],
                     fontSize: 14,

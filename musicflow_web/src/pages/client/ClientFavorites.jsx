@@ -29,7 +29,7 @@ function ClientFavorites() {
       const response = await clientFavoritesApi.getAll();
       setFavorites(response.data?.favorites || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai danh sach yeu thich.');
+      setError(err.response?.data?.message || 'Không thể tải danh sách yêu thích.');
     } finally {
       setLoading(false);
     }
@@ -44,12 +44,12 @@ function ClientFavorites() {
       await clientFavoritesApi.remove(songId);
       setFavorites((prev) => prev.filter((song) => song._id !== songId));
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the xoa bai hat khoi yeu thich.');
+      setError(err.response?.data?.message || 'Không thể xóa bài hát khỏi yêu thích.');
     }
   };
 
   return (
-    <ClientLayout title="Bai hat yeu thich">
+    <ClientLayout title="Bài hát yêu thích">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
@@ -64,7 +64,7 @@ function ClientFavorites() {
             }}
           >
             <FavoriteIcon sx={{ color: '#ef4444' }} />
-            <Typography fontWeight={700}>Danh sach bai hat yeu thich cua ban</Typography>
+            <Typography fontWeight={700}>Danh sách bài hát yêu thích của bạn</Typography>
           </Paper>
         </Grid>
 
@@ -114,7 +114,7 @@ function ClientFavorites() {
                     </Stack>
                   </Paper>
                 ))}
-                {!favorites.length && <Typography color="text.secondary">Ban chua co bai hat yeu thich nao.</Typography>}
+                {!favorites.length && <Typography color="text.secondary">Bạn chưa có bài hát yêu thích nào.</Typography>}
               </Stack>
             )}
           </Paper>

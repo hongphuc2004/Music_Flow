@@ -123,7 +123,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui long dang nhap de theo doi artist'),
+          content: Text('Vui lòng đăng nhập để theo dõi nghệ sĩ'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -151,7 +151,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
       SnackBar(
         content: Text(
           result.message ??
-              (result.success ? 'Cap nhat theo doi thanh cong' : 'Khong the cap nhat theo doi'),
+              (result.success ? 'Cập nhật theo dõi thành công' : 'Không thể cập nhật theo dõi'),
         ),
         duration: const Duration(seconds: 2),
       ),
@@ -217,7 +217,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  _errorMessage ?? 'Artist nay hien chua co du lieu de hien thi.',
+                  _errorMessage ?? 'Nghệ sĩ này hiện chưa có dữ liệu để hiển thị.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white70,

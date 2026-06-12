@@ -69,7 +69,7 @@ const songSchema = new mongoose.Schema(
     // Phân biệt admin upload hay user upload
     source: {
       type: String,
-      enum: ["admin", "artist", "user"],
+      enum: ["admin", "artist", "user", "jamendo"],
       default: "admin",
     },
 
@@ -98,6 +98,15 @@ const songSchema = new mongoose.Schema(
     shareCount: {
       type: Number,
       default: 0,
+    },
+    sourceId: {
+      type: String,
+      default: null
+    },
+
+    sourceUrl: {
+      type: String,
+      default: null
     },
   },
   {

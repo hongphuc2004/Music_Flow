@@ -116,7 +116,7 @@ class OfflineSongService {
 
   Future<void> _ensureQuotaForNewDownload(int incomingBytes) async {
     if (incomingBytes > _maxOfflineStorageBytes) {
-      throw Exception('Bai hat qua lon so voi gioi han luu tru offline');
+      throw Exception('Bài hát quá lớn so với giới hạn lưu trữ offline');
     }
 
     final songs = await _getAllDownloadedSongs();
@@ -148,7 +148,7 @@ class OfflineSongService {
     }
 
     if (currentBytes + incomingBytes > _maxOfflineStorageBytes) {
-      throw Exception('Khong du bo nho de tai bai hat moi');
+      throw Exception('Không đủ bộ nhớ để tải bài hát mới');
     }
   }
 
@@ -159,7 +159,7 @@ class OfflineSongService {
         await _touchSongAccess(song.id);
         return OfflineDownloadResult(
           success: true,
-          message: 'Bai hat da duoc tai truoc do',
+          message: 'Bài hát đã được tải trước đó',
           localPath: existing.localPath,
           alreadyDownloaded: true,
         );
@@ -177,7 +177,7 @@ class OfflineSongService {
       if (response.statusCode != 200) {
         return OfflineDownloadResult(
           success: false,
-          message: 'Tai file that bai (HTTP ${response.statusCode})',
+          message: 'Tải file thất bại (HTTP ${response.statusCode})',
         );
       }
 
@@ -207,13 +207,13 @@ class OfflineSongService {
 
       return OfflineDownloadResult(
         success: true,
-        message: 'Tai bai hat thanh cong',
+        message: 'Tải bài hát thành công',
         localPath: filePath,
       );
     } catch (e) {
       return OfflineDownloadResult(
         success: false,
-        message: 'Khong the tai bai hat: $e',
+        message: 'Không thể tải bài hát: $e',
       );
     }
   }

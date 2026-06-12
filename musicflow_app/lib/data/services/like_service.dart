@@ -25,7 +25,7 @@ class LikeService {
       if (token == null) {
         return LikeResult(
           success: false,
-          message: 'Vui long dang nhap',
+          message: 'Vui lòng đăng nhập',
           isLiked: false,
           likeCount: 0,
         );
@@ -56,7 +56,7 @@ class LikeService {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        return LikeResult(success: false, message: 'Vui long dang nhap');
+        return LikeResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
       final response = await http.post(

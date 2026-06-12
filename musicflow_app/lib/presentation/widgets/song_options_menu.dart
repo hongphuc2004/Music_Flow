@@ -285,8 +285,8 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
       SnackBar(
         content: Text(
           hadActiveQueue
-              ? 'Da them vao danh sach cho'
-              : 'Chua co bai dang phat, da bat dau phat bai hat',
+              ? 'Đã thêm vào danh sách chờ'
+              : 'Chưa có bài đang phát, đã bắt đầu phát bài hát',
         ),
         duration: const Duration(seconds: 2),
       ),

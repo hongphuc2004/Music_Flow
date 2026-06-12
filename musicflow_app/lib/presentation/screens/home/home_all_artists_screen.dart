@@ -20,7 +20,7 @@ class HomeAllArtistsScreen extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
         title: const Text(
-          'Tat ca nghe si',
+          'Tất cả nghệ sĩ',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w800,

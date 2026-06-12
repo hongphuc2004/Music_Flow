@@ -29,7 +29,7 @@ function ClientRankings() {
         const res = await clientSongsApi.getAllPublic();
         setSongs(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Khong the tai bang xep hang.');
+        setError(err.response?.data?.message || 'Không thể tải bảng xếp hạng.');
       } finally {
         setLoading(false);
       }
@@ -54,7 +54,7 @@ function ClientRankings() {
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
               <EqualizerIcon sx={{ color: '#0f766e' }} />
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Top bai hat theo luot nghe
+                Top bài hát theo lượt nghe
               </Typography>
             </Stack>
 
@@ -87,7 +87,7 @@ function ClientRankings() {
                     </Stack>
                   </Paper>
                 ))}
-                {!rankedSongs.length && <Typography color="text.secondary">Chua co du lieu xep hang.</Typography>}
+                {!rankedSongs.length && <Typography color="text.secondary">Chưa có dữ liệu xếp hạng.</Typography>}
               </Stack>
             )}
           </Paper>

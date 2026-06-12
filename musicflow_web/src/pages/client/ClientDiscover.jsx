@@ -67,7 +67,7 @@ function ClientDiscover() {
       setTopics(Array.isArray(topicsRes.data) ? topicsRes.data : []);
       setPlaylists(playlistsRes.data?.playlists || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai du lieu kham pha.');
+      setError(err.response?.data?.message || 'Không thể tải dữ liệu khám phá.');
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ function ClientDiscover() {
       const nextSongs = await fetchRecommendedSongs({ forceFresh: true });
       setSuggestedSongs(nextSongs.slice(0, 9));
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the lam moi goi y bai hat.');
+      setError(err.response?.data?.message || 'Không thể làm mới gợi ý bài hát.');
     } finally {
       setRefreshingSuggestions(false);
     }
@@ -137,7 +137,7 @@ function ClientDiscover() {
     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
       <Typography sx={{ fontWeight: 800, fontSize: 24 }}>{title}</Typography>
       <Button size="small" endIcon={<ArrowIcon />} sx={{ color: '#0f766e', fontWeight: 700 }}>
-        Tat ca
+        Tất cả
       </Button>
     </Stack>
   );
@@ -161,7 +161,7 @@ function ClientDiscover() {
   };
 
   return (
-    <ClientLayout title="Kham pha">
+    <ClientLayout title="Khám phá">
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Paper sx={shellSx}>
@@ -172,7 +172,7 @@ function ClientDiscover() {
         ) : (
           <Stack spacing={4}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography sx={{ fontWeight: 900, fontSize: 26 }}>Goi Y Bai Hat</Typography>
+              <Typography sx={{ fontWeight: 900, fontSize: 26 }}>Gợi Ý Bài Hát</Typography>
               <Button
                 onClick={refreshSuggestedSongsOnly}
                 startIcon={<RefreshIcon />}
@@ -180,7 +180,7 @@ function ClientDiscover() {
                 variant="outlined"
                 disabled={refreshingSuggestions}
               >
-                {refreshingSuggestions ? 'Dang lam moi...' : 'Lam moi'}
+                {refreshingSuggestions ? 'Đang làm mới...' : 'Làm mới'}
               </Button>
             </Stack>
 
@@ -220,7 +220,7 @@ function ClientDiscover() {
             </Box>
 
             <Box>
-              {sectionHeader('Nghe Gan Day')}
+              {sectionHeader('Nghe Gần Đây')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {recentQueue.map((song) => (
                   <Box key={`recent-${song._id}`} sx={cardSx} onClick={() => playSong(song, { queue: recentQueue })}>
@@ -237,7 +237,7 @@ function ClientDiscover() {
             </Box>
 
             <Box>
-              {sectionHeader('Danh Rieng Cho Ban')}
+              {sectionHeader('Dành Riêng Cho Bạn')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {artistMixCards.map((artist) => (
                   <Box
@@ -276,14 +276,14 @@ function ClientDiscover() {
             </Box>
 
             <Box>
-              {sectionHeader('Goi Y Playlist')}
+              {sectionHeader('Gợi Ý Playlist')}
               <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
                 {playlists.slice(0, 5).map((playlist) => (
                   <Box key={`playlist-${playlist._id}`} sx={cardSx} onClick={() => navigate(`/client/collections/${playlist._id}`)}>
                     <Box component="img" src={playlist.coverImage || ''} alt={playlist.name} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
                     <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{playlist.name}</Typography>
                     <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
-                      {(playlist.songs || []).length} bai hat
+                      {(playlist.songs || []).length} bài hát
                     </Typography>
                   </Box>
                 ))}
@@ -298,7 +298,7 @@ function ClientDiscover() {
                     <Box component="img" src={playlist.coverImage || ''} alt={playlist.name} sx={{ width: '100%', aspectRatio: '1/1', borderRadius: 2, objectFit: 'cover', mb: 1 }} />
                     <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>{playlist.name}</Typography>
                     <Typography variant="caption" sx={{ color: '#64748b' }} noWrap>
-                      {(playlist.songs || []).length} bai hat
+                      {(playlist.songs || []).length} bài hát
                     </Typography>
                   </Box>
                 ))}

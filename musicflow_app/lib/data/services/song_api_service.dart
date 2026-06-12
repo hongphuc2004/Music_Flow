@@ -91,7 +91,7 @@ class SongApiService {
     }
   }
 
-  /// Lay danh sach bai hat goi y (random)
+  /// Lấy danh sách bài hát gợi ý (random)
   static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
     final uri = Uri.parse("$baseUrl/recommended?limit=$limit");
     final response = await _getWithRetry(uri);
@@ -120,7 +120,7 @@ class SongApiService {
     final response = await _getWithRetry(uri);
 
     if (response.statusCode != 200) {
-      throw NetworkException('Khong the tai du lieu Flowchart (${response.statusCode})');
+      throw NetworkException('Không thể tải dữ liệu bảng xếp hạng (${response.statusCode})');
     }
 
     final data = json.decode(response.body) as Map<String, dynamic>;
@@ -199,7 +199,7 @@ class SongApiService {
     }
   }
 
-  /// Tim kiem bai hat theo query (ten bai hat hoac ca si)
+  /// Tìm kiếm bài hát theo query (tên bài hát hoặc ca sĩ)
   static Future<List<Song>> searchSongs({
     String? query,
     String? artist,
@@ -272,7 +272,7 @@ class SongApiService {
     return SearchResult(songs: songs, artists: artists);
   }
 
-  /// Upload bai hat moi (audio + image) - YEU CAU DANG NHAP
+  /// Upload bài hát mới (audio + image) - YÊU CẦU ĐĂNG NHẬP
   static Future<UploadResult> uploadSong({
     required File audioFile,
     File? imageFile,
@@ -378,7 +378,7 @@ class SongApiService {
     }
   }
 
-  /// Lay danh sach bai hat user da upload
+  /// Lấy danh sách bài hát user đã upload
   static Future<MyUploadsResult> getMyUploads() async {
     try {
       final token = await AuthService.getToken();
@@ -417,7 +417,7 @@ class SongApiService {
     }
   }
 
-  /// Cap nhat thong tin bai hat
+  /// Cập nhật thông tin bài hát
   static Future<UploadResult> updateSong({
     required String songId,
     String? title,
@@ -494,7 +494,7 @@ class SongApiService {
     }
   }
 
-  /// Xoa bai hat
+  /// Xoa bài hát
   static Future<DeleteResult> deleteSong(String songId) async {
     try {
       final token = await AuthService.getToken();
@@ -518,14 +518,14 @@ class SongApiService {
     }
   }
 
-  /// Xin quyen tai bai hat tu backend
+  /// Xin quyền tải bài hát từ backend
   static Future<DownloadSongApiResult> requestDownloadSong(String songId) async {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
         return DownloadSongApiResult(
           success: false,
-          message: 'Vui long dang nhap de tai bai hat',
+          message: 'Vui lòng đăng nhập để tải bài hát',
         );
       }
 
@@ -539,19 +539,19 @@ class SongApiService {
       if (response.statusCode == 200) {
         return DownloadSongApiResult(
           success: true,
-          message: data['message'] ?? 'Co the tai bai hat',
+          message: data['message'] ?? 'Có thể tải bài hát',
           audioUrl: data['audioUrl'],
         );
       }
 
       return DownloadSongApiResult(
         success: false,
-        message: data['message'] ?? 'Khong the tai bai hat',
+        message: data['message'] ?? 'Không thể tải bài hát',
       );
     } on TimeoutException {
       return DownloadSongApiResult(
         success: false,
-        message: 'Het thoi gian cho khi xin quyen tai bai hat',
+        message: 'Hết thời gian chờ khi xin quyền tải bài hát',
       );
     } on SocketException {
       return DownloadSongApiResult(
@@ -566,7 +566,7 @@ class SongApiService {
     }
   }
 
-  /// Dong bo danh sach bai da tai local len server de web/mobile cung thay
+  /// Đồng bộ danh sách bài đã tải local lên server để web/mobile cùng thấy
   static Future<bool> syncDownloadHistory(List<String> songIds) async {
     try {
       final token = await AuthService.getToken();
@@ -608,7 +608,7 @@ class UploadResult {
   });
 }
 
-/// Ket qua lay danh sach upload
+/// Kết quả lấy danh sách upload
 class MyUploadsResult {
   final bool success;
   final String? message;
@@ -642,7 +642,7 @@ class DeleteResult {
   DeleteResult({required this.success, required this.message});
 }
 
-/// Ket qua xin quyen tai bai hat tu backend
+/// Kết quả xin quyền tải bài hát từ backend
 class DownloadSongApiResult {
   final bool success;
   final String message;

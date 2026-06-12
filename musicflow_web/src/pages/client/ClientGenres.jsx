@@ -136,7 +136,7 @@ function ClientDiscover() {
       const response = await clientTopicsApi.getSongsByTopic(topicId);
       setSongs(response.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Khong the tai bai hat theo chu de.');
+      setError(err.response?.data?.message || 'Không thể tải bài hát theo chu de.');
     } finally {
       setLoading(false);
     }

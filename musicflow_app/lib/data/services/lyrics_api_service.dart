@@ -18,7 +18,7 @@ class LyricsApiService {
         return await http.get(uri).timeout(_timeout);
       } on TimeoutException {
         if (attempts >= _maxRetries) {
-          throw LyricsException('Ket noi qua cham. Vui long kiem tra mang.');
+          throw LyricsException('Kết nối quá chậm. Vui lòng kiểm tra mạng.');
         }
       } on SocketException {
         if (attempts >= _maxRetries) {
@@ -33,7 +33,7 @@ class LyricsApiService {
       await Future.delayed(Duration(milliseconds: 500 * attempts));
     }
 
-    throw LyricsException('Khong the ket noi sau $_maxRetries lan thu.');
+    throw LyricsException('Không thể kết nối sau $_maxRetries lần thử.');
   }
 
   static Future<LyricsResult> fetchLrcLyrics({
@@ -55,7 +55,7 @@ class LyricsApiService {
 
       return LyricsResult(
         success: false,
-        message: 'Khong the tai lyrics (${response.statusCode})',
+        message: 'Không thể tải lyrics (${response.statusCode})',
       );
     } catch (e) {
       if (fallbackLyrics.isNotEmpty) {

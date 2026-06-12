@@ -256,13 +256,13 @@ class _AiDjScreenState extends State<AiDjScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = data['message']?.toString() ?? 'Xoa mood that bai.';
+          _errorMessage = data['message']?.toString() ?? 'Xóa mood thất bại.';
         });
       }
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Loi ket noi. Vui long thu lai.';
+        _errorMessage = 'Lỗi kết nối. Vui lòng thử lại.';
       });
     }
   }

@@ -65,7 +65,7 @@ class ArtistReleaseSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      latestSong?.title ?? 'Chua co ban phat hanh moi',
+                      latestSong?.title ?? 'Chưa có bản phát hành mới',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,

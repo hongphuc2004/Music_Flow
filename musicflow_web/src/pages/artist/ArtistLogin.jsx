@@ -271,7 +271,7 @@ function ArtistLogin() {
               Đăng ký Artist
             </Button>
             <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/client/home?auth=login')}>
-              Login User
+              Đăng nhập Người dùng
             </Button>
           </Box>
         </Paper>

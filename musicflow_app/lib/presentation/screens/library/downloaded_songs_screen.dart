@@ -62,7 +62,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: const Text(
-          'Bai hat da tai',
+          'Bài hát đã tải',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -88,7 +88,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
                                     widget.onPlayAll?.call(_downloadedSongs, startIndex: 0);
                                   },
                                   icon: const Icon(Icons.play_arrow),
-                                  label: Text('Phat tat ca (${_downloadedSongs.length})'),
+                                  label: Text('Phát tất cả (${_downloadedSongs.length})'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.greenAccent,
                                     foregroundColor: Colors.black,
@@ -156,7 +156,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
                                 trailing: IconButton(
                                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                                   onPressed: () => _removeDownloadedSong(song),
-                                  tooltip: 'Xoa ban tai offline',
+                                  tooltip: 'Xóa bản tải offline',
                                 ),
                                 onTap: () => widget.onSongTap?.call(song),
                               );
@@ -192,7 +192,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Chua co bai hat da tai',
+              'Chưa có bài hát đã tải',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -201,7 +201,7 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Vao man hinh player va nhan Download\nde tai bai hat nghe offline',
+              'Vào màn hình player và nhấn Download\nde tải bài hát nghe offline',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[400], fontSize: 14),
             ),

@@ -40,7 +40,7 @@ function ClientArtist() {
 
         setSongs(filteredSongs);
       } catch (err) {
-        setError(err.response?.data?.message || 'Khong the tai du lieu artist.');
+        setError(err.response?.data?.message || 'Không thể tải dữ liệu nghệ sĩ.');
       } finally {
         setLoading(false);
       }
@@ -158,7 +158,7 @@ function ClientArtist() {
                   </Paper>
                 ))}
 
-                {!songs.length && <Typography color="text.secondary">Artist nay chua co bai hat.</Typography>}
+                {!songs.length && <Typography color="text.secondary">Nghệ sĩ này chưa có bài hát.</Typography>}
               </Stack>
             )}
           </Paper>

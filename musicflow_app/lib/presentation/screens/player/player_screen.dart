@@ -162,7 +162,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (!result.success) {
       setState(() {
         _isLyricsLoading = false;
-        _lyricsError = result.message ?? 'Khong the tai lyrics';
+        _lyricsError = result.message ?? 'Không thể tải lyrics';
       });
       return;
     }
@@ -180,7 +180,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _isEstimatedLyrics = true;
         _lyricsLines = estimatedLines;
         _lyricsError = estimatedLines.isEmpty
-            ? 'Bai hat chua co lyrics.'
+            ? 'Bài hát chưa có lyrics.'
             : null;
       });
       return;
@@ -191,7 +191,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       _isLyricsSynced = true;
       _isEstimatedLyrics = false;
       _lyricsLines = parsedLines;
-      _lyricsError = parsedLines.isEmpty ? 'Bai hat chua co lyrics.' : null;
+      _lyricsError = parsedLines.isEmpty ? 'Bài hát chưa có lyrics.' : null;
     });
   }
 
@@ -287,7 +287,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _likeCount = result.likeCount ?? _likeCount;
       });
       _showActionMessage(
-        nextFavorite ? 'Da like bai hat' : 'Da bo like bai hat',
+        nextFavorite ? 'Đã like bài hát' : 'Đã bỏ like bài hát',
       );
     } else {
       // Hoàn tác nếu server báo lỗi
@@ -297,7 +297,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ? (_likeCount > 0 ? _likeCount - 1 : 0)
             : _likeCount + 1;
       });
-      _showActionMessage(result.message ?? 'Khong the cap nhat like luc nay');
+      _showActionMessage(result.message ?? 'Không thể cập nhật like lúc này');
     }
   }
 
@@ -338,7 +338,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   void _shareSong() {
     _showActionMessage(
-      'Chia se: ${_currentSong.title} - ${_currentSong.artists.join(', ')}',
+      'Chia sẻ: ${_currentSong.title} - ${_currentSong.artists.join(', ')}',
     );
   }
 
@@ -364,7 +364,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final result = await FavoriteService.toggleFavorite(_currentSong.id);
     if (!mounted) return;
     _showActionMessage(
-      result.message ?? 'Khong the cap nhat yeu thich luc nay',
+      result.message ?? 'Không thể cập nhật yêu thích luc nay',
     );
   }
 

@@ -46,7 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        throw Exception('Ban chua dang nhap');
+        throw Exception('Bạn chưa đăng nhập');
       }
 
       final response = await http.get(
@@ -58,7 +58,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Khong the tai thong tin ca nhan');
+        throw Exception('Không thể tải thông tin cá nhân');
       }
 
       final decoded = jsonDecode(response.body);
@@ -79,7 +79,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Khong the tai thong tin nguoi dung')),
+          const SnackBar(content: Text('Không thể tải thông tin người dùng')),
         );
       }
     } finally {
@@ -116,7 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Khong mo duoc thu vien anh. Hay cap quyen truy cap anh trong cai dat thiet bi. ($e)',
+            'Không mở được thư viện ảnh. Hãy cấp quyền truy cập ảnh trong cài đặt thiết bị. ($e)',
           ),
         ),
       );
@@ -130,7 +130,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final trimmedName = _nameController.text.trim();
     if (trimmedName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui long nhap ten hien thi')),
+        const SnackBar(content: Text('Vui lòng nhập tên hiển thị')),
       );
       return;
     }
@@ -142,7 +142,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        throw Exception('Ban chua dang nhap');
+        throw Exception('Bạn chưa đăng nhập');
       }
 
       final request = http.MultipartRequest(
@@ -184,7 +184,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cap nhat thong tin thanh cong')),
+        const SnackBar(content: Text('Cập nhật thông tin thành công')),
       );
       Navigator.pop(context, updatedUser);
     } catch (e) {
@@ -224,14 +224,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final trimmedBody = rawBody.trimLeft();
     if (trimmedBody.startsWith('<!DOCTYPE html') ||
         trimmedBody.startsWith('<html')) {
-      return 'Backend dang tra ve trang HTML thay vi API JSON. Thuong la do server chua restart hoac chua co route PUT /api/users/update.';
+      return 'Backend đang trả về trang HTML thay vì API JSON. Thường là do server chưa restart hoặc chưa có route PUT /api/users/update.';
     }
 
     if (trimmedBody.contains('Cannot PUT /api/users/update')) {
       return 'Backend chua nhan route PUT /api/users/update. Hay restart server Node.js roi thu lai.';
     }
 
-    return 'Cap nhat that bai (HTTP $statusCode)';
+    return 'Cập nhật thất bại (HTTP $statusCode)';
   }
 
   @override
@@ -241,7 +241,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        title: const Text('Cap nhat thong tin ca nhan'),
+        title: const Text('Cập nhật thông tin cá nhân'),
       ),
       body: _isLoading
           ? const Center(

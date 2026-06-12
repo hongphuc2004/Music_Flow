@@ -104,7 +104,7 @@ class _ViewAllCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'Xem tat ca',
+              'Xem tất cả',
               style: TextStyle(
                 color: Colors.grey[300],
                 fontSize: 14,

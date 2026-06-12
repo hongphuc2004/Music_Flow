@@ -826,7 +826,7 @@ class _SearchScreenState extends State<SearchScreen> {
         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       ),
       subtitle: const Text(
-        'Nghe si',
+        'Nghệ sĩ',
         style: TextStyle(color: Colors.grey),
       ),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),

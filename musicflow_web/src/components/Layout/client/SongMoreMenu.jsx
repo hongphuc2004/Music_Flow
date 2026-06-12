@@ -49,8 +49,8 @@ function SongMoreMenu({ song, buttonSx }) {
       handleClose(event);
       showToast({
         severity: 'info',
-        title: 'Can dang nhap',
-        message: 'Vui long dang nhap de them bai hat yeu thich.',
+        title: 'Cần đăng nhập',
+        message: 'Vui lòng đăng nhập để thêm bài hát yêu thích.',
       });
       return;
     }
@@ -61,10 +61,10 @@ function SongMoreMenu({ song, buttonSx }) {
         const next = !prev;
         showToast({
           severity: 'success',
-          title: 'Thanh cong!',
+          title: 'Thành công!',
           message: next
-            ? 'Da them bai hat vao danh sach yeu thich.'
-            : 'Da bo bai hat khoi danh sach yeu thich.',
+            ? 'Đã thêm bài hát vào danh sách yêu thích.'
+            : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
         });
         return next;
       });
@@ -72,7 +72,7 @@ function SongMoreMenu({ song, buttonSx }) {
       showToast({
         severity: 'error',
         title: 'Co loi xay ra',
-        message: error.response?.data?.message || 'Khong the cap nhat yeu thich.',
+        message: error.response?.data?.message || 'Không thể cập nhật yêu thích.',
       });
     } finally {
       handleClose(event);
@@ -103,8 +103,8 @@ function SongMoreMenu({ song, buttonSx }) {
       handleClose(event);
       showToast({
         severity: 'info',
-        title: 'Can dang nhap',
-        message: 'Vui long dang nhap de tai bai hat.',
+        title: 'Cần đăng nhập',
+        message: 'Vui lòng đăng nhập để tải bài hát.',
       });
       return;
     }
@@ -114,13 +114,13 @@ function SongMoreMenu({ song, buttonSx }) {
       showToast({
         severity: 'success',
         title: 'Da tai xuong',
-        message: 'Bai hat da duoc them vao danh sach bai hat da tai.',
+        message: 'Bài hát đã được thêm vào danh sách bài hát đã tải.',
       });
     } catch (error) {
       showToast({
         severity: 'error',
-        title: 'Khong the tai bai hat',
-        message: error.response?.data?.message || 'Vui long thu lai sau.',
+        title: 'Không thể tải bài hát',
+        message: error.response?.data?.message || 'Vui lòng thử lại sau.',
       });
     } finally {
       handleClose(event);
@@ -152,9 +152,9 @@ function SongMoreMenu({ song, buttonSx }) {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem onClick={handlePlay}>Phat ngay</MenuItem>
-        <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bo yeu thich' : 'Them yeu thich'}</MenuItem>
-        <MenuItem onClick={handleDownload}>Tai bai hat</MenuItem>
-        <MenuItem onClick={handleViewArtist} disabled={!primaryArtistId}>Xem nghe si</MenuItem>
+        <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'}</MenuItem>
+        <MenuItem onClick={handleDownload}>Tải bài hát</MenuItem>
+        <MenuItem onClick={handleViewArtist} disabled={!primaryArtistId}>Xem nghệ sĩ</MenuItem>
       </Menu>
     </>
   );

@@ -78,7 +78,7 @@ function ClientHome() {
         setSongs(Array.isArray(songsRes.data) ? songsRes.data : []);
         setPlaylists(playlistsRes.data?.playlists || []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Khong the tai du lieu trang chu.');
+        setError(err.response?.data?.message || 'Không thể tải dữ liệu trang chủ.');
       } finally {
         setLoading(false);
       }
@@ -262,7 +262,7 @@ function ClientHome() {
 
             <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                Top artists
+                Nghệ sĩ phổ biến 
               </Typography>
               <Stack direction="row" spacing={1.25} useFlexGap flexWrap="wrap">
                 {topArtists.map((artist) => (
@@ -301,7 +301,7 @@ function ClientHome() {
 
             <Paper sx={{ p: 2.5, borderRadius: 3, border: '1px solid #e2e8f0' }}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                Top collections
+                Đề xuất cho bạn
               </Typography>
               <Grid container spacing={1.5}>
                 {playlists.slice(0, 4).map((playlist) => (
@@ -583,7 +583,7 @@ function ClientHome() {
 
             <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid #e2e8f0' }}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.25 }}>
-                Top songs weekly
+                Bài hát phổ biến
               </Typography>
               <Stack spacing={1}>
                 {topSongs.map((song, index) => (
@@ -659,7 +659,7 @@ function ClientHome() {
                     </Stack>
                   </Paper>
                 ))}
-                {!topSongs.length && <Typography color="text.secondary">Chua co bai hat top.</Typography>}
+                {!topSongs.length && <Typography color="text.secondary">Chưa có bài hát top.</Typography>}
               </Stack>
             </Paper>
           </Stack>

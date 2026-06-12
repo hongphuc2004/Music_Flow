@@ -7,15 +7,15 @@ class PlayHistoryService {
   static const String _historyKey = 'play_history';
   static const int _maxHistoryItems = 50; // Gioi han so bai trong lich su
 
-  /// Them bai hat vao lich su phat
+  /// Thêm bài hát vào lịch sử phát
   static Future<void> addToHistory(Song song) async {
     final prefs = await SharedPreferences.getInstance();
     final history = await getHistory();
     
-    // Xoa bai hat neu da co trong lich su (de dua len dau)
+    // Xoá bài hát nếu đã có trong lịch sử (để đưa lên đầu) 
     history.removeWhere((s) => s.id == song.id);
     
-    // Them vao dau danh sach
+    // Thêm vào đầu danh sách
     history.insert(0, song);
     
     // Gi?i h?n s? lu?ng
@@ -28,7 +28,7 @@ class PlayHistoryService {
     await prefs.setString(_historyKey, jsonEncode(jsonList));
   }
 
-  /// Lay danh sach lich su phat
+  /// Lấy danh sách lịch sử phát
   static Future<List<Song>> getHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_historyKey);

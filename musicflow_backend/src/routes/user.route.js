@@ -51,10 +51,22 @@ router.put("/update", authMiddleware, upload.single("avatar"), async (req, res) 
     }
 
     const nextName = req.body.name?.trim();
+    const nextEmail = req.body.email?.trim();
     const avatarUrl = req.body.avatarUrl?.trim();
 
     if (nextName) {
       user.name = nextName;
+    }
+
+    if (nextEmail && nextEmail !== user.email) {
+      const existingUser = await User.findOne({ email: nextEmail.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Email đã được sử dụng bởi một tài khoản khác",
+        });
+      }
+      user.email = nextEmail.toLowerCase();
     }
 
     if (req.file) {

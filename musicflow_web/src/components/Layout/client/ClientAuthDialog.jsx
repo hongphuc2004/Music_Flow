@@ -148,6 +148,7 @@ function ClientAuthDialog() {
     localStorage.setItem('userName', user.name || 'Listener');
     localStorage.setItem('email', user.email || '');
     localStorage.setItem('userId', user._id || '');
+    localStorage.setItem('userAvatar', user.avatar || '');
     closeDialog();
     showToast({
       severity: 'success',
@@ -235,8 +236,8 @@ function ClientAuthDialog() {
 
   const fieldSx = {
     '& .MuiOutlinedInput-root': {
-      borderRadius: 2,
-      bgcolor: '#f7f8fb',
+      borderRadius: 2.5,
+      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
     },
   };
 
@@ -250,9 +251,15 @@ function ClientAuthDialog() {
         sx: {
           borderRadius: 4,
           overflow: 'hidden',
-          bgcolor: 'rgba(255,255,255,0.96)',
+          bgcolor: (theme) => theme.palette.mode === 'dark' 
+            ? 'rgba(15, 23, 42, 0.95)' 
+            : 'rgba(255, 255, 255, 0.96)',
           backdropFilter: 'blur(18px)',
           boxShadow: '0 28px 90px rgba(15, 23, 42, 0.35)',
+          border: '1px solid',
+          borderColor: (theme) => theme.palette.mode === 'dark' 
+            ? 'rgba(255, 255, 255, 0.08)' 
+            : 'transparent',
         },
       }}
       slotProps={{
@@ -353,11 +360,11 @@ function ClientAuthDialog() {
             <>
               <Divider>Hoặc</Divider>
               {GOOGLE_CLIENT_ID ? (
-                <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={googleLoading || !googleReady} onClick={handleGoogleLogin} sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+                <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={googleLoading || !googleReady} onClick={handleGoogleLogin} sx={{ py: 1.1, borderRadius: 2, borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#d8dce6', color: '#db4437', fontWeight: 700 }}>
                   {googleLoading ? 'Đang xử lý...' : 'Đăng nhập bằng Google'}
                 </Button>
               ) : (
-                <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+                <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled sx={{ py: 1.1, borderRadius: 2, borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#d8dce6', color: '#db4437', fontWeight: 700 }}>
                   Chưa cấu hình Google Login
                 </Button>
               )}
@@ -378,7 +385,7 @@ function ClientAuthDialog() {
               type="button"
               variant="text"
               startIcon={<MicExternalOnOutlined />}
-              sx={{ fontWeight: 800, color: '#0f766e' }}
+              sx={{ fontWeight: 800, color: (theme) => theme.palette.mode === 'dark' ? '#14b8a6' : '#0f766e' }}
               onClick={goToArtistLogin}
             >
               Artist Studio

@@ -14,11 +14,36 @@ const api = axios.create({
 let refreshPromise = null;
 let accessToken = null;
 
-export const setAccessToken = (token) => {
-  accessToken = token || null;
+const apiCache = new Map();
+
+export const clearApiCache = () => {
+  apiCache.clear();
 };
 
-const refreshAccessToken = async () => {
+const cachedGet = (url, config = {}, ttlMs = 30000) => {
+  const cacheKey = JSON.stringify({ url, params: config.params || {} });
+  const cached = apiCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < ttlMs) {
+    return cached.promise;
+  }
+
+  const promise = api.get(url, config).catch((error) => {
+    apiCache.delete(cacheKey);
+    return Promise.reject(error);
+  });
+
+  apiCache.set(cacheKey, { timestamp: now, promise });
+  return promise;
+};
+
+export const setAccessToken = (token) => {
+  accessToken = token || null;
+  apiCache.clear();
+};
+
+export const refreshAccessToken = async () => {
   if (!refreshPromise) {
     refreshPromise = axios
       .post(
@@ -97,6 +122,7 @@ api.interceptors.response.use(
     if (status === 401) {
       const currentRole = localStorage.getItem('role');
       accessToken = null;
+      apiCache.clear();
       localStorage.removeItem('role');
       if (currentRole === 'artist') {
         clearArtistSession();
@@ -199,8 +225,8 @@ export const topicsApi = {
 };
 
 export const clientSongsApi = {
-  getAllPublic: () => api.get('/songs'),
-  getRecommended: (params) => api.get('/songs/recommended', { params }),
+  getAllPublic: () => cachedGet('/songs', {}, 30000),
+  getRecommended: (params) => cachedGet('/songs/recommended', { params }, 15000),
   search: (params) => api.get('/songs/search', { params }),
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
   getMyUploads: () => api.get('/songs/my-uploads'),
@@ -221,14 +247,32 @@ export const clientFavoritesApi = {
 
 export const clientPlaylistsApi = {
   getMine: () => api.get('/playlists'),
-  getSystem: (params) => api.get('/playlists/system', { params }),
+  getSystem: (params) => cachedGet('/playlists/system', { params }, 30000),
   getSystemById: (id) => api.get(`/playlists/system/${id}`),
   getById: (id) => api.get(`/playlists/${id}`),
+  create: (payload) => api.post('/playlists', payload),
+  update: (id, payload) => api.put(`/playlists/${id}`, payload),
+  delete: (id) => api.delete(`/playlists/${id}`),
+  addSong: (id, songId) => api.post(`/playlists/${id}/songs`, { songId }),
+  removeSong: (id, songId) => api.delete(`/playlists/${id}/songs/${songId}`),
 };
 
 export const clientTopicsApi = {
-  getAll: () => api.get('/topics'),
+  getAll: () => cachedGet('/topics', {}, 30000),
   getSongsByTopic: (topicId) => api.get(`/topics/${topicId}/songs`),
+};
+
+export const clientArtistApi = {
+  getProfile: (id) => cachedGet('/artist/profile', { params: { id } }, 20000),
+  getFollowStatus: (id) => api.get(`/artist/${id}/follow-status`),
+  toggleFollow: (id) => api.post(`/artist/${id}/follow`),
+};
+
+export const clientAiApi = {
+  getHistory: () => api.get('/ai/mood/history'),
+  getConversation: (id) => api.get(`/ai/mood/conversations/${id}`),
+  sendPrompt: (payload) => api.post('/ai/playlist', payload),
+  deleteConversation: (id) => api.delete(`/ai/mood/conversations/${id}`),
 };
 
 export const clientUserApi = {

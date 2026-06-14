@@ -11,6 +11,7 @@ import {
   PlayArrowRounded as PlayIcon,
   SkipNextRounded as NextIcon,
   ShuffleRounded as ShuffleIcon,
+  MusicNoteRounded as MusicIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientFavoritesApi, clientSongsApi } from '../../../services/api';
@@ -206,9 +207,11 @@ function NowPlayingBar() {
               width: { xs: 48, md: 56 },
               height: { xs: 48, md: 56 },
               borderRadius: 1.25,
+              bgcolor: 'rgba(20, 184, 166, 0.12)',
+              color: '#14b8a6',
             }}
           >
-            {currentSong?.title?.charAt(0) || 'S'}
+            <MusicIcon sx={{ fontSize: 28 }} />
           </Avatar>
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="body2" fontWeight={700} noWrap>

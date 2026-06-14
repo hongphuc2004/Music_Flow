@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -18,19 +18,24 @@ import {
   SearchRounded as SearchIcon,
   PersonRounded as PersonIcon,
   MicExternalOnOutlined,
+  DarkModeRounded as DarkModeIcon,
+  LightModeRounded as LightModeIcon,
 } from '@mui/icons-material';
 import useClientToast from './useClientToast';
+import { ColorModeContext } from '../../../App';
 
 const drawerWidth = 260;
 
 function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
   const navigate = useNavigate();
   const { showToast } = useClientToast();
+  const { toggleColorMode, mode } = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchValue, setSearchValue] = useState('');
   const isLoggedIn = localStorage.getItem('role') === 'user';
   const userName = localStorage.getItem('userName') || localStorage.getItem('name') || '';
   const userInitial = useMemo(() => (userName || 'U').charAt(0).toUpperCase(), [userName]);
+  const userAvatar = localStorage.getItem('userAvatar') || '';
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -83,10 +88,11 @@ function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
       sx={{
         width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
         ml: { xs: 0, md: `${drawerWidth}px` },
-        color: '#14213d',
-        background: 'rgba(248, 250, 252, 0.88)',
+        color: 'text.primary',
+        background: (theme) => theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.88)' : 'rgba(248, 250, 252, 0.88)',
         backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(20, 33, 61, 0.08)',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
       }}
     >
       <Toolbar>
@@ -106,8 +112,9 @@ function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
               borderRadius: 3,
               px: 1.25,
               py: 0.5,
-              backgroundColor: 'rgba(255,255,255,0.76)',
-              border: '1px solid rgba(20,33,61,0.08)',
+              backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(31, 41, 55, 0.5)' : 'rgba(255,255,255,0.76)',
+              border: '1px solid',
+              borderColor: 'divider',
             }}
           >
             <SearchIcon sx={{ color: 'text.secondary', mr: 0.75, fontSize: 18 }} />
@@ -126,6 +133,9 @@ function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
           </Box>
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mr: 1.5 }}>
+          <IconButton onClick={toggleColorMode} color="inherit">
+            {mode === 'dark' ? <LightModeIcon sx={{ color: '#fbbf24' }} /> : <DarkModeIcon />}
+          </IconButton>
           <IconButton color="inherit">
             <NotificationsIcon />
           </IconButton>
@@ -140,7 +150,7 @@ function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
             </Box>
           )}
           <IconButton onClick={handleMenu} color="inherit" sx={{ p: 0.5 }}>
-            <Avatar sx={{ bgcolor: '#14b8a6', color: '#fff' }}>
+            <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ bgcolor: '#14b8a6', color: '#fff' }}>
               {isLoggedIn ? userInitial : <PersonIcon />}
             </Avatar>
           </IconButton>

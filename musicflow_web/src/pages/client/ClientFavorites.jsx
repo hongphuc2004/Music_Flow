@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import MusicIcon from '@mui/icons-material/MusicNoteRounded';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi } from '../../services/api';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
@@ -86,8 +87,8 @@ function ClientFavorites() {
                     sx={{ p: 1.5, borderRadius: 2.5, border: '1px solid #e2e8f0', cursor: 'pointer' }}
                   >
                     <Stack direction="row" spacing={1.25} alignItems="center">
-                      <Avatar src={song.imageUrl} variant="rounded" sx={{ width: 48, height: 48 }}>
-                        {song.title?.charAt(0)}
+                      <Avatar src={song.imageUrl || undefined} variant="rounded" sx={{ width: 48, height: 48 }}>
+                        <MusicIcon sx={{ fontSize: 24 }} />
                       </Avatar>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                         <Typography fontWeight={700} noWrap>{song.title}</Typography>

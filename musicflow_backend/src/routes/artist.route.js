@@ -161,8 +161,8 @@ router.get("/profile", async (req, res) => {
     const query = id
       ? { _id: id }
       : name
-          ? { name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") } }
-          : null;
+        ? { name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") } }
+        : null;
 
     if (!query) {
       return res.status(400).json({
@@ -200,9 +200,9 @@ router.get("/profile", async (req, res) => {
     const songIdList = songIds.map((song) => song._id);
     const monthlyListeners = songIdList.length > 0
       ? await SongPlayEvent.countDocuments({
-          songId: { $in: songIdList },
-          playedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        })
+        songId: { $in: songIdList },
+        playedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      })
       : 0;
 
     return res.json({
@@ -254,7 +254,7 @@ router.get("/:id/follow-status", authMiddleware, async (req, res) => {
       });
     }
 
-    const isFollowing = user.followedArtists.some(
+    const isFollowing = (user.followedArtists || []).some(
       (artistId) => artistId.toString() === req.params.id,
     );
 
@@ -274,7 +274,7 @@ router.get("/:id/follow-status", authMiddleware, async (req, res) => {
 router.post("/:id/follow", authMiddleware, async (req, res) => {
   try {
     const [artist, user] = await Promise.all([
-      Artist.findById(req.params.id).select("_id"),
+      Artist.findById(req.params.id).select("_id name"),
       User.findById(req.userId),
     ]);
 
@@ -290,6 +290,10 @@ router.post("/:id/follow", authMiddleware, async (req, res) => {
         success: false,
         message: "User not found",
       });
+    }
+
+    if (!user.followedArtists) {
+      user.followedArtists = [];
     }
 
     const artistId = artist._id.toString();
@@ -314,8 +318,8 @@ router.post("/:id/follow", authMiddleware, async (req, res) => {
       isFollowing: !alreadyFollowing,
       followers,
       message: alreadyFollowing
-        ? "Da bo theo doi artist"
-        : "Da theo doi artist",
+        ? `Đã bỏ theo dõi ${artist.name}`
+        : `Đã theo dõi ${artist.name}`,
     });
   } catch (error) {
     return res.status(500).json({

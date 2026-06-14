@@ -1,8 +1,11 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, createContext, useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { ClientPlayerProvider } from './components/Layout/client/ClientPlayerProvider';
 import AppToastProvider from './components/common/AppToastProvider';
+import { refreshAccessToken } from './services/api';
+
+export const ColorModeContext = createContext({ toggleColorMode: () => {}, mode: 'light' });
 
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const Accounts = lazy(() => import('./pages/admin/Accounts'));
@@ -29,30 +32,10 @@ const ClientCollection = lazy(() => import('./pages/client/ClientCollection'));
 const ClientPlaylist = lazy(() => import('./pages/client/ClientPlaylist'));
 const ClientGenres = lazy(() => import('./pages/client/ClientGenres'));
 const ClientRankings = lazy(() => import('./pages/client/ClientRankings'));
+const ClientAiMood = lazy(() => import('./pages/client/ClientAiMood'));
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#6c63ff',
-    },
-    secondary: {
-      main: '#00bcd4',
-    },
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontWeight: 600,
-        },
-      },
-    },
-  },
-});
+
+
 
 const ProtectedRoute = ({ children, role }) => {
   const userRole = localStorage.getItem('role');
@@ -121,14 +104,100 @@ const RouteFallback = () => (
 );
 
 function App() {
+  const [mode, setMode] = useState(() => {
+    return localStorage.getItem('theme-mode') || 'light';
+  });
+
+  const [loadingSession, setLoadingSession] = useState(true);
+
+  useEffect(() => {
+    const initSession = async () => {
+      const role = localStorage.getItem('role');
+      if (role) {
+        try {
+          await refreshAccessToken();
+        } catch (err) {
+          console.warn('Silent refresh failed:', err);
+          // Clear all authentication data from localStorage if refresh token is expired or invalid
+          localStorage.removeItem('role');
+          localStorage.removeItem('userName');
+          localStorage.removeItem('email');
+          localStorage.removeItem('userId');
+          localStorage.removeItem('artistId');
+          localStorage.removeItem('artistName');
+          localStorage.removeItem('artistAvatar');
+          localStorage.removeItem('artistEmail');
+        }
+      }
+      setLoadingSession(false);
+    };
+    initSession();
+  }, []);
+
+  const colorMode = useMemo(
+    () => ({
+      toggleColorMode: () => {
+        setMode((prevMode) => {
+          const nextMode = prevMode === 'light' ? 'dark' : 'light';
+          localStorage.setItem('theme-mode', nextMode);
+          return nextMode;
+        });
+      },
+      mode,
+    }),
+    [mode]
+  );
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode,
+          primary: {
+            main: '#6c63ff',
+          },
+          secondary: {
+            main: '#00bcd4',
+          },
+          background: {
+            default: mode === 'dark' ? '#0b0f19' : '#f8fafc',
+            paper: mode === 'dark' ? '#111827' : '#ffffff',
+          },
+          text: {
+            primary: mode === 'dark' ? '#f3f4f6' : '#0f172a',
+            secondary: mode === 'dark' ? '#9ca3af' : '#475569',
+          },
+        },
+        typography: {
+          fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        },
+        components: {
+          MuiButton: {
+            styleOverrides: {
+              root: {
+                textTransform: 'none',
+                fontWeight: 600,
+              },
+            },
+          },
+        },
+      }),
+    [mode]
+  );
+
+  if (loadingSession) {
+    return <RouteFallback />;
+  }
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AppToastProvider>
-        <ClientPlayerProvider>
-          <Router>
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
+    <ColorModeContext.Provider value={colorMode}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AppToastProvider>
+          <ClientPlayerProvider>
+            <Router>
+              <Suspense fallback={<RouteFallback />}>
+                <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path="/artist/register" element={<PublicRoute><ArtistRegister /></PublicRoute>} />
@@ -227,6 +296,14 @@ function App() {
             }
           />
           <Route
+            path="/client/ai-mood"
+            element={
+              <ClientRoute requireAuth>
+                <ClientAiMood />
+              </ClientRoute>
+            }
+          />
+          <Route
             path="/client/artists/:artistId"
             element={
               <ClientRoute>
@@ -263,6 +340,7 @@ function App() {
         </ClientPlayerProvider>
       </AppToastProvider>
     </ThemeProvider>
+  </ColorModeContext.Provider>
   );
 }
 

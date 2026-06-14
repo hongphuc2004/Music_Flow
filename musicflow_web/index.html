@@ -1,10 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>musicflow_web</title>
+    <meta name="description" content="MusicFlow – Nghe nhạc trực tuyến chất lượng cao, playlist cá nhân hóa và AI DJ thông minh. Khám phá hàng ngàn bài hát yêu thích." />
+    <title>MusicFlow – Nghe nhạc trực tuyến</title>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <!-- DNS prefetch + preconnect để tải Google Fonts nhanh hơn (không blocking render) -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Preload font CSS, sau đó load không blocking với media trick -->
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      />
+    </noscript>
   </head>
   <body>
     <div id="root"></div>

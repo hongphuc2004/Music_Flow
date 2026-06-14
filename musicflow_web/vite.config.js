@@ -20,11 +20,14 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      chunkSizeWarningLimit: 1000,
+      sourcemap: false,
       rollupOptions: {
         output: {
           manualChunks: {
             react: ['react', 'react-dom', 'react-router-dom'],
-            mui: ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+            'mui-core': ['@mui/material', '@emotion/react', '@emotion/styled'],
+            'mui-icons': ['@mui/icons-material'],
             http: ['axios'],
           },
         },

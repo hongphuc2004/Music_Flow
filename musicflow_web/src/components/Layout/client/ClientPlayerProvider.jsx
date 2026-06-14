@@ -316,15 +316,6 @@ export function ClientPlayerProvider({ children }) {
     return nextMode;
   }, []);
 
-  const stop = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.pause();
-    audio.currentTime = 0;
-    setCurrentTime(0);
-    setIsPlaying(false);
-  }, []);
 
   const activeLyricIndex = useMemo(() => {
     if (!lyricsData.isSynced) return -1;
@@ -343,7 +334,6 @@ export function ClientPlayerProvider({ children }) {
     hasSong: Boolean(currentSong),
     lyricsLines: lyricsData.lines,
     hasSyncedLyrics: lyricsData.isSynced,
-    lyricsText: lyricsData.plainText,
     activeLyricIndex,
   }), [
     currentSong,
@@ -356,7 +346,6 @@ export function ClientPlayerProvider({ children }) {
     duration,
     lyricsData.lines,
     lyricsData.isSynced,
-    lyricsData.plainText,
     activeLyricIndex,
   ]);
 
@@ -368,7 +357,6 @@ export function ClientPlayerProvider({ children }) {
     cycleRepeatMode,
     togglePlay,
     seekTo,
-    stop,
   }), [
     playSong,
     playPrevious,
@@ -377,7 +365,6 @@ export function ClientPlayerProvider({ children }) {
     cycleRepeatMode,
     togglePlay,
     seekTo,
-    stop,
   ]);
 
   const metaValue = useMemo(() => ({

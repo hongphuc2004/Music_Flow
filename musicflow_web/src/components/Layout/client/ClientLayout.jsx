@@ -41,9 +41,10 @@ function ClientLayout({ children, title }) {
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        bgcolor: '#f8fafc',
-        backgroundImage:
-          'radial-gradient(circle at top right, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at left 30%, rgba(34,197,94,0.08), transparent 24%)',
+        bgcolor: 'background.default',
+        backgroundImage: (theme) => theme.palette.mode === 'dark'
+          ? 'radial-gradient(circle at top right, rgba(56,189,248,0.05), transparent 30%), radial-gradient(circle at left 30%, rgba(13,148,136,0.06), transparent 25%)'
+          : 'radial-gradient(circle at top right, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at left 30%, rgba(34,197,94,0.08), transparent 24%)',
       }}
     >
       <ClientSidebar
@@ -61,9 +62,13 @@ function ClientLayout({ children, title }) {
         sx={{
           flexGrow: 1,
           p: { xs: 2, md: 3 },
+          // Stable padding-bottom prevents CLS when NowPlayingBar appears/disappears
           pb: hasSong ? { xs: '132px', sm: '120px', md: '124px' } : { xs: 2, md: 3 },
           width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
+          // Hint browser to skip off-screen rendering → improves LCP and scroll performance
+          contentVisibility: 'auto',
+          containIntrinsicSize: '0 800px',
         }}
       >
         <Toolbar />

@@ -1,4 +1,4 @@
-﻿const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const mongoose = require("mongoose");
 
 const Song = require("../models/song.model");
@@ -10,12 +10,21 @@ const MoodPlaylist = require("../models/mood-playlist.model");
 
 const MAX_PLAYLIST_SONGS = 20;
 const PLAYLIST_MIN_TARGET_SONGS = 15;
+// Gemini API model candidates (2025). Env var takes priority, then latest Flash.
 const GEMINI_MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL,
+  "gemini-2.5-flash-preview-05-20",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-1.5-flash-latest",
 ].filter(Boolean);
+
+// Build model list with optional preferred model at front
+function buildModelCandidates(preferredModel) {
+  if (!preferredModel) return GEMINI_MODEL_CANDIDATES;
+  const rest = GEMINI_MODEL_CANDIDATES.filter((m) => m !== preferredModel);
+  return [preferredModel, ...rest];
+}
 
 const MOOD_TOPIC_MAP = {
   sad: {
@@ -483,8 +492,62 @@ function buildPlaylistContextPrompt(currentPrompt = "", historyMessages = []) {
 function isPlayIntent(prompt = "") {
   const text = normalizeText(prompt);
   const hasPlayVerb = /\b(bat|phat|mo|nghe|play)\b/.test(text);
-  const hasPlayRequest = /\b(ngau nhien|random|1 bai|mot bai|bai nao|luon di)\b/.test(text);
-  return hasPlayVerb && hasPlayRequest;
+  const hasRandomKw = /\b(ngau nhien|random|1 bai|mot bai|bai nao|luon di)\b/.test(text);
+  // "bật đi", "phát đi", "phát luôn", "bật lên", "mở lên"
+  const isQuickPlay = /\b(bat|phat|mo)\s*(di|luon|len|nao|gio)\b/.test(text);
+  return (hasPlayVerb && hasRandomKw) || isQuickPlay;
+}
+
+// Detect "phát bài [tên]", "bật bài [tên]", "cho nghe bài [tên]", or just "bật [tên]"
+function isSpecificSongIntent(prompt = "") {
+  const text = normalizeText(prompt);
+  return /\b(phat|bat|mo|cho nghe|nghe|play)\s+(?:bai\s+hat\s+|ca\s+khuc\s+|bai\s+|nhac\s+)?([a-z0-9])/i.test(text);
+}
+
+function extractSongTitleFromPrompt(prompt = "") {
+  const text = normalizeText(prompt);
+  const match = text.match(/\b(?:phat|bat|mo|cho nghe|nghe|play)\s+(?:bai\s+hat\s+|ca\s+khuc\s+|bai\s+|nhac\s+)?(.+)/i);
+  if (match) {
+    let title = match[1].trim();
+    // remove suffixes like "di", "luon", "gium", "ho", "voi", "nhe", "gap", "nhanh"
+    title = title.replace(/\s+(di|luon|gium|ho|voi|nhe|gap|nhanh)$/i, "").trim();
+    return title;
+  }
+  return null;
+}
+
+async function findSongByTitle(titleQuery) {
+  if (!titleQuery || titleQuery.length < 2) return null;
+
+  const normalized = normalizeText(titleQuery);
+  const terms = normalized.split(" ").filter((w) => w.length >= 2);
+  if (!terms.length) return null;
+
+  const songs = await Song.find({ isPublic: true })
+    .populate("artists", "name avatar")
+    .populate("topicIds", "name description")
+    .lean();
+
+  const scored = songs
+    .map((song) => {
+      const titleNorm = normalizeText(song.title || "");
+      let score = 0;
+      if (titleNorm === normalized) score += 100;
+      else if (titleNorm.includes(normalized)) score += 60;
+      else {
+        const overlap = terms.filter((t) => titleNorm.includes(t)).length;
+        if (overlap === terms.length) score += 40;
+        else if (overlap > 0) score += overlap * 10;
+      }
+      if (score > 0) {
+        score += Math.min((song.playCount || 0) / 200, 5);
+      }
+      return { song, score };
+    })
+    .filter((x) => x.score >= 10)
+    .sort((a, b) => b.score - a.score);
+
+  return scored[0]?.song || null;
 }
 
 function pickRandomSong(songs = []) {
@@ -510,7 +573,7 @@ function fallbackAssistantText(matchStatus, songCount, source = "", prompt = "")
     ? `Mình đã lọc theo "${normalizedPrompt}" và tạo playlist phù hợp nhất có thể.`
     : "Mình đã tạo playlist theo cảm xúc của bạn.";
 }
-async function generateAssistantText({ prompt, analysis, songs, matchStatus, source = "" }) {
+async function generateAssistantText({ prompt, analysis, songs, matchStatus, source = "", preferredModel }) {
   const targetArtist = analysis?.targetArtist || "";
   if (source === "artist_match" || source === "artist_then_topic") {
     if (songs.length > 0 && targetArtist) {
@@ -534,7 +597,8 @@ async function generateAssistantText({ prompt, analysis, songs, matchStatus, sou
       .map((song, index) => `${index + 1}. ${song.title} - ${artistNames(song).join(", ") || "Unknown artist"}`)
       .join("\n");
     let lastError = null;
-    for (const modelName of GEMINI_MODEL_CANDIDATES) {
+    const candidates = buildModelCandidates(preferredModel);
+    for (const modelName of candidates) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(
@@ -577,7 +641,7 @@ function buildGeminiHistory(messages = []) {
     }));
 }
 
-async function generateConversationalReply({ prompt, historyMessages = [] }) {
+async function generateConversationalReply({ prompt, historyMessages = [], preferredModel }) {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Missing GEMINI_API_KEY");
   }
@@ -589,10 +653,32 @@ async function generateConversationalReply({ prompt, historyMessages = [] }) {
       "Mục tiêu: trả lời chính xác câu hỏi user, tự nhiên như 2 người đang nói chuyện.",
       "Chỉ đề xuất tạo playlist khi user thực sự yêu cầu.",
       "Không dùng câu trả lời template cứng.",
+      "Bạn có tích hợp Google Search để trả lời thông tin thời gian thực chính xác.",
     ].join("\n");
 
     let lastError = null;
-    for (const modelName of GEMINI_MODEL_CANDIDATES) {
+    const candidates = buildModelCandidates(preferredModel);
+    for (const modelName of candidates) {
+      // 1. Try chat with Google Search Grounding
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction,
+          tools: [{ googleSearch: {} }],
+        });
+
+        const chat = model.startChat({
+          history: buildGeminiHistory(historyMessages).slice(-30),
+        });
+
+        const result = await chat.sendMessage(prompt);
+        const text = result.response.text().trim();
+        if (text) return text;
+      } catch (err) {
+        console.warn(`Failed chat with search grounding on ${modelName}:`, err.message);
+      }
+
+      // 2. Try chat without Google Search Grounding
       try {
         const model = genAI.getGenerativeModel({
           model: modelName,
@@ -606,8 +692,43 @@ async function generateConversationalReply({ prompt, historyMessages = [] }) {
         const result = await chat.sendMessage(prompt);
         const text = result.response.text().trim();
         if (text) return text;
+      } catch (err) {
+        console.warn(`Failed chat without search grounding on ${modelName}:`, err.message);
+      }
 
-        // Fallback: nếu chat API rỗng/lỗi format history, dùng generateContent 1-shot vẫn dựa trên context thật
+      // 3. Fallback: one-shot generateContent with search grounding
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction,
+          tools: [{ googleSearch: {} }],
+        });
+
+        const historyText = historyMessages
+          .slice(-12)
+          .map((m) => `${m.role === "assistant" ? "AI" : "User"}: ${String(m.content || "").trim()}`)
+          .filter(Boolean)
+          .join("\n");
+
+        const fallback = await model.generateContent(
+          [
+            `Context hội thoại gần nhất:\n${historyText || "(không có)"}`,
+            `User hiện tại: ${prompt}`,
+          ].join("\n\n")
+        );
+        const fallbackText = fallback.response.text().trim();
+        if (fallbackText) return fallbackText;
+      } catch (err) {
+        console.warn(`Failed fallback with search grounding on ${modelName}:`, err.message);
+      }
+
+      // 4. Fallback: one-shot generateContent without search grounding
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction,
+        });
+
         const historyText = historyMessages
           .slice(-12)
           .map((m) => `${m.role === "assistant" ? "AI" : "User"}: ${String(m.content || "").trim()}`)
@@ -658,7 +779,7 @@ async function serializeConversation(conversationId, userId) {
 
 exports.aiPlaylist = async (req, res) => {
   try {
-    const { prompt, conversationId } = req.body;
+    const { prompt, conversationId, model: preferredModel } = req.body;
     const userId = req.userId;
     const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
 
@@ -711,7 +832,7 @@ exports.aiPlaylist = async (req, res) => {
         content: cleanPrompt,
       });
 
-      // Intent "bật/phát ngẫu nhiên": trả về bài thật để app phát luôn, không chỉ chat text.
+      // Intent "bật/phát ngẫu nhiên": trả về bài thật để app phát luôn
       if (isPlayIntent(cleanPrompt) || isPlayIntent(contextualPrompt)) {
         let playableSongs = [];
         if (allowArtistFlow && primaryArtist) {
@@ -720,13 +841,17 @@ exports.aiPlaylist = async (req, res) => {
         if (allowArtistFlow && playableSongs.length === 0) {
           playableSongs = await findSongsByArtistHint(contextualPrompt, MAX_PLAYLIST_SONGS);
         }
+        if (!playableSongs.length) {
+          // fallback: any public song
+          playableSongs = await Song.find({ isPublic: true })
+            .populate("artists", "name avatar")
+            .lean();
+        }
 
         const randomSong = pickRandomSong(playableSongs);
         const assistantText = randomSong
           ? `Được luôn, mình đang bật ngẫu nhiên bài "${randomSong.title}" cho bạn nghe nè.`
-          : primaryArtist
-            ? `Mình chưa tìm thấy bài của ${primaryArtist.name} trong thư viện để bật ngẫu nhiên.`
-            : "Mình chưa tìm thấy bài phù hợp để bật ngẫu nhiên lúc này.";
+          : "Mình chưa tìm thấy bài phù hợp để bật ngẫu nhiên lúc này.";
 
         const assistantMessage = await MoodMessage.create({
           conversationId: conversation._id,
@@ -750,9 +875,68 @@ exports.aiPlaylist = async (req, res) => {
         });
       }
 
+      // Intent "phát bài [tên cụ thể]": tìm trong DB và phát ngay
+      const isSongIntent = isSpecificSongIntent(cleanPrompt) || isSpecificSongIntent(contextualPrompt);
+      let foundSong = null;
+      let titleQuery = null;
+      if (isSongIntent) {
+        titleQuery = extractSongTitleFromPrompt(cleanPrompt)
+          || extractSongTitleFromPrompt(contextualPrompt);
+        if (titleQuery) {
+          foundSong = await findSongByTitle(titleQuery);
+          if (!foundSong) {
+            // Check if titleQuery matches an artist's name
+            const artist = await Artist.findOne({
+              name: { $regex: new RegExp(escapeRegex(titleQuery), "i") }
+            }).lean();
+            if (artist) {
+              const artistSongs = await findSongsByArtists([artist], 10);
+              if (artistSongs.length > 0) {
+                foundSong = pickRandomSong(artistSongs);
+              }
+            }
+          }
+        }
+      }
+
+      if (foundSong) {
+        const artistList = (foundSong.artists || []).map((a) => a?.name || a).filter(Boolean).join(", ");
+        const assistantText = `Được rồi, mình đang bật bài "${foundSong.title}"${
+          artistList ? ` của ${artistList}` : ""
+        } cho bạn nghe!`;
+
+        const assistantMessage = await MoodMessage.create({
+          conversationId: conversation._id,
+          userId,
+          role: "assistant",
+          content: assistantText,
+          metadata: { type: "chat_play", songId: foundSong._id },
+        });
+        await MoodConversation.updateOne(
+          { _id: conversation._id },
+          { lastMessage: assistantText }
+        );
+        return res.status(200).json({
+          success: true,
+          conversation,
+          messages: [userMessage, assistantMessage],
+          playlist: null,
+          songs: [foundSong],
+          matchStatus: "chat_play",
+          assistantMessage: assistantText,
+        });
+      }
+
+      // If they had a play intent but we didn't find the song/artist, we append a system instruction hint
+      let conversationalPrompt = contextualPrompt;
+      if (isSongIntent && titleQuery) {
+        conversationalPrompt = `${contextualPrompt}\n(Lưu ý hệ thống: Người dùng muốn nghe bài/nhạc "${titleQuery}" nhưng thư viện MusicFlow hiện tại không có bài này. Hãy trả lời lịch sự rằng bạn không tìm thấy bài hát này trong thư viện và đề xuất họ nghe các chủ đề hoặc ca sĩ khác.)`;
+      }
+
       const assistantText = await generateConversationalReply({
-        prompt: contextualPrompt,
+        prompt: conversationalPrompt,
         historyMessages: recentMessages,
+        preferredModel,
       });
       const assistantMessage = await MoodMessage.create({
         conversationId: conversation._id,
@@ -875,6 +1059,7 @@ exports.aiPlaylist = async (req, res) => {
       songs,
       matchStatus,
       source,
+      preferredModel,
     });
 
     conversation.title = conversation.title || playlistTitle(cleanPrompt, analysis);

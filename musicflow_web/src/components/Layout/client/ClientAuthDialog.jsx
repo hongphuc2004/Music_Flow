@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../../../services/api';
 import useClientToast from './useClientToast';
+import { notifyClientSessionChanged } from '../../../hooks/useClientSession';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -149,6 +150,7 @@ function ClientAuthDialog() {
     localStorage.setItem('email', user.email || '');
     localStorage.setItem('userId', user._id || '');
     localStorage.setItem('userAvatar', user.avatar || '');
+    notifyClientSessionChanged();
     closeDialog();
     showToast({
       severity: 'success',

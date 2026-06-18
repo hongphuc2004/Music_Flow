@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -207,9 +207,12 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
 
     final flowTop50 = _flowSongs.take(50).toList();
     final risingTop50 = _risingSongs.take(50).toList();
-    final flowVisible = flowTop50.take(math.min(_flowDisplayLimit, flowTop50.length)).toList();
-    final risingVisible =
-        risingTop50.take(math.min(_risingDisplayLimit, risingTop50.length)).toList();
+    final flowVisible = flowTop50
+        .take(math.min(_flowDisplayLimit, flowTop50.length))
+        .toList();
+    final risingVisible = risingTop50
+        .take(math.min(_risingDisplayLimit, risingTop50.length))
+        .toList();
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -251,21 +254,18 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final song = flowVisible[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 9),
-                  child: _FeedTile(
-                    rank: index + 1,
-                    song: song,
-                    subtitle: '${_formatCount(song.playCount)}',
-                    onTap: () => _playFromQueue(flowTop50, index),
-                  ),
-                );
-              },
-              childCount: flowVisible.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final song = flowVisible[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: _FeedTile(
+                  rank: index + 1,
+                  song: song,
+                  subtitle: '${_formatCount(song.playCount)}',
+                  onTap: () => _playFromQueue(flowTop50, index),
+                ),
+              );
+            }, childCount: flowVisible.length),
           ),
         ),
         if (flowTop50.length > 10)
@@ -287,7 +287,9 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                     size: 18,
                   ),
                   label: Text(
-                    _flowDisplayLimit == 10 ? 'XEM THEM TOP FLOW' : 'RUT GON TOP FLOW',
+                    _flowDisplayLimit == 10
+                        ? 'XEM THEM TOP FLOW'
+                        : 'RUT GON TOP FLOW',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -300,7 +302,10 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white12),
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 11,
+                    ),
                   ),
                 ),
               ),
@@ -327,28 +332,26 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final song = risingVisible[index];
-                final metrics = _risingMetrics[song.id];
-                final risingScore = metrics?.risingScore ?? 0;
-                final up = risingScore >= 0;
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final song = risingVisible[index];
+              final metrics = _risingMetrics[song.id];
+              final risingScore = metrics?.risingScore ?? 0;
+              final up = risingScore >= 0;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 9),
-                  child: _FeedTile(
-                    rank: index + 1,
-                    song: song,
-                    subtitle:
-                        '${up ? '+' : '-'}${risingScore.abs()} trong 24h (${_formatCount(metrics?.last24h ?? 0)})',
-                    subtitleColor:
-                        up ? const Color(0xFF49E7CF) : const Color(0xFFFFAA63),
-                    onTap: () => _playFromQueue(risingTop50, index),
-                  ),
-                );
-              },
-              childCount: risingVisible.length,
-            ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: _FeedTile(
+                  rank: index + 1,
+                  song: song,
+                  subtitle:
+                      '${up ? '+' : '-'}${risingScore.abs()} trong 24h (${_formatCount(metrics?.last24h ?? 0)})',
+                  subtitleColor: up
+                      ? const Color(0xFF49E7CF)
+                      : const Color(0xFFFFAA63),
+                  onTap: () => _playFromQueue(risingTop50, index),
+                ),
+              );
+            }, childCount: risingVisible.length),
           ),
         ),
         if (risingTop50.length > 10)
@@ -385,7 +388,10 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white12),
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 11,
+                    ),
                   ),
                 ),
               ),
@@ -414,9 +420,18 @@ class _Header extends StatelessWidget {
                 letterSpacing: -1.3,
               ),
               children: [
-                TextSpan(text: '#', style: TextStyle(color: Color(0xFFFFB15B))),
-                TextSpan(text: 'flow', style: TextStyle(color: Color(0xFFFF4FA3))),
-                TextSpan(text: 'feed', style: TextStyle(color: Color(0xFF58A6FF))),
+                TextSpan(
+                  text: '#',
+                  style: TextStyle(color: Color(0xFFFFB15B)),
+                ),
+                TextSpan(
+                  text: 'flow',
+                  style: TextStyle(color: Color(0xFFFF4FA3)),
+                ),
+                TextSpan(
+                  text: 'feed',
+                  style: TextStyle(color: Color(0xFF58A6FF)),
+                ),
               ],
             ),
           ),
@@ -490,7 +505,10 @@ class _TrendingSpotlight extends StatelessWidget {
                     border: Border.all(color: Colors.white12),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
                         Container(
@@ -533,14 +551,20 @@ class _TrendingSpotlight extends StatelessWidget {
                                 '${song.artists.join(', ')} • ${formatCount(song.playCount)} nghe',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.play_circle_fill_rounded,
-                            color: Color(0xFF49E7CF), size: 22),
+                        const Icon(
+                          Icons.play_circle_fill_rounded,
+                          color: Color(0xFF49E7CF),
+                          size: 22,
+                        ),
                       ],
                     ),
                   ),
@@ -627,19 +651,30 @@ class _FeedTile extends StatelessWidget {
                       song.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       song.artists.join(', '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white60, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.play_arrow_rounded, color: Colors.white60, size: 16),
+                        const Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white60,
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           subtitle,
@@ -650,11 +685,21 @@ class _FeedTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Text('·', style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold)),
+                        const Text(
+                          '·',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           _formatDuration(song.duration),
-                          style: const TextStyle(color: Colors.white60, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -665,7 +710,11 @@ class _FeedTile extends StatelessWidget {
               IconButton(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 20),
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  color: Colors.white70,
+                  size: 20,
+                ),
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,
@@ -713,14 +762,14 @@ class _SongArt extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF4C3A8D),
-            Color(0xFF1B1533),
-          ],
+          colors: [Color(0xFF4C3A8D), Color(0xFF1B1533)],
         ),
       ),
-      child: const Icon(Icons.music_note_rounded, color: Colors.white70, size: 20),
+      child: const Icon(
+        Icons.music_note_rounded,
+        color: Colors.white70,
+        size: 20,
+      ),
     );
   }
 }
-

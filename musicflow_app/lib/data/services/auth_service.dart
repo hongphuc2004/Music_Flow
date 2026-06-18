@@ -120,7 +120,7 @@ class AuthService {
     scopes: ['openid', 'email', 'profile'],
   );
 
-  static Future<AuthResult> signInWithGoogle() async {  
+  static Future<AuthResult> signInWithGoogle() async {
     try {
       // Đăng xuất trước để đảm bảo chọn tài khoản mới
       await _googleSignIn.signOut();
@@ -212,12 +212,13 @@ class AuthService {
       final parts = token.split('.');
       if (parts.length == 3) {
         final payload = jsonDecode(
-            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+        );
         final exp = payload['exp'] as int?;
         if (exp != null) {
           final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
           final now = DateTime.now();
-          
+
           if (now.isAfter(expiry)) {
             print("Access token đã hết hạn, tự động gọi tryRefreshToken()...");
             return await tryRefreshToken();
@@ -344,4 +345,3 @@ class AuthResult {
 
   AuthResult({required this.success, this.message, this.user, this.token});
 }
-

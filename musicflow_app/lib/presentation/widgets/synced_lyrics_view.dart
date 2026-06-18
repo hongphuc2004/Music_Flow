@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/lrc_line_model.dart';
 
 class SyncedLyricsView extends StatefulWidget {
@@ -78,7 +78,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     }
 
     final viewportHeight = _scrollController.position.viewportDimension;
-    final targetOffset = (_activeIndex * _itemExtent) - (viewportHeight / 2) + (_itemExtent / 2);
+    final targetOffset =
+        (_activeIndex * _itemExtent) - (viewportHeight / 2) + (_itemExtent / 2);
 
     final clampedOffset = targetOffset.clamp(
       _scrollController.position.minScrollExtent,

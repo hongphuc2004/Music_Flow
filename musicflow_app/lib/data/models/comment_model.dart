@@ -26,10 +26,12 @@ class SongComment {
   });
 
   factory SongComment.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> rawReplies = (json['replies'] as List<dynamic>?) ?? const [];
-    final List<dynamic> rawReactions = (json['reactions'] as List<dynamic>?) ?? const [];
+    final List<dynamic> rawReplies =
+        (json['replies'] as List<dynamic>?) ?? const [];
+    final List<dynamic> rawReactions =
+        (json['reactions'] as List<dynamic>?) ?? const [];
     final Map<String, dynamic> rawSummary =
-      (json['reactionSummary'] as Map<String, dynamic>?) ?? const {};
+        (json['reactionSummary'] as Map<String, dynamic>?) ?? const {};
 
     return SongComment(
       id: (json['_id'] ?? '').toString(),
@@ -37,14 +39,14 @@ class SongComment {
       content: (json['content'] ?? '').toString(),
       parentCommentId: json['parentCommentId']?.toString(),
       reactionCount: (json['reactionCount'] as num?)?.toInt() ?? 0,
-      user: CommentUser.fromJson((json['user'] as Map<String, dynamic>?) ?? const {}),
+      user: CommentUser.fromJson(
+        (json['user'] as Map<String, dynamic>?) ?? const {},
+      ),
       reactions: rawReactions
           .whereType<Map<String, dynamic>>()
           .map(CommentReaction.fromJson)
           .toList(),
-      reactionSummary: {
-        'like': (rawSummary['like'] as num?)?.toInt() ?? 0,
-      },
+      reactionSummary: {'like': (rawSummary['like'] as num?)?.toInt() ?? 0},
       createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
       updatedAt: DateTime.tryParse((json['updatedAt'] ?? '').toString()),
       replies: rawReplies
@@ -59,10 +61,7 @@ class CommentReaction {
   final String userId;
   final String type;
 
-  CommentReaction({
-    required this.userId,
-    required this.type,
-  });
+  CommentReaction({required this.userId, required this.type});
 
   factory CommentReaction.fromJson(Map<String, dynamic> json) {
     return CommentReaction(
@@ -77,11 +76,7 @@ class CommentUser {
   final String name;
   final String avatar;
 
-  CommentUser({
-    required this.id,
-    required this.name,
-    required this.avatar,
-  });
+  CommentUser({required this.id, required this.name, required this.avatar});
 
   factory CommentUser.fromJson(Map<String, dynamic> json) {
     return CommentUser(

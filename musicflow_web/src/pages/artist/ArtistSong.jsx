@@ -43,8 +43,10 @@ import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import api from '../../services/api';
 import useAppToast from '../../components/common/useAppToast';
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function ArtistSong() {
-  const { showToast } = useAppToast();
+  const { showToast, updateToast } = useAppToast();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -139,10 +141,29 @@ function ArtistSong() {
       return;
     }
 
-    setCreateLoading(true);
-    setError(null);
+    const isEditing = Boolean(editingSong?._id);
+    const loadingTitle = isEditing ? 'Đang cập nhật' : 'Đang tải lên';
+    const loadingMessage = isEditing ? 'Bài hát của bạn đang được cập nhật...' : 'Bài hát của bạn đang được tải lên...';
+    let visualProgress = 0;
+    let progressTimer = null;
     
     try {
+      setCreateLoading(true);
+      setError(null);
+      showToast({
+        severity: 'info',
+        title: loadingTitle,
+        message: loadingMessage,
+        loading: true,
+        progress: 0,
+      });
+      progressTimer = window.setInterval(() => {
+        const remaining = 94 - visualProgress;
+        const nextStep = Math.max(0.45, remaining * 0.045);
+        visualProgress = Math.min(94, visualProgress + nextStep);
+        updateToast({ progress: Math.round(visualProgress) });
+      }, 450);
+
       const artistId = localStorage.getItem('artistId');
       if (!artistId) throw new Error('Không tìm thấy thông tin Artist hiện tại.');
 
@@ -160,13 +181,20 @@ function ArtistSong() {
       if (audioFile) uploadData.append('audio', audioFile);
       if (imageFile) uploadData.append('image', imageFile);
 
-      if (editingSong) {
+      if (isEditing) {
         await api.put(`/songs/${editingSong._id}`, uploadData);
-        showToast({ severity: 'success', title: 'Thành công!', message: 'Đã cập nhật bài hát thành công.' });
       } else {
         await api.post('/songs', uploadData);
-        showToast({ severity: 'success', title: 'Thành công!', message: 'Đã thêm bài hát mới thành công.' });
       }
+      if (progressTimer) window.clearInterval(progressTimer);
+      progressTimer = null;
+      updateToast({ progress: 100 });
+      await wait(350);
+      showToast({
+        severity: 'success',
+        title: 'Thành công!',
+        message: isEditing ? 'Đã cập nhật bài hát thành công.' : 'Đã thêm bài hát mới thành công.',
+      });
       setCreateDialogOpen(false);
       fetchSongs();
     } catch (err) {
@@ -175,6 +203,7 @@ function ArtistSong() {
       setError(message);
       showToast({ severity: 'error', title: 'Lưu thất bại', message });
     } finally {
+      if (progressTimer) window.clearInterval(progressTimer);
       setCreateLoading(false);
     }
   };

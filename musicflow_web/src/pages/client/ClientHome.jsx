@@ -32,10 +32,11 @@ import { clientArtistApi, clientPlaylistsApi, clientSongsApi } from '../../servi
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 import useAppToast from '../../components/common/useAppToast';
+import useClientSession from '../../hooks/useClientSession';
+import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 
-const getPersonalizedGreeting = () => {
+const getPersonalizedGreeting = (userName) => {
   const hour = new Date().getHours();
-  const userName = localStorage.getItem('userName') || localStorage.getItem('name') || 'Listener';
   if (hour >= 5 && hour < 12) {
     return { text: `Chào buổi sáng, ${userName} ☀️`, subtitle: 'Khởi đầu ngày mới tràn đầy cảm hứng!' };
   } else if (hour >= 12 && hour < 18) {
@@ -78,6 +79,7 @@ const PlayingEqualizer = ({ isPlaying }) => (
 
 
 function ClientHome() {
+  const { userName } = useClientSession();
   const navigate = useNavigate();
   const {
     playSong,
@@ -98,11 +100,12 @@ function ClientHome() {
   const lyricItemRefs = useRef([]);
   const lyricsContainerRef = useRef(null);
   const [nowPlayingColors, setNowPlayingColors] = useState(null);
+  const [scrubTime, setScrubTime] = useState(null);
   const { showToast } = useAppToast();
   const [followedArtists, setFollowedArtists] = useState({});
   const [artistFollowersState, setArtistFollowersState] = useState({});
 
-  const greeting = useMemo(() => getPersonalizedGreeting(), []);
+  const greeting = useMemo(() => getPersonalizedGreeting(userName), [userName]);
 
 
   useEffect(() => {
@@ -212,10 +215,17 @@ function ClientHome() {
       }
     };
 
-    extractColors();
+    const scheduleIdle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => extractColors(), { timeout: 800 })
+      : window.setTimeout(extractColors, 120);
 
     return () => {
       cancelled = true;
+      if (window.cancelIdleCallback && typeof scheduleIdle === 'number') {
+        window.cancelIdleCallback(scheduleIdle);
+      } else {
+        window.clearTimeout(scheduleIdle);
+      }
     };
   }, [currentSong?._id, currentSong?.imageUrl]);
 
@@ -256,6 +266,8 @@ function ClientHome() {
   }, [songs]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchArtistDetails = async () => {
       if (!topArtists.length) return;
       const isLoggedIn = !!localStorage.getItem('userId');
@@ -298,11 +310,17 @@ function ClientHome() {
         followMap[res.id] = res.isFollowing;
       });
 
-      setArtistFollowersState(followerMap);
-      setFollowedArtists(followMap);
+      if (!cancelled) {
+        setArtistFollowersState(followerMap);
+        setFollowedArtists(followMap);
+      }
     };
 
-    fetchArtistDetails();
+    const cancelIdleTask = scheduleIdleTask(fetchArtistDetails);
+    return () => {
+      cancelled = true;
+      cancelIdleTask();
+    };
   }, [topArtists]);
 
   const handleToggleFollow = async (artist) => {
@@ -696,7 +714,7 @@ function ClientHome() {
                         {playlist.name || 'Untitled playlist'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        {(playlist.songs || []).length} bài hát
+                        {playlist.songCount || 0} bài hát
                       </Typography>
                     </Box>
                   </Grid>
@@ -909,62 +927,47 @@ function ClientHome() {
                   }}
                 >
                   <Stack alignItems="center" spacing={2.25} sx={{ py: 1 }}>
-                    {/* Vinyl Record */}
+                    {/* Rotating album artwork */}
                     <Box
                       sx={{
                         position: 'relative',
                         width: 180,
                         height: 180,
                         borderRadius: '50%',
+                        overflow: 'hidden',
                         display: 'grid',
                         placeItems: 'center',
-                        animation: 'spinDisc 15s linear infinite',
+                        animation: 'spinCover 15s linear infinite',
                         animationPlayState: isPlaying ? 'running' : 'paused',
-                        '@keyframes spinDisc': {
+                        '@keyframes spinCover': {
                           from: { transform: 'rotate(0deg)' },
                           to: { transform: 'rotate(360deg)' },
                         },
+                        border: '3px solid rgba(255,255,255,0.18)',
                         boxShadow: () => {
                           const glowColor = nowPlayingColors
                             ? `rgba(${nowPlayingColors.bright.r}, ${nowPlayingColors.bright.g}, ${nowPlayingColors.bright.b}, 0.5)`
                             : 'rgba(20, 184, 166, 0.4)';
-                          return `0 0 0 8px rgba(0, 0, 0, 0.75), 0 0 0 9px rgba(255, 255, 255, 0.05), 0 12px 32px -6px ${glowColor}`;
+                          return `0 18px 38px -12px ${glowColor}, 0 10px 24px rgba(0,0,0,0.35)`;
                         },
-                        '&::after': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          borderRadius: '50%',
-                          background: 'radial-gradient(circle, transparent 35%, rgba(0,0,0,0.4) 36%, transparent 40%, rgba(255,255,255,0.08) 50%, transparent 60%, rgba(0,0,0,0.5) 70%, transparent 71%, rgba(255,255,255,0.05) 85%, transparent 100%)',
-                          pointerEvents: 'none',
-                        }
                       }}
                     >
                       <Avatar
                         key={currentSong._id}
                         src={currentSong.imageUrl || undefined}
+                        variant="rounded"
                         sx={{
-                          width: '88%',
-                          height: '88%',
-                          borderRadius: '50%',
-                          border: '2px solid #000',
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: 0,
+                          bgcolor: 'rgba(255,255,255,0.08)',
+                          '& img': {
+                            objectFit: 'cover',
+                          },
                         }}
                       >
                         <MusicIcon sx={{ fontSize: 70 }} />
                       </Avatar>
-                      {/* Spindle hole */}
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          width: 14,
-                          height: 14,
-                          borderRadius: '50%',
-                          bgcolor: '#0b0f19',
-                          border: '2.5px solid rgba(255,255,255,0.2)',
-                          zIndex: 2,
-                          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8)',
-                        }}
-                      />
                     </Box>
 
                     <Box sx={{ width: '100%', textAlign: 'center' }}>
@@ -988,8 +991,12 @@ function ClientHome() {
                       size="small"
                       min={0}
                       max={duration || currentSong?.duration || 1}
-                      value={Math.min(currentTime, duration || currentSong?.duration || 1)}
-                      onChange={(_, value) => seekTo(value)}
+                      value={Math.min(scrubTime ?? currentTime, duration || currentSong?.duration || 1)}
+                      onChange={(_, value) => setScrubTime(Number(value))}
+                      onChangeCommitted={(_, value) => {
+                        seekTo(value);
+                        setScrubTime(null);
+                      }}
                       sx={{
                         color: '#14b8a6',
                         height: 4,
@@ -1014,7 +1021,7 @@ function ClientHome() {
                     />
                     <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
                       <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
-                        {formatDuration(currentTime)}
+                        {formatDuration(scrubTime ?? currentTime)}
                       </Typography>
                       <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
                         {formatDuration(duration || currentSong?.duration || 0)}
@@ -1141,7 +1148,7 @@ function ClientHome() {
                           ? theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.1)' : 'rgba(20, 184, 166, 0.04)'
                           : 'transparent',
                         border: '1px solid',
-                        borderColor: (theme) => isCurrent ? 'rgba(20, 184, 166, 0.3)' : 'transparent',
+                        borderColor: isCurrent ? 'rgba(20, 184, 166, 0.3)' : 'transparent',
                         '&:hover': {
                           borderColor: '#14b8a6',
                           bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.06)' : 'rgba(20, 184, 166, 0.02)',

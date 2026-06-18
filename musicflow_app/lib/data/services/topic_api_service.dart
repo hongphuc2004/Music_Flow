@@ -23,7 +23,9 @@ class TopicApiService {
 
   static List<dynamic> _extractList(dynamic decoded, {String? key}) {
     if (decoded is List) return decoded;
-    if (decoded is Map<String, dynamic> && key != null && decoded[key] is List) {
+    if (decoded is Map<String, dynamic> &&
+        key != null &&
+        decoded[key] is List) {
       return decoded[key] as List<dynamic>;
     }
     throw TopicException('Định dạng dữ liệu chủ đề không đúng');
@@ -67,14 +69,15 @@ class TopicApiService {
       _decodeBody(response.body),
       key: 'topics',
     );
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(Topic.fromJson)
-        .toList();
+    return data.whereType<Map<String, dynamic>>().map(Topic.fromJson).toList();
   }
 
   static Future<List<Song>> fetchSongsByTopic(String topicId) async {
-    final response = await _getWithRetry(Uri.parse('$baseUrl/$topicId/songs'));
+    final response = await _getWithRetry(
+      Uri.parse(
+        '$baseUrl/$topicId/songs',
+      ).replace(queryParameters: const {'page': '1', 'limit': '50'}),
+    );
 
     if (response.statusCode != 200) {
       throw TopicException('Không thể tải bài hát theo chủ đề');
@@ -84,10 +87,7 @@ class TopicApiService {
       _decodeBody(response.body),
       key: 'songs',
     );
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(Song.fromJson)
-        .toList();
+    return data.whereType<Map<String, dynamic>>().map(Song.fromJson).toList();
   }
 }
 

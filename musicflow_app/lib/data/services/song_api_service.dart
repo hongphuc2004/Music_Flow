@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -30,21 +30,19 @@ class SearchResult {
   final List<Song> songs;
   final List<SearchArtist> artists;
 
-  const SearchResult({
-    required this.songs,
-    required this.artists,
-  });
+  const SearchResult({required this.songs, required this.artists});
 }
 
 class SongApiService {
-    /// Lay headers voi token
-    static Future<Map<String, String>> _getAuthHeaders() async {
-      final token = await AuthService.getToken();
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-    }
+  /// Lay headers voi token
+  static Future<Map<String, String>> _getAuthHeaders() async {
+    final token = await AuthService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
   static const String baseUrl = ApiConfig.songsEndpoint;
   static const Duration timeout = Duration(seconds: 15); // Timeout 15 giay
   static const int maxRetries = 3; // So lan retry toi da
@@ -52,13 +50,12 @@ class SongApiService {
   /// Fetch voi retry va timeout
   static Future<http.Response> _getWithRetry(Uri uri) async {
     int attempts = 0;
-    
+
     while (attempts < maxRetries) {
       try {
         attempts++;
         final response = await http.get(uri).timeout(timeout);
         return response;
-        
       } on TimeoutException {
         if (attempts >= maxRetries) {
           throw NetworkException('Kết nối quá chậm. Vui lòng kiểm tra mạng.');
@@ -72,16 +69,20 @@ class SongApiService {
           throw NetworkException('Lỗi kết nối: $e');
         }
       }
-      
+
       // Ch? tru?c khi retry (exponential backoff)
       await Future.delayed(Duration(milliseconds: 500 * attempts));
     }
-    
+
     throw NetworkException('Không thể kết nối sau $maxRetries lần thử.');
   }
 
   static Future<List<Song>> fetchSongs() async {
-    final response = await _getWithRetry(Uri.parse(baseUrl));
+    final response = await _getWithRetry(
+      Uri.parse(
+        baseUrl,
+      ).replace(queryParameters: const {'page': '1', 'limit': '50'}),
+    );
 
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
@@ -116,19 +117,24 @@ class SongApiService {
       'mode': mode,
     };
 
-    final uri = Uri.parse('$baseUrl/flowchart').replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '$baseUrl/flowchart',
+    ).replace(queryParameters: queryParams);
     final response = await _getWithRetry(uri);
 
     if (response.statusCode != 200) {
-      throw NetworkException('Không thể tải dữ liệu bảng xếp hạng (${response.statusCode})');
+      throw NetworkException(
+        'Không thể tải dữ liệu bảng xếp hạng (${response.statusCode})',
+      );
     }
 
     final data = json.decode(response.body) as Map<String, dynamic>;
     List<String> timeSlots;
-    final timestampSlots = (data['timeSlotTimestamps'] as List<dynamic>? ?? const [])
-        .map((e) => e.toString())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final timestampSlots =
+        (data['timeSlotTimestamps'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     if (timestampSlots.isNotEmpty) {
       timeSlots = timestampSlots.map(_toLocalHourLabel).toList();
@@ -206,7 +212,7 @@ class SongApiService {
     String? letter,
   }) async {
     final queryParams = <String, String>{};
-    
+
     if (query != null && query.isNotEmpty) {
       queryParams['query'] = query;
     }
@@ -217,7 +223,9 @@ class SongApiService {
       queryParams['letter'] = letter;
     }
 
-    final uri = Uri.parse("$baseUrl/search").replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      "$baseUrl/search",
+    ).replace(queryParameters: queryParams);
     final response = await _getWithRetry(uri);
 
     if (response.statusCode == 200) {
@@ -233,9 +241,7 @@ class SongApiService {
     String? artist,
     String? letter,
   }) async {
-    final queryParams = <String, String>{
-      'includeArtists': 'true',
-    };
+    final queryParams = <String, String>{'includeArtists': 'true'};
 
     if (query != null && query.isNotEmpty) {
       queryParams['query'] = query;
@@ -247,7 +253,9 @@ class SongApiService {
       queryParams['letter'] = letter;
     }
 
-    final uri = Uri.parse("$baseUrl/search").replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      "$baseUrl/search",
+    ).replace(queryParameters: queryParams);
     final response = await _getWithRetry(uri);
 
     if (response.statusCode != 200) {
@@ -303,7 +311,7 @@ class SongApiService {
 
       final uri = Uri.parse(baseUrl);
       final request = http.MultipartRequest('POST', uri);
-      
+
       // Them auth header
       request.headers['Authorization'] = 'Bearer $token';
 
@@ -326,17 +334,15 @@ class SongApiService {
       }
 
       // Them file audio
-      request.files.add(await http.MultipartFile.fromPath(
-        'audio',
-        audioFile.path,
-      ));
+      request.files.add(
+        await http.MultipartFile.fromPath('audio', audioFile.path),
+      );
 
       // Them file image neu co
       if (imageFile != null && await imageFile.exists()) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'image',
-          imageFile.path,
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath('image', imageFile.path),
+        );
       }
 
       // G?i request
@@ -366,15 +372,9 @@ class SongApiService {
         message: 'Upload quá lâu. Vui lòng thử lại.',
       );
     } on SocketException {
-      return UploadResult(
-        success: false,
-        message: 'Không có kết nối mạng.',
-      );
+      return UploadResult(success: false, message: 'Không có kết nối mạng.');
     } catch (e) {
-      return UploadResult(
-        success: false,
-        message: 'Lỗi upload: $e',
-      );
+      return UploadResult(success: false, message: 'Lỗi upload: $e');
     }
   }
 
@@ -383,26 +383,22 @@ class SongApiService {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        return MyUploadsResult(
-          success: false,
-          message: 'Vui lòng đăng nhập',
-        );
+        return MyUploadsResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/my-uploads'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/my-uploads'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(timeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final songs = (data['songs'] as List)
             .map((e) => Song.fromJson(e))
             .toList();
-        return MyUploadsResult(
-          success: true,
-          songs: songs,
-        );
+        return MyUploadsResult(success: true, songs: songs);
       } else {
         return MyUploadsResult(
           success: false,
@@ -410,10 +406,7 @@ class SongApiService {
         );
       }
     } catch (e) {
-      return MyUploadsResult(
-        success: false,
-        message: 'Lỗi: $e',
-      );
+      return MyUploadsResult(success: false, message: 'Lỗi: $e');
     }
   }
 
@@ -435,14 +428,16 @@ class SongApiService {
       if (artist != null) body['artists'] = [artist];
       if (lyrics != null) body['lyrics'] = lyrics;
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/$songId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(body),
-      ).timeout(timeout);
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/$songId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode(body),
+          )
+          .timeout(timeout);
 
       final data = json.decode(response.body);
 
@@ -468,26 +463,39 @@ class SongApiService {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        return TogglePublicResult(success: false, message: 'Vui lòng đăng nhập');
+        return TogglePublicResult(
+          success: false,
+          message: 'Vui lòng đăng nhập',
+        );
       }
-      http.Response response = await http.patch(
-        Uri.parse('$baseUrl/$songId/toggle-public'),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      http.Response response = await http
+          .patch(
+            Uri.parse('$baseUrl/$songId/toggle-public'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(timeout);
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http.patch(
-            Uri.parse('$baseUrl/$songId/toggle-public'),
-            headers: await _getAuthHeaders(),
-          ).timeout(timeout);
+          response = await http
+              .patch(
+                Uri.parse('$baseUrl/$songId/toggle-public'),
+                headers: await _getAuthHeaders(),
+              )
+              .timeout(timeout);
         }
       }
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
-        return TogglePublicResult(success: true, message: data['message'] ?? 'Thành công');
+        return TogglePublicResult(
+          success: true,
+          message: data['message'] ?? 'Thành công',
+        );
       } else {
-        return TogglePublicResult(success: false, message: data['message'] ?? 'Thay đổi thất bại');
+        return TogglePublicResult(
+          success: false,
+          message: data['message'] ?? 'Thay đổi thất bại',
+        );
       }
     } catch (e) {
       return TogglePublicResult(success: false, message: 'Lỗi: $e');
@@ -502,16 +510,20 @@ class SongApiService {
         return DeleteResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
-      final response = await http.delete(
-        Uri.parse('$baseUrl/$songId'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(timeout);
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/$songId'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(timeout);
 
       final data = json.decode(response.body);
 
       return DeleteResult(
         success: response.statusCode == 200,
-        message: data['message'] ?? (response.statusCode == 200 ? 'Đã xóa' : 'Xóa thất bại'),
+        message:
+            data['message'] ??
+            (response.statusCode == 200 ? 'Đã xóa' : 'Xóa thất bại'),
       );
     } catch (e) {
       return DeleteResult(success: false, message: 'Lỗi: $e');
@@ -519,7 +531,9 @@ class SongApiService {
   }
 
   /// Xin quyền tải bài hát từ backend
-  static Future<DownloadSongApiResult> requestDownloadSong(String songId) async {
+  static Future<DownloadSongApiResult> requestDownloadSong(
+    String songId,
+  ) async {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
@@ -529,10 +543,12 @@ class SongApiService {
         );
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/$songId/download'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/$songId/download'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(timeout);
 
       final data = json.decode(response.body) as Map<String, dynamic>;
 
@@ -579,14 +595,16 @@ class SongApiService {
           .toList();
       if (normalized.isEmpty) return true;
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/download-history/sync'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'songIds': normalized}),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/download-history/sync'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'songIds': normalized}),
+          )
+          .timeout(timeout);
 
       return response.statusCode == 200;
     } catch (_) {
@@ -601,11 +619,7 @@ class UploadResult {
   final String message;
   final Song? song;
 
-  UploadResult({
-    required this.success,
-    required this.message,
-    this.song,
-  });
+  UploadResult({required this.success, required this.message, this.song});
 }
 
 /// Kết quả lấy danh sách upload
@@ -614,11 +628,7 @@ class MyUploadsResult {
   final String? message;
   final List<Song> songs;
 
-  MyUploadsResult({
-    required this.success,
-    this.message,
-    this.songs = const [],
-  });
+  MyUploadsResult({required this.success, this.message, this.songs = const []});
 }
 
 /// K?t qu? toggle public
@@ -690,7 +700,7 @@ class FlowchartSongMetrics {
 class NetworkException implements Exception {
   final String message;
   NetworkException(this.message);
-  
+
   @override
   String toString() => message;
 }

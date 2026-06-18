@@ -225,8 +225,13 @@ export const topicsApi = {
 };
 
 export const clientSongsApi = {
-  getAllPublic: () => cachedGet('/songs', {}, 30000),
-  getRecommended: (params) => cachedGet('/songs/recommended', { params }, 15000),
+  getAllPublic: (params = { page: 1, limit: 50 }) => cachedGet('/songs', { params }, 30000),
+  getRecommended: (params = {}) => {
+    if (String(params.refresh || '').toLowerCase() === 'true') {
+      return api.get('/songs/recommended', { params });
+    }
+    return cachedGet('/songs/recommended', { params }, 15000);
+  },
   search: (params) => api.get('/songs/search', { params }),
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
   getMyUploads: () => api.get('/songs/my-uploads'),
@@ -234,6 +239,9 @@ export const clientSongsApi = {
   removeFromDownloadHistory: (songId) => api.delete(`/songs/download-history/${songId}`),
   requestDownload: (songId) => api.post(`/songs/${songId}/download`),
   uploadSong: (formData) => api.post('/songs', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateSong: (songId, formData) => api.put(`/songs/${songId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
 };
@@ -259,12 +267,13 @@ export const clientPlaylistsApi = {
 
 export const clientTopicsApi = {
   getAll: () => cachedGet('/topics', {}, 30000),
-  getSongsByTopic: (topicId) => api.get(`/topics/${topicId}/songs`),
+  getSongsByTopic: (topicId, params = { page: 1, limit: 50 }) =>
+    api.get(`/topics/${topicId}/songs`, { params }),
 };
 
 export const clientArtistApi = {
   getProfile: (id) => cachedGet('/artist/profile', { params: { id } }, 20000),
-  getFollowStatus: (id) => api.get(`/artist/${id}/follow-status`),
+  getFollowStatus: (id) => cachedGet(`/artist/${id}/follow-status`, {}, 20000),
   toggleFollow: (id) => api.post(`/artist/${id}/follow`),
 };
 

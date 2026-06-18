@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_shared.dart';
 
@@ -31,10 +31,7 @@ class ArtistHeaderSection extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1A2230),
-            Color(0xFF10141C),
-          ],
+          colors: [Color(0xFF1A2230), Color(0xFF10141C)],
         ),
       ),
       child: Column(
@@ -42,7 +39,9 @@ class ArtistHeaderSection extends StatelessWidget {
           Stack(
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
                 child: SizedBox(
                   height: 210,
                   width: double.infinity,
@@ -58,7 +57,9 @@ class ArtistHeaderSection extends StatelessWidget {
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(30),
+                    ),
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -97,23 +98,27 @@ class ArtistHeaderSection extends StatelessWidget {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 // Fallback to first song image if avatar fails
-                                if (artist.songs.isNotEmpty && artist.songs.first.imageUrl.isNotEmpty) {
+                                if (artist.songs.isNotEmpty &&
+                                    artist.songs.first.imageUrl.isNotEmpty) {
                                   return Image.network(
                                     artist.songs.first.imageUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _buildTextFallback(),
+                                    errorBuilder: (_, __, ___) =>
+                                        _buildTextFallback(),
                                   );
                                 }
                                 return _buildTextFallback();
                               },
                             )
-                          : (artist.songs.isNotEmpty && artist.songs.first.imageUrl.isNotEmpty)
-                              ? Image.network(
-                                  artist.songs.first.imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _buildTextFallback(),
-                                )
-                              : _buildTextFallback(),
+                          : (artist.songs.isNotEmpty &&
+                                artist.songs.first.imageUrl.isNotEmpty)
+                          ? Image.network(
+                              artist.songs.first.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _buildTextFallback(),
+                            )
+                          : _buildTextFallback(),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -134,11 +139,13 @@ class ArtistHeaderSection extends StatelessWidget {
                     children: [
                       ArtistStatChip(
                         icon: Icons.graphic_eq_rounded,
-                        label: '${_formatCompactNumber(artist.monthlyListeners)} listeners',
+                        label:
+                            '${_formatCompactNumber(artist.monthlyListeners)} listeners',
                       ),
                       ArtistStatChip(
                         icon: Icons.favorite_outline_rounded,
-                        label: '${_formatCompactNumber(artist.followers)} followers',
+                        label:
+                            '${_formatCompactNumber(artist.followers)} followers',
                       ),
                       ArtistStatChip(
                         icon: Icons.music_note_rounded,
@@ -166,13 +173,13 @@ class ArtistHeaderSection extends StatelessWidget {
                         icon: isFollowLoading
                             ? Icons.hourglass_top_rounded
                             : isFollowing
-                                ? Icons.check_circle_outline_rounded
-                                : Icons.person_add_alt_1_rounded,
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.person_add_alt_1_rounded,
                         label: isFollowLoading
                             ? 'Đang cập nhật'
                             : isFollowing
-                                ? 'Đang theo dõi'
-                                : 'Theo dõi',
+                            ? 'Đang theo dõi'
+                            : 'Theo dõi',
                         onTap: onFollow,
                       ),
                     ],
@@ -216,10 +223,7 @@ class ArtistHeaderSection extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF22364D),
-            Color(0xFF0E131B),
-          ],
+          colors: [Color(0xFF22364D), Color(0xFF0E131B)],
         ),
       ),
     );
@@ -240,10 +244,7 @@ class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _CircleIconButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _CircleIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -261,4 +262,3 @@ class _CircleIconButton extends StatelessWidget {
     );
   }
 }
-

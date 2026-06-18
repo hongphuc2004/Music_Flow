@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
@@ -48,7 +48,9 @@ class _ArtistScreenState extends State<ArtistScreen> {
       _errorMessage = null;
     });
 
-    final result = await ArtistApiService.fetchArtistProfileByName(widget.artistName);
+    final result = await ArtistApiService.fetchArtistProfileByName(
+      widget.artistName,
+    );
     if (!mounted) return;
 
     setState(() {
@@ -151,7 +153,9 @@ class _ArtistScreenState extends State<ArtistScreen> {
       SnackBar(
         content: Text(
           result.message ??
-              (result.success ? 'Cập nhật theo dõi thành công' : 'Không thể cập nhật theo dõi'),
+              (result.success
+                  ? 'Cập nhật theo dõi thành công'
+                  : 'Không thể cập nhật theo dõi'),
         ),
         duration: const Duration(seconds: 2),
       ),
@@ -165,10 +169,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
       body: Stack(
         children: [
           const ArtistBackdrop(),
-          SafeArea(
-            bottom: false,
-            child: _buildBody(),
-          ),
+          SafeArea(bottom: false, child: _buildBody()),
         ],
       ),
     );
@@ -205,7 +206,11 @@ class _ArtistScreenState extends State<ArtistScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.person_search_rounded, size: 58, color: Colors.white54),
+                const Icon(
+                  Icons.person_search_rounded,
+                  size: 58,
+                  color: Colors.white54,
+                ),
                 const SizedBox(height: 14),
                 const Text(
                   'Khong tim thay artist',
@@ -217,7 +222,8 @@ class _ArtistScreenState extends State<ArtistScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  _errorMessage ?? 'Nghệ sĩ này hiện chưa có dữ liệu để hiển thị.',
+                  _errorMessage ??
+                      'Nghệ sĩ này hiện chưa có dữ liệu để hiển thị.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white70,
@@ -271,7 +277,9 @@ class _ArtistScreenState extends State<ArtistScreen> {
                   ),
                   const SizedBox(height: 28),
                   ArtistReleaseSection(
-                    latestSong: _artist!.songs.isNotEmpty ? _artist!.songs.first : null,
+                    latestSong: _artist!.songs.isNotEmpty
+                        ? _artist!.songs.first
+                        : null,
                   ),
                   const SizedBox(height: 28),
                   ArtistAboutSection(artist: _artist!),
@@ -284,4 +292,3 @@ class _ArtistScreenState extends State<ArtistScreen> {
     );
   }
 }
-

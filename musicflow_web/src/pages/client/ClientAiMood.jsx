@@ -26,10 +26,12 @@ import {
   PersonRounded as UserIcon,
   ExpandMoreRounded as ChevronIcon,
   MusicNoteRounded as MusicIcon,
+  ChevronLeftRounded as CollapseIcon,
+  HistoryRounded as HistoryIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientAiApi } from '../../services/api';
-import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import useClientToast from '../../components/Layout/client/useClientToast';
 
 const QUICK_PROMPTS = [
@@ -325,7 +327,7 @@ function ThinkingBubble() {
 }
 
 export default function ClientAiMood() {
-  const { playSong } = useClientPlayer();
+  const { playSong } = useClientPlayerActions();
   const { showToast } = useClientToast();
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -341,6 +343,14 @@ export default function ClientAiMood() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(
+    () => localStorage.getItem('musicflow-ai-history-open') !== 'false'
+  );
+
+  const setHistoryPanelVisibility = (open) => {
+    setHistoryPanelOpen(open);
+    localStorage.setItem('musicflow-ai-history-open', String(open));
+  };
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -532,6 +542,7 @@ export default function ClientAiMood() {
         }}
       >
         {/* ── LEFT PANEL: Conversation History ── */}
+        {historyPanelOpen && (
         <Paper
           sx={{
             width: { xs: 0, md: 280 },
@@ -572,6 +583,15 @@ export default function ClientAiMood() {
                 }}
               >
                 <AddIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Đóng lịch sử trò chuyện">
+              <IconButton
+                size="small"
+                onClick={() => setHistoryPanelVisibility(false)}
+                sx={{ color: 'text.secondary' }}
+              >
+                <CollapseIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Stack>
@@ -650,6 +670,7 @@ export default function ClientAiMood() {
             )}
           </Box>
         </Paper>
+        )}
 
         {/* ── RIGHT PANEL: Chat Area ── */}
         <Stack sx={{ flexGrow: 1, minWidth: 0 }} spacing={0}>
@@ -679,6 +700,21 @@ export default function ClientAiMood() {
                 flexShrink: 0,
               }}
             >
+              {!historyPanelOpen && (
+                <Tooltip title="Mở lịch sử trò chuyện">
+                  <IconButton
+                    size="small"
+                    onClick={() => setHistoryPanelVisibility(true)}
+                    sx={{
+                      color: '#8b5cf6',
+                      bgcolor: 'rgba(139,92,246,0.1)',
+                      '&:hover': { bgcolor: 'rgba(139,92,246,0.18)' },
+                    }}
+                  >
+                    <HistoryIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
               <Box
                 sx={{
                   width: 36,

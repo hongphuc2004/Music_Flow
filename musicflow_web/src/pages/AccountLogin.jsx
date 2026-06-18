@@ -26,6 +26,7 @@ import {
   ExploreOutlined,
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../services/api';
+import { notifyClientSessionChanged } from '../hooks/useClientSession';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -106,6 +107,7 @@ function AccountLogin() {
           localStorage.setItem('userName', user.name || 'Listener');
           localStorage.setItem('email', user.email || '');
           localStorage.setItem('userId', user._id || '');
+          notifyClientSessionChanged();
           navigate('/client/home');
         } catch (err) {
           setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
@@ -151,6 +153,7 @@ function AccountLogin() {
             localStorage.setItem('userName', user.name || 'Listener');
             localStorage.setItem('email', user.email || '');
             localStorage.setItem('userId', user._id || '');
+            notifyClientSessionChanged();
             navigate('/client/home');
           } catch (err) {
             setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
@@ -179,6 +182,7 @@ function AccountLogin() {
       localStorage.setItem('userName', user.name || 'Listener');
       localStorage.setItem('email', user.email || '');
       localStorage.setItem('userId', user._id || '');
+      notifyClientSessionChanged();
       if (user.role === 'user') {
         navigate('/client/home');
       } else {

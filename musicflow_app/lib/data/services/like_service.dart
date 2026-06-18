@@ -31,10 +31,12 @@ class LikeService {
         );
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/status/$songId'),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/status/$songId'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
       return LikeResult(
@@ -52,18 +54,23 @@ class LikeService {
     }
   }
 
-  static Future<LikeResult> toggleLike(String songId, {required bool liked}) async {
+  static Future<LikeResult> toggleLike(
+    String songId, {
+    required bool liked,
+  }) async {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
         return LikeResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/toggle/$songId'),
-        headers: await _getAuthHeaders(),
-        body: jsonEncode({'liked': liked}),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/toggle/$songId'),
+            headers: await _getAuthHeaders(),
+            body: jsonEncode({'liked': liked}),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
       return LikeResult(

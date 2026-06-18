@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
@@ -101,10 +101,7 @@ class _SongRow extends StatelessWidget {
                     song.artists.isNotEmpty
                         ? song.artists.join(', ')
                         : 'Unknown artist',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -133,4 +130,3 @@ class _SongRow extends StatelessWidget {
     );
   }
 }
-

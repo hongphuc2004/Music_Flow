@@ -88,7 +88,7 @@ function ClientDiscover() {
   const fetchRecommendedSongs = useCallback(async ({ forceFresh = false } = {}) => {
     const params = {
       limit: 24,
-      ...(forceFresh ? { _t: Date.now() } : {}),
+      ...(forceFresh ? { refresh: true } : {}),
     };
     const songsRes = await clientSongsApi.getRecommended(params);
     return Array.isArray(songsRes.data) ? songsRes.data : [];
@@ -588,7 +588,7 @@ function ClientDiscover() {
                   variant="outlined"
                   disabled={refreshingSuggestions}
                 >
-                  {refreshingSuggestions ? 'Đang cập nhật...' : 'Đổi đề xuất'}
+                  {refreshingSuggestions ? 'Đang cập nhật...' : 'Đổi bài hát'}
                 </Button>
               </Stack>
 
@@ -1004,7 +1004,7 @@ function ClientDiscover() {
 
                     <Typography variant="body2" noWrap sx={{ fontWeight: 750, mb: 0.25 }}>{playlist.name}</Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }} noWrap>
-                      {(playlist.songs || []).length} bài hát
+                      {playlist.songCount || 0} bài hát
                     </Typography>
                   </Box>
                 ))}
@@ -1085,7 +1085,7 @@ function ClientDiscover() {
 
                     <Typography variant="body2" noWrap sx={{ fontWeight: 750, mb: 0.25 }}>{playlist.name}</Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }} noWrap>
-                      {(playlist.songs || []).length} bài hát
+                      {playlist.songCount || 0} bài hát
                     </Typography>
                   </Box>
                 ))}

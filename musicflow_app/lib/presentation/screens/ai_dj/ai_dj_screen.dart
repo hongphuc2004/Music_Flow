@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/config/api_config.dart';
@@ -136,11 +136,16 @@ class _AiDjScreenState extends State<AiDjScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         final conversations = (data['conversations'] as List? ?? [])
             .whereType<Map>()
-            .map((item) => MoodConversation.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) =>
+                  MoodConversation.fromJson(Map<String, dynamic>.from(item)),
+            )
             .toList();
         final playlists = (data['playlists'] as List? ?? [])
             .whereType<Map>()
-            .map((item) => MoodPlaylist.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => MoodPlaylist.fromJson(Map<String, dynamic>.from(item)),
+            )
             .where((playlist) => playlist.songs.isNotEmpty)
             .toList();
 
@@ -148,7 +153,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
         setState(() {
           _conversations = conversations;
           _playlists = playlists;
-          _activeConversationId = conversations.isNotEmpty ? conversations.first.id : null;
+          _activeConversationId = conversations.isNotEmpty
+              ? conversations.first.id
+              : null;
           _isHistoryLoading = false;
         });
 
@@ -158,7 +165,8 @@ class _AiDjScreenState extends State<AiDjScreen> {
       } else {
         if (!mounted) return;
         setState(() {
-          _errorMessage = data['message'] ?? 'Không thể tải lịch sử Mood Music.';
+          _errorMessage =
+              data['message'] ?? 'Không thể tải lịch sử Mood Music.';
           _isHistoryLoading = false;
         });
       }
@@ -184,11 +192,15 @@ class _AiDjScreenState extends State<AiDjScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         final messages = (data['messages'] as List? ?? [])
             .whereType<Map>()
-            .map((item) => MoodMessage.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => MoodMessage.fromJson(Map<String, dynamic>.from(item)),
+            )
             .toList();
         final playlists = (data['playlists'] as List? ?? [])
             .whereType<Map>()
-            .map((item) => MoodPlaylist.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => MoodPlaylist.fromJson(Map<String, dynamic>.from(item)),
+            )
             .where((playlist) => playlist.songs.isNotEmpty)
             .toList();
 
@@ -291,7 +303,8 @@ class _AiDjScreenState extends State<AiDjScreen> {
         headers: headers,
         body: json.encode({
           'prompt': prompt,
-          if (_activeConversationId != null) 'conversationId': _activeConversationId,
+          if (_activeConversationId != null)
+            'conversationId': _activeConversationId,
         }),
       );
       final data = json.decode(response.body);
@@ -299,7 +312,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
       if (response.statusCode == 200 && data['success'] == true) {
         final newMessages = (data['messages'] as List? ?? [])
             .whereType<Map>()
-            .map((item) => MoodMessage.fromJson(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => MoodMessage.fromJson(Map<String, dynamic>.from(item)),
+            )
             .toList();
         final responseSongs = (data['songs'] as List? ?? [])
             .whereType<Map>()
@@ -310,13 +325,17 @@ class _AiDjScreenState extends State<AiDjScreen> {
             ? MoodPlaylist.fromJson(Map<String, dynamic>.from(playlistJson))
             : null;
         final conversation = data['conversation'] is Map
-            ? MoodConversation.fromJson(Map<String, dynamic>.from(data['conversation']))
+            ? MoodConversation.fromJson(
+                Map<String, dynamic>.from(data['conversation']),
+              )
             : null;
 
         setState(() {
           if (conversation != null) {
             _activeConversationId = conversation.id;
-            final exists = _conversations.any((item) => item.id == conversation.id);
+            final exists = _conversations.any(
+              (item) => item.id == conversation.id,
+            );
             if (!exists) _conversations = [conversation, ..._conversations];
           }
           _messages.addAll(newMessages);
@@ -333,7 +352,8 @@ class _AiDjScreenState extends State<AiDjScreen> {
         setState(() => _errorMessage = 'Yêu cầu đăng nhập để chat với AI.');
       } else {
         setState(() {
-          _errorMessage = data['message'] ?? 'Đã xảy ra lỗi khi tạo playlist AI.';
+          _errorMessage =
+              data['message'] ?? 'Đã xảy ra lỗi khi tạo playlist AI.';
         });
       }
     } catch (_) {
@@ -438,7 +458,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
         color: Colors.grey.shade800,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isFallback ? Colors.amber.withValues(alpha: 0.45) : Colors.purpleAccent.withValues(alpha: 0.35),
+          color: isFallback
+              ? Colors.amber.withValues(alpha: 0.45)
+              : Colors.purpleAccent.withValues(alpha: 0.35),
         ),
       ),
       child: Column(
@@ -457,7 +479,10 @@ class _AiDjScreenState extends State<AiDjScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.play_circle_fill, color: Colors.purpleAccent),
+                icon: const Icon(
+                  Icons.play_circle_fill,
+                  color: Colors.purpleAccent,
+                ),
                 onPressed: () => widget.onPlayAll(playlist.songs),
               ),
             ],
@@ -478,7 +503,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
                 style: TextStyle(color: Colors.amber, fontSize: 12),
               ),
             ),
-          ...playlist.songs.take(15).map((song) => _buildSongTile(playlist.songs, song)),
+          ...playlist.songs
+              .take(15)
+              .map((song) => _buildSongTile(playlist.songs, song)),
         ],
       ),
     );
@@ -499,7 +526,10 @@ class _AiDjScreenState extends State<AiDjScreen> {
               avatar: const Icon(Icons.add, size: 18),
               onPressed: _startNewConversation,
               backgroundColor: Colors.purpleAccent,
-              labelStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              labelStyle: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             );
           }
           final conversation = _conversations[index - 1];
@@ -509,7 +539,11 @@ class _AiDjScreenState extends State<AiDjScreen> {
             selected: selected,
             onSelected: (_) => _loadConversation(conversation.id),
             onDeleted: () => _deleteConversation(conversation.id),
-            deleteIcon: const Icon(Icons.close, size: 18, color: Colors.white70),
+            deleteIcon: const Icon(
+              Icons.close,
+              size: 18,
+              color: Colors.white70,
+            ),
             selectedColor: Colors.purpleAccent,
             backgroundColor: Colors.grey.shade900,
             labelStyle: TextStyle(
@@ -525,7 +559,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
   Widget _buildBody() {
     if (_isHistoryLoading) {
       return const Expanded(
-        child: Center(child: CircularProgressIndicator(color: Colors.purpleAccent)),
+        child: Center(
+          child: CircularProgressIndicator(color: Colors.purpleAccent),
+        ),
       );
     }
 
@@ -591,7 +627,9 @@ class _AiDjScreenState extends State<AiDjScreen> {
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18),
-              child: Center(child: CircularProgressIndicator(color: Colors.purpleAccent)),
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.purpleAccent),
+              ),
             ),
         ],
       ),
@@ -626,7 +664,11 @@ class _AiDjScreenState extends State<AiDjScreen> {
           children: [
             _buildConversationChips(),
             const SizedBox(height: 12),
-            const Icon(Icons.auto_awesome, size: 48, color: Colors.purpleAccent),
+            const Icon(
+              Icons.auto_awesome,
+              size: 48,
+              color: Colors.purpleAccent,
+            ),
             const SizedBox(height: 10),
             const Text(
               'Bạn đang cảm thấy thế nào?',
@@ -661,7 +703,8 @@ class _AiDjScreenState extends State<AiDjScreen> {
               ),
               onSubmitted: (_) => _isLoading ? null : _fetchAiPlaylist(),
             ),
-            if (_errorMessage.isNotEmpty && (_messages.isNotEmpty || _playlists.isNotEmpty))
+            if (_errorMessage.isNotEmpty &&
+                (_messages.isNotEmpty || _playlists.isNotEmpty))
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(

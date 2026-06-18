@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 
 import 'home_shared.dart';
@@ -6,10 +6,7 @@ import 'home_shared.dart';
 class HomeTopBar extends StatelessWidget {
   final String displayName;
 
-  const HomeTopBar({
-    super.key,
-    required this.displayName,
-  });
+  const HomeTopBar({super.key, required this.displayName});
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +14,8 @@ class HomeTopBar extends StatelessWidget {
     final greeting = now.hour < 12
         ? 'Chào buổi sáng'
         : now.hour < 18
-            ? 'Chào buổi chiều'
-            : 'Chào buổi tối';
+        ? 'Chào buổi chiều'
+        : 'Chào buổi tối';
 
     return Row(
       children: [
@@ -29,11 +26,7 @@ class HomeTopBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: 28,
-            height: 28,
-          ),
+          child: Image.asset('assets/images/logo.png', width: 28, height: 28),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -102,11 +95,7 @@ class HomeHeroSection extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1B2330),
-            Color(0xFF10141C),
-            Color(0xFF18121A),
-          ],
+          colors: [Color(0xFF1B2330), Color(0xFF10141C), Color(0xFF18121A)],
         ),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
@@ -215,7 +204,9 @@ class HomeHeroSection extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: recommendedSongs.isEmpty ? null : onPlayRecommended,
+                  onPressed: recommendedSongs.isEmpty
+                      ? null
+                      : onPlayRecommended,
                   icon: const Icon(Icons.shuffle_rounded),
                   label: const Text('Mix gợi ý'),
                   style: OutlinedButton.styleFrom(
@@ -361,4 +352,3 @@ class _QuickActionCard extends StatelessWidget {
     );
   }
 }
-

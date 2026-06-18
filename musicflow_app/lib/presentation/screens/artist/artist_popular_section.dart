@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_shared.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
@@ -7,11 +7,7 @@ class ArtistPopularSection extends StatelessWidget {
   final List<Song> songs;
   final void Function(Song song, int index)? onSongTap;
 
-  const ArtistPopularSection({
-    super.key,
-    required this.songs,
-    this.onSongTap,
-  });
+  const ArtistPopularSection({super.key, required this.songs, this.onSongTap});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +38,11 @@ class ArtistPopularSection extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Icon(Icons.queue_music_rounded, color: Colors.white54, size: 42),
+                const Icon(
+                  Icons.queue_music_rounded,
+                  color: Colors.white54,
+                  size: 42,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Nghệ sĩ này chưa có bài hát cong khai',
@@ -164,10 +164,7 @@ class _PopularSongTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       song.artists.join(', '),
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -199,4 +196,3 @@ class _PopularSongTile extends StatelessWidget {
     );
   }
 }
-

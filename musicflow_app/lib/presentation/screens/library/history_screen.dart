@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
@@ -62,7 +62,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() {
       _history.removeWhere((s) => s.id == song.id);
     });
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Đã xóa "${song.title}" khỏi lịch sử')),
@@ -75,7 +75,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Xóa lịch sử?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Xóa lịch sử?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Bạn có chắc muốn xóa toàn bộ lịch sử phát nhạc?',
           style: TextStyle(color: Colors.grey[400]),
@@ -153,7 +156,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ],
                         ),
                       ),
-                    
+
                     // Song list
                     Expanded(
                       child: ListView.builder(
@@ -167,7 +170,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ],
                 ),
-                
+
           // Mini Player
           if (_audioState.currentSong != null)
             Positioned(
@@ -264,4 +267,3 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 }
-

@@ -61,13 +61,15 @@ class ArtistProfile {
       id: json['_id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       avatarUrl: json['avatar']?.toString() ?? '',
-      coverUrl: json['coverUrl']?.toString() ?? json['avatar']?.toString() ?? '',
+      coverUrl:
+          json['coverUrl']?.toString() ?? json['avatar']?.toString() ?? '',
       bio: json['bio']?.toString() ?? '',
       totalSongs: (json['totalSongs'] as num?)?.toInt() ?? 0,
       totalLikes: (json['totalLikes'] as num?)?.toInt() ?? 0,
       monthlyListeners: (json['monthlyListeners'] as num?)?.toInt() ?? 0,
       followers: (json['followers'] as num?)?.toInt() ?? 0,
-      latestReleaseLabel: json['latestReleaseLabel']?.toString() ?? 'Chua cap nhat',
+      latestReleaseLabel:
+          json['latestReleaseLabel']?.toString() ?? 'Chua cap nhat',
       songs: songsJson
           .whereType<Map>()
           .map((song) => Song.fromJson(Map<String, dynamic>.from(song)))

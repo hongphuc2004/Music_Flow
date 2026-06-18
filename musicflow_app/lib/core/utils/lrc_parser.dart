@@ -11,9 +11,7 @@ class LrcParser {
     }
 
     // Normalize line endings and handle literal "\\n" copied from some editors/APIs.
-    var normalized = lrcContent
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n');
+    var normalized = lrcContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
     if (!normalized.contains('\n') && normalized.contains(r'\n')) {
       normalized = normalized.replaceAll(r'\n', '\n');
     }

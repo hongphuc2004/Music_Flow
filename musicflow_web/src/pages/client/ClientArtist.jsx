@@ -36,13 +36,9 @@ function ClientArtist() {
         setLoading(true);
         setError('');
 
-        const response = await clientSongsApi.getAllPublic();
+        const response = await clientSongsApi.search({ artistId });
         const allSongs = Array.isArray(response.data) ? response.data : [];
-        const filteredSongs = allSongs.filter((song) =>
-          Array.isArray(song.artists) && song.artists.some((artist) => artist?._id === artistId)
-        );
-
-        setSongs(filteredSongs);
+        setSongs(allSongs);
       } catch (err) {
         setError(err.response?.data?.message || 'Không thể tải dữ liệu nghệ sĩ.');
       } finally {

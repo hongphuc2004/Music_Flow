@@ -1,38 +1,40 @@
 import { lazy, Suspense, createContext, useState, useMemo, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
-import { ClientPlayerProvider } from './components/Layout/client/ClientPlayerProvider';
 import AppToastProvider from './components/common/AppToastProvider';
 import { refreshAccessToken } from './services/api';
+import { notifyClientSessionChanged } from './hooks/useClientSession';
+import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/routePreload';
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {}, mode: 'light' });
 
-const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
-const Accounts = lazy(() => import('./pages/admin/Accounts'));
-const Songs = lazy(() => import('./pages/admin/Songs'));
-const Topics = lazy(() => import('./pages/admin/Topics'));
-const Playlists = lazy(() => import('./pages/admin/Playlists'));
-const Settings = lazy(() => import('./pages/admin/Settings'));
-const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const Dashboard = createLazyRoute('/');
+const Accounts = createLazyRoute('/accounts');
+const Songs = createLazyRoute('/songs');
+const Topics = createLazyRoute('/topics');
+const Playlists = createLazyRoute('/playlists');
+const Settings = createLazyRoute('/settings');
+const AdminLogin = createLazyRoute('/adminlogin');
 
-const ArtistAnalytics = lazy(() => import('./pages/artist/ArtistAnalytics'));
-const ArtistDashboard = lazy(() => import('./pages/artist/ArtistDashboard'));
-const ArtistLogin = lazy(() => import('./pages/artist/ArtistLogin'));
-const ArtistProfile = lazy(() => import('./pages/artist/ArtistProfile'));
-const ArtistSong = lazy(() => import('./pages/artist/ArtistSong'));
-const ArtistRegister = lazy(() => import('./pages/artist/ArtistRegister'));
+const ArtistAnalytics = createLazyRoute('/artist/analytics');
+const ArtistDashboard = createLazyRoute('/artist/dashboard');
+const ArtistLogin = createLazyRoute('/artistlogin');
+const ArtistProfile = createLazyRoute('/artist/profile');
+const ArtistSong = createLazyRoute('/artist/songs');
+const ArtistRegister = createLazyRoute('/artist/register');
 
-const ClientHome = lazy(() => import('./pages/client/ClientHome'));
-const ClientDiscover = lazy(() => import('./pages/client/ClientDiscover'));
-const ClientLibrary = lazy(() => import('./pages/client/ClientLibrary'));
-const ClientFavorites = lazy(() => import('./pages/client/ClientFavorites'));
-const ClientProfile = lazy(() => import('./pages/client/ClientProfile'));
-const ClientArtist = lazy(() => import('./pages/client/ClientArtist'));
-const ClientCollection = lazy(() => import('./pages/client/ClientCollection'));
-const ClientPlaylist = lazy(() => import('./pages/client/ClientPlaylist'));
-const ClientGenres = lazy(() => import('./pages/client/ClientGenres'));
-const ClientRankings = lazy(() => import('./pages/client/ClientRankings'));
-const ClientAiMood = lazy(() => import('./pages/client/ClientAiMood'));
+const ClientHome = createLazyRoute('/client/home');
+const ClientDiscover = createLazyRoute('/client/discover');
+const ClientLibrary = createLazyRoute('/client/library');
+const ClientFavorites = createLazyRoute('/client/favorites');
+const ClientProfile = createLazyRoute('/client/profile');
+const ClientArtist = createLazyRoute('/client/artists/:artistId');
+const ClientCollection = createLazyRoute('/client/collections/:collectionId');
+const ClientPlaylist = createLazyRoute('/client/playlists/:playlistId');
+const ClientGenres = createLazyRoute('/client/genres');
+const ClientRankings = createLazyRoute('/client/rankings');
+const ClientAiMood = createLazyRoute('/client/ai-mood');
+const ClientPlayerBoundary = lazy(() => import('./components/Layout/client/ClientPlayerBoundary'));
 
 
 
@@ -103,12 +105,32 @@ const RouteFallback = () => (
   </Box>
 );
 
+function RouteProviders({ children }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    preloadRoute(location.pathname);
+  }, [location.pathname]);
+
+  if (location.pathname.startsWith('/client')) {
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <ClientPlayerBoundary>{children}</ClientPlayerBoundary>
+      </Suspense>
+    );
+  }
+
+  return children;
+}
+
 function App() {
   const [mode, setMode] = useState(() => {
     return localStorage.getItem('theme-mode') || 'light';
   });
 
-  const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingSession, setLoadingSession] = useState(
+    () => Boolean(localStorage.getItem('role'))
+  );
 
   useEffect(() => {
     const initSession = async () => {
@@ -127,11 +149,24 @@ function App() {
           localStorage.removeItem('artistName');
           localStorage.removeItem('artistAvatar');
           localStorage.removeItem('artistEmail');
+          localStorage.removeItem('userAvatar');
+          notifyClientSessionChanged();
         }
       }
       setLoadingSession(false);
     };
     initSession();
+  }, []);
+
+  useEffect(() => {
+    const role = localStorage.getItem('role');
+    const routes = role === 'admin'
+      ? ['/', '/accounts', '/songs', '/topics', '/playlists']
+      : role === 'artist'
+        ? ['/artist/dashboard', '/artist/songs', '/artist/analytics', '/artist/profile']
+        : ['/client/home', '/client/discover', '/client/genres', '/client/rankings'];
+
+    preloadRoutesWhenIdle(routes);
   }, []);
 
   const colorMode = useMemo(
@@ -180,6 +215,15 @@ function App() {
               },
             },
           },
+          MuiAvatar: {
+            defaultProps: {
+              slotProps: {
+                img: {
+                  decoding: 'async',
+                },
+              },
+            },
+          },
         },
       }),
     [mode]
@@ -194,8 +238,8 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AppToastProvider>
-          <ClientPlayerProvider>
-            <Router>
+          <Router>
+            <RouteProviders>
               <Suspense fallback={<RouteFallback />}>
                 <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
@@ -335,10 +379,10 @@ function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="*" element={<HomeRedirect />} />
               </Routes>
-            </Suspense>
+              </Suspense>
+            </RouteProviders>
           </Router>
-        </ClientPlayerProvider>
-      </AppToastProvider>
+        </AppToastProvider>
     </ThemeProvider>
   </ColorModeContext.Provider>
   );

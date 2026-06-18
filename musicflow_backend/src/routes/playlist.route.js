@@ -6,23 +6,46 @@ const Artist = require("../models/artist.model");
 const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
+const PLAYLIST_SONG_SELECT =
+  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
+
 // ================= GET SYSTEM PLAYLISTS (public) =================
 router.get("/system", async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 50);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
+    const skip = (page - 1) * limit;
+    const filter = { isPublic: true };
 
-    const playlists = await PlaylistSong.find({ isPublic: true })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate({
-        path: "songs",
-        match: { isPublic: true },
-        populate: { path: "artists" },
-      });
+    const [playlists, total] = await Promise.all([
+      PlaylistSong.aggregate([
+        { $match: filter },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            name: 1,
+            description: 1,
+            coverImage: 1,
+            isPublic: 1,
+            createdBy: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            songCount: { $size: { $ifNull: ["$songs", []] } },
+          },
+        },
+      ]),
+      PlaylistSong.countDocuments(filter),
+    ]);
 
     res.json({
       success: true,
       playlists,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error("Get system playlists error:", error);
@@ -37,11 +60,14 @@ router.get("/system", async (req, res) => {
 // ================= GET SINGLE SYSTEM PLAYLIST (public) =================
 router.get("/system/:id", async (req, res) => {
   try {
-    const playlist = await PlaylistSong.findById(req.params.id).populate({
-      path: "songs",
-      match: { isPublic: true },
-      populate: { path: "artists" },
-    });
+    const playlist = await PlaylistSong.findById(req.params.id)
+      .populate({
+        path: "songs",
+        match: { isPublic: true },
+        select: PLAYLIST_SONG_SELECT,
+        populate: { path: "artists", select: "name avatar" },
+      })
+      .lean();
 
     if (!playlist || !playlist.isPublic) {
       return res.status(404).json({

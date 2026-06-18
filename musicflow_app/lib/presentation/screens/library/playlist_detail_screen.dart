@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -46,11 +46,12 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       setState(() {});
     }
   }
+
   Future<void> _refreshPlaylist() async {
     setState(() => _isLoading = true);
-    
+
     final result = await PlaylistApiService.getPlaylist(_playlist.id);
-    
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -110,153 +111,165 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                     title: Text(
                       _playlist.name,
                       style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(color: Colors.black, blurRadius: 10),
-                    ],
-                  ),
-                ),
-                background: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Cover image
-                    if (_playlist.displayCoverImage.isNotEmpty)
-                      Image.network(
-                        _playlist.displayCoverImage,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _buildDefaultCover(),
-                      )
-                    else
-                      _buildDefaultCover(),
-                    
-                    // Gradient overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.7),
-                            Colors.black,
-                          ],
-                          stops: const [0.3, 0.7, 1.0],
-                        ),
+                        fontWeight: FontWeight.bold,
+                        shadows: [Shadow(color: Colors.black, blurRadius: 10)],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: _showPlaylistOptions,
-                ),
-              ],
-            ),
-
-            // Playlist info and play button
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_playlist.description.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          _playlist.description,
-                          style: TextStyle(color: Colors.grey[400]),
-                        ),
-                      ),
-                    
-                    Row(
+                    background: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Text(
-                          '${_playlist.songCount} bài hát',
-                          style: TextStyle(color: Colors.grey[400]),
-                        ),
-                        const Spacer(),
-                        
-                        // Shuffle button
-                        IconButton(
-                          icon: const Icon(Icons.shuffle, color: Colors.greenAccent),
-                          onPressed: _playlist.songs.isNotEmpty ? () {
-                            // TODO: Shuffle play
-                          } : null,
-                        ),
-                        
-                        // Play all button
-                        ElevatedButton.icon(
-                          onPressed: _playlist.songs.isNotEmpty ? _playAll : null,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Phát'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.greenAccent,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                        // Cover image
+                        if (_playlist.displayCoverImage.isNotEmpty)
+                          Image.network(
+                            _playlist.displayCoverImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildDefaultCover(),
+                          )
+                        else
+                          _buildDefaultCover(),
+
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.7),
+                                Colors.black,
+                              ],
+                              stops: const [0.3, 0.7, 1.0],
                             ),
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: _showPlaylistOptions,
+                    ),
                   ],
                 ),
-              ),
-            ),
 
-            // Song list
-            if (_isLoading)
-              const SliverToBoxAdapter(
-                child: Center(
+                // Playlist info and play button
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(color: Colors.greenAccent),
-                  ),
-                ),
-              )
-            else if (_playlist.songs.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    children: [
-                      Icon(Icons.music_off, color: Colors.grey[600], size: 64),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Playlist trống',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 18),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Thêm bài hát vào playlist từ thư viện',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final song = _playlist.songs[index];
-                    return _buildSongTile(song, index);
-                  },
-                  childCount: _playlist.songs.length,
-                ),
-              ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_playlist.description.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              _playlist.description,
+                              style: TextStyle(color: Colors.grey[400]),
+                            ),
+                          ),
 
-            // Bottom padding
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
+                        Row(
+                          children: [
+                            Text(
+                              '${_playlist.songCount} bài hát',
+                              style: TextStyle(color: Colors.grey[400]),
+                            ),
+                            const Spacer(),
+
+                            // Shuffle button
+                            IconButton(
+                              icon: const Icon(
+                                Icons.shuffle,
+                                color: Colors.greenAccent,
+                              ),
+                              onPressed: _playlist.songs.isNotEmpty
+                                  ? () {
+                                      // TODO: Shuffle play
+                                    }
+                                  : null,
+                            ),
+
+                            // Play all button
+                            ElevatedButton.icon(
+                              onPressed: _playlist.songs.isNotEmpty
+                                  ? _playAll
+                                  : null,
+                              icon: const Icon(Icons.play_arrow),
+                              label: const Text('Phát'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.greenAccent,
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Song list
+                if (_isLoading)
+                  const SliverToBoxAdapter(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(
+                          color: Colors.greenAccent,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_playlist.songs.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.music_off,
+                            color: Colors.grey[600],
+                            size: 64,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Playlist trống',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Thêm bài hát vào playlist từ thư viện',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final song = _playlist.songs[index];
+                      return _buildSongTile(song, index);
+                    }, childCount: _playlist.songs.length),
+                  ),
+
+                // Bottom padding
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
             ),
-          ],
-        ),
-      ),
-          
+          ),
+
           // Mini Player - hiển thị khi có bài hát đang phát
           if (_audioState.currentSong != null)
             Positioned(
@@ -286,11 +299,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   Widget _buildDefaultCover() {
     return Container(
       color: Colors.grey[900],
-      child: const Icon(
-        Icons.queue_music,
-        color: Colors.white24,
-        size: 100,
-      ),
+      child: const Icon(Icons.queue_music, color: Colors.white24, size: 100),
     );
   }
 
@@ -305,27 +314,37 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         child: const Icon(Icons.delete, color: Colors.redAccent),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog<bool>(  
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1E1E),
-            title: const Text('Xóa bài hát?', style: TextStyle(color: Colors.white)),
-            content: Text(
-              'Xóa "${song.title}" khỏi playlist?',
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+        return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: const Color(0xFF1E1E1E),
+                title: const Text(
+                  'Xóa bài hát?',
+                  style: TextStyle(color: Colors.white),
+                ),
+                content: Text(
+                  'Xóa "${song.title}" khỏi playlist?',
+                  style: TextStyle(color: Colors.grey[400]),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text(
+                      'Hủy',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text(
+                      'Xóa',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Xóa', style: TextStyle(color: Colors.redAccent)),
-              ),
-            ],
-          ),
-        ) ?? false;
+            ) ??
+            false;
       },
       onDismissed: (_) => _removeSong(song),
       child: ListTile(
@@ -400,7 +419,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.edit, color: Colors.white70),
-            title: const Text('Chỉnh sửa playlist', style: TextStyle(color: Colors.white)),
+            title: const Text(
+              'Chỉnh sửa playlist',
+              style: TextStyle(color: Colors.white),
+            ),
             onTap: () {
               Navigator.pop(context);
               _showEditDialog();
@@ -416,7 +438,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-            title: const Text('Xóa playlist', style: TextStyle(color: Colors.redAccent)),
+            title: const Text(
+              'Xóa playlist',
+              style: TextStyle(color: Colors.redAccent),
+            ),
             onTap: () {
               Navigator.pop(context);
               _confirmDelete();
@@ -431,12 +456,15 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   void _showEditDialog() {
     final nameController = TextEditingController(text: _playlist.name);
     final descController = TextEditingController(text: _playlist.description);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Chỉnh sửa playlist', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Chỉnh sửa playlist',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -481,13 +509,13 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
               Navigator.pop(context);
-              
+
               final result = await PlaylistApiService.updatePlaylist(
                 playlistId: _playlist.id,
                 name: nameController.text.trim(),
                 description: descController.text.trim(),
               );
-              
+
               if (result.success && result.playlist != null) {
                 setState(() {
                   _playlist = result.playlist!;
@@ -499,7 +527,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 }
               }
             },
-            child: const Text('Lưu', style: TextStyle(color: Colors.greenAccent)),
+            child: const Text(
+              'Lưu',
+              style: TextStyle(color: Colors.greenAccent),
+            ),
           ),
         ],
       ),
@@ -511,7 +542,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Xóa playlist?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Xóa playlist?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Bạn có chắc muốn xóa "${_playlist.name}"?\nHành động này không thể hoàn tác.',
           style: TextStyle(color: Colors.grey[400]),
@@ -524,9 +558,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              
-              final result = await PlaylistApiService.deletePlaylist(_playlist.id);
-              
+
+              final result = await PlaylistApiService.deletePlaylist(
+                _playlist.id,
+              );
+
               if (result.success) {
                 if (mounted) {
                   Navigator.pop(context); // Return to library
@@ -543,4 +579,3 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     );
   }
 }
-

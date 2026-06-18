@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -41,7 +41,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     });
 
     try {
-      final result = await PlaylistApiService.getSystemPlaylist(widget.playlist.id);
+      final result = await PlaylistApiService.getSystemPlaylist(
+        widget.playlist.id,
+      );
       if (!result.success || result.playlist == null) {
         throw Exception(result.message ?? 'Không thể tải playlist hệ thống');
       }
@@ -66,12 +68,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(),
-          _buildBody(),
-        ],
-      ),
+      body: CustomScrollView(slivers: [_buildSliverAppBar(), _buildBody()]),
     );
   }
 
@@ -130,11 +127,16 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: (playlistDetail?.displayCoverImage ?? widget.playlist.displayCoverImage).isNotEmpty
+                    child:
+                        (playlistDetail?.displayCoverImage ??
+                                widget.playlist.displayCoverImage)
+                            .isNotEmpty
                         ? Image.network(
-                            playlistDetail?.displayCoverImage ?? widget.playlist.displayCoverImage,
+                            playlistDetail?.displayCoverImage ??
+                                widget.playlist.displayCoverImage,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+                            errorBuilder: (_, __, ___) =>
+                                _buildPlaceholderCover(),
                           )
                         : _buildPlaceholderCover(),
                   ),
@@ -153,10 +155,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            albumColor.withOpacity(0.8),
-            albumColor.withOpacity(0.4),
-          ],
+          colors: [albumColor.withOpacity(0.8), albumColor.withOpacity(0.4)],
         ),
       ),
       child: Center(
@@ -194,9 +193,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: fetchSongs,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: albumColor,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: albumColor),
                 child: const Text('Thử lại'),
               ),
             ],
@@ -226,23 +223,20 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     return SliverPadding(
       padding: const EdgeInsets.only(bottom: 80),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            if (index == 0) {
-              return _buildPlayAllButton();
-            }
-            final song = songs[index - 1];
-            return _buildSongTile(song, index);
-          },
-          childCount: songs.length + 1,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (index == 0) {
+            return _buildPlayAllButton();
+          }
+          final song = songs[index - 1];
+          return _buildSongTile(song, index);
+        }, childCount: songs.length + 1),
       ),
     );
   }
 
   void _playSong(Song song, {int? index}) {
     Navigator.pop(context);
-    
+
     Future.delayed(const Duration(milliseconds: 50), () {
       if (index != null && widget.onPlayAll != null) {
         widget.onPlayAll!(songs, startIndex: index);
@@ -254,9 +248,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   void _playAll() {
     if (songs.isEmpty) return;
-    
+
     Navigator.pop(context);
-    
+
     Future.delayed(const Duration(milliseconds: 50), () {
       if (widget.onPlayAll != null) {
         widget.onPlayAll!(songs, startIndex: 0);
@@ -273,10 +267,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         children: [
           Text(
             '${songs.length} bài hát',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
           const Spacer(),
           ElevatedButton.icon(
@@ -305,10 +296,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             width: 24,
             child: Text(
               '$index',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
           ),
           const SizedBox(width: 8),
@@ -323,7 +311,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                 width: 45,
                 height: 45,
                 color: albumColor.withOpacity(0.3),
-                child: const Icon(Icons.music_note, size: 24, color: Colors.white54),
+                child: const Icon(
+                  Icons.music_note,
+                  size: 24,
+                  color: Colors.white54,
+                ),
               ),
             ),
           ),
@@ -331,24 +323,18 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       ),
       title: Text(
         song.title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.w500),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
         song.artists.join(', '),
-        style: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 13,
-        ),
+        style: TextStyle(color: Colors.grey[400], fontSize: 13),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: SongOptionsMenu(song: song),
-      onTap: () => _playSong(song, index: index - 1),  // Click anywhere to play
+      onTap: () => _playSong(song, index: index - 1), // Click anywhere to play
     );
   }
 }
-

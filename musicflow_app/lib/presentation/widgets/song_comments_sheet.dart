@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/comment_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/comment_service.dart';
@@ -149,12 +149,13 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     }
 
     final hasLiked = comment.reactions.any(
-      (reaction) => reaction.userId == _currentUserId && reaction.type == 'like',
+      (reaction) =>
+          reaction.userId == _currentUserId && reaction.type == 'like',
     );
 
     final result = hasLiked
         ? await CommentService.removeReaction(comment.id)
-      : await CommentService.reactToComment(commentId: comment.id);
+        : await CommentService.reactToComment(commentId: comment.id);
 
     if (!mounted) return;
 
@@ -185,7 +186,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1B1B1B),
-          title: const Text('Sửa bình luận', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Sửa bình luận',
+            style: TextStyle(color: Colors.white),
+          ),
           content: TextFormField(
             initialValue: draftContent,
             style: const TextStyle(color: Colors.white),
@@ -212,10 +216,16 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
 
     if (nextContent == null || nextContent.isEmpty) return;
 
-    final result = await CommentService.updateComment(commentId: comment.id, content: nextContent);
+    final result = await CommentService.updateComment(
+      commentId: comment.id,
+      content: nextContent,
+    );
     if (!mounted) return;
 
-    _setStatus(result.message ?? 'Cập nhật bình luận', isError: !result.success);
+    _setStatus(
+      result.message ?? 'Cập nhật bình luận',
+      isError: !result.success,
+    );
     if (result.success) {
       await _loadComments(reset: true);
     }
@@ -237,14 +247,23 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1B1B1B),
-        title: const Text('Xóa bình luận?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Xóa bình luận?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'Bình luận và các trả lời con sẽ bị xóa.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa'),
+          ),
         ],
       ),
     );
@@ -334,7 +353,9 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
               Expanded(
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Colors.greenAccent),
+                        child: CircularProgressIndicator(
+                          color: Colors.greenAccent,
+                        ),
                       )
                     : RefreshIndicator(
                         onRefresh: () => _loadComments(reset: true),
@@ -355,14 +376,18 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                             ),
                             if (_hasMore)
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                                 child: TextButton(
                                   onPressed: _isLoadingMore ? null : _loadMore,
                                   child: _isLoadingMore
                                       ? const SizedBox(
                                           width: 16,
                                           height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
                                         )
                                       : const Text('Xem thêm bình luận'),
                                 ),
@@ -375,7 +400,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.07),
                     borderRadius: BorderRadius.circular(10),
@@ -385,12 +413,19 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                       Expanded(
                         child: Text(
                           'Đang trả lời ${_replyingTo!.user.name}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                       GestureDetector(
                         onTap: () => setState(() => _replyingTo = null),
-                        child: const Icon(Icons.close, color: Colors.white54, size: 16),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white54,
+                          size: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -399,7 +434,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusIsError
                         ? Colors.redAccent.withOpacity(0.15)
@@ -414,7 +452,9 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                   child: Text(
                     _statusMessage!,
                     style: TextStyle(
-                      color: _statusIsError ? Colors.redAccent : Colors.greenAccent,
+                      color: _statusIsError
+                          ? Colors.redAccent
+                          : Colors.greenAccent,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -451,7 +491,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.send_rounded, color: Colors.greenAccent),
+                          : const Icon(
+                              Icons.send_rounded,
+                              color: Colors.greenAccent,
+                            ),
                     ),
                   ],
                 ),
@@ -466,9 +509,11 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
   Widget _buildCommentNode(SongComment comment, {required int depth}) {
     final leftPadding = 8.0 + (depth * 16);
     final hasAvatar = comment.user.avatar.isNotEmpty;
-    final isMine = _currentUserId.isNotEmpty && comment.user.id == _currentUserId;
+    final isMine =
+        _currentUserId.isNotEmpty && comment.user.id == _currentUserId;
     final hasLiked = comment.reactions.any(
-      (reaction) => reaction.userId == _currentUserId && reaction.type == 'like',
+      (reaction) =>
+          reaction.userId == _currentUserId && reaction.type == 'like',
     );
 
     final reactionText = '👍 ${comment.reactionSummary['like'] ?? 0}';
@@ -484,7 +529,9 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
               CircleAvatar(
                 radius: 14,
                 backgroundColor: Colors.white12,
-                backgroundImage: hasAvatar ? NetworkImage(comment.user.avatar) : null,
+                backgroundImage: hasAvatar
+                    ? NetworkImage(comment.user.avatar)
+                    : null,
                 child: hasAvatar
                     ? null
                     : const Icon(Icons.person, size: 15, color: Colors.white70),
@@ -492,7 +539,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
               const SizedBox(width: 8),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(12),
@@ -514,12 +564,23 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                           ),
                           if (isMine)
                             PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_horiz, color: Colors.white54, size: 18),
+                              icon: const Icon(
+                                Icons.more_horiz,
+                                color: Colors.white54,
+                                size: 18,
+                              ),
                               color: const Color(0xFF222222),
-                              onSelected: (value) => _handleOwnCommentAction(value, comment),
+                              onSelected: (value) =>
+                                  _handleOwnCommentAction(value, comment),
                               itemBuilder: (context) => const [
-                                PopupMenuItem<String>(value: 'edit', child: Text('Sửa')),
-                                PopupMenuItem<String>(value: 'delete', child: Text('Xóa')),
+                                PopupMenuItem<String>(
+                                  value: 'edit',
+                                  child: Text('Sửa'),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'delete',
+                                  child: Text('Xóa'),
+                                ),
                               ],
                             ),
                         ],
@@ -527,7 +588,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                       const SizedBox(height: 3),
                       Text(
                         comment.content,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 7),
                       Wrap(
@@ -538,7 +602,10 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                             onTap: () => setState(() => _replyingTo = comment),
                             child: const Text(
                               'Tra loi',
-                              style: TextStyle(color: Colors.white54, fontSize: 11),
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                           GestureDetector(
@@ -546,14 +613,19 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                             child: Text(
                               hasLiked ? 'Bo like' : 'Like',
                               style: TextStyle(
-                                color: hasLiked ? Colors.redAccent : Colors.greenAccent,
+                                color: hasLiked
+                                    ? Colors.redAccent
+                                    : Colors.greenAccent,
                                 fontSize: 11,
                               ),
                             ),
                           ),
                           Text(
                             reactionText,
-                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -563,10 +635,11 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
               ),
             ],
           ),
-          ...comment.replies.map((child) => _buildCommentNode(child, depth: depth + 1)),
+          ...comment.replies.map(
+            (child) => _buildCommentNode(child, depth: depth + 1),
+          ),
         ],
       ),
     );
   }
 }
-

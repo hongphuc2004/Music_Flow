@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class ArtistPalette {
   static const Color accent = Color(0xFF66F2C5);
@@ -51,10 +51,7 @@ class _ArtistGlow extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _ArtistGlow({
-    required this.size,
-    required this.color,
-  });
+  const _ArtistGlow({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -63,12 +60,7 @@ class _ArtistGlow extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            color,
-            color.withOpacity(0),
-          ],
-        ),
+        gradient: RadialGradient(colors: [color, color.withOpacity(0)]),
       ),
     );
   }
@@ -106,18 +98,12 @@ class ArtistSectionHeader extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
               ),
             ],
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }
@@ -127,11 +113,7 @@ class ArtistStatChip extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const ArtistStatChip({
-    super.key,
-    required this.icon,
-    required this.label,
-  });
+  const ArtistStatChip({super.key, required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -261,4 +243,3 @@ class ArtistGhostButton extends StatelessWidget {
     );
   }
 }
-

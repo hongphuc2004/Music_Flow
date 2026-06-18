@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -154,7 +154,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (_selectedAvatarFile != null) {
         request.files.add(
-          await http.MultipartFile.fromPath('avatar', _selectedAvatarFile!.path),
+          await http.MultipartFile.fromPath(
+            'avatar',
+            _selectedAvatarFile!.path,
+          ),
         );
       }
 
@@ -347,8 +350,8 @@ class _AvatarPicker extends StatelessWidget {
                     backgroundImage: hasSelectedFile
                         ? FileImage(selectedFile!) as ImageProvider
                         : hasRemoteAvatar
-                            ? NetworkImage(avatarUrl)
-                            : null,
+                        ? NetworkImage(avatarUrl)
+                        : null,
                     child: !hasSelectedFile && !hasRemoteAvatar
                         ? const Icon(
                             Icons.person,
@@ -427,15 +430,16 @@ class _ProfileInputField extends StatelessWidget {
       readOnly: readOnly,
       textInputAction: textInputAction,
       keyboardType: keyboardType,
-      style: TextStyle(
-        color: readOnly ? Colors.white70 : Colors.white,
-      ),
+      style: TextStyle(color: readOnly ? Colors.white70 : Colors.white),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
         fillColor: const Color(0xFF1A1F27),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -457,10 +461,7 @@ class _SaveProfileButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback? onTap;
 
-  const _SaveProfileButton({
-    required this.isLoading,
-    required this.onTap,
-  });
+  const _SaveProfileButton({required this.isLoading, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -503,4 +504,3 @@ class _SaveProfileButton extends StatelessWidget {
     );
   }
 }
-

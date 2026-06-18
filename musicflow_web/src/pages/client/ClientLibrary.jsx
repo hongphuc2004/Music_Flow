@@ -40,6 +40,7 @@ import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../se
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 import useClientToast from '../../components/Layout/client/useClientToast';
+import useClientSession from '../../hooks/useClientSession';
 
 const PLAYLIST_PRESETS = [
   { name: 'Synthwave', url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&auto=format&fit=crop&q=80' },
@@ -48,10 +49,13 @@ const PLAYLIST_PRESETS = [
   { name: 'Pop Vibe', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80' },
 ];
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function ClientLibrary() {
   const navigate = useNavigate();
   const { playSong } = useClientPlayerActions();
-  const { showToast } = useClientToast();
+  const { showToast, updateToast } = useClientToast();
+  const { userName } = useClientSession();
 
   const [playlists, setPlaylists] = useState([]);
   const [uploads, setUploads] = useState([]);
@@ -68,6 +72,8 @@ function ClientLibrary() {
   const [uploadLyrics, setUploadLyrics] = useState('');
   const [uploadAudioFile, setUploadAudioFile] = useState(null);
   const [uploadImageFile, setUploadImageFile] = useState(null);
+  const [uploadImageUrl, setUploadImageUrl] = useState('');
+  const [editingUploadSong, setEditingUploadSong] = useState(null);
 
   // Tab & Search States
   const [activeTab, setActiveTab] = useState(0); // 0: Playlists, 1: Favorites, 2: Uploads, 3: Downloads
@@ -90,8 +96,6 @@ function ClientLibrary() {
   // Hover states for song rows
   const [hoveredSongId, setHoveredSongId] = useState(null);
   const [coverImageError, setCoverImageError] = useState(false);
-
-  const userName = useMemo(() => localStorage.getItem('userName') || 'Listener', []);
 
   const loadLibrary = async () => {
     try {
@@ -134,33 +138,97 @@ function ClientLibrary() {
     setUploadLyrics('');
     setUploadAudioFile(null);
     setUploadImageFile(null);
+    setUploadImageUrl('');
+    setEditingUploadSong(null);
+  };
+
+  const openCreateUploadDialog = () => {
+    resetUploadForm();
+    setUploadOpen(true);
+  };
+
+  const openEditUploadDialog = (song) => {
+    setEditingUploadSong(song);
+    setUploadTitle(song?.title || '');
+    setUploadLyrics(song?.lyrics || '');
+    setUploadAudioFile(null);
+    setUploadImageFile(null);
+    setUploadImageUrl(song?.imageUrl || '');
+    setUploadOpen(true);
   };
 
   const handleUploadSubmit = async () => {
-    if (!uploadAudioFile) {
+    const isEditing = Boolean(editingUploadSong?._id);
+
+    if (!isEditing && !uploadAudioFile) {
       showToast({ severity: 'error', title: 'Thiếu file', message: 'Vui lòng chọn file audio để upload.' });
       return;
     }
 
+    const loadingTitle = isEditing ? 'Đang cập nhật' : 'Đang tải lên';
+    const loadingMessage = isEditing ? 'Bài hát của bạn đang được cập nhật...' : 'Bài hát của bạn đang được tải lên...';
+    let visualProgress = 0;
+    let progressTimer = null;
+    const showUploadToast = (progress) => {
+      showToast({
+        severity: 'info',
+        title: loadingTitle,
+        message: loadingMessage,
+        loading: true,
+        progress,
+      });
+    };
+    const updateUploadProgress = (progress) => {
+      updateToast({ progress });
+    };
+
     try {
       setUploading(true);
       setError('');
+      showUploadToast(0);
+      progressTimer = window.setInterval(() => {
+        const remaining = 94 - visualProgress;
+        const nextStep = Math.max(0.45, remaining * 0.045);
+        visualProgress = Math.min(94, visualProgress + nextStep);
+        updateUploadProgress(Math.round(visualProgress));
+      }, 450);
 
       const formData = new FormData();
-      formData.append('audio', uploadAudioFile);
+      if (uploadAudioFile) formData.append('audio', uploadAudioFile);
       if (uploadImageFile) formData.append('image', uploadImageFile);
+      if (
+        uploadImageUrl.trim() &&
+        (!isEditing || uploadImageUrl.trim() !== String(editingUploadSong?.imageUrl || '').trim())
+      ) {
+        formData.append('imageUrl', uploadImageUrl.trim());
+      }
       if (uploadTitle.trim()) formData.append('title', uploadTitle.trim());
-      if (uploadLyrics.trim()) formData.append('lyrics', uploadLyrics.trim());
-      formData.append('isPublic', 'false');
+      if (isEditing || uploadLyrics.trim()) formData.append('lyrics', uploadLyrics);
+      if (!isEditing) formData.append('isPublic', 'false');
 
-      await clientSongsApi.uploadSong(formData);
+      if (isEditing) {
+        await clientSongsApi.updateSong(editingUploadSong._id, formData);
+      } else {
+        await clientSongsApi.uploadSong(formData);
+      }
+      if (progressTimer) window.clearInterval(progressTimer);
+      progressTimer = null;
+      updateUploadProgress(100);
+      await wait(350);
       setUploadOpen(false);
       resetUploadForm();
       await loadLibrary();
-      showToast({ severity: 'success', title: 'Thành công', message: 'Tải lên bài hát thành công!' });
+      showToast({
+        severity: 'success',
+        title: 'Thành công',
+        message: isEditing ? 'Cập nhật bài hát thành công!' : 'Tải lên bài hát thành công!',
+      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Upload bài hát thất bại.');
+      const message = err.response?.data?.message || (isEditing ? 'Cập nhật bài hát thất bại.' : 'Upload bài hát thất bại.');
+      setError(message);
+      showToast({ severity: 'error', title: isEditing ? 'Cập nhật thất bại' : 'Tải lên thất bại', message });
     } finally {
+      if (progressTimer) window.clearInterval(progressTimer);
       setUploading(false);
     }
   };
@@ -793,7 +861,7 @@ function ClientLibrary() {
               variant="outlined"
               color="primary"
               startIcon={<UploadIcon />}
-              onClick={() => setUploadOpen(true)}
+              onClick={openCreateUploadDialog}
               sx={{
                 borderRadius: '24px',
                 height: 48,
@@ -1293,6 +1361,7 @@ function ClientLibrary() {
 
                           <SongMoreMenu
                             song={song}
+                            onEdit={activeTab === 2 ? openEditUploadDialog : undefined}
                             buttonSx={{
                               color: 'text.secondary',
                               backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
@@ -1508,10 +1577,27 @@ function ClientLibrary() {
       </Dialog>
 
       {/* ================= 7. UPLOAD SONG DIALOG ================= */}
-      <Dialog open={uploadOpen} onClose={() => !uploading && setUploadOpen(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: '24px' } }}>
+      <Dialog
+        open={uploadOpen}
+        onClose={() => {
+          if (uploading) return;
+          setUploadOpen(false);
+          resetUploadForm();
+        }}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: '24px' } }}
+      >
         <DialogTitle sx={{ fontWeight: 900, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Tải lên bài hát mới
-          <IconButton size="small" onClick={() => setUploadOpen(false)} disabled={uploading}>
+          {editingUploadSong ? 'Chỉnh sửa bài hát' : 'Tải lên bài hát mới'}
+          <IconButton
+            size="small"
+            onClick={() => {
+              setUploadOpen(false);
+              resetUploadForm();
+            }}
+            disabled={uploading}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -1535,7 +1621,7 @@ function ClientLibrary() {
             />
 
             <Button variant="outlined" component="label" sx={{ py: 1.5, borderRadius: '14px', borderColor: 'divider', borderWidth: '2px', '&:hover': { borderWidth: '2px' } }}>
-              Chọn file nhạc phát * (MP3, WAV, FLAC, M4A)
+              {editingUploadSong ? 'Chọn file nhạc mới (tùy chọn)' : 'Chọn file nhạc phát * (MP3, WAV, FLAC, M4A)'}
               <input
                 type="file"
                 accept="audio/*"
@@ -1563,6 +1649,15 @@ function ClientLibrary() {
                 Đã chọn ảnh: {uploadImageFile.name}
               </Typography>
             )}
+            <TextField
+              label="Hoặc dán URL hình ảnh bìa (tùy chọn)"
+              value={uploadImageUrl}
+              onChange={(event) => setUploadImageUrl(event.target.value)}
+              placeholder="https://..."
+              helperText="Có thể chọn file hoặc dán URL ảnh. Nếu có cả hai, file ảnh sẽ được ưu tiên."
+              fullWidth
+              InputProps={{ sx: { borderRadius: '14px' } }}
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
@@ -1577,7 +1672,9 @@ function ClientLibrary() {
             Hủy
           </Button>
           <Button onClick={handleUploadSubmit} disabled={uploading} variant="contained" sx={{ borderRadius: '12px', px: 3.5, fontWeight: 800 }}>
-            {uploading ? 'Đang tải lên...' : 'Tải lên ngay'}
+            {uploading
+              ? (editingUploadSong ? 'Đang cập nhật...' : 'Đang tải lên...')
+              : (editingUploadSong ? 'Cập nhật' : 'Tải lên ngay')}
           </Button>
         </DialogActions>
       </Dialog>

@@ -23,6 +23,7 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientUserApi, clientSongsApi } from '../../services/api';
 import useAppToast from '../../components/common/useAppToast';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
+import { notifyClientSessionChanged } from '../../hooks/useClientSession';
 
 function ClientProfile() {
   const { showToast } = useAppToast();
@@ -59,6 +60,7 @@ function ClientProfile() {
         localStorage.setItem('email', user?.email || '');
         localStorage.setItem('userId', user?._id || '');
         localStorage.setItem('userAvatar', user?.avatar || '');
+        notifyClientSessionChanged();
 
         // Load recent songs
         const userId = user?._id || 'anonymous';
@@ -135,6 +137,7 @@ function ClientProfile() {
       localStorage.setItem('email', user?.email || form.email || '');
       localStorage.setItem('userId', user?._id || localStorage.getItem('userId') || '');
       localStorage.setItem('userAvatar', user?.avatar || form.avatarUrl || '');
+      notifyClientSessionChanged();
     } catch (err) {
       setError(err.response?.data?.message || 'Cập nhật thất bại.');
       showToast({ severity: 'error', message: err.response?.data?.message || 'Cập nhật thất bại.' });

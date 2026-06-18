@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
@@ -10,11 +10,7 @@ class FavoritesScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
 
-  const FavoritesScreen({
-    super.key,
-    this.onSongTap,
-    this.onPlayAll,
-  });
+  const FavoritesScreen({super.key, this.onSongTap, this.onPlayAll});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -126,7 +122,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   child: IconButton(
                     icon: const Icon(Icons.shuffle, color: Colors.white),
                     onPressed: () {
-                      final shuffled = List<Song>.from(_favoriteSongs)..shuffle();
+                      final shuffled = List<Song>.from(_favoriteSongs)
+                        ..shuffle();
                       widget.onPlayAll?.call(shuffled, startIndex: 0);
                     },
                     tooltip: 'Phát ngẫu nhiên',
@@ -199,7 +196,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -290,7 +290,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
       title: Text(
         song.title,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -300,12 +303,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: SongOptionsMenu(
-        song: song,
-        onFavoriteChanged: _loadFavorites,
-      ),
+      trailing: SongOptionsMenu(song: song, onFavoriteChanged: _loadFavorites),
       onTap: () => widget.onSongTap?.call(song),
     );
   }
 }
-

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_all_artists_screen.dart';
 
@@ -8,10 +8,7 @@ class HomeArtistPreview {
   final String name;
   final String imageUrl;
 
-  const HomeArtistPreview({
-    required this.name,
-    required this.imageUrl,
-  });
+  const HomeArtistPreview({required this.name, required this.imageUrl});
 }
 
 class HomeArtistCarousel extends StatelessWidget {
@@ -30,7 +27,8 @@ class HomeArtistCarousel extends StatelessWidget {
       height: 168,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: artists.length + (allArtists.length > artists.length ? 1 : 0),
+        itemCount:
+            artists.length + (allArtists.length > artists.length ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           if (index == artists.length && allArtists.length > artists.length) {
@@ -47,10 +45,7 @@ class HomeArtistCarousel extends StatelessWidget {
           }
 
           final artist = artists[index];
-          return _ArtistCard(
-            artist: artist,
-            accent: _accentFor(index),
-          );
+          return _ArtistCard(artist: artist, accent: _accentFor(index));
         },
       ),
     );
@@ -70,9 +65,7 @@ class HomeArtistCarousel extends StatelessWidget {
 class _ViewAllCard extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _ViewAllCard({
-    required this.onTap,
-  });
+  const _ViewAllCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -122,10 +115,7 @@ class _ArtistCard extends StatelessWidget {
   final HomeArtistPreview artist;
   final Color accent;
 
-  const _ArtistCard({
-    required this.artist,
-    required this.accent,
-  });
+  const _ArtistCard({required this.artist, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -213,4 +203,3 @@ class _ArtistCard extends StatelessWidget {
     );
   }
 }
-

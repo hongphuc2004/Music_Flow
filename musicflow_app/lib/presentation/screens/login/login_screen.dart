@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/main.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/login/register_screen.dart';
@@ -29,10 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final result = await AuthService.login(
-      email: email,
-      password: password,
-    );
+    final result = await AuthService.login(email: email, password: password);
 
     setState(() => _isLoading = false);
 
@@ -90,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Image.asset(
                   'assets/images/logo.png',
-                  width: 120,   
+                  width: 120,
                   height: 120,
                   fit: BoxFit.contain,
                 ),
@@ -98,10 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text(
                   'MusicFlow',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 40),
 
@@ -127,7 +121,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
@@ -153,7 +149,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         )
                       : const Text(
                           'Đăng nhập',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
 
@@ -193,11 +192,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
                           height: 24,
                           width: 24,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.g_mobiledata,
-                            size: 24,
-                            color: Colors.red,
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                                Icons.g_mobiledata,
+                                size: 24,
+                                color: Colors.red,
+                              ),
                         ),
                   label: const Text(
                     'Đăng nhập với Google',
@@ -211,9 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
                     );
                   },
                   child: const Text('Chưa có tài khoản? Đăng ký ngay'),
@@ -226,4 +224,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

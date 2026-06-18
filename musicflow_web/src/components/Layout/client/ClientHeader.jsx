@@ -23,19 +23,19 @@ import {
 } from '@mui/icons-material';
 import useClientToast from './useClientToast';
 import { ColorModeContext } from '../../../App';
+import useClientSession, { notifyClientSessionChanged } from '../../../hooks/useClientSession';
 
 const drawerWidth = 260;
+const collapsedDrawerWidth = 76;
 
-function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
+function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLogoutSuccess = () => {} }) {
   const navigate = useNavigate();
   const { showToast } = useClientToast();
   const { toggleColorMode, mode } = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchValue, setSearchValue] = useState('');
-  const isLoggedIn = localStorage.getItem('role') === 'user';
-  const userName = localStorage.getItem('userName') || localStorage.getItem('name') || '';
+  const { isLoggedIn, userName, userAvatar } = useClientSession();
   const userInitial = useMemo(() => (userName || 'U').charAt(0).toUpperCase(), [userName]);
-  const userAvatar = localStorage.getItem('userAvatar') || '';
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -51,6 +51,8 @@ function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
     localStorage.removeItem('userName');
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
+    localStorage.removeItem('userAvatar');
+    notifyClientSessionChanged();
     onLogoutSuccess();
     showToast({
       severity: 'success',
@@ -86,17 +88,30 @@ function ClientHeader({ title, onToggleSidebar, onLogoutSuccess = () => {} }) {
       position="fixed"
       elevation={0}
       sx={{
-        width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
-        ml: { xs: 0, md: `${drawerWidth}px` },
+        width: {
+          xs: '100%',
+          md: `calc(100% - ${desktopSidebarOpen ? drawerWidth : collapsedDrawerWidth}px)`,
+        },
+        ml: {
+          xs: 0,
+          md: `${desktopSidebarOpen ? drawerWidth : collapsedDrawerWidth}px`,
+        },
         color: 'text.primary',
         background: (theme) => theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.88)' : 'rgba(248, 250, 252, 0.88)',
         backdropFilter: 'blur(16px)',
         borderBottom: '1px solid',
         borderColor: 'divider',
+        transition: (theme) => theme.transitions.create(['width', 'margin-left'], {
+          duration: theme.transitions.duration.shorter,
+        }),
       }}
     >
       <Toolbar>
-        <IconButton onClick={onToggleSidebar} color="inherit" sx={{ mr: 1.25, display: { xs: 'inline-flex', md: 'none' } }}>
+        <IconButton
+          onClick={onToggleSidebar}
+          color="inherit"
+          sx={{ mr: 1.25, display: { xs: 'inline-flex', md: 'none' } }}
+        >
           <MenuIcon />
         </IconButton>
         <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/user_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
@@ -9,10 +9,7 @@ import 'edit_profile_screen.dart';
 class SettingsScreen extends StatefulWidget {
   final VoidCallback? onLogout;
 
-  const SettingsScreen({
-    super.key,
-    this.onLogout,
-  });
+  const SettingsScreen({super.key, this.onLogout});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -104,7 +101,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Đăng xuất', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Đăng xuất',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -115,9 +115,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       widget.onLogout?.call();
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã đăng xuất')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã đăng xuất')));
     }
   }
 
@@ -126,7 +126,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Xóa lịch sử phát', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Xóa lịch sử phát',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Bạn có chắc muốn xóa toàn bộ lịch sử phát nhạc?',
           style: TextStyle(color: Colors.grey[400]),
@@ -147,9 +150,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm == true) {
       await PlayHistoryService.clearHistory();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa lịch sử phát')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã xóa lịch sử phát')));
     }
   }
 
@@ -195,7 +198,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Dong', style: TextStyle(color: Colors.greenAccent)),
+            child: const Text(
+              'Dong',
+              style: TextStyle(color: Colors.greenAccent),
+            ),
           ),
         ],
       ),
@@ -229,7 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Chất lượng cao',
                   subtitle: 'Phát nhạc ở chất lượng cao nhất',
                   value: _highQualityStreaming,
-                  onChanged: (value) => setState(() => _highQualityStreaming = value),
+                  onChanged: (value) =>
+                      setState(() => _highQualityStreaming = value),
                 ),
                 _buildSwitchTile(
                   icon: Icons.lyrics,
@@ -252,7 +259,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Chỉ tải qua Wi-Fi',
                   subtitle: 'Tải nhạc chỉ khi có Wi-Fi',
                   value: _downloadOverWifiOnly,
-                  onChanged: (value) => setState(() => _downloadOverWifiOnly = value),
+                  onChanged: (value) =>
+                      setState(() => _downloadOverWifiOnly = value),
                 ),
                 const SizedBox(height: 16),
                 _buildSectionHeader('Bộ nhớ'),
@@ -351,7 +359,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: Colors.greenAccent,
-            backgroundImage: hasAvatar ? NetworkImage(_currentUser!.avatar) : null,
+            backgroundImage: hasAvatar
+                ? NetworkImage(_currentUser!.avatar)
+                : null,
             child: !hasAvatar
                 ? Text(
                     _currentUser?.name.substring(0, 1).toUpperCase() ?? 'U',
@@ -379,10 +389,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _currentUser?.email ?? '',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
                 ),
               ],
             ),
@@ -406,7 +413,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
-          Icon(Icons.account_circle_outlined, size: 48, color: Colors.grey[600]),
+          Icon(
+            Icons.account_circle_outlined,
+            size: 48,
+            color: Colors.grey[600],
+          ),
           const SizedBox(height: 12),
           const Text(
             'Đăng nhập để sử dụng các tính năng của MusicFlow',
@@ -452,7 +463,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Icon(icon, color: Colors.greenAccent),
       title: Text(title, style: const TextStyle(color: Colors.white)),
       subtitle: subtitle != null
-          ? Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12))
+          ? Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            )
           : null,
       trailing: Switch(
         value: value,
@@ -473,11 +487,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Icon(icon, color: Colors.greenAccent),
       title: Text(title, style: TextStyle(color: textColor)),
       subtitle: subtitle != null
-          ? Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12))
+          ? Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            )
           : null,
       trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
       onTap: onTap,
     );
   }
 }
-

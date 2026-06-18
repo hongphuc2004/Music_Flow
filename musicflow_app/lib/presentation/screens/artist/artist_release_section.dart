@@ -1,14 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_shared.dart';
 
 class ArtistReleaseSection extends StatelessWidget {
   final Song? latestSong;
 
-  const ArtistReleaseSection({
-    super.key,
-    this.latestSong,
-  });
+  const ArtistReleaseSection({super.key, this.latestSong});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +46,10 @@ class ArtistReleaseSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: ArtistPalette.warmAccent.withOpacity(0.14),
                         borderRadius: BorderRadius.circular(999),
@@ -104,4 +104,3 @@ class ArtistReleaseSection extends StatelessWidget {
     );
   }
 }
-

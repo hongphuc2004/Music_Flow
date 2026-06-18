@@ -6,7 +6,7 @@ import { clientFavoritesApi, clientSongsApi } from '../../../services/api';
 import { useClientPlayerActions } from './ClientPlayerProvider';
 import useClientToast from './useClientToast';
 
-function SongMoreMenu({ song, buttonSx }) {
+function SongMoreMenu({ song, buttonSx, onEdit }) {
   const navigate = useNavigate();
   const { playSong } = useClientPlayerActions();
   const { showToast } = useClientToast();
@@ -127,6 +127,12 @@ function SongMoreMenu({ song, buttonSx }) {
     }
   };
 
+  const handleEdit = (event) => {
+    event.stopPropagation();
+    handleClose(event);
+    onEdit?.(song);
+  };
+
   return (
     <>
       <IconButton
@@ -151,7 +157,8 @@ function SongMoreMenu({ song, buttonSx }) {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={handlePlay}>Phat ngay</MenuItem>
+        <MenuItem onClick={handlePlay}>Phát ngay</MenuItem>
+        {onEdit && <MenuItem onClick={handleEdit}>Chỉnh sửa bài hát</MenuItem>}
         <MenuItem onClick={handleToggleFavorite}>{favorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'}</MenuItem>
         <MenuItem onClick={handleDownload}>Tải bài hát</MenuItem>
         <MenuItem onClick={handleViewArtist} disabled={!primaryArtistId}>Xem nghệ sĩ</MenuItem>

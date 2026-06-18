@@ -2,14 +2,12 @@
 import { Box, Toolbar } from '@mui/material';
 import ArtistSidebar from './ArtistSidebar';
 import ArtistHeader from './ArtistHeader';
-import AppToastProvider from '../../common/AppToastProvider';
 
 const drawerWidth = 260;
 
 function ArtistLayout({ children, title }) {
   return (
-    <AppToastProvider>
-      <Box
+    <Box
         sx={{
           display: 'flex',
           minHeight: '100vh',
@@ -32,8 +30,7 @@ function ArtistLayout({ children, title }) {
           <Toolbar />
           {children}
         </Box>
-      </Box>
-    </AppToastProvider>
+    </Box>
   );
 }
 

@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -31,10 +31,7 @@ class HomeBackdrop extends StatelessWidget {
           Positioned(
             bottom: 120,
             right: -100,
-            child: _Glow(
-              size: 260,
-              color: Colors.blueAccent.withOpacity(0.08),
-            ),
+            child: _Glow(size: 260, color: Colors.blueAccent.withOpacity(0.08)),
           ),
         ],
       ),
@@ -46,10 +43,7 @@ class _Glow extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _Glow({
-    required this.size,
-    required this.color,
-  });
+  const _Glow({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -58,12 +52,7 @@ class _Glow extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            color,
-            color.withOpacity(0),
-          ],
-        ),
+        gradient: RadialGradient(colors: [color, color.withOpacity(0)]),
       ),
     );
   }
@@ -101,18 +90,12 @@ class HomeSectionHeader extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
               ),
             ],
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }
@@ -165,10 +148,7 @@ class HomeGhostButton extends StatelessWidget {
 class HomeCountBadge extends StatelessWidget {
   final String label;
 
-  const HomeCountBadge({
-    super.key,
-    required this.label,
-  });
+  const HomeCountBadge({super.key, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -236,11 +216,7 @@ class HomeMetaPill extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const HomeMetaPill({
-    super.key,
-    required this.icon,
-    required this.label,
-  });
+  const HomeMetaPill({super.key, required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -274,11 +250,7 @@ class HomeMiniInfo extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const HomeMiniInfo({
-    super.key,
-    required this.icon,
-    required this.label,
-  });
+  const HomeMiniInfo({super.key, required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -422,4 +394,3 @@ class _ArtworkFallback extends StatelessWidget {
     );
   }
 }
-

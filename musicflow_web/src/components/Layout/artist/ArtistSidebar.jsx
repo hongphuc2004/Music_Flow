@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { clearArtistSession } from '../../../utils/artistSession';
 import useAppToast from '../../common/useAppToast';
+import { preloadRoute } from '../../../utils/routePreload';
 
 const drawerWidth = 260;
 
@@ -129,7 +130,9 @@ function ArtistSidebar() {
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
-              onClick={() => navigate(item.path)}
+              onClick={() => startTransition(() => navigate(item.path))}
+              onPointerEnter={() => preloadRoute(item.path)}
+              onFocus={() => preloadRoute(item.path)}
               selected={location.pathname === item.path}
               sx={{
                 borderRadius: 3,

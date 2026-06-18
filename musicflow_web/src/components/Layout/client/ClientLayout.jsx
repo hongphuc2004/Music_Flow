@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Box, Toolbar } from '@mui/material';
+import { Box, Toolbar, useTheme } from '@mui/material';
 import ClientSidebar from './ClientSidebar';
 import ClientHeader from './ClientHeader';
 import NowPlayingBar from './NowPlayingBar';
 import ClientAuthDialog from './ClientAuthDialog';
-import { useClientPlayerMeta } from './ClientPlayerProvider';
 
 const drawerWidth = 260;
+const collapsedDrawerWidth = 76;
 
 function ClientLayout({ children, title }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(
+    () => localStorage.getItem('musicflow-client-sidebar-open') !== 'false'
+  );
   const location = useLocation();
-  const { hasSong } = useClientPlayerMeta();
+  const theme = useTheme();
 
   const titleByPath = {
     '/client/home': 'Trang chủ',
@@ -24,8 +27,16 @@ function ClientLayout({ children, title }) {
   };
   const resolvedTitle = titleByPath[location.pathname] || title || 'MusicFlow';
 
-  const handleToggleSidebar = () => {
+  const handleToggleMobileSidebar = () => {
     setMobileOpen((prev) => !prev);
+  };
+
+  const handleToggleDesktopSidebar = () => {
+    setDesktopOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem('musicflow-client-sidebar-open', String(next));
+      return next;
+    });
   };
 
   const handleCloseSidebar = () => {
@@ -49,12 +60,15 @@ function ClientLayout({ children, title }) {
     >
       <ClientSidebar
         mobileOpen={mobileOpen}
+        desktopOpen={desktopOpen}
+        onToggleDesktop={handleToggleDesktopSidebar}
         onClose={handleCloseSidebar}
         onLogoutSuccess={handleLogoutSuccess}
       />
       <ClientHeader
         title={resolvedTitle}
-        onToggleSidebar={handleToggleSidebar}
+        desktopSidebarOpen={desktopOpen}
+        onToggleSidebar={handleToggleMobileSidebar}
         onLogoutSuccess={handleLogoutSuccess}
       />
       <Box
@@ -63,18 +77,22 @@ function ClientLayout({ children, title }) {
           flexGrow: 1,
           p: { xs: 2, md: 3 },
           // Stable padding-bottom prevents CLS when NowPlayingBar appears/disappears
-          pb: hasSong ? { xs: '132px', sm: '120px', md: '124px' } : { xs: 2, md: 3 },
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          pb: { xs: '132px', sm: '120px', md: '124px' },
+          width: {
+            xs: '100%',
+            md: `calc(100% - ${desktopOpen ? drawerWidth : collapsedDrawerWidth}px)`,
+          },
           minHeight: '100vh',
+          transition: theme.transitions.create('width', {
+            duration: theme.transitions.duration.shorter,
+          }),
           // Hint browser to skip off-screen rendering → improves LCP and scroll performance
-          contentVisibility: 'auto',
-          containIntrinsicSize: '0 800px',
         }}
       >
         <Toolbar />
         {children}
       </Box>
-      <NowPlayingBar />
+      <NowPlayingBar desktopSidebarOpen={desktopOpen} />
       <ClientAuthDialog />
     </Box>
   );

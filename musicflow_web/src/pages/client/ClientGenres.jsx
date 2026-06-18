@@ -21,6 +21,7 @@ import {
   SearchRounded as SearchIcon,
   MusicNoteRounded as MusicIcon,
   PlayArrowRounded as PlayIcon,
+  RefreshRounded as RefreshIcon,
   ShuffleRounded as ShuffleIcon,
   AutoAwesomeRounded as SparklesIcon,
   CheckCircleRounded as ActiveIcon,
@@ -34,6 +35,7 @@ import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } 
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 import useAppToast from '../../components/common/useAppToast';
+import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 
 const CAROUSEL_SLIDES = [
   {
@@ -231,6 +233,55 @@ function formatFollowerCount(count) {
   return `${count} quan tâm`;
 }
 
+function getSongKey(song) {
+  return song?._id || song?.id || song?.title || '';
+}
+
+function shuffleSongs(sourceSongs) {
+  const nextSongs = [...sourceSongs];
+
+  for (let i = nextSongs.length - 1; i > 0; i -= 1) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    [nextSongs[i], nextSongs[randomIndex]] = [nextSongs[randomIndex], nextSongs[i]];
+  }
+
+  return nextSongs;
+}
+
+function getUniqueSongs(sourceSongs) {
+  const seenKeys = new Set();
+
+  return sourceSongs.filter((song) => {
+    const key = getSongKey(song);
+    if (!key || seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
+}
+
+function getNextHotSongBatch(sourceSongs, usedSongKeys, currentSongs = [], limit = 15) {
+  const uniqueSongs = getUniqueSongs(sourceSongs);
+  const currentKeys = new Set(currentSongs.map(getSongKey).filter(Boolean));
+  let availableSongs = uniqueSongs.filter((song) => !usedSongKeys.has(getSongKey(song)));
+
+  if (availableSongs.length === 0) {
+    availableSongs = uniqueSongs.filter((song) => !currentKeys.has(getSongKey(song)));
+    usedSongKeys.clear();
+  }
+
+  if (availableSongs.length === 0) {
+    availableSongs = uniqueSongs;
+  }
+
+  const nextBatch = shuffleSongs(availableSongs).slice(0, limit);
+  nextBatch.forEach((song) => {
+    const key = getSongKey(song);
+    if (key) usedSongKeys.add(key);
+  });
+
+  return nextBatch;
+}
+
 function ClientGenres() {
   const navigate = useNavigate();
   const { playSong } = useClientPlayerActions();
@@ -240,6 +291,7 @@ function ClientGenres() {
   const [playlists, setPlaylists] = useState([]);
   const [defaultSongs, setDefaultSongs] = useState([]);
   const [songs, setSongs] = useState([]);
+  const [hotSongs, setHotSongs] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [query, setQuery] = useState('');
@@ -252,6 +304,7 @@ function ClientGenres() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [followedArtists, setFollowedArtists] = useState({});
   const [artistFollowersState, setArtistFollowersState] = useState({});
+  const usedHotSongKeysRef = useRef(new Set());
 
   const loadDefault = async () => {
     try {
@@ -264,7 +317,7 @@ function ClientGenres() {
       ]);
 
       setTopics(topicsRes.data || []);
-      setPlaylists(playlistsRes.data || []);
+      setPlaylists(playlistsRes.data?.playlists || []);
       const nextSongs = Array.isArray(songsRes.data) ? songsRes.data : [];
       setDefaultSongs(nextSongs);
       setSongs(nextSongs);
@@ -424,6 +477,12 @@ function ClientGenres() {
     }
   }, [searchParams, topics, defaultSongs]);
 
+  useEffect(() => {
+    const initialHotSongs = getUniqueSongs(songs).slice(0, 15);
+    usedHotSongKeysRef.current = new Set(initialHotSongs.map(getSongKey).filter(Boolean));
+    setHotSongs(initialHotSongs);
+  }, [songs]);
+
   const handlePlayAll = (shuffle = false) => {
     if (songs.length === 0) return;
     let queue = [...songs];
@@ -431,6 +490,15 @@ function ClientGenres() {
       queue.sort(() => Math.random() - 0.5);
     }
     playSong(queue[0], { queue });
+  };
+
+  const handleRefreshHotSongs = () => {
+    setHotSongs((currentHotSongs) => getNextHotSongBatch(
+      songs,
+      usedHotSongKeysRef.current,
+      currentHotSongs,
+      15
+    ));
   };
 
   const handleToggleFollow = async (artist) => {
@@ -528,6 +596,8 @@ function ClientGenres() {
   }, [songs]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchArtistDetails = async () => {
       if (!relatedArtists.length) return;
       const isLoggedIn = !!localStorage.getItem('userId');
@@ -570,11 +640,17 @@ function ClientGenres() {
         followMap[res.id] = res.isFollowing;
       });
       
-      setArtistFollowersState(followerMap);
-      setFollowedArtists(followMap);
+      if (!cancelled) {
+        setArtistFollowersState(followerMap);
+        setFollowedArtists(followMap);
+      }
     };
 
-    fetchArtistDetails();
+    const cancelIdleTask = scheduleIdleTask(fetchArtistDetails);
+    return () => {
+      cancelled = true;
+      cancelIdleTask();
+    };
   }, [relatedArtists]);
 
   const topicStats = useMemo(() => {
@@ -1285,12 +1361,35 @@ function ClientGenres() {
             <Stack spacing={7}>
               {/* ──────── SECTION 1: HOT SONGS (3 Columns Grid) ──────── */}
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-                  Hot Songs
-                </Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3, gap: 2 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.3px' }}>
+                    Hot Songs
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleRefreshHotSongs}
+                    disabled={songs.length <= 1}
+                    sx={{
+                      color: '#14b8a6',
+                      borderColor: 'rgba(20, 184, 166, 0.25)',
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      px: 2,
+                      flexShrink: 0,
+                      '&:hover': {
+                        borderColor: '#14b8a6',
+                        bgcolor: 'rgba(20, 184, 166, 0.05)',
+                      },
+                    }}
+                  >
+                    Đổi bài hát
+                  </Button>
+                </Stack>
                 
                 <Grid container spacing={2.5}>
-                  {songs.slice(0, 15).map((song, index) => (
+                  {hotSongs.map((song) => (
                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
                       <Paper
                         elevation={0}

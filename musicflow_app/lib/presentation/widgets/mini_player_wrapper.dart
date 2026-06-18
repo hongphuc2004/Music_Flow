@@ -7,10 +7,7 @@ import 'package:musicflow_app/presentation/widgets/mini_player.dart';
 class MiniPlayerWrapper extends StatefulWidget {
   final Widget child;
 
-  const MiniPlayerWrapper({
-    super.key,
-    required this.child,
-  });
+  const MiniPlayerWrapper({super.key, required this.child});
 
   @override
   State<MiniPlayerWrapper> createState() => _MiniPlayerWrapperState();
@@ -64,7 +61,9 @@ class _MiniPlayerWrapperState extends State<MiniPlayerWrapper> {
               song: _audioState.currentSong,
               progress: _audioState.progress,
               currentPosition: _audioState.currentPosition,
-              totalDuration: _audioState.currentSong!.durationAsDuration ?? _audioState.totalDuration,
+              totalDuration:
+                  _audioState.currentSong!.durationAsDuration ??
+                  _audioState.totalDuration,
               playlist: _audioState.playlist,
               currentIndex: _audioState.currentIndex,
               onPlayPause: _audioState.togglePlayPause,

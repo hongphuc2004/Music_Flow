@@ -24,9 +24,10 @@ function formatDuration(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function NowPlayingBar() {
+function NowPlayingBar({ desktopSidebarOpen = true }) {
   const { showToast } = useClientToast();
   const [favorite, setFavorite] = useState(false);
+  const [scrubTime, setScrubTime] = useState(null);
   const {
     currentSong,
     isPlaying,
@@ -184,7 +185,7 @@ function NowPlayingBar() {
     <Box
       sx={{
         position: 'fixed',
-        left: { xs: 10, md: 276 },
+        left: { xs: 10, md: desktopSidebarOpen ? 276 : 92 },
         right: 16,
         bottom: 12,
         zIndex: 1300,
@@ -196,6 +197,9 @@ function NowPlayingBar() {
         color: '#fff',
         p: { xs: 1.2, md: 1.4 },
         minHeight: { xs: 78, md: 84 },
+        transition: (theme) => theme.transitions.create('left', {
+          duration: theme.transitions.duration.shorter,
+        }),
       }}
     >
       <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 1.5 }}>
@@ -296,8 +300,12 @@ function NowPlayingBar() {
             size="small"
             min={0}
             max={duration || currentSong?.duration || 1}
-            value={Math.min(currentTime, duration || currentSong?.duration || 1)}
-            onChange={(_, value) => seekTo(value)}
+            value={Math.min(scrubTime ?? currentTime, duration || currentSong?.duration || 1)}
+            onChange={(_, value) => setScrubTime(Number(value))}
+            onChangeCommitted={(_, value) => {
+              seekTo(value);
+              setScrubTime(null);
+            }}
             sx={{
               color: '#14b8a6',
               py: 0,

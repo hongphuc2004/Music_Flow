@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_artist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_shared.dart';
@@ -6,10 +6,7 @@ import 'package:musicflow_app/presentation/screens/home/home_shared.dart';
 class HomeAllArtistsScreen extends StatelessWidget {
   final List<HomeArtistPreview> artists;
 
-  const HomeAllArtistsScreen({
-    super.key,
-    required this.artists,
-  });
+  const HomeAllArtistsScreen({super.key, required this.artists});
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +18,7 @@ class HomeAllArtistsScreen extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'Tất cả nghệ sĩ',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
         ),
       ),
       body: GridView.builder(
@@ -63,10 +57,7 @@ class _AllArtistGridCard extends StatelessWidget {
   final HomeArtistPreview artist;
   final Color accent;
 
-  const _AllArtistGridCard({
-    required this.artist,
-    required this.accent,
-  });
+  const _AllArtistGridCard({required this.artist, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -114,14 +105,18 @@ class _AllArtistGridCard extends StatelessWidget {
                         height: 116,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.35), width: 3),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.35),
+                            width: 3,
+                          ),
                         ),
                         child: ClipOval(
                           child: artist.imageUrl.isNotEmpty
                               ? Image.network(
                                   artist.imageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _fallbackAvatar(),
+                                  errorBuilder: (_, __, ___) =>
+                                      _fallbackAvatar(),
                                 )
                               : _fallbackAvatar(),
                         ),
@@ -168,4 +163,3 @@ class _AllArtistGridCard extends StatelessWidget {
     );
   }
 }
-

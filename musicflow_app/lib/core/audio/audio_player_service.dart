@@ -16,29 +16,31 @@ class AudioPlayerService {
   /// Khởi tạo audio service - phải gọi trước khi sử dụng
   static Future<void> init() async {
     if (_isInitialized) return;
-    
+
     _audioHandler = await AudioService.init(
       builder: () => MusicFlowAudioHandler(),
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'com.musicflow.app.audio',
         androidNotificationChannelName: 'MusicFlow Audio',
         androidNotificationOngoing: false,
-        androidStopForegroundOnPause: false,  // Giữ notification khi pause
+        androidStopForegroundOnPause: false, // Giữ notification khi pause
         androidShowNotificationBadge: true,
-        notificationColor: Color(0xFF69F0AE),  // greenAccent
+        notificationColor: Color(0xFF69F0AE), // greenAccent
         androidNotificationIcon: 'mipmap/ic_launcher',
         fastForwardInterval: Duration(seconds: 10),
         rewindInterval: Duration(seconds: 10),
       ),
     );
-    
+
     _isInitialized = true;
   }
 
   /// Lấy audio handler
   MusicFlowAudioHandler get handler {
     if (_audioHandler == null) {
-      throw Exception('AudioService chưa được khởi tạo! Gọi AudioPlayerService.init() trước.');
+      throw Exception(
+        'AudioService chưa được khởi tạo! Gọi AudioPlayerService.init() trước.',
+      );
     }
     return _audioHandler!;
   }
@@ -65,11 +67,7 @@ class AudioPlayerService {
 
   /// Phát nhạc chỉ với URL (backward compatible)
   Future<void> playUrl(String url) async {
-    await handler.playFromUrl(
-      url: url,
-      title: 'Unknown',
-      artist: 'Unknown',
-    );
+    await handler.playFromUrl(url: url, title: 'Unknown', artist: 'Unknown');
   }
 
   Future<void> pause() async {

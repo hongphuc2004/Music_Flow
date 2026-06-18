@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../data/models/song_model.dart';
@@ -11,11 +11,7 @@ class YourUploadsScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
 
-  const YourUploadsScreen({
-    super.key,
-    this.onSongTap,
-    this.onPlayAll,
-  });
+  const YourUploadsScreen({super.key, this.onSongTap, this.onPlayAll});
 
   @override
   State<YourUploadsScreen> createState() => _YourUploadsScreenState();
@@ -33,9 +29,9 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
 
   Future<void> _loadUploadedSongs() async {
     setState(() => _isLoading = true);
-    
+
     final result = await SongApiService.getMyUploads();
-    
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -48,7 +44,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
 
   Future<void> _togglePublic(Song song) async {
     final result = await SongApiService.togglePublic(song.id);
-    
+
     if (result.success) {
       _showSnackBar(result.message);
       _loadUploadedSongs();
@@ -62,7 +58,10 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        title: const Text('Xóa bài hát?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Xóa bài hát?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Bạn có chắc muốn xóa "${song.title}"?\nHành động này không thể hoàn tác.',
           style: TextStyle(color: Colors.grey[400]),
@@ -91,7 +90,9 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
 
   void _showEditDialog(Song song) {
     final titleController = TextEditingController(text: song.title);
-    final artistController = TextEditingController(text: song.artists.join(', '));
+    final artistController = TextEditingController(
+      text: song.artists.join(', '),
+    );
     final lyricsController = TextEditingController(text: song.lyrics);
 
     showDialog(
@@ -170,7 +171,10 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
                 _loadUploadedSongs();
               }
             },
-            child: const Text('Lưu', style: TextStyle(color: Color(0xFF1DB954))),
+            child: const Text(
+              'Lưu',
+              style: TextStyle(color: Color(0xFF1DB954)),
+            ),
           ),
         ],
       ),
@@ -207,7 +211,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
                 style: const TextStyle(color: Colors.white),
               ),
               subtitle: Text(
-                song.isPublic 
+                song.isPublic
                     ? 'Chỉ bạn mới thấy bài hát này'
                     : 'Mọi người đều có thể thấy và nghe',
                 style: TextStyle(color: Colors.grey[400], fontSize: 12),
@@ -219,15 +223,24 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.edit_outlined, color: Colors.white70),
-              title: const Text('Sửa thông tin', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Sửa thông tin',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _showEditDialog(song);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              title: const Text('Xóa bài hát', style: TextStyle(color: Colors.redAccent)),
+              leading: const Icon(
+                Icons.delete_outline,
+                color: Colors.redAccent,
+              ),
+              title: const Text(
+                'Xóa bài hát',
+                style: TextStyle(color: Colors.redAccent),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _deleteSong(song);
@@ -288,8 +301,8 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
                 child: CircularProgressIndicator(color: Color(0xFF1DB954)),
               )
             : _uploadedSongs.isEmpty
-                ? _buildEmptyState()
-                : _buildSongList(),
+            ? _buildEmptyState()
+            : _buildSongList(),
       ),
     );
   }
@@ -327,10 +340,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
             Text(
               'Upload bài hát từ thiết bị của bạn\nđể nghe mọi lúc mọi nơi',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
@@ -340,7 +350,10 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1DB954),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -424,7 +437,9 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
             child: Container(
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: song.isPublic ? const Color(0xFF1DB954) : Colors.grey[700],
+                color: song.isPublic
+                    ? const Color(0xFF1DB954)
+                    : Colors.grey[700],
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(
@@ -438,7 +453,10 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
       ),
       title: Text(
         song.title,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -455,7 +473,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: song.isPublic 
+              color: song.isPublic
                   ? const Color(0xFF1DB954).withOpacity(0.2)
                   : Colors.grey[800],
               borderRadius: BorderRadius.circular(4),
@@ -463,7 +481,9 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
             child: Text(
               song.isPublic ? 'Công khai' : 'Riêng tư',
               style: TextStyle(
-                color: song.isPublic ? const Color(0xFF1DB954) : Colors.grey[400],
+                color: song.isPublic
+                    ? const Color(0xFF1DB954)
+                    : Colors.grey[400],
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
               ),
@@ -650,7 +670,10 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Huỷ', style: TextStyle(color: Colors.grey)),
+                  child: const Text(
+                    'Huỷ',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 const Text(
                   'Upload bài hát',
@@ -697,14 +720,22 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
                                   ),
                                   child: _imageFile == null
                                       ? Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.add_photo_alternate,
-                                                color: Colors.grey[600], size: 32),
+                                            Icon(
+                                              Icons.add_photo_alternate,
+                                              color: Colors.grey[600],
+                                              size: 32,
+                                            ),
                                             const SizedBox(height: 4),
-                                            Text('Ảnh bìa',
-                                                style: TextStyle(
-                                                    color: Colors.grey[600], fontSize: 12)),
+                                            Text(
+                                              'Ảnh bìa',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ],
                                         )
                                       : null,
@@ -816,7 +847,9 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
                               child: const Text(
                                 'Upload',
                                 style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -841,7 +874,11 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
           SizedBox(height: 24),
           Text(
             'Đang upload...',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           SizedBox(height: 8),
           Text(
@@ -884,7 +921,10 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? const Color(0xFF1DB954) : Colors.grey),
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF1DB954) : Colors.grey,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -941,7 +981,10 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFF1DB954)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],
@@ -958,7 +1001,11 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
         ),
         child: const Row(
           children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
             SizedBox(width: 12),
             Text('Đang tải...', style: TextStyle(color: Colors.grey)),
           ],
@@ -983,7 +1030,10 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
           items: _topics.map((topic) {
             return DropdownMenuItem<Topic>(
               value: topic,
-              child: Text(topic.name, style: const TextStyle(color: Colors.white)),
+              child: Text(
+                topic.name,
+                style: const TextStyle(color: Colors.white),
+              ),
             );
           }).toList(),
           onChanged: (topic) => setState(() => _selectedTopic = topic),
@@ -992,5 +1042,3 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
     );
   }
 }
-
-

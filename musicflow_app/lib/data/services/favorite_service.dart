@@ -30,10 +30,9 @@ class FavoriteService {
         );
       }
 
-      final response = await http.get(
-        Uri.parse(baseUrl),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      final response = await http
+          .get(Uri.parse(baseUrl), headers: await _getAuthHeaders())
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -63,24 +62,25 @@ class FavoriteService {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        return FavoriteResult(
-          success: false,
-          message: 'Vui lòng đăng nhập',
-        );
+        return FavoriteResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
-      http.Response response = await http.post(
-        Uri.parse('$baseUrl/add/$songId'),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      http.Response response = await http
+          .post(
+            Uri.parse('$baseUrl/add/$songId'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(timeout);
       if (response.statusCode == 401) {
         // Token hết hạn, thử refresh
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http.post(
-            Uri.parse('$baseUrl/add/$songId'),
-            headers: await _getAuthHeaders(),
-          ).timeout(timeout);
+          response = await http
+              .post(
+                Uri.parse('$baseUrl/add/$songId'),
+                headers: await _getAuthHeaders(),
+              )
+              .timeout(timeout);
         }
       }
       final data = jsonDecode(response.body);
@@ -102,23 +102,24 @@ class FavoriteService {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        return FavoriteResult(
-          success: false,
-          message: 'Vui lòng đăng nhập',
-        );
+        return FavoriteResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
-      http.Response response = await http.delete(
-        Uri.parse('$baseUrl/remove/$songId'),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      http.Response response = await http
+          .delete(
+            Uri.parse('$baseUrl/remove/$songId'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(timeout);
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http.delete(
-            Uri.parse('$baseUrl/remove/$songId'),
-            headers: await _getAuthHeaders(),
-          ).timeout(timeout);
+          response = await http
+              .delete(
+                Uri.parse('$baseUrl/remove/$songId'),
+                headers: await _getAuthHeaders(),
+              )
+              .timeout(timeout);
         }
       }
       final data = jsonDecode(response.body);
@@ -140,23 +141,24 @@ class FavoriteService {
     try {
       final token = await AuthService.getToken();
       if (token == null) {
-        return FavoriteResult(
-          success: false,
-          message: 'Vui lòng đăng nhập',
-        );
+        return FavoriteResult(success: false, message: 'Vui lòng đăng nhập');
       }
 
-      http.Response response = await http.post(
-        Uri.parse('$baseUrl/toggle/$songId'),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      http.Response response = await http
+          .post(
+            Uri.parse('$baseUrl/toggle/$songId'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(timeout);
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http.post(
-            Uri.parse('$baseUrl/toggle/$songId'),
-            headers: await _getAuthHeaders(),
-          ).timeout(timeout);
+          response = await http
+              .post(
+                Uri.parse('$baseUrl/toggle/$songId'),
+                headers: await _getAuthHeaders(),
+              )
+              .timeout(timeout);
         }
       }
       final data = jsonDecode(response.body);
@@ -186,10 +188,12 @@ class FavoriteService {
         );
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/check/$songId'),
-        headers: await _getAuthHeaders(),
-      ).timeout(timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/check/$songId'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 

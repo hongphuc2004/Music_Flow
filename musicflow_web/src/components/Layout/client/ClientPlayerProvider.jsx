@@ -65,6 +65,7 @@ export function ClientPlayerProvider({ children }) {
   const queueIndexRef = useRef(0);
   const shuffleRef = useRef(false);
   const repeatModeRef = useRef('off');
+  const lastTimelineUpdateRef = useRef(0);
 
   const loadLyrics = useCallback(async (songId) => {
     if (!songId) {
@@ -87,7 +88,12 @@ export function ClientPlayerProvider({ children }) {
     audio.crossOrigin = 'anonymous';
     audioRef.current = audio;
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime || 0);
+    const handleTimeUpdate = () => {
+      const now = performance.now();
+      if (now - lastTimelineUpdateRef.current < 400 && !audio.ended) return;
+      lastTimelineUpdateRef.current = now;
+      setCurrentTime(audio.currentTime || 0);
+    };
     const handleLoadedMetadata = () => setDuration(audio.duration || 0);
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);

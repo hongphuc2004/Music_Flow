@@ -55,8 +55,10 @@ const emptyFormData = {
   imageUrl: '',
 };
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function Songs() {
-  const { showToast } = useAppToast();
+  const { showToast, updateToast } = useAppToast();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -225,8 +227,28 @@ function Songs() {
       return;
     }
 
+    const isEditing = Boolean(editingSong?._id);
+    const loadingTitle = isEditing ? 'Updating song' : 'Uploading song';
+    const loadingMessage = isEditing ? 'Your song changes are being saved...' : 'Your song is being uploaded...';
+    let visualProgress = 0;
+    let progressTimer = null;
+
     try {
       setCreateLoading(true);
+      showToast({
+        severity: 'info',
+        title: loadingTitle,
+        message: loadingMessage,
+        loading: true,
+        progress: 0,
+      });
+      progressTimer = window.setInterval(() => {
+        const remaining = 94 - visualProgress;
+        const nextStep = Math.max(0.45, remaining * 0.045);
+        visualProgress = Math.min(94, visualProgress + nextStep);
+        updateToast({ progress: Math.round(visualProgress) });
+      }, 450);
+
       const payload = new FormData();
       payload.append('title', formData.title.trim());
       payload.append('artist', formData.artists.join(', '));
@@ -239,23 +261,31 @@ function Songs() {
         payload.append('imageUrl', formData.imageUrl.trim());
       }
 
-      if (editingSong) {
+      if (isEditing) {
         await songsApi.update(editingSong._id, payload);
         setSuccess('Song updated successfully.');
-        showToast({ severity: 'success', title: 'Success!', message: 'Song updated successfully.' });
       } else {
         await songsApi.create(payload);
         setSuccess('Song created successfully.');
-        showToast({ severity: 'success', title: 'Success!', message: 'Song created successfully.' });
       }
+      if (progressTimer) window.clearInterval(progressTimer);
+      progressTimer = null;
+      updateToast({ progress: 100 });
+      await wait(350);
+      showToast({
+        severity: 'success',
+        title: 'Success!',
+        message: isEditing ? 'Song updated successfully.' : 'Song created successfully.',
+      });
 
       resetSongDialog();
       fetchSongs();
     } catch (err) {
-      const message = err.response?.data?.message || (editingSong ? 'Failed to update song.' : 'Failed to create song.');
+      const message = err.response?.data?.message || (isEditing ? 'Failed to update song.' : 'Failed to create song.');
       setError(message);
-      showToast({ severity: 'error', title: editingSong ? 'Update failed' : 'Create failed', message });
+      showToast({ severity: 'error', title: isEditing ? 'Update failed' : 'Create failed', message });
     } finally {
+      if (progressTimer) window.clearInterval(progressTimer);
       setCreateLoading(false);
     }
   };

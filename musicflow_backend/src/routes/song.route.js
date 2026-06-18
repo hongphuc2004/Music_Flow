@@ -19,7 +19,22 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 const TRACK_PLAY_COOLDOWN_MS = 30 * 1000;
 const recentPlayTrackByKey = new Map();
 const SONG_PUBLIC_SELECT =
-  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl lyrics source allowDownload playCount likeCount commentCount shareCount createdAt updatedAt";
+  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
+
+const parsePagination = (query, defaultLimit = 20) => {
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || defaultLimit, 1), 50);
+  return { page, limit, skip: (page - 1) * limit };
+};
+
+const setPaginationHeaders = (res, { page, limit, total }) => {
+  res.set({
+    "X-Total-Count": String(total),
+    "X-Page": String(page),
+    "X-Limit": String(limit),
+    "X-Total-Pages": String(Math.ceil(total / limit)),
+  });
+};
 
 const truncateToHour = (date) => {
   const d = new Date(date);
@@ -605,15 +620,23 @@ router.post("/:songId/download", authMiddleware, downloadSong);
 // 📌 GET ALL SONGS (PUBLIC ONLY)
 router.get("/", async (req, res) => {
   try {
+    const { page, limit, skip } = parsePagination(req.query);
     res.set("Cache-Control", "public, max-age=30");
     // Public thực sự cho cả admin và user upload
-    const songs = await Song.find({ isPublic: true })
-      .select(SONG_PUBLIC_SELECT)
-      .sort({ createdAt: -1 })
-      .populate("artists", "name avatar")
-      .populate("topicIds", "name avatar")
-      .lean();
+    const filter = { isPublic: true };
+    const [songs, total] = await Promise.all([
+      Song.find(filter)
+        .select(SONG_PUBLIC_SELECT)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("artists", "name avatar")
+        .populate("topicIds", "name avatar")
+        .lean(),
+      Song.countDocuments(filter),
+    ]);
 
+    setPaginationHeaders(res, { page, limit, total });
     res.json(songs);
   } catch (error) {
     console.error("Get songs error:", error);
@@ -625,8 +648,9 @@ router.get("/", async (req, res) => {
 // 🎲 GET RECOMMENDED SONGS (Random - PUBLIC ONLY)
 router.get("/recommended", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 12;
-    res.set("Cache-Control", "public, max-age=30");
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
+    const refresh = String(req.query.refresh || "").toLowerCase() === "true";
+    res.set("Cache-Control", refresh ? "no-store" : "public, max-age=30");
     
     // Public thực sự cho cả admin và user upload
     const songs = await Song.aggregate([
@@ -642,15 +666,11 @@ router.get("/recommended", async (req, res) => {
           audioUrl: 1,
           duration: 1,
           imageUrl: 1,
-          lyrics: 1,
           source: 1,
           allowDownload: 1,
           playCount: 1,
           likeCount: 1,
-          commentCount: 1,
-          shareCount: 1,
           createdAt: 1,
-          updatedAt: 1,
         },
       },
       {

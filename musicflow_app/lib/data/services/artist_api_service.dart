@@ -35,29 +35,29 @@ class ArtistApiService {
 
       return ArtistProfileResult(
         success: false,
-        message: data['message']?.toString() ?? 'Không thể tải thông tin nghệ sĩ',
+        message:
+            data['message']?.toString() ?? 'Không thể tải thông tin nghệ sĩ',
       );
     } catch (e) {
-      return ArtistProfileResult(
-        success: false,
-        message: 'Loi tai artist: $e',
-      );
+      return ArtistProfileResult(success: false, message: 'Loi tai artist: $e');
     }
   }
 
-  static Future<ArtistFollowStatusResult> getFollowStatus(String artistId) async {
+  static Future<ArtistFollowStatusResult> getFollowStatus(
+    String artistId,
+  ) async {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
         return ArtistFollowStatusResult(success: true, isFollowing: false);
       }
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow-status'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeout);
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow-status'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(_timeout);
 
       final data = _decodeToMap(response.body);
 
@@ -71,7 +71,8 @@ class ArtistApiService {
       return ArtistFollowStatusResult(
         success: false,
         isFollowing: false,
-        message: data['message']?.toString() ?? 'Không thể lấy trạng thái follow',
+        message:
+            data['message']?.toString() ?? 'Không thể lấy trạng thái follow',
       );
     } catch (e) {
       return ArtistFollowStatusResult(
@@ -94,13 +95,15 @@ class ArtistApiService {
         );
       }
 
-      final response = await http.post(
-        Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(_timeout);
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(_timeout);
 
       final data = _decodeToMap(response.body);
 
@@ -116,7 +119,8 @@ class ArtistApiService {
 
       return ToggleArtistFollowResult(
         success: false,
-        message: data['message']?.toString() ?? 'Không thể cập nhật follow nghệ sĩ',
+        message:
+            data['message']?.toString() ?? 'Không thể cập nhật follow nghệ sĩ',
       );
     } catch (e) {
       return ToggleArtistFollowResult(
@@ -136,9 +140,7 @@ class ArtistApiService {
       return value;
     }
     if (value is Map) {
-      return value.map(
-        (key, mapValue) => MapEntry(key.toString(), mapValue),
-      );
+      return value.map((key, mapValue) => MapEntry(key.toString(), mapValue));
     }
     return null;
   }
@@ -149,11 +151,7 @@ class ArtistProfileResult {
   final ArtistProfile? artist;
   final String? message;
 
-  ArtistProfileResult({
-    required this.success,
-    this.artist,
-    this.message,
-  });
+  ArtistProfileResult({required this.success, this.artist, this.message});
 }
 
 class ArtistFollowStatusResult {

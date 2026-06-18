@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
@@ -814,7 +814,9 @@ class _SearchScreenState extends State<SearchScreen> {
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: Colors.grey.shade800,
-        backgroundImage: artist.avatar.isNotEmpty ? NetworkImage(artist.avatar) : null,
+        backgroundImage: artist.avatar.isNotEmpty
+            ? NetworkImage(artist.avatar)
+            : null,
         child: artist.avatar.isEmpty
             ? const Icon(Icons.person, color: Colors.white70)
             : null,
@@ -823,12 +825,12 @@ class _SearchScreenState extends State<SearchScreen> {
         artist.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      subtitle: const Text(
-        'Nghệ sĩ',
-        style: TextStyle(color: Colors.grey),
-      ),
+      subtitle: const Text('Nghệ sĩ', style: TextStyle(color: Colors.grey)),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
@@ -883,25 +885,39 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                   const SizedBox(height: 6),
                   Row(
-                     children: [
-                        const Icon(Icons.play_arrow_rounded, color: Colors.grey, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${song.playCount}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                    children: [
+                      const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.grey,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${song.playCount}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(width: 6),
-                        const Text('·', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 6),
-                        Text(
-                          _formatDuration(song.duration),
-                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        '·',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
                         ),
-                     ],
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatDuration(song.duration),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -909,7 +925,11 @@ class _SearchScreenState extends State<SearchScreen> {
             IconButton(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 20),
+              icon: const Icon(
+                Icons.more_vert_rounded,
+                color: Colors.grey,
+                size: 20,
+              ),
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -933,6 +953,3 @@ class _SearchScreenState extends State<SearchScreen> {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
-
-
-

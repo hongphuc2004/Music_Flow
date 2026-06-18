@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/user_model.dart';
@@ -40,10 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<HomeArtistPreview> get _featuredArtists {
-    final mergedSongs = [
-      ...recommendedSongs,
-      ...songs,
-    ];
+    final mergedSongs = [...recommendedSongs, ...songs];
     final seen = <String>{};
     final artists = <HomeArtistPreview>[];
 
@@ -143,8 +140,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshRecommendedSongs() async {
     try {
-      final newRecommended =
-          await SongApiService.fetchRecommendedSongs(limit: 12);
+      final newRecommended = await SongApiService.fetchRecommendedSongs(
+        limit: 12,
+      );
       if (!mounted) return;
       setState(() {
         recommendedSongs = newRecommended;
@@ -154,10 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadFeaturedArtistAvatars() async {
-    final mergedSongs = [
-      ...recommendedSongs,
-      ...songs,
-    ];
+    final mergedSongs = [...recommendedSongs, ...songs];
 
     final normalizedNames = <String>[];
     final queryNameByNormalized = <String, String>{};
@@ -258,10 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Stack(
         children: [
           const HomeBackdrop(),
-          SafeArea(
-            bottom: false,
-            child: _buildBody(),
-          ),
+          SafeArea(bottom: false, child: _buildBody()),
         ],
       ),
     );
@@ -319,9 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPlayRecommended: recommendedSongs.isEmpty
                           ? null
                           : () => widget.onPlayAll?.call(
-                                recommendedSongs,
-                                startIndex: 0,
-                              ),
+                              recommendedSongs,
+                              startIndex: 0,
+                            ),
                     ),
                   const SizedBox(height: 18),
                   HomeQuickActions(
@@ -337,9 +329,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPlayRecommended: recommendedSongs.isEmpty
                         ? null
                         : () => widget.onPlayAll?.call(
-                              recommendedSongs,
-                              startIndex: 0,
-                            ),
+                            recommendedSongs,
+                            startIndex: 0,
+                          ),
                   ),
                   const SizedBox(height: 28),
                   if (systemPlaylists.isNotEmpty) ...[
@@ -383,7 +375,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_featuredArtists.isNotEmpty) ...[
                     HomeSectionHeader(
                       title: 'Nghệ sĩ nổi bật',
-                      subtitle: 'Lướt ngang để khám phá nhanh những cái tên đang hot',
+                      subtitle:
+                          'Lướt ngang để khám phá nhanh những cái tên đang hot',
                     ),
                     const SizedBox(height: 14),
                     HomeArtistCarousel(
@@ -426,7 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.white54),
+              const Icon(
+                Icons.wifi_off_rounded,
+                size: 64,
+                color: Colors.white54,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Ket noi dang gap van de',
@@ -470,4 +467,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

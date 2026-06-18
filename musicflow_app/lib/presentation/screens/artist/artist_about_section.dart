@@ -1,14 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_shared.dart';
 
 class ArtistAboutSection extends StatelessWidget {
   final ArtistProfile artist;
 
-  const ArtistAboutSection({
-    super.key,
-    required this.artist,
-  });
+  const ArtistAboutSection({super.key, required this.artist});
 
   @override
   Widget build(BuildContext context) {
@@ -125,4 +122,3 @@ class _MetaCard extends StatelessWidget {
     );
   }
 }
-

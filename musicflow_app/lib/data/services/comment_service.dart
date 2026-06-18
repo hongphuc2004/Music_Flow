@@ -22,7 +22,10 @@ class CommentService {
     }
   }
 
-  static String _extractErrorMessage(http.Response response, Map<String, dynamic> data) {
+  static String _extractErrorMessage(
+    http.Response response,
+    Map<String, dynamic> data,
+  ) {
     if (response.statusCode == 401) {
       return 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại';
     }
@@ -54,19 +57,14 @@ class CommentService {
     String sort = 'top',
   }) async {
     try {
-      final uri = Uri.parse('${ApiConfig.commentsEndpoint}/song/$songId').replace(
-        queryParameters: {
-          'sort': sort,
-          'page': '$page',
-          'limit': '$limit',
-        },
-      );
+      final uri = Uri.parse('${ApiConfig.commentsEndpoint}/song/$songId')
+          .replace(
+            queryParameters: {'sort': sort, 'page': '$page', 'limit': '$limit'},
+          );
 
-      final response = await http
-          .get(uri)
-          .timeout(timeout);
+      final response = await http.get(uri).timeout(timeout);
 
-        final data = _tryDecodeJson(response.body);
+      final data = _tryDecodeJson(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
         final List<dynamic> rawComments = data['comments'] ?? const [];
         final comments = rawComments
@@ -77,8 +75,10 @@ class CommentService {
         return CommentListResult(
           success: true,
           comments: comments,
-          totalComments: (data['totalComments'] as num?)?.toInt() ?? comments.length,
-          totalRootComments: (data['totalRootComments'] as num?)?.toInt() ?? comments.length,
+          totalComments:
+              (data['totalComments'] as num?)?.toInt() ?? comments.length,
+          totalRootComments:
+              (data['totalRootComments'] as num?)?.toInt() ?? comments.length,
           page: (data['page'] as num?)?.toInt() ?? page,
           limit: (data['limit'] as num?)?.toInt() ?? limit,
           hasMore: data['hasMore'] == true,
@@ -92,7 +92,10 @@ class CommentService {
     } on TimeoutException {
       return CommentListResult(success: false, message: 'Ket noi qua cham');
     } on SocketException {
-      return CommentListResult(success: false, message: 'Khong co ket noi mang');
+      return CommentListResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
     } catch (e) {
       return CommentListResult(success: false, message: 'Loi: $e');
     }
@@ -106,13 +109,13 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập để bình luận');
+        return CommentActionResult(
+          success: false,
+          message: 'Vui lòng đăng nhập để bình luận',
+        );
       }
 
-      final body = <String, dynamic>{
-        'songId': songId,
-        'content': content,
-      };
+      final body = <String, dynamic>{'songId': songId, 'content': content};
 
       if (parentCommentId != null && parentCommentId.isNotEmpty) {
         body['parentCommentId'] = parentCommentId;
@@ -145,7 +148,10 @@ class CommentService {
     } on TimeoutException {
       return CommentActionResult(success: false, message: 'Ket noi qua cham');
     } on SocketException {
-      return CommentActionResult(success: false, message: 'Khong co ket noi mang');
+      return CommentActionResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
     } catch (e) {
       return CommentActionResult(success: false, message: 'Loi: $e');
     }
@@ -158,7 +164,10 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
+        return CommentActionResult(
+          success: false,
+          message: 'Vui lòng đăng nhập',
+        );
       }
 
       final response = await http
@@ -182,7 +191,10 @@ class CommentService {
     } on TimeoutException {
       return CommentActionResult(success: false, message: 'Ket noi qua cham');
     } on SocketException {
-      return CommentActionResult(success: false, message: 'Khong co ket noi mang');
+      return CommentActionResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
     } catch (e) {
       return CommentActionResult(success: false, message: 'Loi: $e');
     }
@@ -192,7 +204,10 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
+        return CommentActionResult(
+          success: false,
+          message: 'Vui lòng đăng nhập',
+        );
       }
 
       final response = await http
@@ -215,7 +230,10 @@ class CommentService {
     } on TimeoutException {
       return CommentActionResult(success: false, message: 'Ket noi qua cham');
     } on SocketException {
-      return CommentActionResult(success: false, message: 'Khong co ket noi mang');
+      return CommentActionResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
     } catch (e) {
       return CommentActionResult(success: false, message: 'Loi: $e');
     }
@@ -227,7 +245,10 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
+        return CommentActionResult(
+          success: false,
+          message: 'Vui lòng đăng nhập',
+        );
       }
 
       final response = await http
@@ -251,7 +272,10 @@ class CommentService {
     } on TimeoutException {
       return CommentActionResult(success: false, message: 'Ket noi qua cham');
     } on SocketException {
-      return CommentActionResult(success: false, message: 'Khong co ket noi mang');
+      return CommentActionResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
     } catch (e) {
       return CommentActionResult(success: false, message: 'Loi: $e');
     }
@@ -261,7 +285,10 @@ class CommentService {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
-        return CommentActionResult(success: false, message: 'Vui lòng đăng nhập');
+        return CommentActionResult(
+          success: false,
+          message: 'Vui lòng đăng nhập',
+        );
       }
 
       final response = await http
@@ -284,7 +311,10 @@ class CommentService {
     } on TimeoutException {
       return CommentActionResult(success: false, message: 'Ket noi qua cham');
     } on SocketException {
-      return CommentActionResult(success: false, message: 'Khong co ket noi mang');
+      return CommentActionResult(
+        success: false,
+        message: 'Khong co ket noi mang',
+      );
     } catch (e) {
       return CommentActionResult(success: false, message: 'Loi: $e');
     }
@@ -317,8 +347,5 @@ class CommentActionResult {
   final bool success;
   final String? message;
 
-  CommentActionResult({
-    required this.success,
-    this.message,
-  });
+  CommentActionResult({required this.success, this.message});
 }

@@ -3,6 +3,15 @@ const router = express.Router();
 const Topic = require("../models/topic.model");
 const Song = require("../models/song.model");
 
+const TOPIC_SONG_SELECT =
+  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
+
+const parsePagination = (query) => {
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 50);
+  return { page, limit, skip: (page - 1) * limit };
+};
+
 // =================================================
 // 📌 GET ALL TOPICS
 router.get("/", async (req, res) => {
@@ -20,12 +29,28 @@ router.get("/", async (req, res) => {
 router.get("/:topicId/songs", async (req, res) => {
   try {
     const { topicId } = req.params;
-    const songs = await Song.find({
+    const { page, limit, skip } = parsePagination(req.query);
+    const filter = {
       topicIds: topicId,
-      isPublic: true
-    })
-      .populate("artists")
-      .sort({ createdAt: -1 });
+      isPublic: true,
+    };
+    const [songs, total] = await Promise.all([
+      Song.find(filter)
+        .select(TOPIC_SONG_SELECT)
+        .populate("artists", "name avatar")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Song.countDocuments(filter),
+    ]);
+
+    res.set({
+      "X-Total-Count": String(total),
+      "X-Page": String(page),
+      "X-Limit": String(limit),
+      "X-Total-Pages": String(Math.ceil(total / limit)),
+    });
     res.json(songs);
   } catch (error) {
     console.error("Get songs by topic error:", error);

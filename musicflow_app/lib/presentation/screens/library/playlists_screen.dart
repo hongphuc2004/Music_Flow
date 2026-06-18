@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -11,11 +11,7 @@ class PlaylistsScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
 
-  const PlaylistsScreen({
-    super.key,
-    this.onSongTap,
-    this.onPlayAll,
-  });
+  const PlaylistsScreen({super.key, this.onSongTap, this.onPlayAll});
 
   @override
   State<PlaylistsScreen> createState() => _PlaylistsScreenState();
@@ -160,7 +156,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.greenAccent,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -216,7 +215,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.greenAccent,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -351,7 +353,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
           const Divider(color: Colors.grey, height: 1),
           ListTile(
             leading: const Icon(Icons.edit, color: Colors.white70),
-            title: const Text('Đổi tên playlist', style: TextStyle(color: Colors.white)),
+            title: const Text(
+              'Đổi tên playlist',
+              style: TextStyle(color: Colors.white),
+            ),
             onTap: () {
               Navigator.pop(context);
               _showRenamePlaylistDialog(playlist);
@@ -359,7 +364,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-            title: const Text('Xóa playlist', style: TextStyle(color: Colors.redAccent)),
+            title: const Text(
+              'Xóa playlist',
+              style: TextStyle(color: Colors.redAccent),
+            ),
             onTap: () {
               Navigator.pop(context);
               _confirmDeletePlaylist(playlist);
@@ -378,7 +386,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Đổi tên playlist', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Đổi tên playlist',
+          style: TextStyle(color: Colors.white),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -418,7 +429,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                 }
               }
             },
-            child: const Text('Lưu', style: TextStyle(color: Colors.greenAccent)),
+            child: const Text(
+              'Lưu',
+              style: TextStyle(color: Colors.greenAccent),
+            ),
           ),
         ],
       ),
@@ -430,7 +444,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Xóa playlist?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Xóa playlist?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Bạn có chắc muốn xóa "${playlist.name}"?\nHành động này không thể hoàn tác.',
           style: TextStyle(color: Colors.grey[400]),
@@ -444,7 +461,9 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
             onPressed: () async {
               Navigator.pop(context);
 
-              final result = await PlaylistApiService.deletePlaylist(playlist.id);
+              final result = await PlaylistApiService.deletePlaylist(
+                playlist.id,
+              );
 
               if (result.success) {
                 _loadPlaylists();
@@ -469,7 +488,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Tạo playlist mới', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Tạo playlist mới',
+          style: TextStyle(color: Colors.white),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -503,22 +525,28 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                 _loadPlaylists();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Đã tạo "${controller.text.trim()}"')),
+                    SnackBar(
+                      content: Text('Đã tạo "${controller.text.trim()}"'),
+                    ),
                   );
                 }
               } else {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result.message ?? 'Tạo playlist thất bại')),
+                    SnackBar(
+                      content: Text(result.message ?? 'Tạo playlist thất bại'),
+                    ),
                   );
                 }
               }
             },
-            child: const Text('Tạo', style: TextStyle(color: Colors.greenAccent)),
+            child: const Text(
+              'Tạo',
+              style: TextStyle(color: Colors.greenAccent),
+            ),
           ),
         ],
       ),
     );
   }
 }
-

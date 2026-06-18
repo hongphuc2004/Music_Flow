@@ -315,7 +315,9 @@ class DownloadedSong {
       remoteAudioUrl: map['remote_audio_url'] as String,
       localPath: map['local_path'] as String,
       duration: (map['duration'] as num?)?.toDouble(),
-      downloadedAt: DateTime.fromMillisecondsSinceEpoch(map['downloaded_at'] as int),
+      downloadedAt: DateTime.fromMillisecondsSinceEpoch(
+        map['downloaded_at'] as int,
+      ),
       lastAccessedAt: DateTime.fromMillisecondsSinceEpoch(
         (map['last_accessed_at'] as int?) ?? (map['downloaded_at'] as int),
       ),

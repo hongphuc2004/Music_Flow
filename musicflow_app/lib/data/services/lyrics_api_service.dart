@@ -41,7 +41,9 @@ class LyricsApiService {
     String fallbackLyrics = '',
   }) async {
     try {
-      final response = await _getWithRetry(Uri.parse('$_baseUrl/$songId/lyrics'));
+      final response = await _getWithRetry(
+        Uri.parse('$_baseUrl/$songId/lyrics'),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
@@ -62,10 +64,7 @@ class LyricsApiService {
         return LyricsResult(success: true, lyrics: fallbackLyrics);
       }
 
-      return LyricsResult(
-        success: false,
-        message: e.toString(),
-      );
+      return LyricsResult(success: false, message: e.toString());
     }
   }
 }
@@ -75,11 +74,7 @@ class LyricsResult {
   final String lyrics;
   final String? message;
 
-  LyricsResult({
-    required this.success,
-    this.lyrics = '',
-    this.message,
-  });
+  LyricsResult({required this.success, this.lyrics = '', this.message});
 }
 
 class LyricsException implements Exception {

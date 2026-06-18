@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
+import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 
 /// Widget hiển thị menu tùy chọn cho bài hát (3 chấm dọc)
@@ -13,10 +14,13 @@ class SongOptionsMenu extends StatelessWidget {
   final VoidCallback? onAddToFavorite;
   final VoidCallback? onShare;
   final VoidCallback? onDownload;
+
   /// Playlist ID nếu bài hát đang được xem trong context của playlist
   final String? currentPlaylistId;
+
   /// Callback khi xóa bài hát khỏi playlist
   final VoidCallback? onRemovedFromPlaylist;
+
   /// Callback khi trạng thái yêu thích thay đổi
   final VoidCallback? onFavoriteChanged;
 
@@ -150,7 +154,7 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Song info header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -167,7 +171,10 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
                       width: 56,
                       height: 56,
                       color: Colors.grey[800],
-                      child: const Icon(Icons.music_note, color: Colors.white54),
+                      child: const Icon(
+                        Icons.music_note,
+                        color: Colors.white54,
+                      ),
                     ),
                   ),
                 ),
@@ -189,10 +196,7 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
                       const SizedBox(height: 4),
                       Text(
                         widget.song.artists.join(', '),
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -202,9 +206,9 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
               ],
             ),
           ),
-          
+
           const Divider(color: Colors.grey, height: 1),
-          
+
           // Options list - Show remove or add based on context
           if (widget.currentPlaylistId != null)
             _buildOptionTile(
@@ -247,11 +251,12 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
             icon: Icons.info_outline,
             title: 'Thông tin bài hát',
             onTap: () {
+              final rootContext = Navigator.of(context).context;
               Navigator.pop(context);
-              _showSongInfo(context);
+              _showSongInfo(rootContext);
             },
           ),
-          
+
           const SizedBox(height: 16),
         ],
       ),
@@ -266,10 +271,7 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
   }) {
     return ListTile(
       leading: Icon(icon, color: iconColor ?? Colors.white70),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white),
-      ),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
       onTap: onTap,
     );
   }
@@ -294,39 +296,39 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
   }
 
   void _openArtistScreen() {
-    final artistName = widget.song.artists.isNotEmpty ? widget.song.artists.first : '';
+    final artistName = widget.song.artists.isNotEmpty
+        ? widget.song.artists.first
+        : '';
     if (artistName.isEmpty) return;
 
     Navigator.pop(context);
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ArtistScreen(artistName: artistName),
-      ),
+      MaterialPageRoute(builder: (_) => ArtistScreen(artistName: artistName)),
     );
   }
 
   Future<void> _removeFromPlaylist(BuildContext context) async {
     Navigator.pop(context);
-    
+
     if (widget.currentPlaylistId == null) return;
-    
+
     final result = await PlaylistApiService.removeSongFromPlaylist(
       playlistId: widget.currentPlaylistId!,
       songId: widget.song.id,
     );
-    
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result.success 
-                ? 'Đã xóa "${widget.song.title}" khỏi playlist' 
+            result.success
+                ? 'Đã xóa "${widget.song.title}" khỏi playlist'
                 : result.message ?? 'Xóa thất bại',
           ),
           duration: const Duration(seconds: 2),
         ),
       );
-      
+
       if (result.success) {
         widget.onRemovedFromPlaylist?.call();
       }
@@ -336,10 +338,10 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
   void _showAddToPlaylistDialog(BuildContext context) async {
     // Lưu trước context ngoại vi qua Navigator để tránh lỗi mounted = false sau khi pop
     final rootContext = Navigator.of(context).context;
-    
+
     // Đóng menu bottom sheet hiện tại
     Navigator.pop(context);
-    
+
     // Check if logged in
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
@@ -355,18 +357,25 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
     }
 
     if (!rootContext.mounted) return;
-    
+
     showModalBottomSheet(
       context: rootContext,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => _PlaylistSelectionSheet(
-        song: widget.song,
-      ),
+      builder: (context) => _PlaylistSelectionSheet(song: widget.song),
     );
   }
 
-  void _showSongInfo(BuildContext context) {
+  Future<void> _showSongInfo(BuildContext context) async {
+    final lyricsResult = await LyricsApiService.fetchLrcLyrics(
+      songId: widget.song.id,
+    );
+    if (!context.mounted) return;
+
+    final lyricsStatus = lyricsResult.success
+        ? (lyricsResult.lyrics.trim().isNotEmpty ? 'Có' : 'Chưa có')
+        : 'Không thể kiểm tra';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -381,14 +390,16 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
           children: [
             _infoRow('Tên bài hát', widget.song.title),
             _infoRow('Ca sĩ', widget.song.artists.join(', ')),
-            if (widget.song.lyrics.isNotEmpty)
-              _infoRow('Lời bài hát', 'Có'),
+            _infoRow('Lời bài hát', lyricsStatus),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng', style: TextStyle(color: Colors.greenAccent)),
+            child: const Text(
+              'Đóng',
+              style: TextStyle(color: Colors.greenAccent),
+            ),
           ),
         ],
       ),
@@ -424,7 +435,8 @@ class _PlaylistSelectionSheet extends StatefulWidget {
   const _PlaylistSelectionSheet({required this.song});
 
   @override
-  State<_PlaylistSelectionSheet> createState() => _PlaylistSelectionSheetState();
+  State<_PlaylistSelectionSheet> createState() =>
+      _PlaylistSelectionSheetState();
 }
 
 class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
@@ -440,7 +452,7 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
 
   Future<void> _loadPlaylists() async {
     final result = await PlaylistApiService.getPlaylists();
-    
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -473,7 +485,7 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -499,13 +511,11 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
               ],
             ),
           ),
-          
+
           const Divider(color: Colors.grey, height: 1),
-          
+
           // Content
-          Expanded(
-            child: _buildContent(),
-          ),
+          Expanded(child: _buildContent()),
         ],
       ),
     );
@@ -586,7 +596,7 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
       itemBuilder: (context, index) {
         final playlist = _playlists[index];
         final hasSong = playlist.songs.any((s) => s.id == widget.song.id);
-        
+
         return ListTile(
           leading: Container(
             width: 50,
@@ -633,8 +643,8 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result.success 
-                ? 'Đã thêm vào "${playlist.name}"' 
+            result.success
+                ? 'Đã thêm vào "${playlist.name}"'
                 : result.message ?? 'Thêm thất bại',
           ),
           duration: const Duration(seconds: 2),
@@ -645,7 +655,7 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
 
   void _showCreatePlaylistDialog(BuildContext context) {
     final nameController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -677,9 +687,9 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
           TextButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
-              
+
               Navigator.pop(dialogContext);
-              
+
               final result = await PlaylistApiService.createPlaylist(
                 name: nameController.text.trim(),
               );
@@ -690,12 +700,14 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
                   playlistId: result.playlist!.id,
                   songId: widget.song.id,
                 );
-                
+
                 if (mounted) {
                   Navigator.pop(context); // Close playlist selection sheet
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Đã tạo và thêm vào "${nameController.text.trim()}"'),
+                      content: Text(
+                        'Đã tạo và thêm vào "${nameController.text.trim()}"',
+                      ),
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -711,11 +723,13 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
                 }
               }
             },
-            child: const Text('Tạo', style: TextStyle(color: Colors.greenAccent)),
+            child: const Text(
+              'Tạo',
+              style: TextStyle(color: Colors.greenAccent),
+            ),
           ),
         ],
       ),
     );
   }
 }
-

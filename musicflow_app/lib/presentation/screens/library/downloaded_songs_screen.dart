@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/presentation/widgets/mini_player_wrapper.dart';
@@ -7,11 +7,7 @@ class DownloadedSongsScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
   final Function(List<Song>, {int startIndex})? onPlayAll;
 
-  const DownloadedSongsScreen({
-    super.key,
-    this.onSongTap,
-    this.onPlayAll,
-  });
+  const DownloadedSongsScreen({super.key, this.onSongTap, this.onPlayAll});
 
   @override
   State<DownloadedSongsScreen> createState() => _DownloadedSongsScreenState();
@@ -72,100 +68,116 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
                 child: CircularProgressIndicator(color: Colors.greenAccent),
               )
             : _downloadedSongs.isEmpty
-                ? _buildEmptyState()
-                : RefreshIndicator(
-                    onRefresh: _loadDownloadedSongs,
-                    color: Colors.greenAccent,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    widget.onPlayAll?.call(_downloadedSongs, startIndex: 0);
-                                  },
-                                  icon: const Icon(Icons.play_arrow),
-                                  label: Text('Phát tất cả (${_downloadedSongs.length})'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.greenAccent,
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(25),
-                                    ),
-                                  ),
+            ? _buildEmptyState()
+            : RefreshIndicator(
+                onRefresh: _loadDownloadedSongs,
+                color: Colors.greenAccent,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                widget.onPlayAll?.call(
+                                  _downloadedSongs,
+                                  startIndex: 0,
+                                );
+                              },
+                              icon: const Icon(Icons.play_arrow),
+                              label: Text(
+                                'Phát tất cả (${_downloadedSongs.length})',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.greenAccent,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            itemCount: _downloadedSongs.length,
-                            itemBuilder: (context, index) {
-                              final song = _downloadedSongs[index];
-                              return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                leading: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: song.imageUrl.isNotEmpty
-                                      ? Image.network(
-                                          song.imageUrl,
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
-                                            width: 50,
-                                            height: 50,
-                                            color: Colors.grey[800],
-                                            child: const Icon(
-                                              Icons.download_done,
-                                              color: Colors.greenAccent,
-                                            ),
-                                          ),
-                                        )
-                                      : Container(
-                                          width: 50,
-                                          height: 50,
-                                          color: Colors.grey[800],
-                                          child: const Icon(
-                                            Icons.download_done,
-                                            color: Colors.greenAccent,
-                                          ),
-                                        ),
-                                ),
-                                title: Text(
-                                  song.title,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  song.artists.join(', '),
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                  onPressed: () => _removeDownloadedSong(song),
-                                  tooltip: 'Xóa bản tải offline',
-                                ),
-                                onTap: () => widget.onSongTap?.call(song),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: _downloadedSongs.length,
+                        itemBuilder: (context, index) {
+                          final song = _downloadedSongs[index];
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: song.imageUrl.isNotEmpty
+                                  ? Image.network(
+                                      song.imageUrl,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 50,
+                                        height: 50,
+                                        color: Colors.grey[800],
+                                        child: const Icon(
+                                          Icons.download_done,
+                                          color: Colors.greenAccent,
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 50,
+                                      height: 50,
+                                      color: Colors.grey[800],
+                                      child: const Icon(
+                                        Icons.download_done,
+                                        color: Colors.greenAccent,
+                                      ),
+                                    ),
+                            ),
+                            title: Text(
+                              song.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              song.artists.join(', '),
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                              ),
+                              onPressed: () => _removeDownloadedSong(song),
+                              tooltip: 'Xóa bản tải offline',
+                            ),
+                            onTap: () => widget.onSongTap?.call(song),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -211,4 +223,3 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
     );
   }
 }
-

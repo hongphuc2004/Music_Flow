@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
 
@@ -172,7 +172,10 @@ class _RecommendedSongTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.14),
                           borderRadius: BorderRadius.circular(999),
@@ -187,7 +190,11 @@ class _RecommendedSongTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Icon(Icons.favorite_border, size: 12, color: Colors.grey[500]),
+                      Icon(
+                        Icons.favorite_border,
+                        size: 12,
+                        color: Colors.grey[500],
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${song.likeCount}',
@@ -210,4 +217,3 @@ class _RecommendedSongTile extends StatelessWidget {
     );
   }
 }
-

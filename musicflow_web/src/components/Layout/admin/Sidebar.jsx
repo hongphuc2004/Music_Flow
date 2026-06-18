@@ -1,3 +1,4 @@
+import { startTransition } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
@@ -21,6 +22,7 @@ import {
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import useAppToast from '../../common/useAppToast';
+import { preloadRoute } from '../../../utils/routePreload';
 
 const drawerWidth = 260;
 
@@ -78,7 +80,9 @@ function Sidebar() {
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
-              onClick={() => navigate(item.path)}
+              onClick={() => startTransition(() => navigate(item.path))}
+              onPointerEnter={() => preloadRoute(item.path)}
+              onFocus={() => preloadRoute(item.path)}
               selected={location.pathname === item.path}
               sx={{
                 borderRadius: 2,

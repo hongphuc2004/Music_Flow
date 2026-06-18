@@ -24,11 +24,10 @@ class PlaylistApiService {
   static Future<PlaylistResult> getPlaylists() async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.get(
-        Uri.parse(baseUrl),
-        headers: headers,
-      ).timeout(timeout);
+
+      final response = await http
+          .get(Uri.parse(baseUrl), headers: headers)
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -38,10 +37,7 @@ class PlaylistApiService {
             .map((json) => Playlist.fromJson(json))
             .toList();
 
-        return PlaylistResult(
-          success: true,
-          playlists: playlists,
-        );
+        return PlaylistResult(success: true, playlists: playlists);
       } else {
         return PlaylistResult(
           success: false,
@@ -73,10 +69,7 @@ class PlaylistApiService {
             .map((json) => Playlist.fromJson(json))
             .toList();
 
-        return PlaylistResult(
-          success: true,
-          playlists: playlists,
-        );
+        return PlaylistResult(success: true, playlists: playlists);
       }
 
       return PlaylistResult(
@@ -127,11 +120,10 @@ class PlaylistApiService {
   static Future<PlaylistResult> getPlaylist(String playlistId) async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.get(
-        Uri.parse('$baseUrl/$playlistId'),
-        headers: headers,
-      ).timeout(timeout);
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/$playlistId'), headers: headers)
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -165,18 +157,20 @@ class PlaylistApiService {
   }) async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: headers,
-        body: jsonEncode({
-          'name': name,
-          'description': description ?? '',
-          'isPublic': isPublic,
-          'coverImage': coverImage ?? '',
-        }),
-      ).timeout(timeout);
-      
+
+      final response = await http
+          .post(
+            Uri.parse(baseUrl),
+            headers: headers,
+            body: jsonEncode({
+              'name': name,
+              'description': description ?? '',
+              'isPublic': isPublic,
+              'coverImage': coverImage ?? '',
+            }),
+          )
+          .timeout(timeout);
+
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 && data['success'] == true) {
@@ -211,18 +205,20 @@ class PlaylistApiService {
   }) async {
     try {
       final headers = await _getAuthHeaders();
-      
+
       final body = <String, dynamic>{};
       if (name != null) body['name'] = name;
       if (description != null) body['description'] = description;
       if (isPublic != null) body['isPublic'] = isPublic;
       if (coverImage != null) body['coverImage'] = coverImage;
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/$playlistId'),
-        headers: headers,
-        body: jsonEncode(body),
-      ).timeout(timeout);
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/$playlistId'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -252,17 +248,15 @@ class PlaylistApiService {
   static Future<PlaylistResult> deletePlaylist(String playlistId) async {
     try {
       final headers = await _getAuthHeaders();
-      http.Response response = await http.delete(
-        Uri.parse('$baseUrl/$playlistId'),
-        headers: headers,
-      ).timeout(timeout);
+      http.Response response = await http
+          .delete(Uri.parse('$baseUrl/$playlistId'), headers: headers)
+          .timeout(timeout);
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http.delete(
-            Uri.parse('$baseUrl/$playlistId'),
-            headers: headers,
-          ).timeout(timeout);
+          response = await http
+              .delete(Uri.parse('$baseUrl/$playlistId'), headers: headers)
+              .timeout(timeout);
         }
       }
       final data = jsonDecode(response.body);
@@ -294,12 +288,14 @@ class PlaylistApiService {
   }) async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.post(
-        Uri.parse('$baseUrl/$playlistId/songs'),
-        headers: headers,
-        body: jsonEncode({'songId': songId}),
-      ).timeout(timeout);
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/$playlistId/songs'),
+            headers: headers,
+            body: jsonEncode({'songId': songId}),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -332,11 +328,13 @@ class PlaylistApiService {
   }) async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.delete(
-        Uri.parse('$baseUrl/$playlistId/songs/$songId'),
-        headers: headers,
-      ).timeout(timeout);
+
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/$playlistId/songs/$songId'),
+            headers: headers,
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 
@@ -369,12 +367,14 @@ class PlaylistApiService {
   }) async {
     try {
       final headers = await _getAuthHeaders();
-      
-      final response = await http.put(
-        Uri.parse('$baseUrl/$playlistId/reorder'),
-        headers: headers,
-        body: jsonEncode({'songIds': songIds}),
-      ).timeout(timeout);
+
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/$playlistId/reorder'),
+            headers: headers,
+            body: jsonEncode({'songIds': songIds}),
+          )
+          .timeout(timeout);
 
       final data = jsonDecode(response.body);
 

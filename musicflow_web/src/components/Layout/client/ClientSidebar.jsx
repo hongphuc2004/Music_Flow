@@ -1,3 +1,4 @@
+import { startTransition } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
@@ -15,6 +16,7 @@ import {
   IconButton,
   Stack,
   Paper,
+  Tooltip,
   useTheme,
 } from '@mui/material';
 import {
@@ -28,12 +30,15 @@ import {
   LoginRounded as LoginIcon,
   Headphones as HeadphonesIcon,
   MicExternalOnOutlined,
-  FavoriteBorderRounded as FavoriteIcon,
   AutoAwesomeRounded as SparklesIcon,
+  ViewSidebarRounded as SidebarIcon,
 } from '@mui/icons-material';
 import useClientToast from './useClientToast';
+import useClientSession, { notifyClientSessionChanged } from '../../../hooks/useClientSession';
+import { preloadRoute } from '../../../utils/routePreload';
 
 const drawerWidth = 260;
+const collapsedDrawerWidth = 76;
 
 const menuGroups = [
   {
@@ -55,16 +60,20 @@ const menuGroups = [
   },
 ];
 
-function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess = () => {} }) {
+function ClientSidebar({
+  mobileOpen = false,
+  desktopOpen = true,
+  onToggleDesktop = () => {},
+  onClose = () => {},
+  onLogoutSuccess = () => {},
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useClientToast();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
-  const isLoggedIn = localStorage.getItem('role') === 'user';
-  const userName = localStorage.getItem('userName') || localStorage.getItem('name') || 'Listener';
+  const { isLoggedIn, userName, userAvatar } = useClientSession();
   const userInitial = (userName || 'U').charAt(0).toUpperCase();
-  const userAvatar = localStorage.getItem('userAvatar') || '';
 
   const handleNavigate = (path) => {
     const privatePaths = ['/client/library', '/client/profile', '/client/ai-mood'];
@@ -78,7 +87,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
       return;
     }
 
-    navigate(path);
+    startTransition(() => navigate(path));
     onClose();
   };
 
@@ -87,6 +96,8 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
     localStorage.removeItem('userName');
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
+    localStorage.removeItem('userAvatar');
+    notifyClientSessionChanged();
     onClose();
     onLogoutSuccess();
     showToast({
@@ -107,16 +118,25 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
     navigate('/artistlogin');
   };
 
-  const sidebarContent = (
-    <Stack sx={{ height: '100%' }}>
+  const renderSidebarContent = (collapsed = false, showDesktopToggle = false) => (
+    <Stack sx={{ height: '100%', width: collapsed ? collapsedDrawerWidth : drawerWidth, overflowX: 'hidden' }}>
       {/* Brand Logo Header */}
-      <Toolbar sx={{ alignItems: 'center', pt: 2.5, px: 3 }}>
+      <Toolbar
+        sx={{
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          pt: 2.5,
+          px: collapsed ? 1 : 2.5,
+          overflow: 'hidden',
+        }}
+      >
+        <Tooltip title={collapsed && showDesktopToggle ? 'Mở thanh bên' : ''} placement="right" arrow>
         <Box
-          onClick={() => handleNavigate('/client/home')}
+          onClick={collapsed && showDesktopToggle ? onToggleDesktop : () => handleNavigate('/client/home')}
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1.5,
+            gap: collapsed ? 0 : 1.5,
             cursor: 'pointer',
             userSelect: 'none',
             '&:hover .brand-icon-container': {
@@ -126,6 +146,12 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
             '&:hover .brand-text': {
               opacity: 0.85,
             },
+            '&:hover .brand-logo-icon': {
+              opacity: collapsed && showDesktopToggle ? 0 : 1,
+            },
+            '&:hover .brand-open-icon': {
+              opacity: collapsed && showDesktopToggle ? 1 : 0,
+            },
             transition: 'all 0.2s ease',
           }}
         >
@@ -133,6 +159,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
             className="brand-icon-container"
             sx={{
               display: 'flex',
+              position: 'relative',
               alignItems: 'center',
               justifyContent: 'center',
               width: 38,
@@ -144,7 +171,27 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
               transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            <HeadphonesIcon sx={{ color: isDark ? '#22d3ee' : '#14b8a6', fontSize: 22 }} />
+            <HeadphonesIcon
+              className="brand-logo-icon"
+              sx={{
+                color: isDark ? '#22d3ee' : '#14b8a6',
+                fontSize: 22,
+                opacity: 1,
+                transition: 'opacity 0.16s ease',
+              }}
+            />
+            {collapsed && showDesktopToggle && (
+              <SidebarIcon
+                className="brand-open-icon"
+                sx={{
+                  position: 'absolute',
+                  color: isDark ? '#22d3ee' : '#14b8a6',
+                  fontSize: 22,
+                  opacity: 0,
+                  transition: 'opacity 0.16s ease',
+                }}
+              />
+            )}
           </Box>
           <Typography
             variant="h6"
@@ -152,6 +199,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
             component="div"
             className="brand-text"
             sx={{
+              display: collapsed ? 'none' : 'block',
               fontWeight: 900,
               fontSize: 20,
               letterSpacing: -0.6,
@@ -164,21 +212,42 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
             MusicFlow
           </Typography>
         </Box>
+        </Tooltip>
+        {!collapsed && showDesktopToggle && (
+          <Tooltip title="Thu gọn thanh bên" placement="right" arrow>
+            <IconButton
+              size="small"
+              onClick={onToggleDesktop}
+              sx={{
+                width: 32,
+                height: 32,
+                flexShrink: 0,
+                color: 'text.secondary',
+                '&:hover': {
+                  color: '#14b8a6',
+                  bgcolor: isDark ? 'rgba(20,184,166,0.12)' : 'rgba(20,184,166,0.08)',
+                },
+              }}
+            >
+              <SidebarIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Toolbar>
 
-      <Divider sx={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', my: 2, mx: 2 }} />
+      <Divider sx={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', my: 2, mx: collapsed ? 1 : 2 }} />
 
       {/* Menu Groups */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', py: 1 }}>
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden', py: 1 }}>
         {menuGroups.map((group) => (
-          <Box key={group.title} sx={{ px: 2, mb: 3 }}>
+          <Box key={group.title} sx={{ px: collapsed ? 1 : 2, mb: collapsed ? 1.5 : 3 }}>
             <Typography
               variant="caption"
               sx={{
                 px: 1.5,
                 pb: 0.75,
                 pt: 1,
-                display: 'block',
+                display: collapsed ? 'none' : 'block',
                 fontWeight: 900,
                 color: isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.65)',
                 letterSpacing: 1.6,
@@ -193,14 +262,19 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
                 const isAi = item.isAi;
                 return (
                   <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                    <Tooltip title={collapsed ? item.text : ''} placement="right" arrow>
                     <ListItemButton
                       onClick={() => handleNavigate(item.path)}
+                      onPointerEnter={() => preloadRoute(item.path)}
+                      onFocus={() => preloadRoute(item.path)}
                       selected={active}
                       sx={{
                         borderRadius: 2.5,
                         minHeight: 44,
                         position: 'relative',
-                        pl: active ? 2.5 : 2,
+                        px: collapsed ? 0 : undefined,
+                        pl: collapsed ? 0 : (active ? 2.5 : 2),
+                        justifyContent: collapsed ? 'center' : 'flex-start',
                         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                         willChange: 'transform',
                         // AI item has purple active accent; regular items use teal
@@ -221,13 +295,14 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
                           : 'none',
                         '&:hover': {
                           bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                          transform: 'translateX(6px)',
+                          transform: collapsed ? 'none' : 'translateX(6px)',
                         },
                       }}
                     >
                       <ListItemIcon
                         sx={{
-                          minWidth: 34,
+                          minWidth: collapsed ? 0 : 34,
+                          justifyContent: 'center',
                           transition: 'color 0.2s ease',
                           color: active
                             ? isAi
@@ -249,6 +324,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
                         {item.icon}
                       </ListItemIcon>
                       <ListItemText
+                        sx={{ display: collapsed ? 'none' : 'block' }}
                         primary={item.text}
                         primaryTypographyProps={{
                           fontWeight: active ? 800 : 600,
@@ -267,19 +343,23 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
                           label="AI"
                           size="small"
                           sx={{
-                            height: 18,
-                            fontSize: 9,
+                            position: collapsed ? 'absolute' : 'static',
+                            top: collapsed ? 3 : 'auto',
+                            right: collapsed ? 3 : 'auto',
+                            height: collapsed ? 14 : 18,
+                            fontSize: collapsed ? 7 : 9,
                             fontWeight: 800,
                             letterSpacing: '0.05em',
                             borderRadius: 1,
                             background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
                             color: '#fff',
                             border: 'none',
-                            '& .MuiChip-label': { px: 0.75 },
+                            '& .MuiChip-label': { px: collapsed ? 0.45 : 0.75 },
                           }}
                         />
                       )}
                     </ListItemButton>
+                    </Tooltip>
                   </ListItem>
                 );
               })}
@@ -289,9 +369,9 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
       </Box>
 
       {/* Footer Area */}
-      <Stack spacing={1.5} sx={{ p: 2, mt: 'auto' }}>
+      <Stack spacing={1.5} sx={{ p: collapsed ? 1 : 2, mt: 'auto' }}>
         {/* Artist Studio Call-to-action */}
-        {!isLoggedIn && (
+        {!isLoggedIn && !collapsed && (
           <Paper
             onClick={handleArtistLogin}
             sx={{
@@ -326,21 +406,25 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
 
         {/* User Account Section */}
         {isLoggedIn ? (
+          <Tooltip title={collapsed ? userName : ''} placement="right" arrow>
           <Box
+            onClick={collapsed ? () => handleNavigate('/client/profile') : undefined}
             sx={{
-              p: 1.25,
+              p: collapsed ? 0.75 : 1.25,
               borderRadius: 3.5,
               bgcolor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
               border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
               display: 'flex',
               alignItems: 'center',
-              gap: 1.25,
+              gap: collapsed ? 0 : 1.25,
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              cursor: collapsed ? 'pointer' : 'default',
             }}
           >
             <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ width: 36, height: 36, bgcolor: '#14b8a6', fontSize: 15, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
               {userInitial}
             </Avatar>
-            <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Box sx={{ minWidth: 0, flexGrow: 1, display: collapsed ? 'none' : 'block' }}>
               <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#fff' : 'text.primary', fontSize: 13 }} noWrap>
                 {userName}
               </Typography>
@@ -348,7 +432,7 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
                 Người nghe
               </Typography>
             </Box>
-            <IconButton 
+            {!collapsed && <IconButton 
               onClick={handleLogout} 
               size="small" 
               sx={{ 
@@ -358,9 +442,11 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
               }}
             >
               <LogoutIcon fontSize="small" />
-            </IconButton>
+            </IconButton>}
           </Box>
+          </Tooltip>
         ) : (
+          <Tooltip title={collapsed ? 'Đăng nhập' : ''} placement="right" arrow>
           <ListItemButton
             onClick={handleLogin}
             sx={{
@@ -381,8 +467,9 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
             }}
           >
             <LoginIcon sx={{ fontSize: 18 }} />
-            <Typography fontWeight={700} variant="body2" sx={{ fontSize: 13.5 }}>Đăng Nhập</Typography>
+            {!collapsed && <Typography fontWeight={700} variant="body2" sx={{ fontSize: 13.5 }}>Đăng Nhập</Typography>}
           </ListItemButton>
+          </Tooltip>
         )}
       </Stack>
     </Stack>
@@ -396,22 +483,30 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
       ? 'radial-gradient(circle at top, rgba(20, 184, 166, 0.08) 0%, transparent 60%), linear-gradient(180deg, rgba(9, 13, 22, 0.82) 0%, rgba(17, 24, 39, 0.85) 60%, rgba(7, 21, 30, 0.9) 100%)'
       : 'radial-gradient(circle at top, rgba(20, 184, 166, 0.06) 0%, transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(248, 250, 252, 0.8) 60%, rgba(241, 245, 249, 0.85) 100%)',
     backdropFilter: 'blur(20px) saturate(150%)',
+    overflowX: 'hidden',
     borderRight: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
-    transition: 'background 0.3s ease, border-color 0.3s ease',
+    transition: 'width 0.22s ease, background 0.3s ease, border-color 0.3s ease',
   };
 
   return (
     <>
       <Drawer
         variant="permanent"
+        open={desktopOpen}
         sx={{
           display: { xs: 'none', md: 'block' },
-          width: drawerWidth,
+          width: desktopOpen ? drawerWidth : collapsedDrawerWidth,
           flexShrink: 0,
-          '& .MuiDrawer-paper': drawerPaperStyles,
+          transition: 'width 0.22s ease',
+          overflowX: 'hidden',
+          '& .MuiDrawer-paper': {
+            ...drawerPaperStyles,
+            width: desktopOpen ? drawerWidth : collapsedDrawerWidth,
+            overflowX: 'hidden',
+          },
         }}
       >
-        {sidebarContent}
+        {renderSidebarContent(!desktopOpen, true)}
       </Drawer>
       <Drawer
         variant="temporary"
@@ -420,10 +515,13 @@ function ClientSidebar({ mobileOpen = false, onClose = () => {}, onLogoutSuccess
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': drawerPaperStyles,
+          '& .MuiDrawer-paper': {
+            ...drawerPaperStyles,
+            overflowX: 'hidden',
+          },
         }}
       >
-        {sidebarContent}
+        {renderSidebarContent(false, false)}
       </Drawer>
     </>
   );

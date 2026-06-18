@@ -49,19 +49,19 @@ class Playlist {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       userId: json['userId'] is Map
-        ? json['userId']['_id'] ?? ''
-        : (json['userId'] ??
-          (json['createdBy'] is Map
-            ? json['createdBy']['_id'] ?? ''
-            : json['createdBy'] ?? '')),
+          ? json['userId']['_id'] ?? ''
+          : (json['userId'] ??
+                (json['createdBy'] is Map
+                    ? json['createdBy']['_id'] ?? ''
+                    : json['createdBy'] ?? '')),
       songs: parsedSongs,
       coverImage: json['coverImage'] ?? '',
       isPublic: json['isPublic'] ?? false,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.tryParse(json['createdAt']) 
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
           : null,
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.tryParse(json['updatedAt']) 
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'])
           : null,
     );
   }

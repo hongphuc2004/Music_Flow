@@ -44,7 +44,9 @@ function normalizeSong(song) {
     imageUrl: song.imageUrl || '',
     artistText,
     duration: song.duration || 0,
-    streamUrl: song.audioUrl || song.streamUrl || resolveSongStreamUrl(song._id),
+    streamUrl: song._id
+      ? resolveSongStreamUrl(song._id)
+      : song.streamUrl || song.audioUrl || '',
   };
 }
 
@@ -66,6 +68,59 @@ export function ClientPlayerProvider({ children }) {
   const shuffleRef = useRef(false);
   const repeatModeRef = useRef('off');
   const lastTimelineUpdateRef = useRef(0);
+  const playTrackingRef = useRef({
+    songId: null,
+    listenedSeconds: 0,
+    segmentStartedAt: null,
+    submitted: false,
+  });
+
+  const resetPlayTracking = useCallback((songId) => {
+    playTrackingRef.current = {
+      songId,
+      listenedSeconds: 0,
+      segmentStartedAt: null,
+      submitted: false,
+    };
+  }, []);
+
+  const finishListeningSegment = useCallback(() => {
+    const tracking = playTrackingRef.current;
+    if (tracking.segmentStartedAt === null) return;
+
+    tracking.listenedSeconds += Math.max(
+      0,
+      (performance.now() - tracking.segmentStartedAt) / 1000
+    );
+    tracking.segmentStartedAt = null;
+  }, []);
+
+  const maybeTrackQualifiedPlay = useCallback(() => {
+    const tracking = playTrackingRef.current;
+    const audio = audioRef.current;
+    const activeSong = currentSongRef.current;
+    if (!audio || !activeSong?._id || tracking.submitted) return;
+    if (tracking.songId !== activeSong._id) return;
+
+    const activeSegmentSeconds = tracking.segmentStartedAt === null
+      ? 0
+      : Math.max(0, (performance.now() - tracking.segmentStartedAt) / 1000);
+    const listenedSeconds = tracking.listenedSeconds + activeSegmentSeconds;
+    const knownDuration = Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : Number(activeSong.duration) || 0;
+    const thresholdSeconds = knownDuration > 0
+      ? Math.min(15, knownDuration * 0.3)
+      : 15;
+
+    if (listenedSeconds < thresholdSeconds) return;
+
+    tracking.submitted = true;
+    clientSongsApi.trackPlay(activeSong._id).catch(() => {
+      // Allow a retry during the same listening session if the request fails.
+      tracking.submitted = false;
+    });
+  }, []);
 
   const loadLyrics = useCallback(async (songId) => {
     if (!songId) {
@@ -95,14 +150,31 @@ export function ClientPlayerProvider({ children }) {
       setCurrentTime(audio.currentTime || 0);
     };
     const handleLoadedMetadata = () => setDuration(audio.duration || 0);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handlePlaying = () => {
+      setIsPlaying(true);
+      const tracking = playTrackingRef.current;
+      if (tracking.songId === currentSongRef.current?._id && tracking.segmentStartedAt === null) {
+        tracking.segmentStartedAt = performance.now();
+      }
+    };
+    const handlePause = () => {
+      finishListeningSegment();
+      maybeTrackQualifiedPlay();
+      setIsPlaying(false);
+    };
+    const handleWaiting = () => {
+      finishListeningSegment();
+      maybeTrackQualifiedPlay();
+    };
     const handleEnded = () => {
+      finishListeningSegment();
+      maybeTrackQualifiedPlay();
       const activeQueue = queueRef.current;
       const activeIndex = queueIndexRef.current;
       const activeRepeatMode = repeatModeRef.current;
 
       if (activeRepeatMode === 'one') {
+        resetPlayTracking(currentSongRef.current?._id || null);
         audio.currentTime = 0;
         audio.play().catch(() => setIsPlaying(false));
         return;
@@ -133,6 +205,7 @@ export function ClientPlayerProvider({ children }) {
 
       queueIndexRef.current = nextIndex;
       currentSongRef.current = normalizedSong;
+      resetPlayTracking(normalizedSong._id);
       audio.src = normalizedSong.streamUrl;
       setQueueIndex(nextIndex);
       setCurrentSong(normalizedSong);
@@ -144,19 +217,23 @@ export function ClientPlayerProvider({ children }) {
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('play', handlePlay);
+    const trackingTimer = window.setInterval(maybeTrackQualifiedPlay, 500);
+    audio.addEventListener('playing', handlePlaying);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('waiting', handleWaiting);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
       audio.pause();
+      window.clearInterval(trackingTimer);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('playing', handlePlaying);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('waiting', handleWaiting);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [loadLyrics]);
+  }, [finishListeningSegment, loadLyrics, maybeTrackQualifiedPlay, resetPlayTracking]);
 
   useEffect(() => {
     currentSongRef.current = currentSong;
@@ -195,11 +272,15 @@ export function ClientPlayerProvider({ children }) {
     queueIndexRef.current = nextIndex;
 
     if (!isSameSong) {
+      finishListeningSegment();
+      resetPlayTracking(nextSong._id);
       audio.src = nextSong.streamUrl;
       setCurrentSong(nextSong);
       currentSongRef.current = nextSong;
       setCurrentTime(0);
       loadLyrics(nextSong._id);
+    } else if (audio.ended || audio.currentTime < 1) {
+      resetPlayTracking(nextSong._id);
     }
 
     saveRecentPlayedSong(song);
@@ -209,7 +290,7 @@ export function ClientPlayerProvider({ children }) {
     } catch {
       setIsPlaying(false);
     }
-  }, [loadLyrics]);
+  }, [finishListeningSegment, loadLyrics, resetPlayTracking]);
 
   const playSongAtIndex = useCallback(async (nextIndex) => {
     const activeQueue = queueRef.current;
@@ -221,6 +302,8 @@ export function ClientPlayerProvider({ children }) {
 
     queueIndexRef.current = nextIndex;
     currentSongRef.current = nextSong;
+    finishListeningSegment();
+    resetPlayTracking(nextSong._id);
     audio.src = nextSong.streamUrl;
     setQueueIndex(nextIndex);
     setCurrentSong(nextSong);
@@ -235,7 +318,7 @@ export function ClientPlayerProvider({ children }) {
       setIsPlaying(false);
       return false;
     }
-  }, [loadLyrics]);
+  }, [finishListeningSegment, loadLyrics, resetPlayTracking]);
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;

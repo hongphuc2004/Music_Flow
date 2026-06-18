@@ -1,0 +1,3 @@
+# Keep prompts/rules, ignore local Codex temp files
+*.tmp
+*.log

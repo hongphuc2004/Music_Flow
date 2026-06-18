@@ -3,8 +3,8 @@ const router = express.Router();
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-const https = require("https");
-const http = require("http");
+const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 const cloudinary = require("../config/cloudinary");
 const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryFolders");
 const Song = require("../models/song.model");
@@ -16,8 +16,7 @@ const authMiddleware = require("../middleware/auth.middleware");
 const { downloadSong } = require("../controllers/song.controller");
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
-const TRACK_PLAY_COOLDOWN_MS = 30 * 1000;
-const recentPlayTrackByKey = new Map();
+const TRACK_PLAY_COOLDOWN_MS = 3 * 60 * 1000;
 const SONG_PUBLIC_SELECT =
   "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
 
@@ -36,6 +35,43 @@ const setPaginationHeaders = (res, { page, limit, total }) => {
   });
 };
 
+const getRankingPeriodRange = (period) => {
+  const now = new Date();
+  const currentStart = new Date(now);
+
+  if (period === "week") {
+    const day = currentStart.getDay();
+    const daysSinceMonday = day === 0 ? 6 : day - 1;
+    currentStart.setDate(currentStart.getDate() - daysSinceMonday);
+    currentStart.setHours(0, 0, 0, 0);
+  } else if (period === "month") {
+    currentStart.setDate(1);
+    currentStart.setHours(0, 0, 0, 0);
+  } else {
+    currentStart.setHours(0, 0, 0, 0);
+  }
+
+  const previousStart = new Date(currentStart);
+  if (period === "week") {
+    previousStart.setDate(previousStart.getDate() - 7);
+  } else if (period === "month") {
+    previousStart.setMonth(previousStart.getMonth() - 1);
+  } else {
+    previousStart.setDate(previousStart.getDate() - 1);
+  }
+
+  return {
+    currentStart,
+    currentEnd: now,
+    previousStart,
+    previousEnd: currentStart,
+  };
+};
+
+const buildRankMap = (items) => new Map(
+  items.map((item, index) => [item.songId.toString(), index + 1])
+);
+
 const truncateToHour = (date) => {
   const d = new Date(date);
   d.setMinutes(0, 0, 0);
@@ -50,17 +86,25 @@ const buildHourlySlots = (hours) => {
   });
 };
 
-const shouldTrackPlayRequest = (songId, ipAddress) => {
-  const key = `${songId}:${ipAddress || "unknown"}`;
-  const now = Date.now();
-  const lastTrackedAt = recentPlayTrackByKey.get(key) || 0;
+const resolveOptionalUserId = (req) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ") || !process.env.JWT_SECRET) return null;
 
-  if (now - lastTrackedAt < TRACK_PLAY_COOLDOWN_MS) {
-    return false;
+  try {
+    const decoded = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
+    return decoded.userId || decoded.id || decoded._id || null;
+  } catch {
+    return null;
   }
+};
 
-  recentPlayTrackByKey.set(key, now);
-  return true;
+const buildAnonymousListenerKey = (req) => {
+  const ipAddress = req.ip || req.socket?.remoteAddress || "unknown";
+  const userAgent = String(req.headers["user-agent"] || "unknown");
+  return crypto
+    .createHash("sha256")
+    .update(`${ipAddress}|${userAgent}`)
+    .digest("hex");
 };
 
 // 📋 GET SONGS BY ARTIST NAME (PUBLIC + ADMIN UPLOAD)
@@ -475,6 +519,150 @@ router.get("/flowchart", async (req, res) => {
 
 // =================================================
 // 🎤 GET LYRICS BY SONG ID
+router.get("/rankings", async (req, res) => {
+  try {
+    const requestedPeriod = String(req.query.period || "today").trim().toLowerCase();
+    const period = ["today", "week", "month"].includes(requestedPeriod)
+      ? requestedPeriod
+      : "today";
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getRankingPeriodRange(period);
+
+    const eventCounts = await SongPlayEvent.aggregate([
+      {
+        $match: {
+          playedAt: { $gte: previousStart, $lt: currentEnd },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            songId: "$songId",
+            bucket: {
+              $cond: [{ $gte: ["$playedAt", currentStart] }, "current", "previous"],
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const countsBySongId = new Map();
+    for (const item of eventCounts) {
+      const songId = item._id.songId?.toString();
+      if (!songId) continue;
+      if (!countsBySongId.has(songId)) {
+        countsBySongId.set(songId, { current: 0, previous: 0 });
+      }
+      countsBySongId.get(songId)[item._id.bucket] = item.count;
+    }
+
+    const publicSongs = await Song.find({ isPublic: true })
+      .select(SONG_PUBLIC_SELECT)
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name avatar")
+      .lean();
+
+    const toRankItem = (song, bucket) => ({
+      songId: song._id,
+      count: countsBySongId.get(song._id.toString())?.[bucket] || 0,
+      totalPlayCount: song.playCount || 0,
+      likeCount: song.likeCount || 0,
+    });
+    const sortRankItems = (a, b) =>
+      b.count - a.count ||
+      b.totalPlayCount - a.totalPlayCount ||
+      b.likeCount - a.likeCount;
+
+    const rankedCurrent = publicSongs
+      .map((song) => toRankItem(song, "current"))
+      .sort(sortRankItems);
+    const rankedPrevious = publicSongs
+      .map((song) => toRankItem(song, "previous"))
+      .filter((item) => item.count > 0)
+      .sort(sortRankItems);
+
+    const previousRankMap = buildRankMap(rankedPrevious);
+    const songById = new Map(publicSongs.map((song) => [song._id.toString(), song]));
+
+    const rankings = rankedCurrent.slice(0, 30).map((item, index) => {
+      const songId = item.songId.toString();
+      const previousRank = previousRankMap.get(songId);
+      const rank = index + 1;
+      let trend = "stable";
+      let difference = 0;
+
+      if (item.count > 0 && previousRank === undefined) {
+        trend = "new";
+      } else if (previousRank !== undefined && rank < previousRank) {
+        trend = "rise";
+        difference = previousRank - rank;
+      } else if (previousRank !== undefined && rank > previousRank) {
+        trend = "drop";
+        difference = rank - previousRank;
+      }
+
+      return {
+        ...songById.get(songId),
+        rank,
+        periodPlayCount: item.count,
+        previousPeriodPlayCount: countsBySongId.get(songId)?.previous || 0,
+        trend,
+        difference,
+      };
+    });
+
+    const artistStats = new Map();
+    for (const item of rankedCurrent) {
+      const song = songById.get(item.songId.toString());
+      if (!song || !Array.isArray(song.artists)) continue;
+
+      for (const artist of song.artists) {
+        const artistId = artist?._id?.toString();
+        if (!artistId) continue;
+        if (!artistStats.has(artistId)) {
+          artistStats.set(artistId, {
+            _id: artist._id,
+            name: artist.name || "Nghệ sĩ ẩn danh",
+            avatar: artist.avatar || "",
+            periodPlayCount: 0,
+            songCount: 0,
+          });
+        }
+
+        const stat = artistStats.get(artistId);
+        stat.periodPlayCount += item.count;
+        stat.songCount += 1;
+      }
+    }
+
+    const trendingArtists = [...artistStats.values()]
+      .filter((artist) => artist.periodPlayCount > 0)
+      .sort((a, b) => b.periodPlayCount - a.periodPlayCount || b.songCount - a.songCount)
+      .slice(0, 5);
+    const newReleases = [...publicSongs]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .slice(0, 5);
+
+    return res.json({
+      success: true,
+      period,
+      range: { currentStart, currentEnd, previousStart, previousEnd },
+      rankings,
+      trendingArtists,
+      newReleases,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Get rankings error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Get rankings failed",
+      error: error.message,
+    });
+  }
+});
+
 router.get("/:id/lyrics", async (req, res) => {
   try {
     const { id } = req.params;
@@ -505,110 +693,89 @@ router.get("/:id/lyrics", async (req, res) => {
 });
 
 // =================================================
-// 🎵 AUDIO STREAMING - HTTP Range Requests (HTTP 206)
-// Hỗ trợ seek/tua nhanh mà không cần tải lại từ đầu
+// Record a qualified play after the client reaches its listen threshold.
+router.post("/:id/play", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const song = await Song.findOne({ _id: id, isPublic: true })
+      .select("_id artists")
+      .lean();
+
+    if (!song) {
+      return res.status(404).json({ success: false, message: "Song not found" });
+    }
+
+    const userId = resolveOptionalUserId(req);
+    const anonymousKey = userId ? null : buildAnonymousListenerKey(req);
+    const cooldownStart = new Date(Date.now() - TRACK_PLAY_COOLDOWN_MS);
+    const listenerFilter = userId ? { userId } : { anonymousKey };
+
+    const recentPlay = await SongPlayEvent.findOne({
+      songId: song._id,
+      ...listenerFilter,
+      playedAt: { $gte: cooldownStart },
+    })
+      .select("_id")
+      .lean();
+
+    if (recentPlay) {
+      return res.json({
+        success: true,
+        counted: false,
+        reason: "cooldown",
+      });
+    }
+
+    const artistIds = Array.isArray(song.artists) ? song.artists.filter(Boolean) : [];
+
+    // TODO: Move play-event writes to a queue/batch pipeline if traffic increases.
+    const playEvent = await SongPlayEvent.create({
+      songId: song._id,
+      artistId: artistIds[0] || null,
+      artistIds,
+      userId: userId || null,
+      anonymousKey,
+      playedAt: new Date(),
+    });
+    try {
+      await Song.updateOne({ _id: song._id }, { $inc: { playCount: 1 } });
+    } catch (error) {
+      await SongPlayEvent.deleteOne({ _id: playEvent._id }).catch(() => {});
+      throw error;
+    }
+
+    return res.json({ success: true, counted: true });
+  } catch (error) {
+    console.error("Track play error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Track play failed",
+      error: error.message,
+    });
+  }
+});
+
+// Return the Cloudinary URL without proxying the audio through the API server.
 router.get("/:id/stream", async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const song = await Song.findById(id);
+
+    const song = await Song.findOne({ _id: id, isPublic: true })
+      .select("audioUrl")
+      .lean();
     if (!song) {
       return res.status(404).json({ message: "Song not found" });
-    }
-
-    const ipAddress = req.ip || req.headers["x-forwarded-for"] || "unknown";
-    const shouldTrackPlay = shouldTrackPlayRequest(id, ipAddress);
-    if (shouldTrackPlay) {
-      Song.updateOne({ _id: id }, { $inc: { playCount: 1 } }).catch((err) => {
-        console.error("Increase playCount failed:", err.message);
-      });
-
-      SongPlayEvent.create({ songId: id, playedAt: new Date() }).catch((err) => {
-        console.error("Create song play event failed:", err.message);
-      });
     }
 
     const audioUrl = song.audioUrl;
     if (!audioUrl || !isHttpUrl(audioUrl)) {
       return res.status(404).json({ message: "Audio source not found" });
     }
-    
-    // Parse URL để xác định protocol
-    const urlObj = new URL(audioUrl);
-    const protocol = urlObj.protocol === "https:" ? https : http;
-    
-    // Forward Range header nếu có
-    const range = req.headers.range;
-    const headers = {
-      "User-Agent": "MusicFlow-Streaming/1.0",
-    };
-    
-    if (range) {
-      headers["Range"] = range;
-    }
 
-    // Proxy request đến Cloudinary
-    const proxyReq = protocol.get(audioUrl, { headers }, (proxyRes) => {
-      if (proxyRes.statusCode >= 400) {
-        if (!res.headersSent) {
-          res.status(proxyRes.statusCode).json({
-            message: "Audio source unavailable",
-            statusCode: proxyRes.statusCode,
-          });
-        }
-        proxyRes.resume();
-        return;
-      }
-
-      const contentType = proxyRes.headers["content-type"] || "audio/mpeg";
-      const contentLength = proxyRes.headers["content-length"];
-      const contentRange = proxyRes.headers["content-range"];
-      const acceptRanges = proxyRes.headers["accept-ranges"] || "bytes";
-      
-      // Set response headers cho streaming
-      const responseHeaders = {
-        "Content-Type": contentType,
-        "Accept-Ranges": acceptRanges,
-        "Cache-Control": "public, max-age=86400", // Cache 1 ngày
-        "X-Content-Duration": song.duration || 0,
-        "Access-Control-Allow-Origin": req.headers.origin || "*",
-        "Cross-Origin-Resource-Policy": "cross-origin",
-      };
-      
-      if (contentLength) {
-        responseHeaders["Content-Length"] = contentLength;
-      }
-      
-      if (contentRange) {
-        responseHeaders["Content-Range"] = contentRange;
-      }
-      
-      // HTTP 206 Partial Content nếu có Range request
-      const statusCode = proxyRes.statusCode || (range ? 206 : 200);
-      
-      res.writeHead(statusCode, responseHeaders);
-      
-      // Pipe stream từ Cloudinary đến client
-      proxyRes.pipe(res);
-    });
-    
-    proxyReq.on("error", (err) => {
-      console.error("Stream proxy error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ message: "Streaming failed" });
-      }
-    });
-    
-    // Cleanup khi client disconnect
-    req.on("close", () => {
-      proxyReq.destroy();
-    });
-    
+    return res.redirect(302, audioUrl);
   } catch (error) {
     console.error("Stream error:", error);
-    if (!res.headersSent) {
-      res.status(500).json({ message: "Streaming failed", error: error.message });
-    }
+    return res.status(500).json({ message: "Streaming failed", error: error.message });
   }
 });
 

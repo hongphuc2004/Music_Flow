@@ -35,27 +35,14 @@ import { useClientPlayerActions } from '../../components/Layout/client/ClientPla
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 
 const PERIODS = ['Today', 'This Week', 'This Month'];
-
-// Helper to deterministically sort and rank songs for a given period
-function getRankedSongsForPeriod(songs, periodIndex) {
-  if (!songs || songs.length === 0) return [];
-  const sorted = [...songs].map((song) => {
-    // Generate a pseudo-random multiplier or offset based on song title hash and period index
-    const charCodeSum = (song.title || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    // Dynamic score based on playCount + sine wave shifts
-    const score = (song.playCount || 0) * (1 + Math.sin(charCodeSum + periodIndex * 1.5) * 0.22);
-    return { ...song, calculatedScore: score };
-  });
-
-  return sorted
-    .sort((a, b) => b.calculatedScore - a.calculatedScore)
-    .slice(0, 30);
-}
+const PERIOD_VALUES = ['today', 'week', 'month'];
 
 export default function ClientRankings() {
   const navigate = useNavigate();
   const { playSong } = useClientPlayerActions();
-  const [songs, setSongs] = useState([]);
+  const [rankedSongsWithTrends, setRankedSongsWithTrends] = useState([]);
+  const [trendingArtists, setTrendingArtists] = useState([]);
+  const [newReleases, setNewReleases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -65,72 +52,29 @@ export default function ClientRankings() {
   const replayTimer = useRef(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       try {
         setLoading(true);
-        const res = await clientSongsApi.getAllPublic();
-        setSongs(Array.isArray(res.data) ? res.data : []);
+        const res = await clientSongsApi.getRankings(PERIOD_VALUES[activePeriod]);
+        if (cancelled) return;
+        setRankedSongsWithTrends(res.data?.rankings || []);
+        setTrendingArtists(res.data?.trendingArtists || []);
+        setNewReleases(res.data?.newReleases || []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Không thể tải bảng xếp hạng.');
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Không thể tải bảng xếp hạng.');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
-  }, []);
-
-  // Compute lists for all periods to easily compare and track histories
-  const periodLists = useMemo(() => {
-    return PERIODS.map((_, idx) => getRankedSongsForPeriod(songs, idx));
-  }, [songs]);
-
-  // Current list of top 30 songs
-  const currentList = useMemo(() => {
-    return periodLists[activePeriod] || [];
-  }, [periodLists, activePeriod]);
-
-  // Rankings of next historical period (P+1) for comparing trends
-  // When going from index 6 (90s) up to 0 (Today), the "past" is the larger index.
-  const pastList = useMemo(() => {
-    const pastIdx = activePeriod === PERIODS.length - 1 ? PERIODS.length - 1 : activePeriod + 1;
-    return periodLists[pastIdx] || [];
-  }, [periodLists, activePeriod]);
-
-  // Rank Map for past list to make searches O(1)
-  const pastRankMap = useMemo(() => {
-    const map = new Map();
-    pastList.forEach((song, idx) => {
-      map.set(song._id, idx);
-    });
-    return map;
-  }, [pastList]);
-
-  // Calculate song positions and trend indicators (rise/drop/NEW) for the active list
-  const rankedSongsWithTrends = useMemo(() => {
-    return currentList.map((song, currentIdx) => {
-      const pastIdx = pastRankMap.get(song._id);
-
-      let trend = 'stable'; // 'stable' | 'rise' | 'drop' | 'new'
-      let difference = 0;
-
-      if (pastIdx === undefined) {
-        trend = 'new';
-      } else if (currentIdx < pastIdx) {
-        trend = 'rise';
-        difference = pastIdx - currentIdx;
-      } else if (currentIdx > pastIdx) {
-        trend = 'drop';
-        difference = currentIdx - pastIdx;
-      }
-
-      return {
-        ...song,
-        rank: currentIdx + 1,
-        trend,
-        difference,
-      };
-    });
-  }, [currentList, pastRankMap]);
+    return () => {
+      cancelled = true;
+    };
+  }, [activePeriod]);
 
   // Splitting into Top 3 and Ranks 4-30
   const topThree = useMemo(() => {
@@ -176,48 +120,9 @@ export default function ClientRankings() {
     return () => clearInterval(replayTimer.current);
   }, []);
 
-  // Trending Artists calculation (Accumulate play count from all public songs)
-  const trendingArtists = useMemo(() => {
-    if (!songs || songs.length === 0) return [];
-    const artistStats = {};
-    songs.forEach((song) => {
-      if (!Array.isArray(song.artists)) return;
-      song.artists.forEach((artist) => {
-        if (!artist || !artist._id) return;
-        if (!artistStats[artist._id]) {
-          artistStats[artist._id] = {
-            _id: artist._id,
-            name: artist.name || 'Nghệ sĩ ẩn danh',
-            avatar: artist.avatar || '',
-            totalPlayCount: 0,
-            songCount: 0,
-          };
-        }
-        artistStats[artist._id].totalPlayCount += song.playCount || 0;
-        artistStats[artist._id].songCount += 1;
-      });
-    });
-
-    return Object.values(artistStats)
-      .sort((a, b) => b.totalPlayCount - a.totalPlayCount)
-      .slice(0, 5);
-  }, [songs]);
-
-  // New Releases calculation (Sort songs by createdAt descending)
-  const newReleases = useMemo(() => {
-    if (!songs || songs.length === 0) return [];
-    return [...songs]
-      .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      })
-      .slice(0, 5);
-  }, [songs]);
-
   const maxPlayCount = useMemo(() => {
     if (rankedSongsWithTrends.length === 0) return 1;
-    return Math.max(...rankedSongsWithTrends.map((s) => s.playCount || 0), 1);
+    return Math.max(...rankedSongsWithTrends.map((s) => s.periodPlayCount || 0), 1);
   }, [rankedSongsWithTrends]);
 
   const handlePlayAll = (shuffle = false) => {
@@ -611,7 +516,7 @@ export default function ClientRankings() {
                           left: 0,
                           bottom: 0,
                           height: 2,
-                          width: `${((song.playCount || 0) / maxPlayCount) * 100}%`,
+                          width: `${((song.periodPlayCount || 0) / maxPlayCount) * 100}%`,
                           bgcolor: 'rgba(124, 58, 237, 0.2)',
                           borderRadius: 1,
                         }}
@@ -680,7 +585,7 @@ export default function ClientRankings() {
 
                         {/* Stats & Actions */}
                         <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80, textAlign: 'right', mr: 2 }}>
-                          {song.playCount || 0} lượt nghe
+                          {song.periodPlayCount || 0} lượt nghe trong kỳ
                         </Typography>
 
                         <Box onClick={(e) => e.stopPropagation()}>
@@ -762,7 +667,7 @@ export default function ClientRankings() {
                             {artist.name}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
-                            {artist.totalPlayCount.toLocaleString('vi-VN')} lượt nghe • {artist.songCount} bài hát
+                            {(artist.periodPlayCount || 0).toLocaleString('vi-VN')} lượt nghe trong kỳ • {artist.songCount} bài hát
                           </Typography>
                         </Box>
                       </Stack>

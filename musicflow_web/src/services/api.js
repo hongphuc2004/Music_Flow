@@ -232,8 +232,11 @@ export const clientSongsApi = {
     }
     return cachedGet('/songs/recommended', { params }, 15000);
   },
+  getRankings: (period) =>
+    cachedGet('/songs/rankings', { params: { period } }, 30000),
   search: (params) => api.get('/songs/search', { params }),
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
+  trackPlay: (songId) => api.post(`/songs/${songId}/play`),
   getMyUploads: () => api.get('/songs/my-uploads'),
   getMyDownloadHistory: (params) => api.get('/songs/download-history', { params }),
   removeFromDownloadHistory: (songId) => api.delete(`/songs/download-history/${songId}`),

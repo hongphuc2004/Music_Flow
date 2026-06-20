@@ -43,7 +43,10 @@ export const setAccessToken = (token) => {
   apiCache.clear();
 };
 
-export const refreshAccessToken = async () => {
+export const refreshAccessToken = async (forceRefresh = false) => {
+  if (accessToken && !forceRefresh) {
+    return accessToken;
+  }
   if (!refreshPromise) {
     refreshPromise = axios
       .post(
@@ -98,6 +101,22 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
     const requestUrl = originalRequest?.url || '';
+    const requestToken = originalRequest?.headers?.Authorization?.split(' ')[1];
+
+    const handleSessionExpiry = () => {
+      const currentRole = localStorage.getItem('role');
+      accessToken = null;
+      apiCache.clear();
+      localStorage.removeItem('role');
+      if (currentRole === 'artist') {
+        clearArtistSession();
+        window.location.href = '/artistlogin';
+      } else if (currentRole === 'admin') {
+        window.location.href = '/adminlogin';
+      } else {
+        window.location.href = '/client/home?auth=login';
+      }
+    };
 
     if (
       status === 401 &&
@@ -107,8 +126,16 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
+      // If the access token has already been updated in memory by another parallel request,
+      // just retry the original request immediately with the new token.
+      if (accessToken && accessToken !== requestToken) {
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      }
+
       try {
-        const newToken = await refreshAccessToken();
+        const newToken = await refreshAccessToken(true);
         if (newToken) {
           originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -119,19 +146,25 @@ api.interceptors.response.use(
       }
     }
 
-    if (status === 401) {
-      const currentRole = localStorage.getItem('role');
-      accessToken = null;
-      apiCache.clear();
-      localStorage.removeItem('role');
-      if (currentRole === 'artist') {
-        clearArtistSession();
-        window.location.href = '/artistlogin';
-      } else if (currentRole === 'admin') {
-        window.location.href = '/adminlogin';
-      } else if (currentRole === 'user') {
-        window.location.href = '/client/home?auth=login';
-      }
+    const isAuthRoute =
+      requestUrl.endsWith('/login') ||
+      requestUrl.endsWith('/register') ||
+      requestUrl.endsWith('/google') ||
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/google') ||
+      requestUrl.includes('/artist/login') ||
+      requestUrl.includes('/artist/google');
+
+    const isMeRoute =
+      requestUrl.includes('/artist/me') ||
+      requestUrl.includes('/users/me') ||
+      requestUrl.includes('/auth/profile');
+
+    if (status === 401 && !isAuthRoute) {
+      handleSessionExpiry();
+    } else if (status === 404 && isMeRoute) {
+      handleSessionExpiry();
     }
 
     return Promise.reject(error);

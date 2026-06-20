@@ -205,6 +205,12 @@ router.get("/profile", async (req, res) => {
       })
       : 0;
 
+    // Cache updated stats back to the Artist document
+    await Artist.updateOne(
+      { _id: artist._id },
+      { $set: { followersCount: followerCount, monthlyListeners } }
+    );
+
     return res.json({
       success: true,
       artist: {
@@ -213,6 +219,7 @@ router.get("/profile", async (req, res) => {
         avatar: artist.avatar || "",
         coverUrl: artist.avatar || "",
         bio: artist.bio || "",
+        isVerified: artist.isVerified || false,
         totalSongs,
         totalLikes,
         monthlyListeners,
@@ -312,6 +319,12 @@ router.post("/:id/follow", authMiddleware, async (req, res) => {
     await user.save();
 
     const followers = await User.countDocuments({ followedArtists: artist._id });
+
+    // Cache followers count back to the Artist document
+    await Artist.updateOne(
+      { _id: artist._id },
+      { $set: { followersCount: followers } }
+    );
 
     return res.json({
       success: true,

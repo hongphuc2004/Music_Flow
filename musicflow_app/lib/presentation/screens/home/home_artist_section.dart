@@ -7,8 +7,15 @@ import 'home_shared.dart';
 class HomeArtistPreview {
   final String name;
   final String imageUrl;
+  final bool isVerified;
+  final int followersCount;
 
-  const HomeArtistPreview({required this.name, required this.imageUrl});
+  const HomeArtistPreview({
+    required this.name,
+    required this.imageUrl,
+    this.isVerified = false,
+    this.followersCount = 0,
+  });
 }
 
 class HomeArtistCarousel extends StatelessWidget {
@@ -117,6 +124,16 @@ class _ArtistCard extends StatelessWidget {
 
   const _ArtistCard({required this.artist, required this.accent});
 
+  String _formatCompactNumber(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return '$value';
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -140,27 +157,48 @@ class _ArtistCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: accent.withOpacity(0.28)),
-              ),
-              child: ClipOval(
-                child: SizedBox(
-                  width: 86,
-                  height: 86,
-                  child: artist.imageUrl.isNotEmpty
-                      ? Image.network(
-                          artist.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackAvatar(),
-                        )
-                      : _fallbackAvatar(),
+            Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: accent.withOpacity(0.28)),
+                  ),
+                  child: ClipOval(
+                    child: SizedBox(
+                      width: 86,
+                      height: 86,
+                      child: artist.imageUrl.isNotEmpty
+                          ? Image.network(
+                              artist.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _fallbackAvatar(),
+                            )
+                          : _fallbackAvatar(),
+                    ),
+                  ),
                 ),
-              ),
+                if (artist.isVerified)
+                  Positioned(
+                    right: 4,
+                    bottom: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1E88E5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 10,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Text(
               artist.name,
               textAlign: TextAlign.center,
@@ -168,6 +206,20 @@ class _ArtistCard extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              artist.followersCount > 0
+                  ? '${_formatCompactNumber(artist.followersCount)} followers'
+                  : 'Nghệ sĩ',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

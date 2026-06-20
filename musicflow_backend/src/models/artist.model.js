@@ -42,6 +42,18 @@ const artistSchema = new mongoose.Schema(
       enum: ["artist"],
       default: "artist",
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    followersCount: {
+      type: Number,
+      default: 0,
+    },
+    monthlyListeners: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

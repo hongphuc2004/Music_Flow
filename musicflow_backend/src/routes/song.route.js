@@ -140,7 +140,7 @@ router.get("/by-artist", async (req, res) => {
 
     const [songs, total] = await Promise.all([
       Song.find(query)
-        .populate("artists", "name")
+        .populate("artists", "name avatar isVerified followersCount monthlyListeners")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -739,6 +739,23 @@ router.post("/:id/play", async (req, res) => {
     });
     try {
       await Song.updateOne({ _id: song._id }, { $inc: { playCount: 1 } });
+      if (artistIds.length > 0) {
+        Promise.all(
+          artistIds.map(async (artistId) => {
+            const artistSongIds = await Song.find({ artists: artistId, isPublic: true }).select("_id").lean();
+            const songIdList = artistSongIds.map((s) => s._id);
+            if (songIdList.length > 0) {
+              const count = await SongPlayEvent.countDocuments({
+                songId: { $in: songIdList },
+                playedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+              });
+              await Artist.updateOne({ _id: artistId }, { $set: { monthlyListeners: count } });
+            }
+          })
+        ).catch((err) => {
+          console.error("Update monthly listeners failed:", err.message);
+        });
+      }
     } catch (error) {
       await SongPlayEvent.deleteOne({ _id: playEvent._id }).catch(() => {});
       throw error;
@@ -797,7 +814,7 @@ router.get("/", async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("artists", "name avatar")
+        .populate("artists", "name avatar isVerified followersCount monthlyListeners")
         .populate("topicIds", "name avatar")
         .lean(),
       Song.countDocuments(filter),
@@ -846,7 +863,17 @@ router.get("/recommended", async (req, res) => {
           localField: "artists",
           foreignField: "_id",
           as: "artists",
-          pipeline: [{ $project: { name: 1, avatar: 1 } }],
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                avatar: 1,
+                isVerified: 1,
+                followersCount: 1,
+                monthlyListeners: 1,
+              },
+            },
+          ],
         }
       },
       {
@@ -922,7 +949,7 @@ router.get("/search", async (req, res) => {
     const songs = await Song.find(filter)
       .select(SONG_PUBLIC_SELECT)
       .sort({ createdAt: -1 })
-      .populate("artists", "name avatar")
+      .populate("artists", "name avatar isVerified followersCount monthlyListeners")
       .populate("topicIds", "name avatar")
       .lean();
     if (includeArtists) {

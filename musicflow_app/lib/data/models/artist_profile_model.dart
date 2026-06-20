@@ -11,6 +11,7 @@ class ArtistProfile {
   final int monthlyListeners;
   final int followers;
   final String latestReleaseLabel;
+  final bool isVerified;
   final List<Song> songs;
 
   const ArtistProfile({
@@ -24,6 +25,7 @@ class ArtistProfile {
     required this.monthlyListeners,
     required this.followers,
     required this.latestReleaseLabel,
+    this.isVerified = false,
     this.songs = const [],
   });
 
@@ -38,6 +40,7 @@ class ArtistProfile {
     int? monthlyListeners,
     int? followers,
     String? latestReleaseLabel,
+    bool? isVerified,
     List<Song>? songs,
   }) {
     return ArtistProfile(
@@ -51,6 +54,7 @@ class ArtistProfile {
       monthlyListeners: monthlyListeners ?? this.monthlyListeners,
       followers: followers ?? this.followers,
       latestReleaseLabel: latestReleaseLabel ?? this.latestReleaseLabel,
+      isVerified: isVerified ?? this.isVerified,
       songs: songs ?? this.songs,
     );
   }
@@ -70,6 +74,7 @@ class ArtistProfile {
       followers: (json['followers'] as num?)?.toInt() ?? 0,
       latestReleaseLabel:
           json['latestReleaseLabel']?.toString() ?? 'Chua cap nhat',
+      isVerified: json['isVerified'] == true,
       songs: songsJson
           .whereType<Map>()
           .map((song) => Song.fromJson(Map<String, dynamic>.from(song)))

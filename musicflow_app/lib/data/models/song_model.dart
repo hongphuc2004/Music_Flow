@@ -12,6 +12,11 @@ class Song {
   final int likeCount;
   final List<String> topicIds;
 
+  // Global cache of artist metadata to avoid circular dependencies
+  static final Map<String, String> artistAvatars = {};
+  static final Map<String, bool> artistVerified = {};
+  static final Map<String, int> artistFollowers = {};
+
   Song({
     required this.id,
     required this.title,
@@ -48,7 +53,19 @@ class Song {
                       artist['fullName'])
                   ?.toString()
                   .trim();
-          if (value != null && value.isNotEmpty) parsedArtists.add(value);
+          if (value != null && value.isNotEmpty) {
+            parsedArtists.add(value);
+            final avatar = artist['avatar']?.toString() ??
+                artist['avatarUrl']?.toString() ??
+                '';
+            if (avatar.isNotEmpty) {
+              artistAvatars[value.toLowerCase()] = avatar;
+            }
+            final verified = artist['isVerified'] == true;
+            final followers = (artist['followersCount'] as num?)?.toInt() ?? 0;
+            artistVerified[value.toLowerCase()] = verified;
+            artistFollowers[value.toLowerCase()] = followers;
+          }
         }
       }
     } else if (rawArtists is String && rawArtists.trim().isNotEmpty) {

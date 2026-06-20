@@ -49,11 +49,14 @@ class _HomeScreenState extends State<HomeScreen> {
         final normalized = artistName.trim().toLowerCase();
         if (normalized.isEmpty || seen.contains(normalized)) continue;
 
-        seen.add(normalized);
+        final verified = Song.artistVerified[normalized] ?? false;
+        final followers = Song.artistFollowers[normalized] ?? 0;
         artists.add(
           HomeArtistPreview(
             name: artistName.trim(),
             imageUrl: _artistAvatarByName[normalized] ?? song.imageUrl,
+            isVerified: verified,
+            followersCount: followers,
           ),
         );
 
@@ -180,12 +183,26 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((name) => !_artistAvatarByName.containsKey(name))
         .toList();
 
-    if (targets.isEmpty) {
+    final remainingTargets = <String>[];
+    for (final name in targets) {
+      final queryName = queryNameByNormalized[name] ?? name;
+      final cachedAvatar = ArtistApiService.getCachedAvatar(queryName);
+      if (cachedAvatar != null && cachedAvatar.isNotEmpty) {
+        _artistAvatarByName[name] = cachedAvatar;
+      } else {
+        remainingTargets.add(name);
+      }
+    }
+
+    if (remainingTargets.isEmpty) {
+      if (mounted) {
+        setState(() {});
+      }
       return;
     }
 
     final responses = await Future.wait(
-      targets.map((name) {
+      remainingTargets.map((name) {
         final queryName = queryNameByNormalized[name] ?? name;
         return ArtistApiService.fetchArtistProfileByName(queryName);
       }),
@@ -196,11 +213,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final updates = <String, String>{};
-    for (var i = 0; i < targets.length; i++) {
+    for (var i = 0; i < remainingTargets.length; i++) {
       final result = responses[i];
       final avatar = result.artist?.avatarUrl ?? '';
       if (result.success && avatar.isNotEmpty) {
-        updates[targets[i]] = avatar;
+        updates[remainingTargets[i]] = avatar;
+        final queryName = queryNameByNormalized[remainingTargets[i]] ?? remainingTargets[i];
+        ArtistApiService.cacheAvatar(queryName, avatar);
       }
     }
 

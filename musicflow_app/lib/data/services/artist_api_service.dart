@@ -2,15 +2,42 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
+import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 
 class ArtistApiService {
   static const Duration _timeout = Duration(seconds: 15);
 
+  // In-memory cache for profiles
+  static final Map<String, ArtistProfileResult> _profileCache = {};
+
+  /// Cache an avatar for an artist name
+  static void cacheAvatar(String artistName, String avatarUrl) {
+    if (artistName.isNotEmpty && avatarUrl.isNotEmpty) {
+      Song.artistAvatars[artistName.trim().toLowerCase()] = avatarUrl;
+    }
+  }
+
+  /// Get cached avatar for an artist name
+  static String? getCachedAvatar(String artistName) {
+    return Song.artistAvatars[artistName.trim().toLowerCase()];
+  }
+
+  /// Clear in-memory caches
+  static void clearCaches() {
+    _profileCache.clear();
+    Song.artistAvatars.clear();
+  }
+
   static Future<ArtistProfileResult> fetchArtistProfileByName(
     String artistName,
   ) async {
+    final key = artistName.trim().toLowerCase();
+    if (_profileCache.containsKey(key)) {
+      return _profileCache[key]!;
+    }
+
     try {
       final response = await http
           .get(Uri.parse(ApiConfig.artistProfileUrlByName(artistName)))
@@ -27,10 +54,18 @@ class ArtistApiService {
           );
         }
 
-        return ArtistProfileResult(
+        final profileResult = ArtistProfileResult(
           success: true,
           artist: ArtistProfile.fromJson(artistJson),
         );
+
+        _profileCache[key] = profileResult;
+
+        if (profileResult.artist?.avatarUrl.isNotEmpty ?? false) {
+          cacheAvatar(artistName, profileResult.artist!.avatarUrl);
+        }
+
+        return profileResult;
       }
 
       return ArtistProfileResult(

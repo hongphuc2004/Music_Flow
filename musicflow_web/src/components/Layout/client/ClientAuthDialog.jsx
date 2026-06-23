@@ -23,6 +23,8 @@ import {
   PersonOutline,
   Visibility,
   VisibilityOff,
+  ImageOutlined,
+  AlternateEmailOutlined as BioIcon,
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../../../services/api';
 import useClientToast from './useClientToast';
@@ -100,11 +102,15 @@ function ClientAuthDialog() {
   const { showToast } = useClientToast();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const authMode = params.get('auth');
-  const open = authMode === 'login' || authMode === 'register';
+  
+  const open = authMode === 'login' || authMode === 'register' || authMode === 'artist-login' || authMode === 'artist-register';
   const isRegister = authMode === 'register';
+  const isArtistLogin = authMode === 'artist-login';
+  const isArtistRegister = authMode === 'artist-register';
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({ name: '', email: '', password: '' });
+  const [artistRegisterForm, setArtistRegisterForm] = useState({ name: '', email: '', password: '', avatar: '', bio: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -139,8 +145,7 @@ function ClientAuthDialog() {
   };
 
   const goToArtistLogin = () => {
-    navigate('/artistlogin');
-    setError('');
+    switchMode('artist-login');
   };
 
   const completeAuth = useCallback(({ token, user }, message) => {
@@ -177,11 +182,33 @@ function ClientAuthDialog() {
         clientId: GOOGLE_CLIENT_ID,
         onSuccess: async (accessToken) => {
           try {
-            const res = await api.post('/auth/google', {
-              credential: accessToken,
-              tokenType: 'access_token',
-            });
-            completeAuth(res.data, 'Đăng nhập Google thành công.');
+            if (isArtistLogin) {
+              const res = await api.post('/artist/google', {
+                credential: accessToken,
+                tokenType: 'access_token',
+              });
+              const { token, artist } = res.data;
+              setAccessToken(token);
+              localStorage.setItem('role', artist.role);
+              localStorage.setItem('artistName', artist.name || 'Artist');
+              localStorage.setItem('artistEmail', artist.email || '');
+              localStorage.setItem('artistId', artist._id || '');
+              localStorage.setItem('artistAvatar', artist.avatar || '');
+              
+              closeDialog();
+              showToast({
+                severity: 'success',
+                title: 'Thành công!',
+                message: 'Đăng nhập Google Nghệ sĩ thành công.',
+              });
+              navigate('/artist/dashboard');
+            } else {
+              const res = await api.post('/auth/google', {
+                credential: accessToken,
+                tokenType: 'access_token',
+              });
+              completeAuth(res.data, 'Đăng nhập Google thành công.');
+            }
           } catch (err) {
             setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại.');
           } finally {
@@ -205,15 +232,34 @@ function ClientAuthDialog() {
     setError('');
 
     try {
-      const res = await api.post('/auth/login', loginForm);
-      const { user } = res.data;
+      if (isArtistLogin) {
+        const res = await api.post('/artist/login', loginForm);
+        const { token, artist } = res.data;
+        setAccessToken(token);
+        localStorage.setItem('role', artist.role);
+        localStorage.setItem('artistName', artist.name || 'Artist');
+        localStorage.setItem('artistEmail', artist.email || '');
+        localStorage.setItem('artistId', artist._id || '');
+        localStorage.setItem('artistAvatar', artist.avatar || '');
 
-      if (user.role !== 'user') {
-        setError('Tài khoản này không thuộc khu vực listener.');
-        return;
+        closeDialog();
+        showToast({
+          severity: 'success',
+          title: 'Thành công!',
+          message: 'Đăng nhập nghệ sĩ thành công.',
+        });
+        navigate('/artist/dashboard');
+      } else {
+        const res = await api.post('/auth/login', loginForm);
+        const { user } = res.data;
+
+        if (user.role !== 'user') {
+          setError('Tài khoản này không thuộc khu vực listener.');
+          return;
+        }
+
+        completeAuth(res.data, 'Đăng nhập thành công.');
       }
-
-      completeAuth(res.data, 'Đăng nhập thành công.');
     } catch (err) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
     } finally {
@@ -227,8 +273,18 @@ function ClientAuthDialog() {
     setError('');
 
     try {
-      const res = await api.post('/auth/register', registerForm);
-      completeAuth(res.data, 'Đăng ký tài khoản thành công.');
+      if (isArtistRegister) {
+        await api.post('/artist/register', artistRegisterForm);
+        showToast({
+          severity: 'success',
+          title: 'Đăng ký thành công!',
+          message: 'Tài khoản nghệ sĩ đã được tạo. Vui lòng đăng nhập.',
+        });
+        switchMode('artist-login');
+      } else {
+        const res = await api.post('/auth/register', registerForm);
+        completeAuth(res.data, 'Đăng ký tài khoản thành công.');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại.');
     } finally {
@@ -240,8 +296,54 @@ function ClientAuthDialog() {
     '& .MuiOutlinedInput-root': {
       borderRadius: 2.5,
       bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      '& input': {
+        color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#0f172a',
+        '&:-webkit-autofill': {
+          WebkitBoxShadow: (theme) => theme.palette.mode === 'dark'
+            ? '0 0 0 1000px #1e293b inset !important'
+            : '0 0 0 1000px #f8fafc inset !important',
+          WebkitTextFillColor: (theme) => theme.palette.mode === 'dark' ? '#fff !important' : '#0f172a !important',
+          transition: 'background-color 5000s ease-in-out 0s',
+        },
+      },
+      '& textarea': {
+        color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#0f172a',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.12)',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.25)',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#6c63ff',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : '#475569',
+      '&.Mui-focused': {
+        color: '#6c63ff',
+      },
     },
   };
+
+  const titleText = isArtistRegister
+    ? 'Đăng ký Artist'
+    : isArtistLogin
+      ? 'Artist Login'
+      : isRegister
+        ? 'Tạo tài khoản'
+        : 'Đăng nhập';
+
+  const subtitleText = isArtistRegister
+    ? 'Tạo hồ sơ nghệ sĩ để phát hành và quản lý nhạc'
+    : isArtistLogin
+      ? 'Đăng nhập tài khoản nghệ sĩ của bạn'
+      : isRegister
+        ? 'Bắt đầu lưu gu nhạc của bạn trên MusicFlow'
+        : 'Tiếp tục trải nghiệm MusicFlow của bạn';
+
+  const isGoogleVisible = !isRegister && !isArtistRegister;
 
   return (
     <Dialog
@@ -288,16 +390,49 @@ function ClientAuthDialog() {
               <MusicNoteIcon sx={{ fontSize: 32, color: '#fff' }} />
             </Box>
             <Typography variant="h5" fontWeight={850}>
-              {isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}
+              {titleText}
             </Typography>
             <Typography color="text.secondary" sx={{ fontSize: 14.5, mt: 0.5 }}>
-              {isRegister ? 'Bắt đầu lưu gu nhạc của bạn trên MusicFlow' : 'Tiếp tục trải nghiệm MusicFlow của bạn'}
+              {subtitleText}
             </Typography>
           </Box>
 
           {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
 
-          {isRegister ? (
+          {isArtistRegister ? (
+            <Box component="form" onSubmit={handleRegisterSubmit}>
+              <Stack spacing={1.6}>
+                <TextField name="name" label="Tên nghệ sĩ" fullWidth sx={fieldSx} value={artistRegisterForm.name} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, name: e.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <TextField name="email" label="Email" type="email" fullWidth sx={fieldSx} value={artistRegisterForm.email} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, email: e.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <TextField
+                  name="password"
+                  label="Mật khẩu"
+                  type={showPassword ? 'text' : 'password'}
+                  fullWidth
+                  sx={fieldSx}
+                  value={artistRegisterForm.password}
+                  onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, password: e.target.value }))}
+                  required
+                  inputProps={{ minLength: 6 }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField name="avatar" label="Avatar URL (Tùy chọn)" fullWidth sx={fieldSx} value={artistRegisterForm.avatar} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, avatar: e.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start"><ImageOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <TextField name="bio" label="Giới thiệu (Tùy chọn)" fullWidth multiline minRows={2} sx={fieldSx} value={artistRegisterForm.bio} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, bio: e.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}><BioIcon sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <Button type="submit" fullWidth variant="contained" disabled={loading} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 76%)' }}>
+                  {loading ? 'Đang đăng ký...' : 'Đăng ký'}
+                </Button>
+              </Stack>
+            </Box>
+          ) : isRegister ? (
             <Box component="form" onSubmit={handleRegisterSubmit}>
               <Stack spacing={1.6}>
                 <TextField name="name" label="Tên người dùng" fullWidth sx={fieldSx} value={registerForm.name} onChange={(event) => setRegisterForm((prev) => ({ ...prev, name: event.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
@@ -351,14 +486,14 @@ function ClientAuthDialog() {
                     ),
                   }}
                 />
-                <Button type="submit" fullWidth variant="contained" disabled={loading} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #35d0df 0%, #6c63ff 70%)' }}>
+                <Button type="submit" fullWidth variant="contained" disabled={loading} sx={{ py: 1.35, borderRadius: 2, background: isArtistLogin ? 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 76%)' : 'linear-gradient(135deg, #35d0df 0%, #6c63ff 70%)' }}>
                   {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </Button>
               </Stack>
             </Box>
           )}
 
-          {!isRegister && (
+          {isGoogleVisible && (
             <>
               <Divider>Hoặc</Divider>
               {GOOGLE_CLIENT_ID ? (
@@ -375,23 +510,55 @@ function ClientAuthDialog() {
 
           <Box sx={{ textAlign: 'center' }}>
             <Stack spacing={0.25} alignItems="center">
-            <Button
-              type="button"
-              variant="text"
-              sx={{ fontWeight: 800, color: '#6c63ff' }}
-              onClick={() => switchMode(isRegister ? 'login' : 'register')}
-            >
-              {isRegister ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
-            </Button>
-            <Button
-              type="button"
-              variant="text"
-              startIcon={<MicExternalOnOutlined />}
-              sx={{ fontWeight: 800, color: (theme) => theme.palette.mode === 'dark' ? '#14b8a6' : '#0f766e' }}
-              onClick={goToArtistLogin}
-            >
-              Artist Studio
-            </Button>
+              {isArtistLogin ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="text"
+                    sx={{ fontWeight: 800, color: '#00bcd4' }}
+                    onClick={() => switchMode('artist-register')}
+                  >
+                    Đăng ký Artist
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="text"
+                    sx={{ fontWeight: 800, color: '#6c63ff' }}
+                    onClick={() => switchMode('login')}
+                  >
+                    Đăng nhập Người nghe
+                  </Button>
+                </>
+              ) : isArtistRegister ? (
+                <Button
+                  type="button"
+                  variant="text"
+                  sx={{ fontWeight: 800, color: '#00bcd4' }}
+                  onClick={() => switchMode('artist-login')}
+                >
+                  Đã có tài khoản Artist? Đăng nhập
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="text"
+                    sx={{ fontWeight: 800, color: '#6c63ff' }}
+                    onClick={() => switchMode(isRegister ? 'login' : 'register')}
+                  >
+                    {isRegister ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="text"
+                    startIcon={<MicExternalOnOutlined />}
+                    sx={{ fontWeight: 800, color: (theme) => theme.palette.mode === 'dark' ? '#14b8a6' : '#0f766e' }}
+                    onClick={goToArtistLogin}
+                  >
+                    Artist Studio
+                  </Button>
+                </>
+              )}
             </Stack>
           </Box>
         </Stack>

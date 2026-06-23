@@ -37,10 +37,12 @@ import {
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../services/api';
-import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 import useClientToast from '../../components/Layout/client/useClientToast';
 import useClientSession from '../../hooks/useClientSession';
+import SongItem from '../../components/client/SongItem';
+import PlaylistCard from '../../components/client/PlaylistCard';
 
 const PLAYLIST_PRESETS = [
   { name: 'Synthwave', url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&auto=format&fit=crop&q=80' },
@@ -53,7 +55,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function ClientLibrary() {
   const navigate = useNavigate();
-  const { playSong } = useClientPlayerActions();
+  const { playSong, currentSong, isPlaying } = useClientPlayer();
   const { showToast, updateToast } = useClientToast();
   const { userName } = useClientSession();
 
@@ -93,8 +95,6 @@ function ClientLibrary() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState(null);
 
-  // Hover states for song rows
-  const [hoveredSongId, setHoveredSongId] = useState(null);
   const [coverImageError, setCoverImageError] = useState(false);
 
   const loadLibrary = async () => {
@@ -125,12 +125,6 @@ function ClientLibrary() {
     loadLibrary();
   }, []);
 
-  const formatDuration = (secs) => {
-    if (isNaN(secs) || secs === undefined || secs === null) return '--:--';
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
 
   // Upload Logic
   const resetUploadForm = () => {
@@ -239,7 +233,7 @@ function ClientLibrary() {
       await clientFavoritesApi.remove(songId);
       setFavoriteSongs((prev) => prev.filter((song) => song._id !== songId));
       showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa khỏi danh sách yêu thích.' });
-    } catch (err) {
+    } catch {
       showToast({ severity: 'error', title: 'Lỗi', message: 'Không thể xóa bài hát khỏi danh sách yêu thích.' });
     }
   };
@@ -250,7 +244,7 @@ function ClientLibrary() {
       await clientSongsApi.removeFromDownloadHistory(songId);
       setDownloadedSongs((prev) => prev.filter((song) => song._id !== songId));
       showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa khỏi lịch sử tải xuống.' });
-    } catch (err) {
+    } catch {
       showToast({ severity: 'error', title: 'Lỗi', message: 'Không thể xóa bài hát khỏi lịch sử tải xuống.' });
     }
   };
@@ -1068,80 +1062,18 @@ function ClientLibrary() {
                   </Grid>
 
                   {/* Grid Playlists */}
-                  {(searchQuery ? filteredPlaylists : otherPlaylists).map((playlist) => {
-                    const songCount = playlist.songs?.length || 0;
-                    return (
-                      <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={playlist._id} sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Paper
-                          onClick={() => navigate(`/client/playlists/${playlist._id}`)}
-                          sx={{
-                            p: 2.25,
-                            borderRadius: '24px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            flexGrow: 1,
-                            position: 'relative',
-                            overflow: 'hidden',
-                            border: '1px solid',
-                            borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)',
-                            background: (theme) => theme.palette.mode === 'dark'
-                              ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.005) 100%)'
-                              : 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(245,247,250,0.7) 100%)',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.02)',
-                            transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                            '&:hover': {
-                              transform: 'translateY(-6px)',
-                              boxShadow: (theme) => theme.palette.mode === 'dark'
-                                ? '0 16px 35px rgba(0, 0, 0, 0.4)'
-                                : '0 16px 35px rgba(108, 99, 255, 0.08)',
-                              borderColor: '#6c63ff',
-                              '& .playlist-cover': { transform: 'scale(1.06)' },
-                              '& .play-action-overlay': {
-                                opacity: 1,
-                                '& .play-btn': { transform: 'scale(1) translateY(0)' },
-                                '& .crud-actions': { transform: 'translateY(0)' },
-                              },
-                            },
-                          }}
-                        >
-                          {/* Cover Image Area */}
-                          <Box sx={{ width: '100%', aspectRatio: '1/1', borderRadius: '18px', overflow: 'hidden', position: 'relative', mb: 2, flexShrink: 0 }}>
-                            {playlist.coverImage && playlist.coverImage.trim() !== '' ? (
-                              <Box component="img" src={playlist.coverImage} alt={playlist.name} className="playlist-cover" sx={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)' }} />
-                            ) : (
-                              <Box className="playlist-cover" sx={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', color: '#fff', transition: 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-                                <Typography variant="h3" sx={{ fontWeight: 900 }}>{(playlist.name || 'P').charAt(0).toUpperCase()}</Typography>
-                              </Box>
-                            )}
-
-                            {/* Hover Overlay Controls */}
-                            <Box className="play-action-overlay" sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.45)', opacity: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', transition: 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1)', backdropFilter: 'blur(4px)' }}>
-                              <IconButton className="play-btn" onClick={(e) => handlePlaySinglePlaylist(e, playlist)} sx={{ width: 56, height: 56, bgcolor: 'primary.main', color: '#fff', transform: 'scale(0.8) translateY(15px)', boxShadow: '0 8px 20px rgba(108, 99, 255, 0.4)', transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)', '&:hover': { bgcolor: 'primary.dark', transform: 'scale(1.1)' }, mb: 2.5 }}>
-                                <PlayIcon sx={{ fontSize: 32 }} />
-                              </IconButton>
-                              <Stack direction="row" spacing={1} className="crud-actions" sx={{ transform: 'translateY(15px)', transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-                                <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleOpenPlaylistDialog(playlist); }} sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)', transform: 'scale(1.05)' } }}><EditIcon sx={{ fontSize: 16 }} /></IconButton>
-                                <IconButton size="small" onClick={(e) => handleDeletePlaylistClick(e, playlist)} sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#ff4e7c', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)', transform: 'scale(1.05)' } }}><DeleteIcon sx={{ fontSize: 16 }} /></IconButton>
-                              </Stack>
-                            </Box>
-
-                            {/* Privacy Badge */}
-                            <Box sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'rgba(15, 23, 42, 0.75)', color: '#fff', px: 1.25, py: 0.5, borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 0.5, backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                              {playlist.isPublic ? <PublicIcon sx={{ fontSize: 11 }} /> : <LockIcon sx={{ fontSize: 11 }} />}
-                              <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 800 }}>{playlist.isPublic ? 'Public' : 'Private'}</Typography>
-                            </Box>
-                          </Box>
-
-                          <Box sx={{ px: 0.5, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                            <Typography variant="body1" sx={{ fontWeight: 800 }} noWrap>{playlist.name || 'Không tên'}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '18px', fontWeight: 555, mt: 0.25 }}>{playlist.description || 'Không có mô tả.'}</Typography>
-                            <Typography variant="caption" sx={{ display: 'block', mt: 'auto', pt: 1, fontWeight: 800, color: 'primary.main' }}>{songCount} bài hát</Typography>
-                          </Box>
-                        </Paper>
-                      </Grid>
-                    );
-                  })}
+                  {(searchQuery ? filteredPlaylists : otherPlaylists).map((playlist) => (
+                    <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={playlist._id} sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <PlaylistCard
+                        playlist={playlist}
+                        onClick={() => navigate(`/client/playlists/${playlist._id}`)}
+                        onPlay={(e) => handlePlaySinglePlaylist(e, playlist)}
+                        onEdit={() => handleOpenPlaylistDialog(playlist)}
+                        onDelete={() => handleDeletePlaylistClick(playlist)}
+                        showPrivacyBadge={true}
+                      />
+                    </Grid>
+                  ))}
                 </Grid>
               </Box>
             </Stack>
@@ -1267,140 +1199,57 @@ function ClientLibrary() {
               {/* Right Column Song Rows */}
               <Grid size={{ xs: 12, md: 8, lg: 8.5 }}>
                 <Box sx={{ maxHeight: 600, overflowY: 'auto', pr: 1.5, pt: '6px', pb: '6px' }}>
-                  {activeSongsList.map((song, idx) => {
-                    const isHovered = hoveredSongId === song._id;
-                    const artistText = Array.isArray(song.artists)
-                      ? song.artists.map((a) => a?.name).filter(Boolean).join(', ')
-                      : song.artistText || song.artist || 'Nghệ sĩ ẩn danh';
 
-                    return (
-                      <Box
-                        key={song._id}
-                        onMouseEnter={() => setHoveredSongId(song._id)}
-                        onMouseLeave={() => setHoveredSongId(null)}
-                        onDoubleClick={() => playSong(song, { queue: activeSongsList })}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          px: 3,
-                          py: 1.75,
-                          borderRadius: '18px',
-                          mb: 1.5,
-                          border: '1px solid',
-                          borderColor: isHovered ? tabColorConfig.color : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-                          background: isHovered
-                            ? (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.015)'
-                            : (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff',
-                          boxShadow: isHovered
-                            ? `0 8px 25px -5px ${tabColorConfig.color}15`
-                            : 'none',
-                          transform: isHovered ? 'translateY(-2px)' : 'none',
-                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                          cursor: 'pointer',
+                  {activeSongsList.map((song, idx) => (
+                    <Box key={song._id} sx={{ mb: 1.5 }}>
+                      <SongItem
+                        song={song}
+                        index={idx + 1}
+                        showDuration={true}
+                        isCurrent={currentSong?._id === song._id}
+                        isPlaying={isPlaying}
+                        onPlay={() => playSong(song, { queue: activeSongsList })}
+                        onEdit={activeTab === 2 ? openEditUploadDialog : undefined}
+                        moreMenuButtonSx={{
+                          color: 'text.secondary',
+                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                         }}
-                      >
-                        <Box sx={{ width: 44, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {isHovered ? (
-                            <IconButton
-                              size="small"
-                              onClick={() => playSong(song, { queue: activeSongsList })}
-                              sx={{ color: tabColorConfig.color, p: 0.25 }}
-                            >
-                              <PlayIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          ) : (
-                            <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.secondary' }}>
-                              {idx + 1}
-                            </Typography>
-                          )}
-                        </Box>
+                        actions={
+                          <>
+                            {activeTab === 1 && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleRemoveFavorite(e, song._id)}
+                                sx={{
+                                  color: '#ff4e7c',
+                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                  '&:hover': { backgroundColor: 'rgba(255,78,124,0.1)' },
+                                }}
+                                title="Bỏ yêu thích"
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            )}
 
-                        <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Box sx={{ width: 46, height: 46, borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                            <Avatar
-                              src={song.imageUrl && song.imageUrl.trim() !== '' ? song.imageUrl : undefined}
-                              variant="rounded"
-                              sx={{
-                                width: '100%',
-                                height: '100%',
-                                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                                color: 'primary.main',
-                              }}
-                            >
-                              <MusicIcon />
-                            </Avatar>
-                          </Box>
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary' }} noWrap>
-                              {song.title}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }} noWrap>
-                              {artistText}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Box sx={{ width: 80, textAlign: 'right', pr: 2 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                            {formatDuration(song.duration)}
-                          </Typography>
-                        </Box>
-
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <IconButton
-                            size="small"
-                            onClick={() => playSong(song, { queue: activeSongsList })}
-                            sx={{
-                              color: tabColorConfig.color,
-                              backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                              '&:hover': { backgroundColor: `${tabColorConfig.color}15` },
-                            }}
-                          >
-                            <PlayIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-
-                          <SongMoreMenu
-                            song={song}
-                            onEdit={activeTab === 2 ? openEditUploadDialog : undefined}
-                            buttonSx={{
-                              color: 'text.secondary',
-                              backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                            }}
-                          />
-
-                          {activeTab === 1 && (
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleRemoveFavorite(e, song._id)}
-                              sx={{
-                                color: '#ff4e7c',
-                                backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                '&:hover': { backgroundColor: 'rgba(255,78,124,0.1)' },
-                              }}
-                              title="Bỏ yêu thích"
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          )}
-
-                          {activeTab === 3 && (
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleRemoveDownloaded(e, song._id)}
-                              sx={{
-                                color: '#ff4e7c',
-                                backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                '&:hover': { backgroundColor: 'rgba(255,78,124,0.1)' },
-                              }}
-                              title="Xóa lịch sử tải"
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  })}
+                            {activeTab === 3 && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleRemoveDownloaded(e, song._id)}
+                                sx={{
+                                  color: '#ff4e7c',
+                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                  '&:hover': { backgroundColor: 'rgba(255,78,124,0.1)' },
+                                }}
+                                title="Xóa lịch sử tải"
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            )}
+                          </>
+                        }
+                      />
+                    </Box>
+                  ))}
                   {!activeSongsList.length && (
                     <Box sx={{ textAlign: 'center', py: 8, border: '1px dashed', borderColor: 'divider', borderRadius: '24px' }}>
                       <Typography color="text.secondary" fontWeight={500}>Không tìm thấy bài hát nào.</Typography>

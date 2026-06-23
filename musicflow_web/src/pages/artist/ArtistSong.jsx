@@ -308,8 +308,8 @@ function ArtistSong() {
         </Card>
 
         {/* Content Table */}
-        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid rgba(15, 23, 42, 0.08)' }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid rgba(15, 23, 42, 0.05)' }}>
+        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
             <TextField
               size="small"
               placeholder="Tìm kiếm bài hát của bạn..."
@@ -322,7 +322,10 @@ function ArtistSong() {
                     <SearchIcon color="action" />
                   </InputAdornment>
                 ),
-                sx: { borderRadius: 3, bgcolor: '#f8fafc' },
+                sx: {
+                  borderRadius: 3,
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+                },
               }}
             />
           </Box>
@@ -335,7 +338,7 @@ function ArtistSong() {
             ) : (
               <Table sx={{ minWidth: 600 }}>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: 'rgba(15, 23, 42, 0.02)' }}>
+                  <TableRow sx={{ bgcolor: 'action.hover' }}>
                     <TableCell sx={{ fontWeight: 600, py: 2 }}>Song</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Created</TableCell>

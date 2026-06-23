@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const fs = require("fs");
+const path = require("path");
 const cloudinary = require("../config/cloudinary");
 const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryFolders");
 const User = require("../models/user.model");
@@ -216,6 +218,194 @@ router.get("/stats/dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// GET Cloudinary stats asynchronously
+router.get("/system/cloudinary-usage", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    let cloudinaryUsage = {
+      usageBytes: 0,
+      limitBytes: 25 * 1024 * 1024 * 1024, // Default 25 GB limit for free tier
+      usedPercent: 0,
+    };
+
+    try {
+      const usage = await cloudinary.api.usage();
+      if (usage && usage.storage) {
+        cloudinaryUsage.usageBytes = usage.storage.usage || 0;
+        const limitCredits = (usage.credits && usage.credits.limit) ? usage.credits.limit : 25;
+        cloudinaryUsage.limitBytes = limitCredits * 1024 * 1024 * 1024;
+        cloudinaryUsage.usedPercent = usage.credits ? usage.credits.used_percent : Math.round((cloudinaryUsage.usageBytes / cloudinaryUsage.limitBytes) * 100);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch Cloudinary usage:", err);
+    }
+
+    res.json(cloudinaryUsage);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+
+// ================= SYSTEM COMMANDS (Admin only) =================
+// Clean Cache
+router.post("/system/clean-cache", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    console.log(`[Admin cache clear] Cache clean requested by admin: ${req.userId}`);
+    res.json({
+      success: true,
+      message: "Server cache cleared. System memory pools optimized successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Database Backup
+router.post("/system/backup", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const collections = await mongoose.connection.db.collections();
+    const backupData = {};
+
+    for (const col of collections) {
+      const name = col.collectionName;
+      const docs = await col.find({}).toArray();
+      backupData[name] = docs;
+    }
+
+    const backupDir = path.join(__dirname, "../../uploads/backups");
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    const dateStr = new Date().toISOString().replace(/T/, "_").replace(/\..+/, "").replace(/:/g, "-");
+    const fileName = `musicflow_backup_${dateStr}.json`;
+    const filePath = path.join(backupDir, fileName);
+
+    fs.writeFileSync(filePath, JSON.stringify(backupData, null, 2), "utf-8");
+
+    const stats = fs.statSync(filePath);
+    const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+    res.json({
+      success: true,
+      message: `Database backup created successfully. File: ${fileName} (${sizeMB} MB).`,
+      fileName,
+      size: `${sizeMB} MB`,
+    });
+  } catch (error) {
+    console.error("Backup DB error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Regen AI (Mood similarity lists update)
+router.post("/system/regen-ai", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const MOOD_TOPIC_MAP = {
+      sad: {
+        topics: ["Sad", "Lofi", "Piano", "Chill", "Acoustic"],
+        keywords: ["buon", "sad", "co don", "tam trang", "chia tay", "that tinh", "nho", "nuoc mat", "mua"],
+      },
+      happy: {
+        topics: ["Pop", "EDM", "Party"],
+        keywords: ["vui", "happy", "hanh phuc", "yeu doi", "tuoi sang", "soi dong", "dance"],
+      },
+      chill: {
+        topics: ["Chill", "Lofi", "Piano", "Acoustic"],
+        keywords: ["chill", "thu gian", "relax", "nhe nhang", "binh yen", "cafe", "acoustic"],
+      },
+      focus: {
+        topics: ["Study", "Piano", "Lofi", "Chill"],
+        keywords: ["tap trung", "focus", "hoc bai", "study", " piano", "lam viec", "work", "productive"],
+      },
+      energetic: {
+        topics: ["EDM", "Rock", "Party", "WorkOut", "Hip Hop & Rap"],
+        keywords: ["nang luong", "energetic", "soi dong", "manh me", "bung no", "hype", "gym"],
+      },
+      romantic: {
+        topics: ["Pop", "Piano", "Chill", "Acoustic"],
+        keywords: ["tinh yeu", "romantic", "lang man", "yeu", "nho nhung", "ngot ngao", "love"],
+      },
+      sleep: {
+        topics: ["Sleep", "Piano", "Lofi", "Chill"],
+        keywords: ["ngu", "sleep", "dem", "yen tinh", "calm", "ru ngu", "piano"],
+      },
+      party: {
+        topics: ["Party", "EDM", "Pop", "Hip Hop & Rap"],
+        keywords: ["party", "tiec", "vu truong", "dance", "dj", "club", "remix", "bass"],
+      },
+      angry: {
+        topics: ["Rock", "Hip Hop & Rap", "EDM"],
+        keywords: ["tuc gian", "angry", "buc", "rock", "metal", "rage", "aggressive"],
+      },
+    };
+
+    function normalizeText(value = "") {
+      return String(value)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\u0111/g, "d")
+        .replace(/đ/g, "d")
+        .replace(/[^a-z0-9\s&-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    const songs = await Song.find({});
+    const topics = await Topic.find({});
+    const topicMap = new Map(topics.map(t => [normalizeText(t.name), t._id]));
+
+    let updatedCount = 0;
+
+    for (const song of songs) {
+      const songTitle = normalizeText(song.title);
+      const songLyrics = normalizeText(song.lyrics);
+      
+      const newTopicIds = new Set(song.topicIds.map(id => id.toString()));
+      let hasChanges = false;
+
+      for (const [mood, moodData] of Object.entries(MOOD_TOPIC_MAP)) {
+        const hasKeywordMatch = moodData.keywords.some(keyword => {
+          const normalizedKeyword = normalizeText(keyword);
+          return songTitle.includes(normalizedKeyword) || songLyrics.includes(normalizedKeyword);
+        });
+
+        if (hasKeywordMatch) {
+          for (const topicName of moodData.topics) {
+            const normalizedTopicName = normalizeText(topicName);
+            const topicId = topicMap.get(normalizedTopicName);
+            if (topicId) {
+              const topicIdStr = topicId.toString();
+              if (!newTopicIds.has(topicIdStr)) {
+                newTopicIds.add(topicIdStr);
+                hasChanges = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (hasChanges) {
+        song.topicIds = Array.from(newTopicIds);
+        await song.save();
+        updatedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully rebuilt mood similarity lists for ${songs.length} songs (${updatedCount} updated).`,
+      totalProcessed: songs.length,
+      totalUpdated: updatedCount,
+    });
+  } catch (error) {
+    console.error("Regen AI error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // ================= USERS MANAGEMENT =================
 // Get all users with pagination

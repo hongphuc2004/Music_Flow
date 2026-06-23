@@ -33,6 +33,7 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientAiApi } from '../../services/api';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import useClientToast from '../../components/Layout/client/useClientToast';
+import useClientSession from '../../hooks/useClientSession';
 
 const QUICK_PROMPTS = [
   { emoji: '🌧️', label: 'Nhạc buồn lofi', prompt: 'Nhạc buồn lofi cho đêm mưa' },
@@ -358,9 +359,22 @@ export default function ClientAiMood() {
     });
   }, []);
 
-  // Load history on mount
+  const { isLoggedIn, userId } = useClientSession();
+
+  // Load history on mount or when session changes
   useEffect(() => {
+    if (!isLoggedIn || !userId) {
+      setConversations([]);
+      setMessages([]);
+      setPlaylists([]);
+      setActiveConversationId(null);
+      setError('');
+      setIsHistoryLoading(false);
+      return;
+    }
+
     const load = async () => {
+      setIsHistoryLoading(true);
       try {
         const res = await clientAiApi.getHistory();
         const data = res.data;
@@ -372,6 +386,10 @@ export default function ClientAiMood() {
           if (convs.length > 0) {
             setActiveConversationId(convs[0]._id);
             await loadConversation(convs[0]._id, pls);
+          } else {
+            setActiveConversationId(null);
+            setMessages([]);
+            setPlaylists([]);
           }
         }
       } catch {
@@ -382,7 +400,7 @@ export default function ClientAiMood() {
     };
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoggedIn, userId]);
 
   const loadConversation = async (conversationId, existingPlaylists) => {
     try {

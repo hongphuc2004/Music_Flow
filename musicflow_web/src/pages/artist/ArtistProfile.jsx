@@ -114,10 +114,10 @@ function ArtistProfile() {
       ) : (
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, lg: 4 }}>
-            <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid rgba(15,23,42,0.08)', overflow: 'hidden' }}>
+            <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
               <Box sx={{ height: 140, background: 'linear-gradient(135deg, #38bdf8 0%, #2563eb 60%, #1e3a8a 100%)' }} />
               <CardContent sx={{ p: 3, mt: -6, position: 'relative' }}>
-                <Avatar src={artist?.avatar} sx={{ width: 96, height: 96, border: '4px solid #fff', bgcolor: '#0ea5e9' }}>
+                <Avatar src={artist?.avatar} sx={{ width: 96, height: 96, border: (theme) => theme.palette.mode === 'dark' ? '4px solid #111827' : '4px solid #fff', bgcolor: '#0ea5e9' }}>
                   {artist?.name?.charAt(0)?.toUpperCase()}
                 </Avatar>
                 <Typography variant="h5" fontWeight={800} sx={{ mt: 2 }}>{artist?.name || 'Artist'}</Typography>
@@ -129,7 +129,7 @@ function ArtistProfile() {
             </Card>
           </Grid>
           <Grid size={{ xs: 12, lg: 8 }}>
-            <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid rgba(15,23,42,0.08)' }}>
+            <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>Artist identity</Typography>
                 <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -138,7 +138,16 @@ function ArtistProfile() {
                 <Stack divider={<Divider flexItem />}>
                   {profileFacts.map((fact) => (
                     <Box key={fact.label} sx={{ py: 2.25, display: 'flex', gap: 2 }}>
-                      <Box sx={{ width: 44, height: 44, borderRadius: 3, display: 'grid', placeItems: 'center', backgroundColor: '#e0f2fe', color: '#0284c7', flexShrink: 0 }}>
+                      <Box sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 3,
+                        display: 'grid',
+                        placeItems: 'center',
+                        backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(2, 132, 199, 0.15)' : '#e0f2fe',
+                        color: (theme) => theme.palette.mode === 'dark' ? '#38bdf8' : '#0284c7',
+                        flexShrink: 0,
+                      }}>
                         {fact.icon}
                       </Box>
                       <Box>

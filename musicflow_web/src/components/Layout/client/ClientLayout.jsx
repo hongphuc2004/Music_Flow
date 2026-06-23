@@ -5,6 +5,7 @@ import ClientSidebar from './ClientSidebar';
 import ClientHeader from './ClientHeader';
 import NowPlayingBar from './NowPlayingBar';
 import ClientAuthDialog from './ClientAuthDialog';
+import SongCommentsDrawer from './SongCommentsDrawer';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -14,6 +15,8 @@ function ClientLayout({ children, title }) {
   const [desktopOpen, setDesktopOpen] = useState(
     () => localStorage.getItem('musicflow-client-sidebar-open') !== 'false'
   );
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
   const location = useLocation();
   const theme = useTheme();
 
@@ -92,7 +95,19 @@ function ClientLayout({ children, title }) {
         <Toolbar />
         {children}
       </Box>
-      <NowPlayingBar desktopSidebarOpen={desktopOpen} />
+      <NowPlayingBar
+        desktopSidebarOpen={desktopOpen}
+        commentsOpen={commentsOpen}
+        onToggleComments={() => setCommentsOpen((prev) => !prev)}
+        commentCount={commentCount}
+        setCommentCount={setCommentCount}
+      />
+      <SongCommentsDrawer
+        open={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        commentCount={commentCount}
+        onCommentCountChanged={setCommentCount}
+      />
       <ClientAuthDialog />
     </Box>
   );

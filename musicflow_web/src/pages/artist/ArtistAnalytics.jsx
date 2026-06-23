@@ -77,7 +77,7 @@ function ArtistAnalytics() {
           <Grid container spacing={3}>
             {highlights.map((item) => (
               <Grid key={item.label} size={{ xs: 12, sm: 6, xl: 3 }}>
-                <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid rgba(15,23,42,0.08)' }}>
+                <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
                   <CardContent sx={{ p: 3 }}>
                     <Box sx={{ width: 48, height: 48, display: 'grid', placeItems: 'center', borderRadius: 3, mb: 2, color: item.accent, backgroundColor: `${item.accent}18` }}>
                       {item.icon}
@@ -92,7 +92,7 @@ function ArtistAnalytics() {
 
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, lg: 7 }}>
-              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid rgba(15,23,42,0.08)', height: '100%' }}>
+              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', height: '100%' }}>
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight={800}>Top songs by likes</Typography>
                   <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -113,7 +113,7 @@ function ArtistAnalytics() {
                             <LinearProgress
                               variant="determinate"
                               value={(likes / maxTopSongLikes) * 100}
-                              sx={{ height: 10, borderRadius: 999, backgroundColor: '#e2e8f0' }}
+                              sx={{ height: 10, borderRadius: 999, backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0' }}
                             />
                           </Box>
                         );
@@ -124,7 +124,7 @@ function ArtistAnalytics() {
               </Card>
             </Grid>
             <Grid size={{ xs: 12, lg: 5 }}>
-              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid rgba(15,23,42,0.08)', height: '100%' }}>
+              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', height: '100%' }}>
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight={800}>Release momentum</Typography>
                   <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -143,7 +143,7 @@ function ArtistAnalytics() {
                           <LinearProgress
                             variant="determinate"
                             value={(item.value / maxMonthReleases) * 100}
-                            sx={{ height: 10, borderRadius: 999, backgroundColor: '#e2e8f0' }}
+                            sx={{ height: 10, borderRadius: 999, backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0' }}
                             color="secondary"
                           />
                         </Box>

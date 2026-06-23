@@ -63,6 +63,27 @@ const ArtistRegister = () => {
     '& .MuiOutlinedInput-root': {
       borderRadius: 2,
       bgcolor: '#f7f8fb',
+      '& input': {
+        color: '#0f172a',
+      },
+      '& textarea': {
+        color: '#0f172a',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.15)',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.3)',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#6c63ff',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: '#475569',
+      '&.Mui-focused': {
+        color: '#6c63ff',
+      },
     },
   };
 
@@ -74,10 +95,10 @@ const ArtistRegister = () => {
             <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 68, height: 68, borderRadius: 3, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)', boxShadow: '0 16px 34px rgba(0, 188, 212, 0.25)', mb: 2.5 }}>
               <MusicNoteIcon sx={{ fontSize: 36, color: '#fff' }} />
             </Box>
-            <Typography variant="h4" fontWeight={850} gutterBottom>
+            <Typography variant="h4" fontWeight={850} gutterBottom sx={{ color: '#0f172a' }}>
               Đăng ký Artist
             </Typography>
-            <Typography color="text.secondary" sx={{ fontSize: 15.5 }}>
+            <Typography sx={{ fontSize: 15.5, color: '#475569' }}>
               Tạo hồ sơ nghệ sĩ để phát hành và quản lý nhạc
             </Typography>
           </Box>

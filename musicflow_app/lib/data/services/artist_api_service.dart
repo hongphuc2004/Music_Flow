@@ -1,14 +1,11 @@
 import 'dart:convert';
-
-import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
+import 'package:musicflow_app/core/config/api_client.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 
 class ArtistApiService {
-  static const Duration _timeout = Duration(seconds: 15);
-
   // In-memory cache for profiles
   static final Map<String, ArtistProfileResult> _profileCache = {};
 
@@ -39,9 +36,19 @@ class ArtistApiService {
     }
 
     try {
-      final response = await http
-          .get(Uri.parse(ApiConfig.artistProfileUrlByName(artistName)))
-          .timeout(_timeout);
+      final response = await ApiClient.get(
+        Uri.parse(ApiConfig.artistProfileUrlByName(artistName)),
+      );
+
+      // Handle 404 Artist Not Found specifically to cache the failure (negative caching)
+      if (response.statusCode == 404) {
+        final profileResult = ArtistProfileResult(
+          success: false,
+          message: 'Nghệ sĩ không tồn tại',
+        );
+        _profileCache[key] = profileResult;
+        return profileResult;
+      }
 
       final data = _decodeToMap(response.body);
 
@@ -68,11 +75,16 @@ class ArtistApiService {
         return profileResult;
       }
 
-      return ArtistProfileResult(
+      // Also cache other logical failures if success is false
+      final profileResult = ArtistProfileResult(
         success: false,
         message:
             data['message']?.toString() ?? 'Không thể tải thông tin nghệ sĩ',
       );
+      if (response.statusCode == 400 || (data['success'] == false && data['message']?.toString().contains('not found') == true)) {
+        _profileCache[key] = profileResult;
+      }
+      return profileResult;
     } catch (e) {
       return ArtistProfileResult(success: false, message: 'Loi tai artist: $e');
     }
@@ -87,12 +99,10 @@ class ArtistApiService {
         return ArtistFollowStatusResult(success: true, isFollowing: false);
       }
 
-      final response = await http
-          .get(
-            Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow-status'),
-            headers: {'Authorization': 'Bearer $token'},
-          )
-          .timeout(_timeout);
+      final response = await ApiClient.get(
+        Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow-status'),
+        requireAuth: true,
+      );
 
       final data = _decodeToMap(response.body);
 
@@ -130,15 +140,9 @@ class ArtistApiService {
         );
       }
 
-      final response = await http
-          .post(
-            Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(_timeout);
+      final response = await ApiClient.post(
+        Uri.parse('${ApiConfig.artistEndpoint}/$artistId/follow'),
+      );
 
       final data = _decodeToMap(response.body);
 

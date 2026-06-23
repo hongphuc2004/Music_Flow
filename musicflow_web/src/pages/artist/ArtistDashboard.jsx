@@ -468,8 +468,9 @@ function ArtistDashboard() {
                   sx={{
                     height: '100%',
                     borderRadius: 5,
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
                     background: item.gradient,
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
@@ -544,8 +545,9 @@ function ArtistDashboard() {
                 elevation={0}
                 sx={{
                   borderRadius: 5,
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  background: 'rgba(255, 255, 255, 0.01)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff',
                   p: 3,
                   animation: 'fadeIn 0.4s ease-out',
                   '@keyframes fadeIn': {
@@ -646,7 +648,7 @@ function ArtistDashboard() {
               <Stack spacing={4}>
                 {/* Visual Chart Card */}
                 {analytics.releasesByMonth && analytics.releasesByMonth.length > 0 && (
-                  <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid rgba(255, 255, 255, 0.05)', backgroundColor: 'rgba(255, 255, 255, 0.01)' }}>
+                  <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff' }}>
                     <CardContent sx={{ p: 3.5 }}>
                       <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
                         Catalog Releases Trend
@@ -713,7 +715,7 @@ function ArtistDashboard() {
                 )}
 
                 {/* Recent Releases Section */}
-                <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid rgba(255, 255, 255, 0.05)', backgroundColor: 'rgba(255, 255, 255, 0.01)' }}>
+                <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff' }}>
                   <CardContent sx={{ p: 3.5 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
                       <Box>
@@ -738,6 +740,7 @@ function ArtistDashboard() {
                           return (
                             <Box
                               key={song._id || `${song.title}-${index}`}
+                              onClick={() => navigate('/artist/songs')}
                               sx={{
                                 py: 2,
                                 px: 1.5,
@@ -745,10 +748,14 @@ function ArtistDashboard() {
                                 display: 'flex',
                                 gap: 2.25,
                                 alignItems: 'center',
+                                border: '1px solid transparent',
+                                cursor: 'pointer',
                                 transition: 'all 0.25s ease-in-out',
                                 '&:hover': {
-                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.4)' : 'rgba(108, 99, 255, 0.25)',
+                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(108, 99, 255, 0.03)',
                                   transform: 'translateX(4px)',
+                                  boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(108, 99, 255, 0.05)',
                                 },
                               }}
                             >
@@ -816,7 +823,10 @@ function ArtistDashboard() {
                                   <Tooltip title="Song Analytics">
                                     <IconButton
                                       size="small"
-                                      onClick={() => showToast({ severity: 'success', title: 'Song Analytics', message: `Loading stream analytics for "${song.title}"...` })}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        showToast({ severity: 'success', title: 'Song Analytics', message: `Loading stream analytics for "${song.title}"...` });
+                                      }}
                                       sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}
                                     >
                                       <InsightIcon sx={{ fontSize: 16 }} />
@@ -825,7 +835,10 @@ function ArtistDashboard() {
                                   <Tooltip title="Edit Track">
                                     <IconButton
                                       size="small"
-                                      onClick={() => showToast({ severity: 'info', title: 'Edit Track', message: `Opening metadata editor for "${song.title}"...` })}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        showToast({ severity: 'info', title: 'Edit Track', message: `Opening metadata editor for "${song.title}"...` });
+                                      }}
                                       sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}
                                     >
                                       <EditIcon sx={{ fontSize: 16 }} />
@@ -845,7 +858,7 @@ function ArtistDashboard() {
 
             {/* Right Section: Profile Readiness Ring */}
             <Grid size={{ xs: 12, lg: 4 }}>
-              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid rgba(255, 255, 255, 0.05)', backgroundColor: 'rgba(255, 255, 255, 0.01)', height: '100%' }}>
+              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff', height: '100%' }}>
                 <CardContent sx={{ p: 3.5, display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <Typography variant="h6" sx={{ fontWeight: 800 }}>Profile completion</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3.5 }}>

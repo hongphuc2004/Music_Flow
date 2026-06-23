@@ -24,7 +24,6 @@ import {
   RefreshRounded as RefreshIcon,
   ShuffleRounded as ShuffleIcon,
   AutoAwesomeRounded as SparklesIcon,
-  CheckCircleRounded as ActiveIcon,
   ChevronLeftRounded as PrevIcon,
   ChevronRightRounded as NextIcon,
   PersonAddAltRounded as FollowIcon,
@@ -32,10 +31,11 @@ import {
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } from '../../services/api';
-import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import useAppToast from '../../components/common/useAppToast';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
+import SongItem from '../../components/client/SongItem';
+import PlaylistCard from '../../components/client/PlaylistCard';
 
 const CAROUSEL_SLIDES = [
   {
@@ -215,12 +215,7 @@ function findMatchingDbTopic(item, topicsList) {
   return null;
 }
 
-function formatDuration(sec) {
-  if (!sec) return '03:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
-}
+
 
 function formatFollowerCount(count) {
   if (count === undefined || count === null) return '0 quan tâm';
@@ -284,7 +279,7 @@ function getNextHotSongBatch(sourceSongs, usedSongKeys, currentSongs = [], limit
 
 function ClientGenres() {
   const navigate = useNavigate();
-  const { playSong } = useClientPlayerActions();
+  const { playSong, currentSong, isPlaying } = useClientPlayer();
   const { showToast } = useAppToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [topics, setTopics] = useState([]);
@@ -296,7 +291,6 @@ function ClientGenres() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
   
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -352,7 +346,6 @@ function ClientGenres() {
 
     try {
       if (withLoading) setLoading(true);
-      else setSearching(true);
       setError('');
       const response = await clientSongsApi.search({ query: fontNormalized, limit: 24 });
       const nextSongs = Array.isArray(response.data) ? response.data : [];
@@ -362,7 +355,6 @@ function ClientGenres() {
       setError(err.response?.data?.message || 'Lỗi khi tìm kiếm bài hát.');
     } finally {
       if (withLoading) setLoading(false);
-      else setSearching(false);
     }
   }, [defaultSongs]);
 
@@ -553,11 +545,7 @@ function ClientGenres() {
     return filtered.length > 0 ? filtered.slice(0, 5) : playlists.slice(0, 5);
   }, [playlists, selectedTitle, selectedTopic]);
 
-  // Derive other categories to show on Category Detail view sidebar
-  const otherCategories = useMemo(() => {
-    const allCurated = [...FEATURED_ITEMS, ...NATIONS_ITEMS, ...MOODS_ITEMS];
-    return allCurated.filter(item => item.id !== selectedTopic).slice(0, 4);
-  }, [selectedTopic]);
+
 
   // Derive gradient color for active category banner
   const activeGradient = useMemo(() => {
@@ -587,7 +575,12 @@ function ClientGenres() {
       if (Array.isArray(song.artists)) {
         song.artists.forEach(artist => {
           if (artist && artist._id && !artistMap[artist._id]) {
-            artistMap[artist._id] = artist;
+            artistMap[artist._id] = {
+              _id: artist._id,
+              name: artist.name || 'Unknown artist',
+              avatar: artist.avatar || '',
+              followers: artist.followersCount || artist.followers || 0,
+            };
           }
         });
       }
@@ -595,98 +588,51 @@ function ClientGenres() {
     return Object.values(artistMap).slice(0, 5);
   }, [songs]);
 
+  // Set followers count directly from pre-populated song artist data
+  useEffect(() => {
+    if (!relatedArtists.length) return;
+    const followerMap = {};
+    relatedArtists.forEach(artist => {
+      followerMap[artist._id] = artist.followers || 0;
+    });
+    setArtistFollowersState(prev => ({ ...prev, ...followerMap }));
+  }, [relatedArtists]);
+
+  // Batch query follow statuses in one single network request
   useEffect(() => {
     let cancelled = false;
 
-    const fetchArtistDetails = async () => {
+    const fetchFollowStatuses = async () => {
       if (!relatedArtists.length) return;
       const isLoggedIn = !!localStorage.getItem('userId');
-      
-      const promises = relatedArtists.map(async (artist) => {
-        try {
-          const profileRes = await clientArtistApi.getProfile(artist._id);
-          const followers = profileRes.data.artist?.followers || 0;
-          
-          let isFollowing = false;
-          if (isLoggedIn) {
-            try {
-              const statusRes = await clientArtistApi.getFollowStatus(artist._id);
-              isFollowing = statusRes.data.isFollowing;
-            } catch (statusErr) {
-              console.error("Error fetching follow status for", artist._id, statusErr);
-            }
-          }
-          
-          return {
-            id: artist._id,
-            followers,
-            isFollowing
-          };
-        } catch (err) {
-          console.error("Error fetching details for artist", artist._id, err);
-          return {
-            id: artist._id,
-            followers: 0,
-            isFollowing: false
-          };
-        }
-      });
-      
-      const results = await Promise.all(promises);
-      const followerMap = {};
-      const followMap = {};
-      results.forEach(res => {
-        followerMap[res.id] = res.followers;
-        followMap[res.id] = res.isFollowing;
-      });
-      
-      if (!cancelled) {
-        setArtistFollowersState(followerMap);
+      if (!isLoggedIn) {
+        const followMap = {};
+        relatedArtists.forEach(artist => {
+          followMap[artist._id] = false;
+        });
         setFollowedArtists(followMap);
+        return;
+      }
+
+      try {
+        const artistIds = relatedArtists.map(artist => artist._id);
+        const response = await clientArtistApi.getBatchFollowStatus(artistIds);
+        if (response.data.success && response.data.followStatusMap && !cancelled) {
+          setFollowedArtists(response.data.followStatusMap);
+        }
+      } catch (err) {
+        console.error("Error fetching batch follow status:", err);
       }
     };
 
-    const cancelIdleTask = scheduleIdleTask(fetchArtistDetails);
+    const cancelIdleTask = scheduleIdleTask(fetchFollowStatuses);
     return () => {
       cancelled = true;
       cancelIdleTask();
     };
   }, [relatedArtists]);
 
-  const topicStats = useMemo(() => {
-    if (!songs.length) return { totalPlays: 0, songCount: 0, topArtist: 'Chưa rõ' };
-    
-    let totalPlays = 0;
-    const artistPlaysMap = {};
-    
-    songs.forEach(song => {
-      const plays = song.playCount || 0;
-      totalPlays += plays;
-      
-      if (Array.isArray(song.artists)) {
-        song.artists.forEach(artist => {
-          if (artist && artist.name) {
-            artistPlaysMap[artist.name] = (artistPlaysMap[artist.name] || 0) + plays;
-          }
-        });
-      }
-    });
 
-    let topArtist = 'Chưa rõ';
-    let maxPlays = -1;
-    Object.entries(artistPlaysMap).forEach(([name, plays]) => {
-      if (plays > maxPlays) {
-        maxPlays = plays;
-        topArtist = name;
-      }
-    });
-
-    return {
-      totalPlays,
-      songCount: songs.length,
-      topArtist
-    };
-  }, [songs]);
 
   return (
     <ClientLayout title="Chủ đề & Thể loại">
@@ -1391,218 +1337,37 @@ function ClientGenres() {
                 <Grid container spacing={2.5}>
                   {hotSongs.map((song) => (
                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
-                      <Paper
-                        elevation={0}
-                        onClick={() => playSong(song, { queue: songs })}
-                        sx={{
-                          p: 1.25,
-                          borderRadius: 3.5,
-                          bgcolor: 'transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.25s',
-                          border: '1px solid transparent',
-                          '&:hover': {
-                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.03)',
-                            borderColor: 'divider',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-                          },
-                          '&:hover .song-duration': { display: 'none' },
-                          '&:hover .song-action-buttons': { display: 'flex' },
-                          '&:hover .song-cover-overlay': { opacity: 1 },
-                        }}
-                      >
-                        <Stack direction="row" spacing={1.75} alignItems="center" justifyContent="space-between">
-                          <Stack direction="row" spacing={1.75} alignItems="center" sx={{ minWidth: 0, flexGrow: 1 }}>
-                            <Box sx={{ width: 48, height: 48, position: 'relative', flexShrink: 0 }}>
-                              <Avatar
-                                src={song.imageUrl || undefined}
-                                variant="rounded"
-                                sx={{
-                                  width: '100%',
-                                  height: '100%',
-                                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.08)' : 'rgba(20, 184, 166, 0.04)',
-                                  color: '#14b8a6',
-                                  borderRadius: 1.5,
-                                }}
-                              >
-                                <MusicIcon sx={{ fontSize: 22 }} />
-                              </Avatar>
-                              <Box
-                                className="song-cover-overlay"
-                                sx={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  width: '100%',
-                                  height: '100%',
-                                  bgcolor: 'rgba(0,0,0,0.4)',
-                                  borderRadius: 1.5,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: '#fff',
-                                  opacity: 0,
-                                  transition: 'opacity 0.2s',
-                                }}
-                              >
-                                <PlayIcon sx={{ fontSize: 24 }} />
-                              </Box>
-                            </Box>
-
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography variant="body2" fontWeight={800} noWrap sx={{ fontSize: '14.5px' }}>
-                                {song.title}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
-                                {Array.isArray(song.artists)
-                                  ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
-                                  : 'Nghệ sĩ ẩn danh'}
-                              </Typography>
-                            </Box>
-                          </Stack>
-
-                          <Box sx={{ flexShrink: 0, ml: 1.5 }}>
-                            <Typography
-                              className="song-duration"
-                              variant="caption"
-                              color="text.secondary"
-                              fontWeight={700}
-                            >
-                              {song.duration ? formatDuration(song.duration) : '03:30'}
-                            </Typography>
-
-                            <Stack
-                              className="song-action-buttons"
-                              direction="row"
-                              spacing={0.5}
-                              alignItems="center"
-                              sx={{ display: 'none' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <IconButton size="small" sx={{ color: 'text.secondary', '&:hover': { color: '#14b8a6' } }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 2c1.66 0 3 1.34 3 3v7c0 1.66-1.34 3-3 3s-3-1.34-3-3v-7c0-1.66 1.34-3 3-3zm0-2c-2.76 0-5 2.24-5 5v7c0 2.76 2.24 5 5 5s5-2.24 5-5v-7c0-2.76-2.24-5-5-5zm6 11c0 3.07-2.18 5.64-5 6.29v2.71h-2v-2.71c-2.82-.65-5-3.22-5-6.29h2c0 2.76 2.24 5 5 5s5-2.24 5-5h2z"/>
-                                </svg>
-                              </IconButton>
-                              <SongMoreMenu
-                                song={song}
-                                buttonSx={{
-                                  color: 'text.secondary',
-                                  p: 0.5,
-                                  '&:hover': {
-                                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                                  },
-                                }}
-                              />
-                            </Stack>
-                          </Box>
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  ))}
-
-                </Grid>
-              </Box>
-
-            {/* ──────── SECTION 2: ALBUM (5 Columns Grid) ──────── */}
-            {relatedPlaylists.length > 0 && (
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-                  Album
-                </Typography>
-                
-                <Grid container spacing={3}>
-                  {relatedPlaylists.slice(0, 5).map((playlist) => (
-                    <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={playlist._id}>
-                      <Paper
-                        elevation={0}
-                        onClick={() => navigate(`/client/playlists/${playlist._id}`)}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          bgcolor: 'transparent',
-                          border: '1px solid transparent',
-                          transition: 'all 0.25s',
-                          '&:hover': {
-                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                            borderColor: 'divider',
-                            boxShadow: '0 8px 20px rgba(0,0,0,0.02)',
-                          },
-                          '&:hover .album-cover': {
-                            transform: 'scale(1.04)',
-                          },
-                          '&:hover .album-play-overlay': {
-                            opacity: 1,
-                          }
-                        }}
-                      >
-                        <Box sx={{ width: '100%', aspectRatio: '1/1', position: 'relative', overflow: 'hidden', borderRadius: 3, mb: 1.75 }}>
-                          {playlist.coverImage ? (
-                            <Avatar
-                              className="album-cover"
-                              src={playlist.coverImage}
-                              variant="square"
-                              sx={{
-                                width: '100%',
-                                height: '100%',
-                                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              }}
-                            />
-                          ) : (
-                            <Box
-                              className="album-cover"
-                              sx={{
-                                width: '100%',
-                                height: '100%',
-                                background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#fff',
-                                fontWeight: 900,
-                                fontSize: 32,
-                                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              }}
-                            >
-                              {playlist.name ? playlist.name.charAt(0).toUpperCase() : 'P'}
-                            </Box>
-                          )}
-                          <Box
-                            className="album-play-overlay"
-                            sx={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              bgcolor: 'rgba(0,0,0,0.4)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: '#fff',
-                              opacity: 0,
-                              transition: 'opacity 0.2s',
-                            }}
-                          >
-                            <Box sx={{ bgcolor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.15)' }}>
-                              <PlayIcon sx={{ fontSize: 28 }} />
-                            </Box>
-                          </Box>
-                        </Box>
-
-                        <Typography variant="body2" fontWeight={850} noWrap sx={{ mb: 0.5 }}>
-                          {playlist.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
-                          {playlist.description || 'MusicFlow gợi ý'}
-                        </Typography>
-                      </Paper>
+                      <SongItem
+                        song={song}
+                        showDuration={true}
+                        isCurrent={currentSong?._id === song._id}
+                        isPlaying={currentSong?._id === song._id && isPlaying}
+                        onPlay={() => playSong(song, { queue: hotSongs })}
+                      />
                     </Grid>
                   ))}
                 </Grid>
               </Box>
-            )}
+
+              {/* ──────── SECTION 2: PLAYLIST / ALBUM GỢI Ý (5 Columns Grid) ──────── */}
+              {relatedPlaylists.length > 0 && (
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
+                    Playlist / Album gợi ý
+                  </Typography>
+                  
+                  <Grid container spacing={2.5}>
+                    {relatedPlaylists.slice(0, 5).map((playlist) => (
+                      <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={playlist._id}>
+                        <PlaylistCard
+                          playlist={playlist}
+                          onClick={() => navigate(`/client/playlists/${playlist._id}`)}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
 
             {/* ──────── SECTION 3: NGHỆ SĨ (5 Columns Circular Profile Grid) ──────── */}
             {relatedArtists.length > 0 && (

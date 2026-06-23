@@ -43,6 +43,25 @@ export const setAccessToken = (token) => {
   apiCache.clear();
 };
 
+export const logout = async () => {
+  try {
+    await api.post('/auth/logout');
+  } catch (err) {
+    console.warn('Logout API error:', err);
+  } finally {
+    accessToken = null;
+    apiCache.clear();
+    localStorage.removeItem('role');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('email');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userAvatar');
+    clearArtistSession();
+    window.dispatchEvent(new Event('musicflow-client-session-changed'));
+    window.dispatchEvent(new Event('artist-profile-updated'));
+  }
+};
+
 export const refreshAccessToken = async (forceRefresh = false) => {
   if (accessToken && !forceRefresh) {
     return accessToken;
@@ -197,7 +216,12 @@ export const artistApi = {
 // Dashboard Stats API
 export const statsApi = {
   getDashboard: () => api.get('/admin/stats/dashboard'),
+  cleanCache: () => api.post('/admin/system/clean-cache'),
+  backupDb: () => api.post('/admin/system/backup'),
+  regenAi: () => api.post('/admin/system/regen-ai'),
+  getCloudinaryUsage: () => api.get('/admin/system/cloudinary-usage'),
 };
+
 
 
 // Accounts API (users + artists)
@@ -311,6 +335,7 @@ export const clientArtistApi = {
   getProfile: (id) => cachedGet('/artist/profile', { params: { id } }, 20000),
   getFollowStatus: (id) => cachedGet(`/artist/${id}/follow-status`, {}, 20000),
   toggleFollow: (id) => api.post(`/artist/${id}/follow`),
+  getBatchFollowStatus: (artistIds) => api.post('/artist/follow-statuses', { artistIds }),
 };
 
 export const clientAiApi = {
@@ -327,6 +352,16 @@ export const clientUserApi = {
   }),
 };
 
+export const clientCommentsApi = {
+  getSongComments: (songId, params) => api.get(`/comments/song/${songId}`, { params }),
+  create: (payload) => api.post('/comments', payload),
+  update: (id, payload) => api.put(`/comments/${id}`, payload),
+  delete: (id) => api.delete(`/comments/${id}`),
+  react: (id) => api.put(`/comments/${id}/reactions`, { type: 'like' }),
+  unreact: (id) => api.delete(`/comments/${id}/reactions`),
+};
+
 export const resolveSongStreamUrl = (songId) => `${API_BASE_URL}/songs/${songId}/stream`;
 
 export default api;
+

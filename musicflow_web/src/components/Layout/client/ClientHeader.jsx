@@ -22,8 +22,9 @@ import {
   LightModeRounded as LightModeIcon,
 } from '@mui/icons-material';
 import useClientToast from './useClientToast';
-import { ColorModeContext } from '../../../App';
-import useClientSession, { notifyClientSessionChanged } from '../../../hooks/useClientSession';
+import { ColorModeContext } from '../../../context/ColorModeContext';
+import useClientSession from '../../../hooks/useClientSession';
+import { logout } from '../../../services/api';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -45,14 +46,9 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     handleClose();
-    localStorage.removeItem('role');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('email');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userAvatar');
-    notifyClientSessionChanged();
+    await logout();
     onLogoutSuccess();
     showToast({
       severity: 'success',

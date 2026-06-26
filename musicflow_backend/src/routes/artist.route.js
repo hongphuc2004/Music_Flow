@@ -181,7 +181,7 @@ router.get("/profile", async (req, res) => {
 
     const publicSongFilter = { artists: artist._id, isPublic: true };
 
-    const [songs, totalSongs, followerCount, totalLikesAgg, songIds] = await Promise.all([
+    const [songs, totalSongs, followerCount, totalLikesAgg] = await Promise.all([
       Song.find(publicSongFilter)
         .populate("artists", "name avatar")
         .sort({ createdAt: -1 })
@@ -192,23 +192,15 @@ router.get("/profile", async (req, res) => {
         { $match: publicSongFilter },
         { $group: { _id: null, totalLikes: { $sum: { $ifNull: ["$likeCount", 0] } } } },
       ]),
-      Song.find(publicSongFilter).select("_id").lean(),
     ]);
 
     const totalLikes = (totalLikesAgg[0]?.totalLikes || 0);
-
-    const songIdList = songIds.map((song) => song._id);
-    const monthlyListeners = songIdList.length > 0
-      ? await SongPlayEvent.countDocuments({
-        songId: { $in: songIdList },
-        playedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-      })
-      : 0;
+    const monthlyListeners = artist.monthlyListeners || 0;
 
     // Cache updated stats back to the Artist document
     await Artist.updateOne(
       { _id: artist._id },
-      { $set: { followersCount: followerCount, monthlyListeners } }
+      { $set: { followersCount: followerCount } }
     );
 
     return res.json({
@@ -338,6 +330,49 @@ router.post("/:id/follow", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Toggle follow artist failed",
+      error: error.message,
+    });
+  }
+});
+
+// Bulk check follow statuses for a list of artist IDs
+router.post("/follow-statuses", authMiddleware, async (req, res) => {
+  try {
+    const { artistIds } = req.body;
+    if (!Array.isArray(artistIds)) {
+      return res.status(400).json({
+        success: false,
+        message: "artistIds must be an array",
+      });
+    }
+
+    const user = await User.findById(req.userId).select("followedArtists");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const followedSet = new Set(
+      (user.followedArtists || []).map((id) => id.toString())
+    );
+
+    const followStatusMap = {};
+    for (const id of artistIds) {
+      if (id) {
+        followStatusMap[id] = followedSet.has(id.toString());
+      }
+    }
+
+    return res.json({
+      success: true,
+      followStatusMap,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Batch checking follow statuses failed",
       error: error.message,
     });
   }

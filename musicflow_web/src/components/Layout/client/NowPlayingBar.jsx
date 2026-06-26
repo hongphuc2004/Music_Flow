@@ -12,9 +12,10 @@ import {
   SkipNextRounded as NextIcon,
   ShuffleRounded as ShuffleIcon,
   MusicNoteRounded as MusicIcon,
+  ChatBubbleOutlineRounded as CommentIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
-import { clientFavoritesApi, clientSongsApi } from '../../../services/api';
+import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/api';
 import useClientToast from './useClientToast';
 
 function formatDuration(seconds) {
@@ -24,7 +25,13 @@ function formatDuration(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function NowPlayingBar({ desktopSidebarOpen = true }) {
+function NowPlayingBar({
+  desktopSidebarOpen = true,
+  commentsOpen,
+  onToggleComments,
+  commentCount,
+  setCommentCount,
+}) {
   const { showToast } = useClientToast();
   const [favorite, setFavorite] = useState(false);
   const [scrubTime, setScrubTime] = useState(null);
@@ -72,6 +79,17 @@ function NowPlayingBar({ desktopSidebarOpen = true }) {
       ignore = true;
     };
   }, [currentSong?._id, isLoggedIn]);
+
+  useEffect(() => {
+    if (!currentSong?._id) return;
+    clientCommentsApi.getSongComments(currentSong._id, { limit: 1 })
+      .then((res) => {
+        if (res.data?.success && setCommentCount) {
+          setCommentCount(res.data.totalComments || 0);
+        }
+      })
+      .catch(() => {});
+  }, [currentSong?._id, setCommentCount]);
 
   const requireLogin = () => {
     showToast({
@@ -188,7 +206,7 @@ function NowPlayingBar({ desktopSidebarOpen = true }) {
         left: { xs: 10, md: desktopSidebarOpen ? 276 : 92 },
         right: 16,
         bottom: 12,
-        zIndex: 1300,
+        zIndex: 1150,
         overflow: 'hidden',
         borderRadius: 2.5,
         border: '1px solid rgba(255,255,255,0.12)',
@@ -248,6 +266,38 @@ function NowPlayingBar({ desktopSidebarOpen = true }) {
           </IconButton>
           <IconButton size="small" onClick={handleDownload} sx={{ color: 'rgba(255,255,255,0.78)' }}>
             <DownloadIcon sx={{ fontSize: 25 }} />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={onToggleComments}
+            sx={{
+              color: commentsOpen ? '#14b8a6' : 'rgba(255,255,255,0.78)',
+              position: 'relative',
+            }}
+          >
+            <CommentIcon sx={{ fontSize: 25 }} />
+            {commentCount > 0 && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  bgcolor: '#14b8a6',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  minWidth: 15,
+                  height: 15,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  px: 0.5,
+                }}
+              >
+                {commentCount > 99 ? '99+' : commentCount}
+              </Box>
+            )}
           </IconButton>
         </Stack>
 

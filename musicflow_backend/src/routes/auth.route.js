@@ -37,7 +37,7 @@ function setRefreshCookie(res, refreshToken) {
     secure: IS_PRODUCTION,
     sameSite: IS_PRODUCTION ? "none" : "lax",
     maxAge: REFRESH_EXPIRES_IN * 24 * 60 * 60 * 1000,
-    path: "/api/auth",
+    path: "/",
   });
 }
 
@@ -46,7 +46,7 @@ function clearRefreshCookie(res) {
     httpOnly: true,
     secure: IS_PRODUCTION,
     sameSite: IS_PRODUCTION ? "none" : "lax",
-    path: "/api/auth",
+    path: "/",
   });
 }
 

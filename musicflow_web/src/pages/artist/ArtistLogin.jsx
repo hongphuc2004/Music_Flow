@@ -188,6 +188,24 @@ function ArtistLogin() {
     '& .MuiOutlinedInput-root': {
       borderRadius: 2,
       bgcolor: '#f7f8fb',
+      '& input': {
+        color: '#0f172a',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.15)',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.3)',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#6c63ff',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: '#475569',
+      '&.Mui-focused': {
+        color: '#6c63ff',
+      },
     },
   };
 
@@ -221,10 +239,10 @@ function ArtistLogin() {
             <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 68, height: 68, borderRadius: 3, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)', boxShadow: '0 16px 34px rgba(0, 188, 212, 0.25)', mb: 2.5 }}>
               <MusicNoteIcon sx={{ fontSize: 36, color: '#fff' }} />
             </Box>
-            <Typography variant="h4" fontWeight={850} gutterBottom>
+            <Typography variant="h4" fontWeight={850} gutterBottom sx={{ color: '#0f172a' }}>
               Artist Login
             </Typography>
-            <Typography color="text.secondary" sx={{ fontSize: 15.5 }}>
+            <Typography sx={{ fontSize: 15.5, color: '#475569' }}>
               Đăng nhập tài khoản nghệ sĩ của bạn
             </Typography>
           </Box>
@@ -257,8 +275,8 @@ function ArtistLogin() {
             </Button>
           </form>
 
-          <Divider sx={{ my: 2.5 }}>Hoặc</Divider>
-          <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={!GOOGLE_CLIENT_ID || googleLoading} onClick={handleGoogleLogin} sx={{ py: 1.2, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+          <Divider sx={{ my: 2.5, color: '#475569', '&::before, &::after': { borderColor: 'rgba(15, 23, 42, 0.12)' } }}>Hoặc</Divider>
+          <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={!GOOGLE_CLIENT_ID || googleLoading} onClick={handleGoogleLogin} sx={{ py: 1.2, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700, '&:hover': { borderColor: '#b0b5c1', bgcolor: 'rgba(219, 68, 55, 0.04)' } }}>
             {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
           </Button>
           {!GOOGLE_CLIENT_ID && (

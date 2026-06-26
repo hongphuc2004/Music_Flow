@@ -85,6 +85,14 @@ function Dashboard() {
   const [songsList, setSongsList] = useState([]);
   const [playingSongId, setPlayingSongId] = useState(null);
 
+  const [apiSpeed, setApiSpeed] = useState(null);
+  const [loadingCloudinary, setLoadingCloudinary] = useState(true);
+  const [cloudinaryUsage, setCloudinaryUsage] = useState({
+    usageBytes: 0,
+    limitBytes: 25 * 1024 * 1024 * 1024,
+    usedPercent: 0,
+  });
+
   const [actionLoading, setActionLoading] = useState({
     cleanCache: false,
     backupDb: false,
@@ -95,10 +103,29 @@ function Dashboard() {
     fetchDashboardData();
   }, []);
 
+  const fetchCloudinaryStats = async () => {
+    try {
+      setLoadingCloudinary(true);
+      const response = await statsApi.getCloudinaryUsage();
+      setCloudinaryUsage(response.data);
+    } catch (err) {
+      console.warn("Failed to load Cloudinary stats:", err);
+    } finally {
+      setLoadingCloudinary(false);
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      // Fetch Cloudinary usage stats in parallel so it doesn't block the main stats dashboard API
+      fetchCloudinaryStats();
+
+      const startTime = performance.now();
       const response = await statsApi.getDashboard();
+      const endTime = performance.now();
+      setApiSpeed(Math.round(endTime - startTime));
+
       const fetchedData = response.data;
       setData({
         stats: fetchedData.stats || { totalUsers: 0, totalSongs: 0, totalPlaylists: 0, newUsers: 0 },
@@ -108,7 +135,7 @@ function Dashboard() {
       setAccountsList(fetchedData.recentAccounts || fetchedData.recentUsers || []);
       setSongsList(fetchedData.recentSongs || []);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Failed to load dashboard data. Make sure the backend is running.');
     } finally {
       setLoading(false);
@@ -117,16 +144,20 @@ function Dashboard() {
 
   const handleCleanCache = async () => {
     setActionLoading(prev => ({ ...prev, cleanCache: true }));
-    await new Promise(resolve => setTimeout(resolve, 1200));
     try {
+      const response = await statsApi.cleanCache();
       clearApiCache();
       showToast({
         severity: 'success',
         title: 'Cache Cleared',
-        message: 'System GET caching pool wiped out. 12.4 MB of cache memory released.'
+        message: response.data?.message || 'System GET caching pool wiped out.'
       });
     } catch (err) {
-      showToast({ severity: 'error', message: 'Failed to clean system cache.' });
+      showToast({
+        severity: 'error',
+        title: 'Cache Clear Failed',
+        message: err.response?.data?.message || 'Failed to clean system cache.'
+      });
     } finally {
       setActionLoading(prev => ({ ...prev, cleanCache: false }));
     }
@@ -134,24 +165,42 @@ function Dashboard() {
 
   const handleBackupDb = async () => {
     setActionLoading(prev => ({ ...prev, backupDb: true }));
-    await new Promise(resolve => setTimeout(resolve, 1800));
-    showToast({
-      severity: 'success',
-      title: 'Database Backup',
-      message: 'MongoDB automated backup created: musicflow_backup_prod_latest.tar.gz (4.8 MB).'
-    });
-    setActionLoading(prev => ({ ...prev, backupDb: false }));
+    try {
+      const response = await statsApi.backupDb();
+      showToast({
+        severity: 'success',
+        title: 'Database Backup',
+        message: response.data?.message || 'MongoDB automated backup created.'
+      });
+    } catch (err) {
+      showToast({
+        severity: 'error',
+        title: 'Backup Failed',
+        message: err.response?.data?.message || 'Failed to backup database.'
+      });
+    } finally {
+      setActionLoading(prev => ({ ...prev, backupDb: false }));
+    }
   };
 
   const handleRegenAi = async () => {
     setActionLoading(prev => ({ ...prev, regenAi: true }));
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    showToast({
-      severity: 'success',
-      title: 'AI Dj Regenerated',
-      message: 'Successfully rebuilt mood similarity lists for 300+ songs.'
-    });
-    setActionLoading(prev => ({ ...prev, regenAi: false }));
+    try {
+      const response = await statsApi.regenAi();
+      showToast({
+        severity: 'success',
+        title: 'AI Dj Regenerated',
+        message: response.data?.message || 'Successfully rebuilt mood similarity lists.'
+      });
+    } catch (err) {
+      showToast({
+        severity: 'error',
+        title: 'AI Regen Failed',
+        message: err.response?.data?.message || 'Failed to rebuild mood lists.'
+      });
+    } finally {
+      setActionLoading(prev => ({ ...prev, regenAi: false }));
+    }
   };
 
   const toggleLockUser = (userId, name) => {
@@ -345,7 +394,7 @@ function Dashboard() {
                   <Stack direction="row" spacing={1} alignItems="center">
                     <SpeedIcon sx={{ color: '#0ea5e9', fontSize: 18 }} />
                     <Typography variant="body1" fontWeight={800}>
-                      124 ms <span style={{ color: '#10b981', fontSize: '12px', fontWeight: 500 }}>(Normal)</span>
+                      {apiSpeed !== null ? `${apiSpeed} ms` : 'Calculating...'} <span style={{ color: apiSpeed < 300 ? '#10b981' : '#f59e0b', fontSize: '12px', fontWeight: 500 }}>({apiSpeed < 300 ? 'Normal' : 'Slow'})</span>
                     </Typography>
                   </Stack>
                 </Stack>
@@ -356,25 +405,36 @@ function Dashboard() {
                   <Typography variant="caption" color="text.secondary" fontWeight={700}>
                     CLOUDINARY STORAGE
                   </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                    <StorageIcon sx={{ color: '#8b5cf6', fontSize: 18 }} />
-                    <Typography variant="body2" fontWeight={800}>
-                      62.4 GB / 100 GB
-                    </Typography>
-                  </Stack>
-                  <LinearProgress
-                    variant="determinate"
-                    value={62.4}
-                    sx={{
-                      height: 6,
-                      borderRadius: 3,
-                      bgcolor: 'divider',
-                      '& .MuiLinearProgress-bar': {
-                        borderRadius: 3,
-                        bgcolor: '#8b5cf6',
-                      }
-                    }}
-                  />
+                  {loadingCloudinary ? (
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ height: 32 }}>
+                      <CircularProgress size={16} sx={{ color: '#8b5cf6' }} />
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '13px' }}>
+                        Loading usage...
+                      </Typography>
+                    </Stack>
+                  ) : (
+                    <>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                        <StorageIcon sx={{ color: '#8b5cf6', fontSize: 18 }} />
+                        <Typography variant="body2" fontWeight={800}>
+                          {(cloudinaryUsage.usageBytes / (1024 * 1024 * 1024)).toFixed(2)} GB / {(cloudinaryUsage.limitBytes / (1024 * 1024 * 1024)).toFixed(2)} GB
+                        </Typography>
+                      </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={cloudinaryUsage.usedPercent}
+                        sx={{
+                          height: 6,
+                          borderRadius: 3,
+                          bgcolor: 'divider',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 3,
+                            bgcolor: '#8b5cf6',
+                          }
+                        }}
+                      />
+                    </>
+                  )}
                 </Stack>
               </Grid>
 

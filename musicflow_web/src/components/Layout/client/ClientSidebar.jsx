@@ -34,8 +34,9 @@ import {
   ViewSidebarRounded as SidebarIcon,
 } from '@mui/icons-material';
 import useClientToast from './useClientToast';
-import useClientSession, { notifyClientSessionChanged } from '../../../hooks/useClientSession';
+import useClientSession from '../../../hooks/useClientSession';
 import { preloadRoute } from '../../../utils/routePreload';
+import { logout } from '../../../services/api';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -91,13 +92,8 @@ function ClientSidebar({
     onClose();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('role');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('email');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userAvatar');
-    notifyClientSessionChanged();
+  const handleLogout = async () => {
+    await logout();
     onClose();
     onLogoutSuccess();
     showToast({

@@ -68,6 +68,32 @@ function AdminLogin() {
     { icon: <AdminPanelSettingsOutlined />, label: 'Quyền admin' },
   ];
 
+  const fieldSx = {
+    mb: 2,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: 2,
+      bgcolor: '#f7f8fb',
+      '& input': {
+        color: '#0f172a',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.15)',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.3)',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#6c63ff',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: '#475569',
+      '&.Mui-focused': {
+        color: '#6c63ff',
+      },
+    },
+  };
+
   return (
     <Box
       sx={{
@@ -166,7 +192,7 @@ function AdminLogin() {
             boxShadow: '0 26px 80px rgba(0, 0, 0, 0.34)',
           }}
         >
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box sx={{ textAlignment: 'center', mb: 4 }}>
             <Box
               sx={{
                 display: 'inline-flex',
@@ -182,10 +208,10 @@ function AdminLogin() {
             >
               <MusicNoteIcon sx={{ fontSize: 36, color: '#fff' }} />
             </Box>
-            <Typography variant="h4" fontWeight={800} gutterBottom>
+            <Typography variant="h4" fontWeight={800} gutterBottom sx={{ color: '#0f172a', textAlign: 'center' }}>
               MusicFlow Admin
             </Typography>
-            <Typography color="text.secondary" sx={{ fontSize: 15.5 }}>
+            <Typography sx={{ fontSize: 15.5, color: '#475569', textAlign: 'center' }}>
               Đăng nhập vào bảng điều khiển quản trị
             </Typography>
           </Box>
@@ -203,13 +229,7 @@ function AdminLogin() {
               type="email"
               value={formData.email}
               onChange={handleChange('email')}
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  bgcolor: '#f7f8fb',
-                },
-              }}
+              sx={fieldSx}
               required
               InputProps={{
                 startAdornment: (
@@ -225,13 +245,7 @@ function AdminLogin() {
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange('password')}
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  bgcolor: '#f7f8fb',
-                },
-              }}
+              sx={{ ...fieldSx, mb: 3 }}
               required
               InputProps={{
                 startAdornment: (

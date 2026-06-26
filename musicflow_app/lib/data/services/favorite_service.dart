@@ -1,38 +1,19 @@
 import 'dart:convert';
-import 'dart:async';
-import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
+import 'package:musicflow_app/core/config/api_client.dart';
 import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class FavoriteService {
   static const String baseUrl = ApiConfig.favoritesEndpoint;
-  static const Duration timeout = Duration(seconds: 15);
-
-  /// Lấy headers với token
-  static Future<Map<String, String>> _getAuthHeaders() async {
-    final token = await AuthService.getToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
 
   /// Lấy danh sách bài hát yêu thích
   static Future<FavoriteResult> getFavorites() async {
     try {
-      final token = await AuthService.getToken();
-      if (token == null) {
-        return FavoriteResult(
-          success: false,
-          message: 'Vui lòng đăng nhập để xem danh sách yêu thích',
-        );
-      }
-
-      final response = await http
-          .get(Uri.parse(baseUrl), headers: await _getAuthHeaders())
-          .timeout(timeout);
+      final response = await ApiClient.get(
+        Uri.parse(baseUrl),
+        requireAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -48,10 +29,8 @@ class FavoriteService {
           message: data['message'] ?? 'Lấy danh sách thất bại',
         );
       }
-    } on TimeoutException {
-      return FavoriteResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return FavoriteResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return FavoriteResult(success: false, message: ne.message);
     } catch (e) {
       return FavoriteResult(success: false, message: 'Lỗi: $e');
     }
@@ -60,27 +39,15 @@ class FavoriteService {
   /// Thêm bài hát vào yêu thích
   static Future<FavoriteResult> addFavorite(String songId) async {
     try {
-      final token = await AuthService.getToken();
-      if (token == null) {
-        return FavoriteResult(success: false, message: 'Vui lòng đăng nhập');
-      }
-
-      http.Response response = await http
-          .post(
-            Uri.parse('$baseUrl/add/$songId'),
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(timeout);
+      http.Response response = await ApiClient.post(
+        Uri.parse('$baseUrl/add/$songId'),
+      );
       if (response.statusCode == 401) {
-        // Token hết hạn, thử refresh
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http
-              .post(
-                Uri.parse('$baseUrl/add/$songId'),
-                headers: await _getAuthHeaders(),
-              )
-              .timeout(timeout);
+          response = await ApiClient.post(
+            Uri.parse('$baseUrl/add/$songId'),
+          );
         }
       }
       final data = jsonDecode(response.body);
@@ -88,10 +55,8 @@ class FavoriteService {
         success: data['success'] == true,
         message: data['message'],
       );
-    } on TimeoutException {
-      return FavoriteResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return FavoriteResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return FavoriteResult(success: false, message: ne.message);
     } catch (e) {
       return FavoriteResult(success: false, message: 'Lỗi: $e');
     }
@@ -100,26 +65,15 @@ class FavoriteService {
   /// Xóa bài hát khỏi yêu thích
   static Future<FavoriteResult> removeFavorite(String songId) async {
     try {
-      final token = await AuthService.getToken();
-      if (token == null) {
-        return FavoriteResult(success: false, message: 'Vui lòng đăng nhập');
-      }
-
-      http.Response response = await http
-          .delete(
-            Uri.parse('$baseUrl/remove/$songId'),
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(timeout);
+      http.Response response = await ApiClient.delete(
+        Uri.parse('$baseUrl/remove/$songId'),
+      );
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http
-              .delete(
-                Uri.parse('$baseUrl/remove/$songId'),
-                headers: await _getAuthHeaders(),
-              )
-              .timeout(timeout);
+          response = await ApiClient.delete(
+            Uri.parse('$baseUrl/remove/$songId'),
+          );
         }
       }
       final data = jsonDecode(response.body);
@@ -127,10 +81,8 @@ class FavoriteService {
         success: data['success'] == true,
         message: data['message'],
       );
-    } on TimeoutException {
-      return FavoriteResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return FavoriteResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return FavoriteResult(success: false, message: ne.message);
     } catch (e) {
       return FavoriteResult(success: false, message: 'Lỗi: $e');
     }
@@ -139,26 +91,15 @@ class FavoriteService {
   /// Toggle trạng thái yêu thích
   static Future<FavoriteResult> toggleFavorite(String songId) async {
     try {
-      final token = await AuthService.getToken();
-      if (token == null) {
-        return FavoriteResult(success: false, message: 'Vui lòng đăng nhập');
-      }
-
-      http.Response response = await http
-          .post(
-            Uri.parse('$baseUrl/toggle/$songId'),
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(timeout);
+      http.Response response = await ApiClient.post(
+        Uri.parse('$baseUrl/toggle/$songId'),
+      );
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http
-              .post(
-                Uri.parse('$baseUrl/toggle/$songId'),
-                headers: await _getAuthHeaders(),
-              )
-              .timeout(timeout);
+          response = await ApiClient.post(
+            Uri.parse('$baseUrl/toggle/$songId'),
+          );
         }
       }
       final data = jsonDecode(response.body);
@@ -167,10 +108,8 @@ class FavoriteService {
         message: data['message'],
         isFavorite: data['isFavorite'],
       );
-    } on TimeoutException {
-      return FavoriteResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return FavoriteResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return FavoriteResult(success: false, message: ne.message);
     } catch (e) {
       return FavoriteResult(success: false, message: 'Lỗi: $e');
     }
@@ -179,21 +118,10 @@ class FavoriteService {
   /// Kiểm tra bài hát có trong yêu thích không
   static Future<FavoriteResult> checkFavorite(String songId) async {
     try {
-      final token = await AuthService.getToken();
-      if (token == null) {
-        return FavoriteResult(
-          success: false,
-          message: 'Vui lòng đăng nhập',
-          isFavorite: false,
-        );
-      }
-
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/check/$songId'),
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(timeout);
+      final response = await ApiClient.get(
+        Uri.parse('$baseUrl/check/$songId'),
+        requireAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -201,10 +129,8 @@ class FavoriteService {
         success: data['success'] == true,
         isFavorite: data['isFavorite'] ?? false,
       );
-    } on TimeoutException {
-      return FavoriteResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return FavoriteResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return FavoriteResult(success: false, message: ne.message);
     } catch (e) {
       return FavoriteResult(success: false, message: 'Lỗi: $e');
     }

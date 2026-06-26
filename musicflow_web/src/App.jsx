@@ -1,12 +1,11 @@
-import { lazy, Suspense, createContext, useState, useMemo, useEffect } from 'react';
+import { lazy, Suspense, useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import AppToastProvider from './components/common/AppToastProvider';
-import { refreshAccessToken } from './services/api';
+import { refreshAccessToken, setAccessToken } from './services/api';
 import { notifyClientSessionChanged } from './hooks/useClientSession';
 import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/routePreload';
-
-export const ColorModeContext = createContext({ toggleColorMode: () => {}, mode: 'light' });
+import { ColorModeContext } from './context/ColorModeContext';
 
 const Dashboard = createLazyRoute('/');
 const Accounts = createLazyRoute('/accounts');
@@ -146,7 +145,7 @@ function App() {
           await refreshAccessToken();
         } catch (err) {
           console.warn('Silent refresh failed:', err);
-          // Clear all authentication data from localStorage if refresh token is expired or invalid
+          setAccessToken(null);
           localStorage.removeItem('role');
           localStorage.removeItem('userName');
           localStorage.removeItem('email');
@@ -250,9 +249,9 @@ function App() {
                 <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
-          <Route path="/artist/register" element={<PublicRoute><ArtistRegister /></PublicRoute>} />
+          <Route path="/artist/register" element={<Navigate to="/client/home?auth=artist-register" replace />} />
           <Route path="/user/register" element={<Navigate to="/client/home?auth=register" replace />} />
-          <Route path="/artistlogin" element={<PublicRoute><ArtistLogin /></PublicRoute>} />
+          <Route path="/artistlogin" element={<Navigate to="/client/home?auth=artist-login" replace />} />
           <Route
             path="/artist/dashboard"
             element={

@@ -26,14 +26,19 @@ import {
   ChevronRightRounded as ArrowIcon,
   Check as CheckIcon,
   PersonAdd as FollowIcon,
+  QueueMusic as QueueMusicIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientArtistApi, clientPlaylistsApi, clientSongsApi } from '../../services/api';
+import QueueDrawer from '../../components/Layout/client/QueueDrawer';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
 import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
+import SongItem from '../../components/client/SongItem';
+import PlaylistCard from '../../components/client/PlaylistCard';
+import PlayingEqualizer from '../../components/client/PlayingEqualizer';
 
 const getPersonalizedGreeting = (userName) => {
   const hour = new Date().getHours();
@@ -56,26 +61,6 @@ function formatFollowerCount(count) {
   }
   return `${count} quan tâm`;
 }
-
-const PlayingEqualizer = ({ isPlaying }) => (
-  <Box sx={{
-    display: 'flex',
-    alignItems: 'flex-end',
-    gap: '2px',
-    height: '14px',
-    width: '14px',
-    mx: '4px',
-    mb: '2px',
-    '@keyframes eq-bounce': {
-      '0%': { height: '30%' },
-      '100%': { height: '100%' },
-    },
-  }}>
-    <Box sx={{ width: '2.5px', height: isPlaying ? '100%' : '30%', bgcolor: '#14b8a6', borderRadius: '1px', animation: isPlaying ? 'eq-bounce 0.8s ease-in-out infinite alternate' : 'none' }} />
-    <Box sx={{ width: '2.5px', height: isPlaying ? '100%' : '60%', bgcolor: '#14b8a6', borderRadius: '1px', animation: isPlaying ? 'eq-bounce 0.5s ease-in-out infinite alternate 0.15s' : 'none' }} />
-    <Box sx={{ width: '2.5px', height: isPlaying ? '100%' : '40%', bgcolor: '#14b8a6', borderRadius: '1px', animation: isPlaying ? 'eq-bounce 0.7s ease-in-out infinite alternate 0.3s' : 'none' }} />
-  </Box>
-);
 
 
 function ClientHome() {
@@ -101,6 +86,7 @@ function ClientHome() {
   const lyricsContainerRef = useRef(null);
   const [nowPlayingColors, setNowPlayingColors] = useState(null);
   const [scrubTime, setScrubTime] = useState(null);
+  const [queueOpen, setQueueOpen] = useState(false);
   const { showToast } = useAppToast();
   const [followedArtists, setFollowedArtists] = useState({});
   const [artistFollowersState, setArtistFollowersState] = useState({});
@@ -141,6 +127,20 @@ function ClientHome() {
         return;
       }
 
+      const songId = currentSong?._id || currentSong?.id;
+      const cacheKey = songId ? `mf_color_${songId}` : null;
+      if (cacheKey) {
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            setNowPlayingColors(JSON.parse(cached));
+            return;
+          }
+        } catch {
+          // ignore cache read error
+        }
+      }
+
       try {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -155,7 +155,7 @@ function ClientHome() {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) throw new Error('no_canvas');
 
-        const size = 48;
+        const size = 12;
         canvas.width = size;
         canvas.height = size;
         ctx.drawImage(img, 0, 0, size, size);
@@ -203,12 +203,17 @@ function ClientHome() {
         const mid = buckets.mid.n ? avg(buckets.mid) : fallback;
         const bright = buckets.bright.n ? avg(buckets.bright) : fallback;
 
+        const colors = { dark, mid, bright };
+        if (cacheKey) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(colors));
+          } catch {
+            // ignore cache write error
+          }
+        }
+
         if (!cancelled) {
-          setNowPlayingColors({
-            dark,
-            mid,
-            bright,
-          });
+          setNowPlayingColors(colors);
         }
       } catch {
         if (!cancelled) setNowPlayingColors(null);
@@ -254,6 +259,7 @@ function ClientHome() {
             _id: artist._id,
             name: artist.name || 'Unknown artist',
             avatar: artist.avatar || '',
+            followers: artist.followersCount || artist.followers || 0,
             plays: 0,
           });
         }
@@ -265,58 +271,44 @@ function ClientHome() {
     return [...map.values()].sort((a, b) => b.plays - a.plays).slice(0, 6);
   }, [songs]);
 
+  // Set followers count directly from pre-populated song artist data
+  useEffect(() => {
+    if (!topArtists.length) return;
+    const followerMap = {};
+    topArtists.forEach(artist => {
+      followerMap[artist._id] = artist.followers || 0;
+    });
+    setArtistFollowersState(prev => ({ ...prev, ...followerMap }));
+  }, [topArtists]);
+
+  // Batch query follow statuses in one single network request
   useEffect(() => {
     let cancelled = false;
 
-    const fetchArtistDetails = async () => {
+    const fetchFollowStatuses = async () => {
       if (!topArtists.length) return;
       const isLoggedIn = !!localStorage.getItem('userId');
-
-      const promises = topArtists.map(async (artist) => {
-        try {
-          const profileRes = await clientArtistApi.getProfile(artist._id);
-          const followers = profileRes.data.artist?.followers || 0;
-
-          let isFollowing = false;
-          if (isLoggedIn) {
-            try {
-              const statusRes = await clientArtistApi.getFollowStatus(artist._id);
-              isFollowing = statusRes.data.isFollowing;
-            } catch (statusErr) {
-              console.error("Error fetching follow status for", artist._id, statusErr);
-            }
-          }
-
-          return {
-            id: artist._id,
-            followers,
-            isFollowing
-          };
-        } catch (err) {
-          console.error("Error fetching details for artist", artist._id, err);
-          return {
-            id: artist._id,
-            followers: 0,
-            isFollowing: false
-          };
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const followerMap = {};
-      const followMap = {};
-      results.forEach(res => {
-        followerMap[res.id] = res.followers;
-        followMap[res.id] = res.isFollowing;
-      });
-
-      if (!cancelled) {
-        setArtistFollowersState(followerMap);
+      if (!isLoggedIn) {
+        const followMap = {};
+        topArtists.forEach(artist => {
+          followMap[artist._id] = false;
+        });
         setFollowedArtists(followMap);
+        return;
+      }
+
+      try {
+        const artistIds = topArtists.map(artist => artist._id);
+        const response = await clientArtistApi.getBatchFollowStatus(artistIds);
+        if (response.data.success && response.data.followStatusMap && !cancelled) {
+          setFollowedArtists(response.data.followStatusMap);
+        }
+      } catch (err) {
+        console.error("Error fetching batch follow status:", err);
       }
     };
 
-    const cancelIdleTask = scheduleIdleTask(fetchArtistDetails);
+    const cancelIdleTask = scheduleIdleTask(fetchFollowStatuses);
     return () => {
       cancelled = true;
       cancelIdleTask();
@@ -632,91 +624,10 @@ function ClientHome() {
               <Grid container spacing={2}>
                 {playlists.slice(0, 4).map((playlist) => (
                   <Grid size={{ xs: 6, sm: 3 }} key={playlist._id}>
-                    <Box
+                    <PlaylistCard
+                      playlist={playlist}
                       onClick={() => navigate(`/client/collections/${playlist._id}`)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          navigate(`/client/collections/${playlist._id}`);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 3.5,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        background: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                        border: '1px solid',
-                        borderColor: 'transparent',
-                        outline: 'none',
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          borderColor: '#14b8a6',
-                          background: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                          boxShadow: (theme) => theme.palette.mode === 'dark'
-                            ? '0 12px 24px -8px rgba(20, 184, 166, 0.3), 0 4px 12px rgba(0,0,0,0.3)'
-                            : '0 12px 24px -8px rgba(20, 184, 166, 0.15), 0 4px 12px rgba(0,0,0,0.03)',
-                        },
-                        '&:hover .play-overlay-card': {
-                          opacity: 1,
-                          transform: 'scale(1) translate(-50%, -50%)',
-                        },
-                        '&:hover .zoom-img': {
-                          transform: 'scale(1.06)',
-                        },
-                      }}
-                    >
-                      <Box sx={{ position: 'relative', borderRadius: 2.5, overflow: 'hidden', mb: 1.5, aspectRatio: '1/1' }}>
-                        <Avatar
-                          variant="rounded"
-                          src={playlist.coverImage && playlist.coverImage.trim() !== '' ? playlist.coverImage : undefined}
-                          className="zoom-img"
-                          sx={{
-                            width: '100%',
-                            height: '100%',
-                            bgcolor: 'rgba(20, 184, 166, 0.08)',
-                            color: '#14b8a6',
-                            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '& .MuiAvatar-fallback': { display: 'none' }
-                          }}
-                        >
-                          <LibraryMusicIcon sx={{ fontSize: 40 }} />
-                        </Avatar>
-
-                        {/* Floating Play Overlay Button */}
-                        <Box
-                          className="play-overlay-card"
-                          sx={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'scale(0.8) translate(-50%, -50%)',
-                            transformOrigin: '0 0',
-                            bgcolor: '#14b8a6',
-                            color: '#fff',
-                            width: 44,
-                            height: 44,
-                            borderRadius: '50%',
-                            display: 'grid',
-                            placeItems: 'center',
-                            opacity: 0,
-                            boxShadow: '0 4px 12px rgba(20, 184, 166, 0.4)',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                            zIndex: 3,
-                          }}
-                        >
-                          <PlayIcon sx={{ fontSize: 26, ml: '2px' }} />
-                        </Box>
-                      </Box>
-                      <Typography variant="body2" fontWeight={800} noWrap sx={{ mb: 0.5, fontSize: 13.5 }}>
-                        {playlist.name || 'Untitled playlist'}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        {playlist.songCount || 0} bài hát
-                      </Typography>
-                    </Box>
+                    />
                   </Grid>
                 ))}
                 {!playlists.length && (
@@ -746,125 +657,16 @@ function ClientHome() {
                 </Box>
               ) : (
                 <Grid container spacing={2}>
-                  {recommendedSongs.map((song) => {
-                    const isCurrent = currentSong?._id === song._id;
-                    return (
-                      <Grid size={{ xs: 12, md: 6 }} key={song._id}>
-                        <Box
-                          onClick={() => playSong(song, { queue: recommendedSongs })}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              playSong(song, { queue: recommendedSongs });
-                            }
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            p: 1.5,
-                            borderRadius: 3,
-                            cursor: 'pointer',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                            bgcolor: (theme) => isCurrent
-                              ? theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.12)' : 'rgba(20, 184, 166, 0.06)'
-                              : theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                            border: '1px solid',
-                            borderColor: (theme) => isCurrent
-                              ? '#14b8a6'
-                              : theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
-                            outline: 'none',
-                            '&:hover': {
-                              borderColor: '#14b8a6',
-                              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.08)' : 'rgba(20, 184, 166, 0.04)',
-                              transform: 'translateY(-2px)',
-                              boxShadow: (theme) => theme.palette.mode === 'dark'
-                                ? '0 8px 20px -6px rgba(20, 184, 166, 0.3)'
-                                : '0 8px 16px -6px rgba(20, 184, 166, 0.12)',
-                            },
-                            '&:hover .song-img-overlay': {
-                              opacity: 1,
-                            },
-                            '&:hover .song-img-avatar': {
-                              transform: 'scale(1.04)',
-                            }
-                          }}
-                        >
-                          <Box sx={{ position: 'relative', overflow: 'hidden', borderRadius: 2, flexShrink: 0, width: 48, height: 48 }}>
-                            <Avatar
-                              variant="rounded"
-                              src={song.imageUrl && song.imageUrl.trim() !== '' && !song.imageUrl.includes('tgdfbp3zivuqoxqxpltj') ? song.imageUrl : undefined}
-                              className="song-img-avatar"
-                              sx={{
-                                width: '100%',
-                                height: '100%',
-                                bgcolor: 'rgba(20, 184, 166, 0.08)',
-                                color: '#14b8a6',
-                                transition: 'transform 0.25s ease',
-                                '& .MuiAvatar-fallback': { display: 'none' }
-                              }}
-                            >
-                              <MusicIcon sx={{ fontSize: 24 }} />
-                            </Avatar>
-
-                            {/* Hover Play Overlay */}
-                            <Box
-                              className="song-img-overlay"
-                              sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                bgcolor: 'rgba(0,0,0,0.45)',
-                                display: 'grid',
-                                placeItems: 'center',
-                                opacity: isCurrent ? 1 : 0,
-                                transition: 'opacity 0.2s ease',
-                              }}
-                            >
-                              {isCurrent ? (
-                                isPlaying ? (
-                                  <PauseIcon sx={{ color: '#fff', fontSize: 20 }} />
-                                ) : (
-                                  <PlayIcon sx={{ color: '#fff', fontSize: 20 }} />
-                                )
-                              ) : (
-                                <PlayIcon sx={{ color: '#fff', fontSize: 20 }} />
-                              )}
-                            </Box>
-                          </Box>
-
-                          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25 }}>
-                              <Typography
-                                variant="body2"
-                                noWrap
-                                sx={{
-                                  fontWeight: 800,
-                                  color: isCurrent ? '#14b8a6' : 'text.primary',
-                                  transition: 'color 0.2s ease',
-                                  fontSize: 13.5,
-                                }}
-                              >
-                                {song.title}
-                              </Typography>
-                              {isCurrent && <PlayingEqualizer isPlaying={isPlaying} />}
-                            </Stack>
-                            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontWeight: 500 }}>
-                              {Array.isArray(song.artists)
-                                ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
-                                : 'Unknown artist'}
-                            </Typography>
-                          </Box>
-
-                          {/* Action area */}
-                          <Box onClick={(e) => e.stopPropagation()} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
-                            <SongMoreMenu song={song} />
-                          </Box>
-                        </Box>
-                      </Grid>
-                    );
-                  })}
+                  {recommendedSongs.map((song) => (
+                    <Grid size={{ xs: 12, md: 6 }} key={song._id}>
+                      <SongItem
+                        song={song}
+                        isCurrent={currentSong?._id === song._id}
+                        isPlaying={isPlaying}
+                        onPlay={() => playSong(song, { queue: recommendedSongs })}
+                      />
+                    </Grid>
+                  ))}
                   {!songs.length && (
                     <Grid size={{ xs: 12 }}>
                       <Typography color="text.secondary" sx={{ py: 1 }}>Chưa có bài hát để đề xuất.</Typography>
@@ -889,9 +691,27 @@ function ClientHome() {
                   boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
                 }}
               >
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 1.5, letterSpacing: -0.5 }}>
-                  Đang phát
-                </Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+                    Đang phát
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<QueueMusicIcon />}
+                    onClick={() => setQueueOpen(true)}
+                    sx={{
+                      color: '#14b8a6',
+                      fontWeight: 700,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      '&:hover': {
+                        bgcolor: 'rgba(20, 184, 166, 0.08)',
+                      }
+                    }}
+                  >
+                    Danh sách phát
+                  </Button>
+                </Stack>
                 <Stack
                   spacing={2.5}
                   sx={{
@@ -1256,6 +1076,7 @@ function ClientHome() {
           </Stack>
         </Grid>
       </Grid>
+      <QueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
     </ClientLayout>
   );
 }

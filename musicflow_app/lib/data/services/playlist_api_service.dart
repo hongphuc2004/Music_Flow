@@ -1,33 +1,20 @@
 import 'dart:convert';
-import 'dart:async';
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import '../../core/config/api_config.dart';
+import 'package:musicflow_app/core/config/api_config.dart';
+import 'package:musicflow_app/core/config/api_client.dart';
 import '../models/playlist_model.dart';
 import 'auth_service.dart';
 
 class PlaylistApiService {
   static const String baseUrl = ApiConfig.playlistsEndpoint;
-  static const Duration timeout = Duration(seconds: 15);
-
-  /// Lấy headers với token xác thực
-  static Future<Map<String, String>> _getAuthHeaders() async {
-    final token = await AuthService.getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
 
   // ================= GET ALL PLAYLISTS =================
   /// Lấy tất cả playlist của user hiện tại
   static Future<PlaylistResult> getPlaylists() async {
     try {
-      final headers = await _getAuthHeaders();
-
-      final response = await http
-          .get(Uri.parse(baseUrl), headers: headers)
-          .timeout(timeout);
+      final response = await ApiClient.get(
+        Uri.parse(baseUrl),
+        requireAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -44,10 +31,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Lấy danh sách playlist thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -57,9 +42,9 @@ class PlaylistApiService {
   /// Lấy playlist hệ thống do admin tạo (public)
   static Future<PlaylistResult> getSystemPlaylists({int limit = 12}) async {
     try {
-      final response = await http
-          .get(Uri.parse('$baseUrl/system?limit=$limit'))
-          .timeout(timeout);
+      final response = await ApiClient.get(
+        Uri.parse('$baseUrl/system?limit=$limit'),
+      );
 
       final data = jsonDecode(response.body);
 
@@ -76,10 +61,8 @@ class PlaylistApiService {
         success: false,
         message: data['message'] ?? 'Lấy playlist hệ thống thất bại',
       );
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -89,9 +72,9 @@ class PlaylistApiService {
   /// Lấy chi tiết playlist hệ thống
   static Future<PlaylistResult> getSystemPlaylist(String playlistId) async {
     try {
-      final response = await http
-          .get(Uri.parse('$baseUrl/system/$playlistId'))
-          .timeout(timeout);
+      final response = await ApiClient.get(
+        Uri.parse('$baseUrl/system/$playlistId'),
+      );
 
       final data = jsonDecode(response.body);
 
@@ -106,10 +89,8 @@ class PlaylistApiService {
         success: false,
         message: data['message'] ?? 'Lấy chi tiết playlist hệ thống thất bại',
       );
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -119,11 +100,10 @@ class PlaylistApiService {
   /// Lấy chi tiết một playlist
   static Future<PlaylistResult> getPlaylist(String playlistId) async {
     try {
-      final headers = await _getAuthHeaders();
-
-      final response = await http
-          .get(Uri.parse('$baseUrl/$playlistId'), headers: headers)
-          .timeout(timeout);
+      final response = await ApiClient.get(
+        Uri.parse('$baseUrl/$playlistId'),
+        requireAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -138,10 +118,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Lấy playlist thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -156,20 +134,15 @@ class PlaylistApiService {
     String? coverImage,
   }) async {
     try {
-      final headers = await _getAuthHeaders();
-
-      final response = await http
-          .post(
-            Uri.parse(baseUrl),
-            headers: headers,
-            body: jsonEncode({
-              'name': name,
-              'description': description ?? '',
-              'isPublic': isPublic,
-              'coverImage': coverImage ?? '',
-            }),
-          )
-          .timeout(timeout);
+      final response = await ApiClient.post(
+        Uri.parse(baseUrl),
+        body: {
+          'name': name,
+          'description': description ?? '',
+          'isPublic': isPublic,
+          'coverImage': coverImage ?? '',
+        },
+      );
 
       final data = jsonDecode(response.body);
 
@@ -185,10 +158,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Tạo playlist thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -204,21 +175,16 @@ class PlaylistApiService {
     String? coverImage,
   }) async {
     try {
-      final headers = await _getAuthHeaders();
-
       final body = <String, dynamic>{};
       if (name != null) body['name'] = name;
       if (description != null) body['description'] = description;
       if (isPublic != null) body['isPublic'] = isPublic;
       if (coverImage != null) body['coverImage'] = coverImage;
 
-      final response = await http
-          .put(
-            Uri.parse('$baseUrl/$playlistId'),
-            headers: headers,
-            body: jsonEncode(body),
-          )
-          .timeout(timeout);
+      final response = await ApiClient.put(
+        Uri.parse('$baseUrl/$playlistId'),
+        body: body,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -234,10 +200,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Cập nhật playlist thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -247,16 +211,15 @@ class PlaylistApiService {
   /// Xóa playlist
   static Future<PlaylistResult> deletePlaylist(String playlistId) async {
     try {
-      final headers = await _getAuthHeaders();
-      http.Response response = await http
-          .delete(Uri.parse('$baseUrl/$playlistId'), headers: headers)
-          .timeout(timeout);
+      http.Response response = await ApiClient.delete(
+        Uri.parse('$baseUrl/$playlistId'),
+      );
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await http
-              .delete(Uri.parse('$baseUrl/$playlistId'), headers: headers)
-              .timeout(timeout);
+          response = await ApiClient.delete(
+            Uri.parse('$baseUrl/$playlistId'),
+          );
         }
       }
       final data = jsonDecode(response.body);
@@ -271,10 +234,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Xóa playlist thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -287,15 +248,10 @@ class PlaylistApiService {
     required String songId,
   }) async {
     try {
-      final headers = await _getAuthHeaders();
-
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/$playlistId/songs'),
-            headers: headers,
-            body: jsonEncode({'songId': songId}),
-          )
-          .timeout(timeout);
+      final response = await ApiClient.post(
+        Uri.parse('$baseUrl/$playlistId/songs'),
+        body: {'songId': songId},
+      );
 
       final data = jsonDecode(response.body);
 
@@ -311,10 +267,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Thêm bài hát thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -327,14 +281,9 @@ class PlaylistApiService {
     required String songId,
   }) async {
     try {
-      final headers = await _getAuthHeaders();
-
-      final response = await http
-          .delete(
-            Uri.parse('$baseUrl/$playlistId/songs/$songId'),
-            headers: headers,
-          )
-          .timeout(timeout);
+      final response = await ApiClient.delete(
+        Uri.parse('$baseUrl/$playlistId/songs/$songId'),
+      );
 
       final data = jsonDecode(response.body);
 
@@ -350,10 +299,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Xóa bài hát thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }
@@ -366,15 +313,10 @@ class PlaylistApiService {
     required List<String> songIds,
   }) async {
     try {
-      final headers = await _getAuthHeaders();
-
-      final response = await http
-          .put(
-            Uri.parse('$baseUrl/$playlistId/reorder'),
-            headers: headers,
-            body: jsonEncode({'songIds': songIds}),
-          )
-          .timeout(timeout);
+      final response = await ApiClient.put(
+        Uri.parse('$baseUrl/$playlistId/reorder'),
+        body: {'songIds': songIds},
+      );
 
       final data = jsonDecode(response.body);
 
@@ -390,10 +332,8 @@ class PlaylistApiService {
           message: data['message'] ?? 'Sắp xếp lại thất bại',
         );
       }
-    } on TimeoutException {
-      return PlaylistResult(success: false, message: 'Kết nối quá chậm');
-    } on SocketException {
-      return PlaylistResult(success: false, message: 'Không có kết nối mạng');
+    } on NetworkException catch (ne) {
+      return PlaylistResult(success: false, message: ne.message);
     } catch (e) {
       return PlaylistResult(success: false, message: 'Lỗi: $e');
     }

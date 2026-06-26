@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -24,6 +24,10 @@ import {
   Alert,
   Select,
   MenuItem,
+  Stack,
+  Tooltip,
+  Grid,
+  Card,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -31,6 +35,10 @@ import {
   Refresh as RefreshIcon,
   Edit as EditIcon,
   Add as AddIcon,
+  PeopleRounded as PeopleIcon,
+  AdminPanelSettingsRounded as AdminIcon,
+  MusicNoteRounded as ArtistIcon,
+  PersonRounded as UserIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { accountsApi } from '../../services/api';
@@ -105,6 +113,15 @@ function Accounts() {
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+  // Derived stats overview
+  const stats = useMemo(() => {
+    const totalCount = allAccounts.length;
+    const adminCount = allAccounts.filter(a => a.role === 'admin').length;
+    const artistCount = allAccounts.filter(a => a.role === 'artist').length;
+    const userCount = totalCount - adminCount - artistCount;
+    return { totalCount, adminCount, artistCount, userCount };
+  }, [allAccounts]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -301,300 +318,434 @@ function Accounts() {
   };
 
   return (
-    <Layout title="Accounts Management">
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" fontWeight={600}>
-          Accounts ({total})
-        </Typography>
-        <Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreateDialog}
-            sx={{ mr: 1 }}
-          >
-            Add Account
-          </Button>
-          <IconButton onClick={fetchAccounts} disabled={loading}>
-            <RefreshIcon />
-          </IconButton>
+    <Layout title="Accounts Studio">
+      <Stack spacing={3.5}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Stack spacing={0.5}>
+            <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-1px' }}>
+              Accounts Workspace
+            </Typography>
+            <Typography variant="body2" color="text.secondary" fontWeight={500}>
+              Quản trị tài khoản thành viên hệ thống MusicFlow (Người dùng, Nghệ sĩ, Quản trị viên).
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openCreateDialog}
+              sx={{
+                bgcolor: '#6c63ff',
+                fontWeight: 800,
+                textTransform: 'none',
+                borderRadius: 3.5,
+                px: 3,
+                '&:hover': { bgcolor: '#534bae' },
+              }}
+            >
+              Tạo tài khoản
+            </Button>
+            <IconButton onClick={fetchAccounts} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+              <RefreshIcon />
+            </IconButton>
+          </Stack>
         </Box>
-      </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
-          {success}
-        </Alert>
-      )}
-
-      <Paper sx={{ mb: 3, p: 2 }}>
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Search users by name or email..."
-          value={searchQuery}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Paper>
-
-      <TableContainer component={Paper}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell>Account</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Provider</TableCell>
-                <TableCell>Joined</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    No users found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user._id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar src={user.avatar} sx={{ bgcolor: '#6c63ff' }}>
-                          {user.name?.charAt(0)}
-                        </Avatar>
-                        <Box>
-                          <Typography fontWeight={500}>{user.name}</Typography>
-                          {user.role === 'artist' && user.bio ? (
-                            <Typography variant="body2" color="text.secondary" noWrap>
-                              {user.bio}
-                            </Typography>
-                          ) : null}
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Select
-                        size="small"
-                        value={user.role || 'user'}
-                        onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={roleLoading === user._id || user.role === 'artist'}
-                        sx={{
-                          minWidth: 100,
-                          '& .MuiSelect-select': {
-                            py: 0.5,
-                            color: user.role === 'admin' ? '#d32f2f' : user.role === 'artist' ? '#ff9800' : '#1976d2',
-                            fontWeight: 600,
-                          },
-                        }}
-                      >
-                        <MenuItem value="user">User</MenuItem>
-                        <MenuItem value="admin">Admin</MenuItem>
-                        {user.role === 'artist' && (
-                          <MenuItem value="artist" disabled>
-                            Artist
-                          </MenuItem>
-                        )}
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={user.provider || user.role || 'local'}
-                        size="small"
-                        sx={{
-                          bgcolor: `${getProviderColor(user.provider || user.role)}20`,
-                          color: getProviderColor(user.provider || user.role),
-                          fontWeight: 600,
-                          textTransform: 'capitalize',
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>{formatDate(user.createdAt)}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => handleOpenEdit(user)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => setDeleteDialog({ open: true, user })}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        {error && (
+          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 4 }}>
+            {error}
+          </Alert>
         )}
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={total}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
 
-      <Dialog open={createDialogOpen} onClose={closeCreateDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Add Account</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
+        {success && (
+          <Alert severity="success" variant="filled" onClose={() => setSuccess(null)} sx={{ borderRadius: 4 }}>
+            {success}
+          </Alert>
+        )}
+
+        {/* Dashboard Stats Overview */}
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
+                <PeopleIcon />
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>TOTAL ACCOUNTS</Typography>
+                <Typography variant="h5" fontWeight={900}>{stats.totalCount}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(211, 47, 47, 0.08)', color: '#d32f2f' }}>
+                <AdminIcon />
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>ADMINISTRATORS</Typography>
+                <Typography variant="h5" fontWeight={900}>{stats.adminCount}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
+                <ArtistIcon />
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>ARTISTS</Typography>
+                <Typography variant="h5" fontWeight={900}>{stats.artistCount}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(25, 118, 210, 0.08)', color: '#1976d2' }}>
+                <UserIcon />
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={700}>STANDARD USERS</Typography>
+                <Typography variant="h5" fontWeight={900}>{stats.userCount}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Filters and Table */}
+        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
+          <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0,0,0,0.01)' }}>
             <TextField
-              label="Name"
+              fullWidth
+              size="small"
+              placeholder="Tìm kiếm tài khoản theo tên hiển thị hoặc email..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="primary" />
+                  </InputAdornment>
+                ),
+                sx: {
+                  borderRadius: 4,
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+                }
+              }}
+            />
+          </Box>
+
+          <TableContainer>
+            {loading ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 8, gap: 2 }}>
+                <CircularProgress size={36} sx={{ color: '#6c63ff' }} />
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>Đang tải danh sách thành viên...</Typography>
+              </Box>
+            ) : (
+              <Table sx={{ minWidth: 700 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc' }}>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary', pl: 3 }}>Thành viên</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Vai trò (Role)</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Đăng nhập qua</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Ngày tham gia</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 800, color: 'text.secondary', pr: 3 }}>Hành động</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 8, color: 'text.secondary' }}>
+                        Không tìm thấy tài khoản phù hợp.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((user) => (
+                      <TableRow key={user._id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell sx={{ pl: 3 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar src={user.avatar} sx={{ bgcolor: '#6c63ff', width: 42, height: 42, boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
+                              {user.name?.charAt(0)?.toUpperCase()}
+                            </Avatar>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography fontWeight={700} noWrap sx={{ maxWidth: 180 }}>{user.name}</Typography>
+                              {user.role === 'artist' && user.bio && (
+                                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 200 }}>
+                                  {user.bio}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{user.email}</TableCell>
+                        <TableCell>
+                          <Select
+                            size="small"
+                            value={user.role || 'user'}
+                            onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                            disabled={roleLoading === user._id || user.role === 'artist'}
+                            sx={{
+                              minWidth: 110,
+                              borderRadius: 2.5,
+                              '& .MuiSelect-select': {
+                                py: 0.75,
+                                color: user.role === 'admin' ? '#d32f2f' : user.role === 'artist' ? '#ff9800' : '#1976d2',
+                                fontWeight: 700,
+                                fontSize: '0.85rem'
+                              },
+                            }}
+                          >
+                            <MenuItem value="user">User</MenuItem>
+                            <MenuItem value="admin">Admin</MenuItem>
+                            {user.role === 'artist' && (
+                              <MenuItem value="artist" disabled>
+                                Artist
+                              </MenuItem>
+                            )}
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={user.provider || user.role || 'local'}
+                            size="small"
+                            sx={{
+                              bgcolor: `${getProviderColor(user.provider || user.role)}12`,
+                              color: getProviderColor(user.provider || user.role),
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              textTransform: 'capitalize',
+                              borderRadius: 2,
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                          {formatDate(user.createdAt)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ pr: 3 }}>
+                          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <Tooltip title="Hiệu chỉnh thông tin" arrow>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpenEdit(user)}
+                                sx={{ bgcolor: 'rgba(108,99,255,0.06)', borderRadius: 3, border: '1px solid rgba(108,99,255,0.1)' }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Xóa tài khoản" arrow>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setDeleteDialog({ open: true, user })}
+                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 3, border: '1px solid rgba(211,47,47,0.1)' }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </TableContainer>
+          {!loading && allAccounts.length > 0 && (
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={total}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+            />
+          )}
+        </Card>
+      </Stack>
+
+      {/* Add Dialog */}
+      <Dialog 
+        open={createDialogOpen} 
+        onClose={closeCreateDialog} 
+        fullWidth 
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3.5, color: '#fff' }}>
+          <Typography variant="h5" fontWeight={900}>Tạo tài khoản mới</Typography>
+          <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>Cung cấp thông tin đầy đủ để thiết lập tài khoản thành viên thủ công.</Typography>
+        </Box>
+        <DialogContent sx={{ p: 4, pt: 3.5 }}>
+          <Stack spacing={2.5}>
+            <TextField
+              label="Họ và tên hiển thị *"
               fullWidth
               value={createForm.name}
               onChange={handleCreateFieldChange('name')}
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             />
             <TextField
-              label="Email"
+              label="Địa chỉ Email *"
               fullWidth
               type="email"
               value={createForm.email}
               onChange={handleCreateFieldChange('email')}
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             />
             <TextField
               select
-              label="Role"
+              label="Phân quyền (Role) *"
               fullWidth
               value={createForm.role}
               onChange={handleCreateFieldChange('role')}
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             >
-              <MenuItem value="user">User</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-              <MenuItem value="artist">Artist</MenuItem>
+              <MenuItem value="user">User (Thành viên nghe nhạc)</MenuItem>
+              <MenuItem value="admin">Admin (Quản trị hệ thống)</MenuItem>
+              <MenuItem value="artist">Artist (Nghệ sĩ phát hành)</MenuItem>
             </TextField>
-            {createForm.role === 'artist' ? (
+            {createForm.role === 'artist' && (
               <TextField
-                label="Bio"
+                label="Tiểu sử nghệ sĩ (Bio)"
                 fullWidth
                 multiline
                 minRows={3}
                 value={createForm.bio}
                 onChange={handleCreateFieldChange('bio')}
+                InputProps={{ sx: { borderRadius: 3.5 } }}
               />
-            ) : null}
+            )}
             <TextField
-              label="Password"
+              label="Mật khẩu thiết lập *"
               fullWidth
               type="password"
               value={createForm.password}
               onChange={handleCreateFieldChange('password')}
-              helperText="Password must be at least 6 characters."
+              helperText="Mật khẩu tối thiểu cần có 6 ký tự."
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             />
-          </Box>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeCreateDialog} disabled={createLoading}>
-            Cancel
+        <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button onClick={closeCreateDialog} disabled={createLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+            Hủy bỏ
           </Button>
-          <Button variant="contained" onClick={handleCreateAccount} disabled={createLoading}>
-            {createLoading ? <CircularProgress size={20} /> : 'Create account'}
+          <Button 
+            variant="contained" 
+            onClick={handleCreateAccount} 
+            disabled={createLoading}
+            sx={{ borderRadius: 3, fontWeight: 800, px: 3, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
+          >
+            {createLoading ? <CircularProgress size={20} color="inherit" /> : 'Tạo tài khoản'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={editDialog.open} onClose={handleCloseEdit} fullWidth maxWidth="sm">
-        <DialogTitle>Edit Account</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
+      {/* Edit Dialog */}
+      <Dialog 
+        open={editDialog.open} 
+        onClose={handleCloseEdit} 
+        fullWidth 
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3.5, color: '#fff' }}>
+          <Typography variant="h5" fontWeight={900}>Hiệu chỉnh tài khoản</Typography>
+          <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>Cập nhật thông tin chi tiết hoặc đặt lại mật khẩu cho thành viên.</Typography>
+        </Box>
+        <DialogContent sx={{ p: 4, pt: 3.5 }}>
+          <Stack spacing={2.5}>
             <TextField
-              label="Name"
+              label="Họ và tên hiển thị *"
               fullWidth
               value={editForm.name}
               onChange={handleEditFieldChange('name')}
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             />
             <TextField
-              label="Email"
+              label="Địa chỉ Email *"
               fullWidth
               type="email"
               value={editForm.email}
               onChange={handleEditFieldChange('email')}
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             />
             {editDialog.user?.role === 'artist' ? (
               <TextField
-                label="Bio"
+                label="Tiểu sử nghệ sĩ (Bio)"
                 fullWidth
                 multiline
                 minRows={3}
                 value={editForm.bio}
                 onChange={handleEditFieldChange('bio')}
+                InputProps={{ sx: { borderRadius: 3.5 } }}
               />
             ) : (
               <TextField
                 select
-                label="Role"
+                label="Phân quyền (Role) *"
                 fullWidth
                 value={editForm.role}
                 onChange={handleEditFieldChange('role')}
+                InputProps={{ sx: { borderRadius: 3.5 } }}
               >
                 <MenuItem value="user">User</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
               </TextField>
             )}
             <TextField
-              label="New Password"
+              label="Đặt lại mật khẩu mới"
               fullWidth
               type="password"
               value={editForm.password}
               onChange={handleEditFieldChange('password')}
-              helperText="Leave blank if you do not want to change the password."
+              helperText="Bỏ trống nếu bạn không có nhu cầu đổi mật khẩu cho tài khoản này."
+              InputProps={{ sx: { borderRadius: 3.5 } }}
             />
-          </Box>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEdit} disabled={editLoading}>
-            Cancel
+        <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button onClick={handleCloseEdit} disabled={editLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+            Hủy bỏ
           </Button>
-          <Button variant="contained" onClick={handleSaveEdit} disabled={editLoading}>
-            {editLoading ? <CircularProgress size={20} /> : 'Save changes'}
+          <Button 
+            variant="contained" 
+            onClick={handleSaveEdit} 
+            disabled={editLoading}
+            sx={{ borderRadius: 3, fontWeight: 800, px: 3, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
+          >
+            {editLoading ? <CircularProgress size={20} color="inherit" /> : 'Lưu thay đổi'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, user: null })}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+      {/* Delete Dialog */}
+      <Dialog 
+        open={deleteDialog.open} 
+        onClose={() => setDeleteDialog({ open: false, user: null })}
+        PaperProps={{ sx: { borderRadius: 5 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Xác nhận xóa tài khoản</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete account "{deleteDialog.user?.name}"?
-          This action cannot be undone.
+          Bạn có chắc chắn muốn xóa tài khoản của thành viên <b>{deleteDialog.user?.name}</b>?
+          Mọi dữ liệu cá nhân liên quan của tài khoản sẽ bị loại bỏ vĩnh viễn khỏi cơ sở dữ liệu.
         </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setDeleteDialog({ open: false, user: null })}
-            disabled={deleteLoading}
-          >
-            Cancel
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, user: null })} disabled={deleteLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+            Hủy
           </Button>
           <Button
             color="error"
             variant="contained"
             onClick={handleDelete}
             disabled={deleteLoading}
+            sx={{ borderRadius: 3, fontWeight: 800 }}
           >
-            {deleteLoading ? <CircularProgress size={20} /> : 'Delete'}
+            {deleteLoading ? <CircularProgress size={20} color="inherit" /> : 'Xác nhận xóa'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 let refreshPromise = null;
-let accessToken = null;
+let accessToken = localStorage.getItem('accessToken') || null;
 
 const apiCache = new Map();
 
@@ -40,6 +40,11 @@ const cachedGet = (url, config = {}, ttlMs = 30000) => {
 
 export const setAccessToken = (token) => {
   accessToken = token || null;
+  if (token) {
+    localStorage.setItem('accessToken', token);
+  } else {
+    localStorage.removeItem('accessToken');
+  }
   apiCache.clear();
 };
 
@@ -50,6 +55,7 @@ export const logout = async () => {
     console.warn('Logout API error:', err);
   } finally {
     accessToken = null;
+    localStorage.removeItem('accessToken');
     apiCache.clear();
     localStorage.removeItem('role');
     localStorage.removeItem('userName');
@@ -125,6 +131,7 @@ api.interceptors.response.use(
     const handleSessionExpiry = () => {
       const currentRole = localStorage.getItem('role');
       accessToken = null;
+      localStorage.removeItem('accessToken');
       apiCache.clear();
       localStorage.removeItem('role');
       if (currentRole === 'artist') {

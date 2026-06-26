@@ -50,7 +50,7 @@ const ArtistRegister = () => {
       setMessage(res.data.message || 'Đăng ký thành công!');
       localStorage.removeItem('role');
       setTimeout(() => {
-        window.location.replace('/artistlogin');
+        window.location.replace('/artist/dashboard?auth=login');
       }, 1200);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại');
@@ -117,7 +117,7 @@ const ArtistRegister = () => {
           </form>
 
           <Box sx={{ mt: 3.5, textAlign: 'center' }}>
-            <Button variant="text" sx={{ color: '#00a9bd', fontWeight: 800 }} onClick={() => navigate('/artistlogin')}>
+            <Button variant="text" sx={{ color: '#00a9bd', fontWeight: 800 }} onClick={() => navigate('/artist/dashboard?auth=login')}>
               Đã có tài khoản Artist? Đăng nhập
             </Button>
           </Box>

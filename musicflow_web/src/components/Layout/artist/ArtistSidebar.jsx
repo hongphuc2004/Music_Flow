@@ -66,7 +66,7 @@ function ArtistSidebar() {
       message: 'Bạn đã đăng xuất khỏi artist workspace.',
     });
     window.setTimeout(() => {
-      navigate('/artistlogin');
+      navigate('/artist/dashboard?auth=login');
     }, 650);
   };
 

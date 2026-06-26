@@ -331,7 +331,7 @@ function AccountLogin() {
             <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/user/register')}>
               Tạo tài khoản 
             </Button>
-            <Button type="button" variant="text" sx={{ color: '#14a7b7', fontWeight: 800 }} onClick={() => navigate('/artistlogin')}>
+            <Button type="button" variant="text" sx={{ color: '#14a7b7', fontWeight: 800 }} onClick={() => navigate('/artist/dashboard?auth=login')}>
               Đăng nhập artist
             </Button>
           </Box>

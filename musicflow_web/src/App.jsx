@@ -41,6 +41,8 @@ const ClientPlayerBoundary = lazy(() => import('./components/Layout/client/Clien
 
 const ProtectedRoute = ({ children, role }) => {
   const userRole = localStorage.getItem('role');
+  const location = useLocation();
+  const authMode = new URLSearchParams(location.search).get('auth');
   const roleDefaultRoute = {
     admin: '/',
     artist: '/artist/dashboard',
@@ -48,7 +50,11 @@ const ProtectedRoute = ({ children, role }) => {
   };
 
   if (!userRole) {
-    return <Navigate to={role === 'artist' ? '/artistlogin' : '/accountlogin'} replace />;
+    if (role === 'artist') {
+      if (location.pathname === '/artist/dashboard' && authMode === 'login') return children;
+      return <Navigate to="/artist/dashboard?auth=login" replace />;
+    }
+    return <Navigate to="/accountlogin" replace />;
   }
 
   if (role && userRole !== role) {

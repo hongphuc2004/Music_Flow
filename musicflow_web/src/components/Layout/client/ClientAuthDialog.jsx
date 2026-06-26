@@ -139,7 +139,7 @@ function ClientAuthDialog() {
   };
 
   const goToArtistLogin = () => {
-    navigate('/artistlogin');
+    navigate('/artist/dashboard?auth=login');
     setError('');
   };
 

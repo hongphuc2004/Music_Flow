@@ -74,7 +74,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
 
   const goToArtistLogin = () => {
     handleClose();
-    navigate('/artistlogin');
+    navigate('/artist/dashboard?auth=login');
   };
 
   const submitSearch = () => {

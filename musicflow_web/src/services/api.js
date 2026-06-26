@@ -110,7 +110,7 @@ api.interceptors.response.use(
       localStorage.removeItem('role');
       if (currentRole === 'artist') {
         clearArtistSession();
-        window.location.href = '/artistlogin';
+        window.location.href = '/artist/dashboard?auth=login';
       } else if (currentRole === 'admin') {
         window.location.href = '/adminlogin';
       } else {

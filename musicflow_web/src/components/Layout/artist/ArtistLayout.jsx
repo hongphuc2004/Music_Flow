@@ -2,6 +2,7 @@
 import { Box, Toolbar } from '@mui/material';
 import ArtistSidebar from './ArtistSidebar';
 import ArtistHeader from './ArtistHeader';
+import ArtistAuthDialog from './ArtistAuthDialog';
 
 const drawerWidth = 260;
 
@@ -30,6 +31,7 @@ function ArtistLayout({ children, title }) {
           <Toolbar />
           {children}
         </Box>
+        <ArtistAuthDialog />
     </Box>
   );
 }

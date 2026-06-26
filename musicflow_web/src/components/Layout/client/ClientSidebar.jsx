@@ -115,7 +115,7 @@ function ClientSidebar({
 
   const handleArtistLogin = () => {
     onClose();
-    navigate('/artistlogin');
+    navigate('/artist/dashboard?auth=login');
   };
 
   const renderSidebarContent = (collapsed = false, showDesktopToggle = false) => (

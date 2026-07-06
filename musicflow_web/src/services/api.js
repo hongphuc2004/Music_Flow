@@ -68,8 +68,23 @@ export const logout = async () => {
   }
 };
 
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload.exp) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp - 10 < now; // 10-second buffer
+  } catch {
+    return true;
+  }
+};
+
 export const refreshAccessToken = async (forceRefresh = false) => {
-  if (accessToken && !forceRefresh) {
+  const isExpired = isTokenExpired(accessToken);
+  if (accessToken && !isExpired && !forceRefresh) {
     return accessToken;
   }
   if (!refreshPromise) {
@@ -86,6 +101,11 @@ export const refreshAccessToken = async (forceRefresh = false) => {
         const token = res?.data?.token;
         const role = res?.data?.user?.role;
         accessToken = token || null;
+        if (token) {
+          localStorage.setItem('accessToken', token);
+        } else {
+          localStorage.removeItem('accessToken');
+        }
         if (role) {
           localStorage.setItem('role', role);
         }

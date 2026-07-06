@@ -64,7 +64,7 @@ function formatFollowerCount(count) {
 
 
 function ClientHome() {
-  const { userName } = useClientSession();
+  const { userName, isLoggedIn } = useClientSession();
   const navigate = useNavigate();
   const {
     playSong,
@@ -313,7 +313,7 @@ function ClientHome() {
       cancelled = true;
       cancelIdleTask();
     };
-  }, [topArtists]);
+  }, [topArtists, isLoggedIn]);
 
   const handleToggleFollow = async (artist) => {
     const isLoggedIn = !!localStorage.getItem('userId');

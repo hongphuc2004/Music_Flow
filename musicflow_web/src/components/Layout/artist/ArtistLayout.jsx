@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Toolbar } from '@mui/material';
 import ArtistSidebar from './ArtistSidebar';
 import ArtistHeader from './ArtistHeader';
+import ArtistAuthDialog from './ArtistAuthDialog';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;

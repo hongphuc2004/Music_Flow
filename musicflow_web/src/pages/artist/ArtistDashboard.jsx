@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Avatar,
@@ -49,6 +49,7 @@ import useAppToast from '../../components/common/useAppToast';
 function ArtistDashboard() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useAppToast();
   const [artist, setArtist] = useState(null);
   const [songs, setSongs] = useState([]);
@@ -60,7 +61,16 @@ function ArtistDashboard() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  const isLoginDialogRoute = new URLSearchParams(location.search).get('auth') === 'login';
+  const isArtistLoggedIn = localStorage.getItem('role') === 'artist';
+
   const fetchDashboard = useCallback(async () => {
+    if (!isArtistLoggedIn && isLoginDialogRoute) {
+      setLoading(false);
+      setError('');
+      return;
+    }
+
     try {
       setLoading(true);
       const currentArtistResponse = await artistApi.getMe();
@@ -89,7 +99,7 @@ function ArtistDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isArtistLoggedIn, isLoginDialogRoute]);
 
   useEffect(() => {
     fetchDashboard();

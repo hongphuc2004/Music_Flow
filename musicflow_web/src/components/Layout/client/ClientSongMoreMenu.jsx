@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconButton, Menu, MenuItem } from '@mui/material';
 import { MoreHorizRounded as MoreIcon } from '@mui/icons-material';
-import { clientFavoritesApi, clientSongsApi } from '../../../services/api';
+import { clientFavoritesApi, clientSongsApi } from '../../../services/client/client.service';
 import { useClientPlayerActions } from './ClientPlayerProvider';
-import useClientToast from './useClientToast';
+import useAppToast from '../../../components/common/useAppToast';
 
-function SongMoreMenu({ song, buttonSx, onEdit }) {
+function ClientSongMoreMenu({ song, buttonSx, onEdit }) {
   const navigate = useNavigate();
   const { playSong } = useClientPlayerActions();
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const [anchorEl, setAnchorEl] = useState(null);
   const [favorite, setFavorite] = useState(false);
 
@@ -167,4 +167,4 @@ function SongMoreMenu({ song, buttonSx, onEdit }) {
   );
 }
 
-export default SongMoreMenu;
+export default ClientSongMoreMenu;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, forwardRef } from 'react';
 import {
   Box,
   Paper,
@@ -37,6 +37,7 @@ import {
   Tooltip,
   Divider,
   Card,
+  Slide,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -53,10 +54,16 @@ import {
   AdminPanelSettingsRounded as AdminIcon,
   MusicNoteRounded as ArtistIcon,
   CloudUploadRounded as UploadIcon,
+  Close as CloseIcon,
+  Category as CategoryIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { songsApi, topicsApi, accountsApi } from '../../services/api';
+import { songsApi, topicsApi, accountsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
+
+const Transition = forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 const emptyFormData = {
   title: '',
@@ -585,109 +592,287 @@ function Songs() {
       </Stack>
 
       {/* Add/Edit Modal */}
+      {/* Add/Edit Modal */}
       <Dialog
         open={createDialogOpen}
         onClose={resetSongDialog}
+        TransitionComponent={Transition}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+        PaperProps={{ 
+          sx: { 
+            borderRadius: 6, 
+            overflow: 'hidden',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
+          } 
+        }}
       >
-        <Box sx={{ background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 100%)', p: 3.5, color: '#fff', position: 'relative' }}>
-          <Typography variant="h5" fontWeight={900}>
-            {editingSong ? 'Hiệu chỉnh bài hát' : 'Đăng tải bài hát mới'}
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>
-            Quản trị viên xuất bản các tệp âm nhạc bản quyền chất lượng cao và ảnh nghệ thuật.
-          </Typography>
-
-          {/* Navigation tabs */}
-          <Box sx={{ position: 'absolute', bottom: 0, left: 16, right: 16 }}>
-            <Tabs 
-              value={dialogTab} 
-              onChange={(e, val) => setDialogTab(val)}
-              textColor="inherit"
-              indicatorColor="primary"
-              sx={{
-                '& .MuiTabs-indicator': {
-                  backgroundColor: '#fff',
-                  height: 3,
-                  borderRadius: 1.5,
-                },
-                '& .MuiTab-root': {
-                  fontWeight: 700,
-                  opacity: 0.7,
-                  '&.Mui-selected': { opacity: 1 }
-                }
-              }}
-            >
-              <Tab label="Thông tin chung" />
-              <Tab label="File & Artwork" />
-            </Tabs>
+        <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3, color: '#fff', display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+          <Box sx={{
+            p: 1.25,
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <MusicNoteIcon sx={{ fontSize: 24, color: '#fff' }} />
           </Box>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+              {editingSong ? 'Track Studio — Edit Song' : 'Track Studio — Upload Song'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+              Configure release metadata, lyrics sheets, audio files, and promotional artworks.
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={resetSongDialog} 
+            disabled={createLoading}
+            sx={{ 
+              color: 'rgba(255,255,255,0.8)', 
+              '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' } 
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
 
-        <DialogContent sx={{ p: 4, pt: 3.5 }}>
+        {/* Navigation tabs */}
+        <Box sx={{ px: 3, pt: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.01)' }}>
+          <Tabs 
+            value={dialogTab} 
+            onChange={(e, val) => setDialogTab(val)}
+            sx={{
+              minHeight: 40,
+              '& .MuiTabs-indicator': { display: 'none' },
+              '& .MuiTabs-flexContainer': { gap: 1 }
+            }}
+          >
+            <Tab 
+              label="Thông tin chung" 
+              sx={{
+                minHeight: 36,
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2.5,
+                px: 3,
+                fontSize: '0.875rem',
+                transition: 'all 0.2s',
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#fff',
+                  bgcolor: '#6c63ff',
+                  boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                },
+                '&.Mui-selected:hover': {
+                  bgcolor: '#534bae',
+                  color: '#fff'
+                },
+                '&:hover': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'
+                }
+              }}
+            />
+            <Tab 
+              label="File & Artwork" 
+              sx={{
+                minHeight: 36,
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2.5,
+                px: 3,
+                fontSize: '0.875rem',
+                transition: 'all 0.2s',
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#fff',
+                  bgcolor: '#6c63ff',
+                  boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                },
+                '&.Mui-selected:hover': {
+                  bgcolor: '#534bae',
+                  color: '#fff'
+                },
+                '&:hover': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'
+                }
+              }}
+            />
+          </Tabs>
+        </Box>
+
+        <DialogContent sx={{ p: 3, pt: 2, pb: 4 }}>
           {dialogTab === 0 && (
-            <Stack spacing={2.5} sx={{ mt: 1 }}>
+            <Stack spacing={2.5} sx={{ mt: 1.5 }}>
               <TextField
                 fullWidth
                 label="Tiêu đề bài hát *"
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MusicNoteIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 3.5 }
+                }}
               />
 
               <Autocomplete
                 multiple
+                freeSolo
                 options={artistOptions}
-                getOptionLabel={(option) => option.name || ''}
-                value={artistOptions.filter((opt) => formData.artists.includes(opt.name))}
-                onChange={(_, selected) =>
-                  setFormData((prev) => ({ ...prev, artists: selected.map((item) => item.name) }))
+                getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
+                value={formData.artists}
+                isOptionEqualToValue={(option, value) => {
+                  const optionName = typeof option === 'string' ? option : option.name;
+                  const valueName = typeof value === 'string' ? value : value.name;
+                  return optionName === valueName;
+                }}
+                onChange={(_, newValue) => {
+                  const artistNames = newValue.map((val) => typeof val === 'string' ? val : val.name);
+                  setFormData((prev) => ({ ...prev, artists: artistNames }));
+                }}
+                renderTags={(tagValue, getTagProps) =>
+                  tagValue.map((option, index) => {
+                    const name = typeof option === 'string' ? option : option.name;
+                    const artistObj = artistOptions.find((a) => a.name === name);
+                    return (
+                      <Chip
+                        avatar={
+                          <Avatar 
+                            src={artistObj?.avatar || ''} 
+                            sx={{ width: 18, height: 18, fontSize: 9 }}
+                          >
+                            {name.charAt(0)}
+                          </Avatar>
+                        }
+                        label={name}
+                        size="small"
+                        {...getTagProps({ index })}
+                        sx={{ borderRadius: 2 }}
+                      />
+                    );
+                  })
                 }
+                renderOption={(props, option) => {
+                  const name = typeof option === 'string' ? option : option.name;
+                  const avatar = typeof option === 'string' ? '' : option.avatar;
+                  return (
+                    <Box component="li" {...props} key={option._id || name} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.25, px: 2 }}>
+                      <Avatar 
+                        src={avatar} 
+                        variant="rounded" 
+                        sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#00bcd4' }}
+                      >
+                        {name.charAt(0)}
+                      </Avatar>
+                      <Typography variant="body1" fontWeight={600}>{name}</Typography>
+                    </Box>
+                  );
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     label="Nghệ sĩ phát hành *"
-                    placeholder="Chọn nghệ sĩ..."
-                    helperText="Chọn một hoặc nhiều nghệ sĩ từ danh sách tài khoản Artist."
+                    placeholder="Chọn hoặc nhập nghệ sĩ..."
+                    helperText="Chọn từ danh sách gợi ý hoặc nhập tên nghệ sĩ mới rồi nhấn Enter."
                     InputProps={{
                       ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <ArtistIcon color="action" fontSize="small" />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
                       sx: { borderRadius: 3.5 }
                     }}
                   />
                 )}
               />
 
-              <FormControl fullWidth>
-                <InputLabel id="song-topic-label">Chủ đề (Topic)</InputLabel>
-                <Select
-                  labelId="song-topic-label"
-                  value={formData.topicId}
-                  label="Chủ đề (Topic)"
-                  onChange={(e) => setFormData((prev) => ({ ...prev, topicId: e.target.value }))}
-                  sx={{ borderRadius: 3.5 }}
-                >
-                  <MenuItem value="">Không phân loại (None)</MenuItem>
-                  {topics.map((topic) => (
-                    <MenuItem key={topic._id} value={topic._id}>
-                      {topic.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={topics}
+                getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
+                value={topics.find((t) => t._id === formData.topicId) || null}
+                onChange={(_, newValue) => {
+                  setFormData((prev) => ({ ...prev, topicId: newValue ? newValue._id : '' }));
+                }}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props} key={option._id} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.25, px: 2 }}>
+                    <Avatar 
+                      src={option.avatar} 
+                      variant="rounded" 
+                      sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#6c63ff' }}
+                    >
+                      <CategoryIcon sx={{ fontSize: 18 }} />
+                    </Avatar>
+                    <Typography variant="body1" fontWeight={600}>{option.name}</Typography>
+                  </Box>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Chủ đề (Topic)"
+                    placeholder="Chọn chủ đề..."
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            {formData.topicId ? (
+                              (() => {
+                                const selectedTopic = topics.find((t) => t._id === formData.topicId);
+                                return (
+                                  <Avatar 
+                                    src={selectedTopic?.avatar} 
+                                    variant="rounded" 
+                                    sx={{ width: 20, height: 20, mr: 0.5, fontSize: 11 }}
+                                  >
+                                    {selectedTopic?.name?.charAt(0)}
+                                  </Avatar>
+                                );
+                              })()
+                            ) : (
+                              <CategoryIcon color="action" fontSize="small" />
+                            )}
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                      sx: { borderRadius: 3.5 }
+                    }}
+                  />
+                )}
+              />
 
               <Box sx={{ position: 'relative' }}>
                 <TextField
                   fullWidth
                   label="Lời bài hát"
                   multiline
-                  minRows={3}
-                  maxRows={showFullLyrics ? 15 : 5}
+                  minRows={6}
+                  maxRows={showFullLyrics ? 20 : 8}
                   value={formData.lyrics}
                   onChange={(e) => setFormData((prev) => ({ ...prev, lyrics: e.target.value }))}
                   placeholder="Nhập lời bài hát hoặc cấu trúc LRC..."
-                  InputProps={{ sx: { borderRadius: 3.5 } }}
+                  InputProps={{
+                    sx: { 
+                      borderRadius: 3.5,
+                      fontFamily: 'monospace',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.6,
+                      letterSpacing: '0.02em',
+                    }
+                  }}
                 />
                 {formData.lyrics && formData.lyrics.split('\n').length > 5 && (
                   <Button
@@ -700,7 +885,7 @@ function Songs() {
                 )}
               </Box>
 
-              <Box sx={{ pt: 1 }}>
+              <Box sx={{ pt: 2.5 }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -715,7 +900,7 @@ function Songs() {
           )}
 
           {dialogTab === 1 && (
-            <Stack spacing={3} sx={{ mt: 1 }}>
+            <Stack spacing={3} sx={{ mt: 1.5 }}>
               {/* Audio Upload */}
               <Box>
                 <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
@@ -726,32 +911,34 @@ function Songs() {
                   component="label"
                   fullWidth
                   sx={{
-                    py: 3,
-                    borderRadius: 4,
+                    py: 4,
+                    borderRadius: 4.5,
                     borderColor: audioFile ? 'success.main' : 'divider',
                     borderStyle: 'dashed',
                     borderWidth: 2,
-                    bgcolor: audioFile ? 'rgba(46, 125, 50, 0.03)' : 'rgba(0,0,0,0.01)',
+                    bgcolor: audioFile ? 'rgba(76, 175, 80, 0.02)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
                     color: 'text.secondary',
                     flexDirection: 'column',
-                    gap: 1,
+                    gap: 1.5,
+                    transition: 'all 0.3s',
                     '&:hover': {
                       borderColor: 'primary.main',
-                      bgcolor: 'rgba(108, 99, 255, 0.04)',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.05)' : 'rgba(108, 99, 255, 0.02)',
+                      boxShadow: '0 8px 24px rgba(108,99,255,0.04)'
                     }
                   }}
                 >
                   {audioFile ? (
                     <>
-                      <CheckCircleIcon color="success" sx={{ fontSize: 32 }} />
-                      <Typography variant="subtitle2" fontWeight={800} color="success.main">
+                      <CheckCircleIcon color="success" sx={{ fontSize: 36 }} />
+                      <Typography variant="subtitle2" fontWeight={800} color="success.main" sx={{ mt: 0.5 }}>
                         Đã chọn: {audioFile.name}
                       </Typography>
                       <Typography variant="caption">{(audioFile.size / (1024 * 1024)).toFixed(2)} MB</Typography>
                     </>
                   ) : (
                     <>
-                      <AudioIcon sx={{ fontSize: 32, color: 'text.disabled' }} />
+                      <AudioIcon sx={{ fontSize: 36, color: 'text.disabled' }} />
                       <Typography variant="body2" fontWeight={700}>
                         {editingSong ? 'Thay đổi file MP3 (Không bắt buộc)' : 'Nhấp để chọn file nhạc MP3 *'}
                       </Typography>
@@ -771,33 +958,34 @@ function Songs() {
                 <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
                   Ảnh đại diện (Artwork image)
                 </Typography>
-                <Grid container spacing={2}>
+                <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: imageFile || formData.imageUrl ? 8 : 12 }}>
                     <Button
                       variant="outlined"
                       component="label"
                       fullWidth
                       sx={{
-                        py: imageFile ? 1.5 : 2,
-                        borderRadius: 4,
+                        py: imageFile ? 2 : 2.5,
+                        borderRadius: 4.5,
                         borderColor: imageFile ? 'success.main' : 'divider',
                         borderStyle: 'dashed',
                         borderWidth: 2,
-                        bgcolor: imageFile ? 'rgba(46, 125, 50, 0.03)' : 'rgba(0,0,0,0.01)',
+                        bgcolor: imageFile ? 'rgba(76, 175, 80, 0.02)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
                         color: 'text.secondary',
                         flexDirection: 'column',
                         gap: 0.5,
                         height: '100%',
+                        transition: 'all 0.3s',
                         '&:hover': {
                           borderColor: 'primary.main',
-                          bgcolor: 'rgba(108, 99, 255, 0.04)',
+                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.05)' : 'rgba(108, 99, 255, 0.02)',
                         }
                       }}
                     >
                       {imageFile ? (
                         <>
                           <CheckCircleIcon color="success" sx={{ fontSize: 24 }} />
-                          <Typography variant="body2" fontWeight={700} color="success.main" noWrap sx={{ maxWidth: '90%' }}>
+                          <Typography variant="body2" fontWeight={700} color="success.main" noWrap sx={{ maxWidth: '90%', mt: 0.5 }}>
                             {imageFile.name}
                           </Typography>
                         </>
@@ -818,7 +1006,17 @@ function Songs() {
 
                   {(imageFile || formData.imageUrl) && (
                     <Grid size={{ xs: 4 }}>
-                      <Box sx={{ width: '100%', height: 68, borderRadius: 3.5, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'action.hover' }}>
+                      <Box sx={{ 
+                        width: 72, 
+                        height: 72, 
+                        borderRadius: 3.5, 
+                        border: '1px solid', 
+                        borderColor: 'divider', 
+                        overflow: 'hidden', 
+                        bgcolor: 'action.hover',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                        mx: 'auto'
+                      }}>
                         <img 
                           src={imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl} 
                           alt="Cover preview" 
@@ -839,21 +1037,59 @@ function Songs() {
                 onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
                 placeholder="https://..."
                 helperText="Hệ thống ưu tiên sử dụng file tải lên từ thiết bị trước."
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <ImageIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 3.5 }
+                }}
               />
             </Stack>
           )}
         </DialogContent>
 
-        <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button onClick={resetSongDialog} disabled={createLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+        <DialogActions sx={{ 
+          p: 3, 
+          borderTop: '1px solid', 
+          borderColor: 'divider', 
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(30, 30, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(8px)',
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 10
+        }}>
+          <Button 
+            onClick={resetSongDialog} 
+            disabled={createLoading} 
+            sx={{ 
+              borderRadius: 3, 
+              fontWeight: 700,
+              textTransform: 'none',
+              px: 3,
+              color: 'text.secondary',
+              '&:hover': { bgcolor: 'action.hover' }
+            }}
+          >
             Hủy bỏ
           </Button>
           <Button 
             variant="contained" 
             onClick={handleCreateSong} 
             disabled={createLoading}
-            sx={{ borderRadius: 3, fontWeight: 800, px: 4, bgcolor: '#00bcd4', '&:hover': { bgcolor: '#0097a7' } }}
+            sx={{ 
+              borderRadius: 3, 
+              fontWeight: 800, 
+              px: 4.5, 
+              textTransform: 'none',
+              bgcolor: '#00bcd4', 
+              boxShadow: '0 4px 14px rgba(0, 188, 212, 0.35)',
+              '&:hover': { 
+                bgcolor: '#0097a7',
+                boxShadow: '0 6px 20px rgba(0, 188, 212, 0.45)',
+              } 
+            }}
           >
             {createLoading ? <CircularProgress size={20} color="inherit" /> : editingSong ? 'Lưu thay đổi' : 'Tải lên'}
           </Button>

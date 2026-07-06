@@ -21,7 +21,7 @@ import {
   DarkModeRounded as DarkModeIcon,
   LightModeRounded as LightModeIcon,
 } from '@mui/icons-material';
-import useClientToast from './useClientToast';
+import useAppToast from '../../../components/common/useAppToast';
 import { ColorModeContext } from '../../../context/ColorModeContext';
 import useClientSession from '../../../hooks/useClientSession';
 import { logout } from '../../../services/api';
@@ -31,7 +31,7 @@ const collapsedDrawerWidth = 76;
 
 function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLogoutSuccess = () => {} }) {
   const navigate = useNavigate();
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const { toggleColorMode, mode } = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchValue, setSearchValue] = useState('');

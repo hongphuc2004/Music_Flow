@@ -24,9 +24,9 @@ import {
   LibraryMusicRounded as LibraryMusicIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../services/api';
+import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 
 const getRecentPlayedStorageKey = () => {
   const userId = localStorage.getItem('userId') || 'anonymous';
@@ -669,7 +669,7 @@ function ClientDiscover() {
 
                     {/* Reusable Menu Button */}
                     <Box onClick={(e) => e.stopPropagation()} sx={{ opacity: 0.7, '&:hover': { opacity: 1 } }}>
-                      <SongMoreMenu song={song} />
+                      <ClientSongMoreMenu song={song} />
                     </Box>
                   </Stack>
                 ))}

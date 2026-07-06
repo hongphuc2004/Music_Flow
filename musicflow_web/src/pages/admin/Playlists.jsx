@@ -47,7 +47,7 @@ import {
   VisibilityOffRounded as PrivateIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { playlistsApi, songsApi } from '../../services/api';
+import { playlistsApi, songsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
 
 const INITIAL_FORM_DATA = {

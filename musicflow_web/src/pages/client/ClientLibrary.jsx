@@ -36,13 +36,13 @@ import {
   AddRounded as AddIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../services/api';
+import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
-import useClientToast from '../../components/Layout/client/useClientToast';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
-import SongItem from '../../components/client/SongItem';
-import PlaylistCard from '../../components/client/PlaylistCard';
+import ClientSongItem from '../../components/Layout/client/ClientSongItem';
+import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 
 const PLAYLIST_PRESETS = [
   { name: 'Synthwave', url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&auto=format&fit=crop&q=80' },
@@ -56,7 +56,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function ClientLibrary() {
   const navigate = useNavigate();
   const { playSong, currentSong, isPlaying } = useClientPlayer();
-  const { showToast, updateToast } = useClientToast();
+  const { showToast, updateToast } = useAppToast();
   const { userName } = useClientSession();
 
   const [playlists, setPlaylists] = useState([]);
@@ -1064,7 +1064,7 @@ function ClientLibrary() {
                   {/* Grid Playlists */}
                   {(searchQuery ? filteredPlaylists : otherPlaylists).map((playlist) => (
                     <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={playlist._id} sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <PlaylistCard
+                      <ClientPlaylistCard
                         playlist={playlist}
                         onClick={() => navigate(`/client/playlists/${playlist._id}`)}
                         onPlay={(e) => handlePlaySinglePlaylist(e, playlist)}
@@ -1202,7 +1202,7 @@ function ClientLibrary() {
 
                   {activeSongsList.map((song, idx) => (
                     <Box key={song._id} sx={{ mb: 1.5 }}>
-                      <SongItem
+                      <ClientSongItem
                         song={song}
                         index={idx + 1}
                         showDuration={true}

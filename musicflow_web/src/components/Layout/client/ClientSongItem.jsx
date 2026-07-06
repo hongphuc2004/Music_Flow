@@ -5,8 +5,8 @@ import {
   PauseRounded as PauseIcon,
   MusicNoteRounded as MusicIcon,
 } from '@mui/icons-material';
-import SongMoreMenu from '../Layout/client/SongMoreMenu';
-import PlayingEqualizer from './PlayingEqualizer';
+import ClientSongMoreMenu from './ClientSongMoreMenu';
+import PlayingEqualizer from './ClientPlayingEqualizer';
 
 function formatDuration(secs) {
   if (isNaN(secs) || secs === undefined || secs === null) return '--:--';
@@ -15,7 +15,7 @@ function formatDuration(secs) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-const SongItem = ({
+const ClientSongItem = ({
   song,
   isCurrent,
   isPlaying,
@@ -195,11 +195,11 @@ const SongItem = ({
       {showActions && (
         <Box onClick={(e) => e.stopPropagation()} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {actions}
-          <SongMoreMenu song={song} onEdit={onEdit} buttonSx={moreMenuButtonSx} />
+          <ClientSongMoreMenu song={song} onEdit={onEdit} buttonSx={moreMenuButtonSx} />
         </Box>
       )}
     </Box>
   );
 };
 
-export default SongItem;
+export default ClientSongItem;

@@ -33,8 +33,8 @@ import {
   DeleteOutlineRounded as DeleteIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
-import { clientCommentsApi } from '../../../services/api';
-import useClientToast from './useClientToast';
+import { clientCommentsApi } from '../../../services/client/client.service';
+import useAppToast from '../../../components/common/useAppToast';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -59,10 +59,10 @@ const formatDate = (dateStr) => {
   });
 };
 
-function SongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged }) {
+function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const { currentSong } = useClientPlayer();
 
   const currentUserId = localStorage.getItem('userId');
@@ -533,7 +533,7 @@ function SongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged
           </Stack>
 
           {currentSong && (
-            <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.45)', mt: 0.5, noWrap: true }}>
+            <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.45)', mt: 0.5 }}>
               Bài hát: {currentSong.title} - {currentSong.artistText}
             </Typography>
           )}
@@ -782,4 +782,4 @@ function SongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged
   );
 }
 
-export default SongCommentsDrawer;
+export default ClientSongCommentsDrawer;

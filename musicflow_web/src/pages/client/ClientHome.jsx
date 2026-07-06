@@ -29,16 +29,16 @@ import {
   QueueMusic as QueueMusicIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientArtistApi, clientPlaylistsApi, clientSongsApi } from '../../services/api';
-import QueueDrawer from '../../components/Layout/client/QueueDrawer';
+import { clientArtistApi, clientPlaylistsApi, clientSongsApi } from '../../services/client/client.service';
+import ClientQueueDrawer from '../../components/Layout/client/ClientQueueDrawer';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
-import SongItem from '../../components/client/SongItem';
-import PlaylistCard from '../../components/client/PlaylistCard';
-import PlayingEqualizer from '../../components/client/PlayingEqualizer';
+import ClientSongItem from '../../components/Layout/client/ClientSongItem';
+import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
+import ClientPlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
 
 const getPersonalizedGreeting = (userName) => {
   const hour = new Date().getHours();
@@ -624,7 +624,7 @@ function ClientHome() {
               <Grid container spacing={2}>
                 {playlists.slice(0, 4).map((playlist) => (
                   <Grid size={{ xs: 6, sm: 3 }} key={playlist._id}>
-                    <PlaylistCard
+                    <ClientPlaylistCard
                       playlist={playlist}
                       onClick={() => navigate(`/client/collections/${playlist._id}`)}
                     />
@@ -659,7 +659,7 @@ function ClientHome() {
                 <Grid container spacing={2}>
                   {recommendedSongs.map((song) => (
                     <Grid size={{ xs: 12, md: 6 }} key={song._id}>
-                      <SongItem
+                      <ClientSongItem
                         song={song}
                         isCurrent={currentSong?._id === song._id}
                         isPlaying={isPlaying}
@@ -1064,7 +1064,7 @@ function ClientHome() {
                           {song.duration ? `${Math.floor(song.duration / 60)}:${Math.floor(song.duration % 60).toString().padStart(2, '0')}` : '--:--'}
                         </Typography>
                         <Box onClick={(e) => e.stopPropagation()} sx={{ opacity: 0.6, '&:hover': { opacity: 1 } }}>
-                          <SongMoreMenu song={song} />
+                          <ClientSongMoreMenu song={song} />
                         </Box>
                       </Box>
                     </Box>
@@ -1076,7 +1076,7 @@ function ClientHome() {
           </Stack>
         </Grid>
       </Grid>
-      <QueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
+      <ClientQueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
     </ClientLayout>
   );
 }

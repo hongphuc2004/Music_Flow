@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, forwardRef } from 'react';
 import {
   Alert,
   Avatar,
@@ -32,6 +32,8 @@ import {
   Tab,
   Tooltip,
   Divider,
+  Autocomplete,
+  Slide,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -49,12 +51,17 @@ import {
   PublicRounded as PublicIcon,
   VisibilityOffRounded as PrivateIcon,
   QueueMusicRounded as QueueMusicIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import api from '../../services/api';
 import useAppToast from '../../components/common/useAppToast';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const Transition = forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 function ArtistSong() {
   const { showToast, updateToast } = useAppToast();
@@ -76,6 +83,27 @@ function ArtistSong() {
   const [createLoading, setCreateLoading] = useState(false);
   const [showFullLyrics, setShowFullLyrics] = useState(false);
   
+  const [artistOptions, setArtistOptions] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const fetchArtistSuggestions = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setArtistOptions([]);
+      return;
+    }
+    try {
+      setSearchLoading(true);
+      const res = await api.get('/songs/search', {
+        params: { query: query.trim(), includeArtists: true }
+      });
+      setArtistOptions(res.data.artists || []);
+    } catch (err) {
+      console.warn("Search artists failed", err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+  
   const [deleteDialog, setDeleteDialog] = useState({ open: false, song: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -96,8 +124,31 @@ function ArtistSong() {
     }
   };
 
+  const fetchAllArtists = async () => {
+    try {
+      const res = await api.get('/songs', { params: { limit: 1000 } });
+      const systemSongs = res.data?.songs || res.data || [];
+      const map = new Map();
+      systemSongs.forEach((song) => {
+        if (!Array.isArray(song.artists)) return;
+        song.artists.forEach((artist) => {
+          if (!artist?._id || !artist?.name) return;
+          map.set(artist.name, {
+            _id: artist._id,
+            name: artist.name,
+            avatar: artist.avatar || '',
+          });
+        });
+      });
+      setArtistOptions([...map.values()]);
+    } catch (err) {
+      console.warn("Failed to fetch artists list from songs", err);
+    }
+  };
+
   useEffect(() => {
     fetchSongs();
+    fetchAllArtists();
   }, []);
 
   const handleSearchChange = (e) => {
@@ -668,81 +719,216 @@ function ArtistSong() {
       </Stack>
 
       {/* Create/Edit Dialog */}
+      {/* Create/Edit Dialog */}
       <Dialog
         open={createDialogOpen}
         onClose={() => !createLoading && setCreateDialogOpen(false)}
+        TransitionComponent={Transition}
         maxWidth="sm"
         fullWidth
         PaperProps={{ 
           sx: { 
             borderRadius: 6,
-            boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
             overflow: 'hidden',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
           } 
         }}
       >
-        {/* Banner Dialog Header */}
-        <Box sx={{ 
-          background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', 
-          p: 3.5, 
-          pb: 4.5,
-          color: '#fff',
-          position: 'relative' 
-        }}>
-          <Typography variant="h5" fontWeight={900}>
-            {editingSong ? 'Hiệu chỉnh tác phẩm' : 'Đăng tải bài hát mới'}
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>
-            {editingSong
-              ? 'Cập nhật lại thông tin mô tả, nghệ sĩ đồng hành hoặc thay mới files media.'
-              : 'Chia sẻ giai điệu chất lượng cao định dạng MP3 cùng hình ảnh artwork nổi bật.'}
-          </Typography>
-          
-          {/* Custom Tabs inside header */}
-          <Box sx={{ position: 'absolute', bottom: 0, left: 16, right: 16 }}>
-            <Tabs 
-              value={dialogTab} 
-              onChange={(e, val) => setDialogTab(val)}
-              textColor="inherit"
-              indicatorColor="primary"
-              sx={{
-                '& .MuiTabs-indicator': {
-                  backgroundColor: '#fff',
-                  height: 3,
-                  borderRadius: 1.5,
-                },
-                '& .MuiTab-root': {
-                  fontWeight: 700,
-                  opacity: 0.7,
-                  '&.Mui-selected': { opacity: 1 }
-                }
-              }}
-            >
-              <Tab label="Thông tin chung" id="general-tab" />
-              <Tab label="File & Artwork" id="files-tab" />
-            </Tabs>
+        <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3, color: '#fff', display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+          <Box sx={{
+            p: 1.25,
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <MusicNoteIcon sx={{ fontSize: 24, color: '#fff' }} />
           </Box>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+              {editingSong ? 'Hiệu chỉnh tác phẩm' : 'Đăng tải bài hát mới'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+              {editingSong
+                ? 'Cập nhật lại thông tin mô tả, nghệ sĩ đồng hành hoặc thay mới files media.'
+                : 'Chia sẻ giai điệu chất lượng cao định dạng MP3 cùng hình ảnh artwork nổi bật.'}
+            </Typography>
+          </Box>
+          <IconButton 
+            onClick={() => setCreateDialogOpen(false)} 
+            disabled={createLoading}
+            sx={{ 
+              color: 'rgba(255,255,255,0.8)', 
+              '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' } 
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
 
-        <DialogContent sx={{ p: 4, pt: 3, mt: 1 }}>
+        {/* Navigation tabs */}
+        <Box sx={{ px: 3, pt: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.01)' }}>
+          <Tabs 
+            value={dialogTab} 
+            onChange={(e, val) => setDialogTab(val)}
+            sx={{
+              minHeight: 40,
+              '& .MuiTabs-indicator': { display: 'none' },
+              '& .MuiTabs-flexContainer': { gap: 1 }
+            }}
+          >
+            <Tab 
+              label="Thông tin chung" 
+              sx={{
+                minHeight: 36,
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2.5,
+                px: 3,
+                fontSize: '0.875rem',
+                transition: 'all 0.2s',
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#fff',
+                  bgcolor: '#6c63ff',
+                  boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                },
+                '&.Mui-selected:hover': {
+                  bgcolor: '#534bae',
+                  color: '#fff'
+                },
+                '&:hover': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'
+                }
+              }}
+            />
+            <Tab 
+              label="File & Artwork" 
+              sx={{
+                minHeight: 36,
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2.5,
+                px: 3,
+                fontSize: '0.875rem',
+                transition: 'all 0.2s',
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  color: '#fff',
+                  bgcolor: '#6c63ff',
+                  boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                },
+                '&.Mui-selected:hover': {
+                  bgcolor: '#534bae',
+                  color: '#fff'
+                },
+                '&:hover': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'
+                }
+              }}
+            />
+          </Tabs>
+        </Box>
+
+        <DialogContent sx={{ p: 3, pt: 2, pb: 4 }}>
           {dialogTab === 0 && (
-            <Stack spacing={3}>
+            <Stack spacing={2.5} sx={{ mt: 1.5 }}>
               <TextField
                 fullWidth
                 label="Tiêu đề bài hát *"
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MusicNoteIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 3.5 }
+                }}
               />
 
-              <TextField
-                fullWidth
-                label="Nghệ sĩ cộng tác"
-                value={formData.collaborators}
-                onChange={(e) => setFormData((prev) => ({ ...prev, collaborators: e.target.value }))}
-                placeholder="Ví dụ: collab@artist.com, Nguyễn Văn A"
-                helperText="Nhập địa chỉ email hoặc tên nghệ sĩ, phân tách bằng dấu phẩy."
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+              <Autocomplete
+                multiple
+                freeSolo
+                loading={searchLoading}
+                options={artistOptions}
+                getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
+                value={formData.collaborators ? formData.collaborators.split(',').map(s => s.trim()).filter(Boolean) : []}
+                isOptionEqualToValue={(option, value) => {
+                  const optionName = typeof option === 'string' ? option : option.name;
+                  const valueName = typeof value === 'string' ? value : value.name;
+                  return optionName === valueName;
+                }}
+                onInputChange={(event, newInputValue) => {
+                  fetchArtistSuggestions(newInputValue);
+                }}
+                onChange={(_, newValue) => {
+                  const names = newValue.map((val) => typeof val === 'string' ? val : val.name);
+                  setFormData((prev) => ({ ...prev, collaborators: names.join(', ') }));
+                }}
+                renderTags={(tagValue, getTagProps) =>
+                  tagValue.map((option, index) => {
+                    const name = typeof option === 'string' ? option : option.name;
+                    const artistObj = artistOptions.find((a) => a.name === name);
+                    return (
+                      <Chip
+                        avatar={
+                          <Avatar 
+                            src={artistObj?.avatar || ''} 
+                            sx={{ width: 18, height: 18, fontSize: 9 }}
+                          >
+                            {name.charAt(0)}
+                          </Avatar>
+                        }
+                        label={name}
+                        size="small"
+                        {...getTagProps({ index })}
+                        sx={{ borderRadius: 2 }}
+                      />
+                    );
+                  })
+                }
+                renderOption={(props, option) => {
+                  const name = typeof option === 'string' ? option : option.name;
+                  const avatar = typeof option === 'string' ? '' : option.avatar;
+                  return (
+                    <Box component="li" {...props} key={option._id || name} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.25, px: 2 }}>
+                      <Avatar 
+                        src={avatar} 
+                        variant="rounded" 
+                        sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#00bcd4' }}
+                      >
+                        {name.charAt(0)}
+                      </Avatar>
+                      <Typography variant="body1" fontWeight={600}>{name}</Typography>
+                    </Box>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Nghệ sĩ cộng tác"
+                    placeholder="Chọn hoặc nhập nghệ sĩ..."
+                    helperText="Chọn từ danh sách gợi ý hoặc nhập tên nghệ sĩ mới rồi nhấn Enter."
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <InputAdornment position="start">
+                            <MusicNoteIcon color="action" fontSize="small" />
+                          </InputAdornment>
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                      sx: { borderRadius: 3.5 }
+                    }}
+                  />
+                )}
               />
               
               <Box sx={{ position: 'relative' }}>
@@ -750,17 +936,38 @@ function ArtistSong() {
                   fullWidth
                   label="Lời bài hát"
                   multiline
-                  minRows={3}
-                  maxRows={showFullLyrics ? 12 : 5}
+                  minRows={6}
+                  maxRows={showFullLyrics ? 20 : 8}
                   value={formData.lyrics}
                   onChange={(e) => setFormData((prev) => ({ ...prev, lyrics: e.target.value }))}
-                  InputProps={{ sx: { borderRadius: 3.5 } }}
-                  placeholder="Điền lời bài hát hoặc cấu trúc LRC đồng bộ..."
+                  placeholder="Nhập lời bài hát hoặc cấu trúc LRC..."
+                  InputProps={{
+                    sx: { 
+                      borderRadius: 3.5,
+                      fontFamily: 'monospace',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.6,
+                      letterSpacing: '0.05em'
+                    }
+                  }}
                 />
                 {formData.lyrics?.split('\n').length > 5 && (
                   <Button
                     size="small"
-                    sx={{ position: 'absolute', right: 8, bottom: -28, textTransform: 'none', fontWeight: 700 }}
+                    sx={{ 
+                      position: 'absolute', 
+                      right: 12, 
+                      bottom: 12, 
+                      textTransform: 'none', 
+                      fontWeight: 700,
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      color: 'text.primary',
+                      borderRadius: 2,
+                      px: 1.5,
+                      '&:hover': {
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                      }
+                    }}
                     onClick={() => setShowFullLyrics(v => !v)}
                   >
                     {showFullLyrics ? 'Thu gọn' : 'Xem đầy đủ'}
@@ -771,51 +978,56 @@ function ArtistSong() {
           )}
 
           {dialogTab === 1 && (
-            <Stack spacing={3.5}>
+            <Stack spacing={2.5} sx={{ mt: 1.5 }}>
               {/* Audio Upload Area */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
-                  File âm thanh (Audio File) *
+                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  File âm thanh (Audio File) <span style={{ color: '#ef5350' }}>*</span>
                 </Typography>
                 <Button
                   variant="outlined"
                   component="label"
                   fullWidth
                   sx={{
-                    py: 3,
+                    py: 4,
                     borderRadius: 4,
                     borderColor: audioFile ? 'success.main' : 'divider',
                     borderStyle: 'dashed',
                     borderWidth: 2,
-                    bgcolor: audioFile ? 'rgba(46, 125, 50, 0.03)' : 'rgba(0,0,0,0.01)',
+                    bgcolor: audioFile ? 'rgba(46, 125, 50, 0.03)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
                     color: 'text.secondary',
                     flexDirection: 'column',
-                    gap: 1,
+                    gap: 1.5,
+                    transition: 'all 0.2s',
                     '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: 'rgba(108, 99, 255, 0.04)',
+                      borderColor: '#6c63ff',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.04)' : 'rgba(108, 99, 255, 0.02)',
                     }
                   }}
                 >
                   {audioFile ? (
                     <>
-                      <CheckCircleIcon color="success" sx={{ fontSize: 36 }} />
-                      <Typography variant="subtitle2" fontWeight={800} color="success.main">
-                        Đã chọn: {audioFile.name}
-                      </Typography>
-                      <Typography variant="caption">
-                        {(audioFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </Typography>
+                      <CheckCircleIcon color="success" sx={{ fontSize: 40 }} />
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="subtitle2" fontWeight={800} color="success.main" sx={{ wordBreak: 'break-all', px: 2 }}>
+                          Đã chọn: {audioFile.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          {(audioFile.size / (1024 * 1024)).toFixed(2)} MB
+                        </Typography>
+                      </Box>
                     </>
                   ) : (
                     <>
-                      <AudioIcon sx={{ fontSize: 36, color: 'text.disabled' }} />
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        {editingSong ? 'Thay đổi file MP3 (Nếu có)' : 'Kéo thả hoặc click để chọn file MP3'}
-                      </Typography>
-                      <Typography variant="caption" color="text.disabled">
-                        Chấp nhận định dạng file: .mp3, .wav (Tối đa 15MB)
-                      </Typography>
+                      <AudioIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="subtitle2" fontWeight={800} color="text.primary">
+                          {editingSong ? 'Thay đổi file MP3 (Nếu có)' : 'Kéo thả hoặc click để chọn file MP3'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                          Chấp nhận định dạng file: .mp3, .wav (Tối đa 15MB)
+                        </Typography>
+                      </Box>
                     </>
                   )}
                   <input
@@ -829,7 +1041,7 @@ function ArtistSong() {
 
               {/* Cover Artwork Upload Area */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
+                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1 }}>
                   Hình đại diện (Artwork Image)
                 </Typography>
                 <Grid container spacing={2}>
@@ -839,33 +1051,34 @@ function ArtistSong() {
                       component="label"
                       fullWidth
                       sx={{
-                        py: imageFile ? 2 : 2.5,
+                        py: imageFile ? 2.5 : 3.5,
                         borderRadius: 4,
                         borderColor: imageFile ? 'success.main' : 'divider',
                         borderStyle: 'dashed',
                         borderWidth: 2,
-                        bgcolor: imageFile ? 'rgba(46, 125, 50, 0.03)' : 'rgba(0,0,0,0.01)',
+                        bgcolor: imageFile ? 'rgba(46, 125, 50, 0.03)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
                         color: 'text.secondary',
                         flexDirection: 'column',
-                        gap: 0.5,
+                        gap: 1,
                         height: '100%',
+                        transition: 'all 0.2s',
                         '&:hover': {
-                          borderColor: 'primary.main',
-                          bgcolor: 'rgba(108, 99, 255, 0.04)',
+                          borderColor: '#6c63ff',
+                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.04)' : 'rgba(108, 99, 255, 0.02)',
                         }
                       }}
                     >
                       {imageFile ? (
                         <>
-                          <CheckCircleIcon color="success" sx={{ fontSize: 24 }} />
+                          <CheckCircleIcon color="success" sx={{ fontSize: 32 }} />
                           <Typography variant="body2" fontWeight={700} color="success.main" noWrap sx={{ maxWidth: '90%' }}>
                             {imageFile.name}
                           </Typography>
                         </>
                       ) : (
                         <>
-                          <ImageIcon sx={{ fontSize: 28, color: 'text.disabled' }} />
-                          <Typography variant="body2" fontWeight={700}>
+                          <ImageIcon sx={{ fontSize: 32, color: 'text.disabled' }} />
+                          <Typography variant="body2" fontWeight={800} color="text.primary">
                             Tải lên file ảnh artwork
                           </Typography>
                         </>
@@ -884,14 +1097,15 @@ function ArtistSong() {
                     <Grid size={{ xs: 4 }}>
                       <Box sx={{ 
                         width: '100%', 
-                        height: 76, 
-                        borderRadius: 3.5, 
+                        height: imageFile ? 104 : 96, 
+                        borderRadius: 4, 
                         border: '1px solid',
                         borderColor: 'divider',
                         overflow: 'hidden',
                         display: 'grid',
                         placeItems: 'center',
-                        bgcolor: 'action.hover'
+                        bgcolor: 'action.hover',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                       }}>
                         <img 
                           src={imageFile ? URL.createObjectURL(imageFile) : formData.imageUrl} 
@@ -913,30 +1127,54 @@ function ArtistSong() {
                 onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
                 placeholder="https://images.unsplash.com/..."
                 helperText="Sử dụng nếu bạn có sẵn link lưu trữ ảnh online."
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <ImageIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  sx: { borderRadius: 3.5 }
+                }}
               />
             </Stack>
           )}
         </DialogContent>
         
-        <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button
-            onClick={() => setCreateDialogOpen(false)}
+        <DialogActions sx={{ 
+          p: 2.5, 
+          borderTop: '1px solid', 
+          borderColor: 'divider', 
+          position: 'sticky', 
+          bottom: 0, 
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(22, 22, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 10,
+          gap: 1.5
+        }}>
+          <Button 
+            onClick={() => setCreateDialogOpen(false)} 
             disabled={createLoading}
-            sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 700, px: 3 }}
+            variant="outlined"
+            sx={{ 
+              borderRadius: 3, 
+              px: 3, 
+              py: 1, 
+              textTransform: 'none', 
+              fontWeight: 700 
+            }}
           >
             Hủy
           </Button>
-          <Button
-            variant="contained"
-            onClick={handleCreateSong}
+          <Button 
+            onClick={handleCreateSong} 
             disabled={createLoading}
+            variant="contained"
             sx={{ 
               borderRadius: 3, 
+              px: 4, 
+              py: 1, 
               textTransform: 'none', 
-              fontWeight: 800, 
-              px: 4.5, 
-              minWidth: 140,
+              fontWeight: 800,
               bgcolor: '#6c63ff',
               '&:hover': { bgcolor: '#534bae' }
             }}

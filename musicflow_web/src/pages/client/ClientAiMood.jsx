@@ -30,9 +30,9 @@ import {
   HistoryRounded as HistoryIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientAiApi } from '../../services/api';
+import { clientAiApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import useClientToast from '../../components/Layout/client/useClientToast';
+import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 
 const QUICK_PROMPTS = [
@@ -329,7 +329,7 @@ function ThinkingBubble() {
 
 export default function ClientAiMood() {
   const { playSong } = useClientPlayerActions();
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 

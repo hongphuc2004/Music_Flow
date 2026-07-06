@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 
-const PlayingEqualizer = ({ isPlaying }) => (
+const ClientPlayingEqualizer = ({ isPlaying }) => (
   <Box sx={{
     display: 'flex',
     alignItems: 'flex-end',
@@ -21,4 +21,4 @@ const PlayingEqualizer = ({ isPlaying }) => (
   </Box>
 );
 
-export default PlayingEqualizer;
+export default ClientPlayingEqualizer;

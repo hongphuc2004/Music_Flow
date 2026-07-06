@@ -9,7 +9,7 @@ import {
   PublicRounded as PublicIcon,
 } from '@mui/icons-material';
 
-const PlaylistCard = ({
+const ClientPlaylistCard = ({
   playlist,
   onClick,
   onPlay = null,
@@ -231,4 +231,4 @@ const PlaylistCard = ({
   );
 };
 
-export default PlaylistCard;
+export default ClientPlaylistCard;

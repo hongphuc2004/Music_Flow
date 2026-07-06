@@ -41,7 +41,7 @@ import {
   PersonRounded as UserIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { accountsApi } from '../../services/api';
+import { accountsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
 
 const emptyEditForm = {

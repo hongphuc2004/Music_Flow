@@ -30,12 +30,12 @@ import {
   CheckRounded as CheckIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } from '../../services/api';
+import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import useAppToast from '../../components/common/useAppToast';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
-import SongItem from '../../components/client/SongItem';
-import PlaylistCard from '../../components/client/PlaylistCard';
+import ClientSongItem from '../../components/Layout/client/ClientSongItem';
+import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 
 const CAROUSEL_SLIDES = [
   {
@@ -1337,7 +1337,7 @@ function ClientGenres() {
                 <Grid container spacing={2.5}>
                   {hotSongs.map((song) => (
                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
-                      <SongItem
+                      <ClientSongItem
                         song={song}
                         showDuration={true}
                         isCurrent={currentSong?._id === song._id}
@@ -1359,7 +1359,7 @@ function ClientGenres() {
                   <Grid container spacing={2.5}>
                     {relatedPlaylists.slice(0, 5).map((playlist) => (
                       <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={playlist._id}>
-                        <PlaylistCard
+                        <ClientPlaylistCard
                           playlist={playlist}
                           onClick={() => navigate(`/client/playlists/${playlist._id}`)}
                         />

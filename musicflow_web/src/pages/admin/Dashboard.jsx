@@ -45,7 +45,8 @@ import {
   Dns as DnsIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { statsApi, clearApiCache } from '../../services/api';
+import { statsApi } from '../../services/admin/admin.service';
+import { clearApiCache } from '../../services/api';
 import useAppToast from '../../components/common/useAppToast';
 
 // Helper function to format time ago

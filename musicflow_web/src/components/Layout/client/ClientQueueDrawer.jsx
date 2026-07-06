@@ -8,7 +8,7 @@ import {
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
 
-function QueueDrawer({ open, onClose }) {
+function ClientQueueDrawer({ open, onClose }) {
   const { currentSong, queue, isPlaying, playSong } = useClientPlayer();
 
   const formatDuration = (seconds) => {
@@ -218,4 +218,4 @@ function QueueDrawer({ open, onClose }) {
   );
 }
 
-export default QueueDrawer;
+export default ClientQueueDrawer;

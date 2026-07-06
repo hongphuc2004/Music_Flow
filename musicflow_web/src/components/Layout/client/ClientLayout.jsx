@@ -3,9 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { Box, Toolbar, useTheme } from '@mui/material';
 import ClientSidebar from './ClientSidebar';
 import ClientHeader from './ClientHeader';
-import NowPlayingBar from './NowPlayingBar';
+import ClientNowPlayingBar from './ClientNowPlayingBar';
 import ClientAuthDialog from './ClientAuthDialog';
-import SongCommentsDrawer from './SongCommentsDrawer';
+import ClientSongCommentsDrawer from './ClientSongCommentsDrawer';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -95,14 +95,14 @@ function ClientLayout({ children, title }) {
         <Toolbar />
         {children}
       </Box>
-      <NowPlayingBar
+      <ClientNowPlayingBar
         desktopSidebarOpen={desktopOpen}
         commentsOpen={commentsOpen}
         onToggleComments={() => setCommentsOpen((prev) => !prev)}
         commentCount={commentCount}
         setCommentCount={setCommentCount}
       />
-      <SongCommentsDrawer
+      <ClientSongCommentsDrawer
         open={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         commentCount={commentCount}

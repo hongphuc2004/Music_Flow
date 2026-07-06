@@ -20,7 +20,7 @@ import {
   LibraryMusicRounded as TracksIcon,
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
-import { artistApi } from '../../services/api';
+import { artistApi } from '../../services/artist/artist.service';
 import { calculateArtistAnalytics, formatDurationLabel } from '../../utils/artistProfile';
 
 // Custom SVG Area Chart Component (Release Momentum)

@@ -15,8 +15,8 @@ import {
   ChatBubbleOutlineRounded as CommentIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
-import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/api';
-import useClientToast from './useClientToast';
+import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/client/client.service';
+import useAppToast from '../../../components/common/useAppToast';
 
 function formatDuration(seconds) {
   const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -25,14 +25,14 @@ function formatDuration(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function NowPlayingBar({
+function ClientNowPlayingBar({
   desktopSidebarOpen = true,
   commentsOpen,
   onToggleComments,
   commentCount,
   setCommentCount,
 }) {
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const [favorite, setFavorite] = useState(false);
   const [scrubTime, setScrubTime] = useState(null);
   const {
@@ -375,4 +375,4 @@ function NowPlayingBar({
   );
 }
 
-export default NowPlayingBar;
+export default ClientNowPlayingBar;

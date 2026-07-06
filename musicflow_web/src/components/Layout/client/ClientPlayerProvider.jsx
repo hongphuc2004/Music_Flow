@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { clientSongsApi, resolveSongStreamUrl } from '../../../services/api';
+import { clientSongsApi, resolveSongStreamUrl } from '../../../services/client/client.service';
 import { findActiveLyricIndex, parseLyrics } from '../../../utils/lyrics';
 
 const ClientPlayerStateContext = createContext(null);

@@ -20,7 +20,7 @@ import {
   FlashOnRounded as FlashIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientUserApi, clientSongsApi } from '../../services/api';
+import { clientUserApi, clientSongsApi } from '../../services/client/client.service';
 import useAppToast from '../../components/common/useAppToast';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import { notifyClientSessionChanged } from '../../hooks/useClientSession';

@@ -38,7 +38,7 @@ import useClientSession from '../../hooks/useClientSession';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
-import ClientPlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
+import PlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
 
 const getPersonalizedGreeting = (userName) => {
   const hour = new Date().getHours();

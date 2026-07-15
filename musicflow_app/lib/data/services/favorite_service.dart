@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
 import 'package:musicflow_app/core/config/api_client.dart';
 import '../models/song_model.dart';
@@ -45,9 +46,7 @@ class FavoriteService {
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await ApiClient.post(
-            Uri.parse('$baseUrl/add/$songId'),
-          );
+          response = await ApiClient.post(Uri.parse('$baseUrl/add/$songId'));
         }
       }
       final data = jsonDecode(response.body);
@@ -97,9 +96,7 @@ class FavoriteService {
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await ApiClient.post(
-            Uri.parse('$baseUrl/toggle/$songId'),
-          );
+          response = await ApiClient.post(Uri.parse('$baseUrl/toggle/$songId'));
         }
       }
       final data = jsonDecode(response.body);

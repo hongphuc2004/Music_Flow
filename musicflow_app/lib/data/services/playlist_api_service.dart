@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
 import 'package:musicflow_app/core/config/api_client.dart';
 import '../models/playlist_model.dart';
@@ -217,9 +218,7 @@ class PlaylistApiService {
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await ApiClient.delete(
-            Uri.parse('$baseUrl/$playlistId'),
-          );
+          response = await ApiClient.delete(Uri.parse('$baseUrl/$playlistId'));
         }
       }
       final data = jsonDecode(response.body);

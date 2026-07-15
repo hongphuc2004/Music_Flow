@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/core/config/api_client.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/user_model.dart';
@@ -216,9 +217,11 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var i = 0; i < remainingTargets.length; i++) {
       final result = responses[i];
       final avatar = result.artist?.avatarUrl ?? '';
-      updates[remainingTargets[i]] = avatar; // Always map the target name to prevent repeat lookups
+      updates[remainingTargets[i]] =
+          avatar; // Always map the target name to prevent repeat lookups
       if (result.success && avatar.isNotEmpty) {
-        final queryName = queryNameByNormalized[remainingTargets[i]] ?? remainingTargets[i];
+        final queryName =
+            queryNameByNormalized[remainingTargets[i]] ?? remainingTargets[i];
         ArtistApiService.cacheAvatar(queryName, avatar);
       }
     }

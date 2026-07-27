@@ -29,6 +29,7 @@ const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
 const artistRoute = require("./routes/artist.route");
 const aiRoute = require("./routes/ai.route");
+const assistantRoute = require("./routes/assistant.route");
 const { cloudinaryRootFolder } = require("./config/cloudinaryFolders");
 const { startMonthlyListenersJob } = require("./jobs/monthlyListeners.job");
 const app = express();
@@ -104,6 +105,9 @@ app.use("/api/artist", artistRoute);
 
 // AI DJ routes
 app.use("/api/ai", aiRoute);
+
+// Global AI Assistant routes
+app.use("/api/ai/assistant", assistantRoute);
 
 // Return JSON for unknown API routes so clients do not receive HTML error pages.
 app.use("/api", (req, res) => {

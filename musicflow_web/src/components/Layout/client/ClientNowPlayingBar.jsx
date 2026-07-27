@@ -13,6 +13,7 @@ import {
   ShuffleRounded as ShuffleIcon,
   MusicNoteRounded as MusicIcon,
   ChatBubbleOutlineRounded as CommentIcon,
+  AllInclusiveRounded as AutoplayIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/client/client.service';
@@ -49,6 +50,8 @@ function ClientNowPlayingBar({
     playNext,
     toggleShuffle,
     cycleRepeatMode,
+    autoplay,
+    toggleAutoplay,
   } = useClientPlayer();
   const isLoggedIn = localStorage.getItem('role') === 'user';
 
@@ -194,6 +197,17 @@ function ClientNowPlayingBar({
       severity: 'info',
       title: repeatCopy[nextMode][0],
       message: repeatCopy[nextMode][1],
+    });
+  };
+
+  const handleToggleAutoplay = () => {
+    toggleAutoplay();
+    showToast({
+      severity: 'info',
+      title: !autoplay ? 'Đã bật Tự động phát' : 'Đã tắt Tự động phát',
+      message: !autoplay
+        ? 'Hệ thống sẽ tự động tìm và phát các bài hát tương tự khi hết danh sách chờ.'
+        : 'Trình phát sẽ dừng lại khi phát hết danh sách chờ.',
     });
   };
 
@@ -343,6 +357,13 @@ function ClientNowPlayingBar({
               sx={{ color: repeatMode === 'off' ? 'rgba(255,255,255,0.68)' : '#5eead4', display: { xs: 'none', sm: 'inline-flex' } }}
             >
               {repeatMode === 'one' ? <RepeatOneIcon sx={{ fontSize: 25 }} /> : <RepeatIcon sx={{ fontSize: 25 }} />}
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={handleToggleAutoplay}
+              sx={{ color: autoplay ? '#5eead4' : 'rgba(255,255,255,0.68)', display: { xs: 'none', sm: 'inline-flex' } }}
+            >
+              <AutoplayIcon sx={{ fontSize: 25 }} />
             </IconButton>
           </Stack>
 

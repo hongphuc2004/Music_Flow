@@ -1429,3 +1429,81 @@ exports.deleteSong = async (req, res) => {
     });
   }
 };
+
+// 📻 GET SIMILAR SONGS / SONG RADIO (Weighted Score + Random Top N + Exclude active ID)
+exports.getSimilarSongs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetSong = await Song.findById(id).lean();
+    if (!targetSong) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy bài hát gốc",
+      });
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
+
+    // Fetch all public candidate songs (except current)
+    const candidates = await Song.find({
+      _id: { $ne: targetSong._id },
+      isPublic: true,
+    })
+      .populate("artists", "name avatar isVerified followersCount monthlyListeners")
+      .populate("topicIds", "name avatar")
+      .lean();
+
+    const targetArtistIds = new Set((targetSong.artists || []).map(a => a.toString()));
+    const targetTopicIds = new Set((targetSong.topicIds || []).map(t => t.toString()));
+
+    // Score candidates
+    const scored = candidates.map(song => {
+      let score = 0;
+
+      // 1. Artist Match (+5)
+      const hasArtistIntersection = (song.artists || []).some(a => 
+        targetArtistIds.has(a._id ? a._id.toString() : a.toString())
+      );
+      if (hasArtistIntersection) {
+        score += 5;
+      }
+
+      // 2. Topic Match (+3 per matching topic)
+      const matchingTopicsCount = (song.topicIds || []).filter(t => 
+        targetTopicIds.has(t._id ? t._id.toString() : t.toString())
+      ).length;
+      score += matchingTopicsCount * 3;
+
+      // 3. Popularity Score (log-scaled playCount)
+      const popularityScore = Math.log((song.playCount || 0) + 1) * 0.5;
+      score += popularityScore;
+
+      return { song, score };
+    });
+
+    // Sort by score descending
+    scored.sort((a, b) => b.score - a.score);
+
+    // Take top 30 candidates
+    const topCandidates = scored.slice(0, 30);
+
+    // Random Top N: shuffle top candidates and take required limit
+    const shuffled = topCandidates
+      .map(item => item.song)
+      .sort(() => 0.5 - Math.random());
+
+    const resultSongs = shuffled.slice(0, limit);
+
+    return res.json({
+      success: true,
+      data: resultSongs,
+    });
+  } catch (error) {
+    console.error("Get similar songs error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể lấy danh sách bài hát tương tự.",
+      error: error.message,
+    });
+  }
+};

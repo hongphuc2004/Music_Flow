@@ -30,7 +30,7 @@ import {
   HistoryRounded as HistoryIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientAiApi } from '../../services/client/client.service';
+import { useAssistant } from '../../features/assistant/AssistantProvider';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
@@ -333,14 +333,22 @@ export default function ClientAiMood() {
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // State
-  const [conversations, setConversations] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [playlists, setPlaylists] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
+  const {
+    conversations,
+    activeConversationId,
+    messages,
+    playlists,
+    isLoading,
+    setScope,
+    sendMessage,
+    loadConversations,
+    loadConversationDetail,
+    startNewConversation,
+    deleteConversation,
+  } = useAssistant();
+
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
-  const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModelPicker, setShowModelPicker] = useState(false);
@@ -364,176 +372,42 @@ export default function ClientAiMood() {
   // Load history on mount or when session changes
   useEffect(() => {
     if (!isLoggedIn || !userId) {
-      setConversations([]);
-      setMessages([]);
-      setPlaylists([]);
-      setActiveConversationId(null);
-      setError('');
       setIsHistoryLoading(false);
       return;
     }
 
-    const load = async () => {
-      setIsHistoryLoading(true);
-      try {
-        const res = await clientAiApi.getHistory();
-        const data = res.data;
-        if (data.success) {
-          const convs = data.conversations || [];
-          const pls = (data.playlists || []).filter((p) => (p.songs || []).length > 0);
-          setConversations(convs);
-          setPlaylists(pls);
-          if (convs.length > 0) {
-            setActiveConversationId(convs[0]._id);
-            await loadConversation(convs[0]._id, pls);
-          } else {
-            setActiveConversationId(null);
-            setMessages([]);
-            setPlaylists([]);
-          }
-        }
-      } catch {
-        setError('Không thể tải lịch sử. Vui lòng thử lại.');
-      } finally {
-        setIsHistoryLoading(false);
-      }
-    };
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, userId]);
+    setScope('mood');
+    loadConversations('mood').finally(() => {
+      setIsHistoryLoading(false);
+    });
+  }, [isLoggedIn, userId, setScope, loadConversations]);
 
-  const loadConversation = async (conversationId, existingPlaylists) => {
-    try {
-      const res = await clientAiApi.getConversation(conversationId);
-      const data = res.data;
-      if (data.success) {
-        const msgs = (data.messages || []).map((m) => ({
-          ...m,
-          playlistId: m.metadata?.playlistId || null,
-        }));
-        const pls = (data.playlists || []).filter((p) => (p.songs || []).length > 0);
-        setMessages(msgs);
-        setPlaylists(pls.length > 0 ? pls : (existingPlaylists || []));
-        setActiveConversationId(conversationId);
-        setError('');
-        setTimeout(scrollToBottom, 100);
-      }
-    } catch {
-      // silent fail for conversation switch
-    }
+  // Load conversation details when active conversation changes or when click history
+  const loadConversation = async (conversationId) => {
+    await loadConversationDetail(conversationId);
+    setTimeout(scrollToBottom, 100);
   };
 
   const handleSend = async (overridePrompt) => {
     const text = (overridePrompt || prompt).trim();
     if (!text || isLoading) return;
 
-    setIsLoading(true);
-    setError('');
     setPrompt('');
-
-    // Optimistic user message
-    const tempUserMsg = { role: 'user', content: text, _id: `tmp-${Date.now()}`, playlistId: null };
-    setMessages((prev) => [...prev, tempUserMsg]);
-    setTimeout(scrollToBottom, 50);
-
-    try {
-      const payload = { prompt: text };
-      if (activeConversationId) payload.conversationId = activeConversationId;
-      // Pass selected model so backend can prefer it in the cascade
-      if (selectedModel) payload.model = selectedModel;
-
-      const res = await clientAiApi.sendPrompt(payload);
-      const data = res.data;
-
-      if (data.success) {
-        const newMsgs = (data.messages || []).map((m) => ({
-          ...m,
-          playlistId: m.metadata?.playlistId || null,
-        }));
-        const conv = data.conversation;
-        const playlist = data.playlist;
-
-        setMessages((prev) => {
-          // Replace temp user msg + append new messages
-          const without = prev.filter((m) => m._id !== tempUserMsg._id);
-          return [...without, ...newMsgs];
-        });
-
-        if (playlist && (playlist.songs || []).length > 0) {
-          setPlaylists((prev) => {
-            const exists = prev.some((p) => p._id === playlist._id);
-            return exists ? prev : [playlist, ...prev];
-          });
-        }
-
-        if (conv) {
-          setActiveConversationId(conv._id);
-          setConversations((prev) => {
-            const exists = prev.some((c) => c._id === conv._id);
-            return exists ? prev : [conv, ...prev];
-          });
-        }
-
-        // Auto-play: play song immediately if matchStatus is chat_play, OR if user used a play keyword and songs are returned
-        const cleanText = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const hasPlayVerb = /\b(phat|bat|mo|nghe|play|chay)\b/i.test(cleanText);
-        const isChatPlay = data.matchStatus === 'chat_play' || 
-                           (hasPlayVerb && (data.songs || []).length > 0) ||
-                           (!playlist && (data.songs || []).length > 0);
-
-        if (isChatPlay && (data.songs || []).length > 0) {
-          const songToPlay = data.songs[0];
-          if (songToPlay?._id) {
-            playSong(songToPlay, { queue: data.songs });
-            const title = songToPlay.title || 'bài hát';
-            showToast({ severity: 'success', title: '🎵 Đang phát', message: `"${title}" đang được phát!` });
-          }
-        }
-
-        setTimeout(scrollToBottom, 100);
-      } else {
-        setMessages((prev) => prev.filter((m) => m._id !== tempUserMsg._id));
-        setError(data.message || 'AI không thể phản hồi lúc này.');
-      }
-    } catch (err) {
-      setMessages((prev) => prev.filter((m) => m._id !== tempUserMsg._id));
-      const status = err?.response?.status;
-      if (status === 401 || status === 403) {
-        setError('Bạn cần đăng nhập để sử dụng AI Mood Music.');
-      } else {
-        setError('Lỗi kết nối. Vui lòng thử lại sau.');
-      }
-    } finally {
-      setIsLoading(false);
-      inputRef.current?.focus();
-    }
+    setError('');
+    
+    await sendMessage(text);
+    setTimeout(scrollToBottom, 100);
   };
 
   const handleNewConversation = () => {
-    setActiveConversationId(null);
-    setMessages([]);
-    setPlaylists([]);
+    startNewConversation('mood');
     setError('');
     setPrompt('');
     inputRef.current?.focus();
   };
 
   const handleDeleteConversation = async (convId) => {
-    try {
-      await clientAiApi.deleteConversation(convId);
-      setConversations((prev) => prev.filter((c) => c._id !== convId));
-      if (activeConversationId === convId) {
-        const remaining = conversations.filter((c) => c._id !== convId);
-        if (remaining.length > 0) {
-          await loadConversation(remaining[0]._id);
-        } else {
-          handleNewConversation();
-        }
-      }
-      showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa cuộc trò chuyện.' });
-    } catch {
-      showToast({ severity: 'error', title: 'Lỗi', message: 'Không thể xóa cuộc trò chuyện.' });
-    }
+    await deleteConversation(convId);
   };
 
   const handlePlaySong = (song, queue) => {
@@ -543,7 +417,6 @@ export default function ClientAiMood() {
   const handlePlayAll = (songs) => {
     if (songs.length > 0) {
       playSong(songs[0], { queue: songs });
-      showToast({ severity: 'success', title: 'Đang phát', message: `Phát ${songs.length} bài hát.` });
     }
   };
 

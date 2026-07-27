@@ -6,6 +6,8 @@ import { refreshAccessToken, setAccessToken } from './services/api';
 import { notifyClientSessionChanged } from './hooks/useClientSession';
 import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/routePreload';
 import { ColorModeContext } from './context/ColorModeContext';
+import { AssistantProvider } from './features/assistant/AssistantProvider';
+import AssistantHost from './features/assistant/AssistantHost';
 
 const Dashboard = createLazyRoute('/');
 const Accounts = createLazyRoute('/accounts');
@@ -244,8 +246,9 @@ function App() {
         <CssBaseline />
         <AppToastProvider>
           <Router>
-            <RouteProviders>
-              <Suspense fallback={<RouteFallback />}>
+            <AssistantProvider>
+              <RouteProviders>
+                <Suspense fallback={<RouteFallback />}>
                 <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
@@ -385,7 +388,9 @@ function App() {
           <Route path="*" element={<HomeRedirect />} />
               </Routes>
               </Suspense>
-            </RouteProviders>
+              </RouteProviders>
+              <AssistantHost />
+            </AssistantProvider>
           </Router>
         </AppToastProvider>
     </ThemeProvider>

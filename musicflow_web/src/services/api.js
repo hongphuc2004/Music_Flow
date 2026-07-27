@@ -228,6 +228,7 @@ export {
   clientTopicsApi,
   clientArtistApi,
   clientAiApi,
+  clientAssistantApi,
   clientUserApi,
   clientCommentsApi,
   resolveSongStreamUrl

@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { clientSongsApi, resolveSongStreamUrl } from '../../../services/client/client.service';
 import { findActiveLyricIndex, parseLyrics } from '../../../utils/lyrics';
+import { useAssistant } from '../../../features/assistant/AssistantProvider';
 
 const ClientPlayerStateContext = createContext(null);
 const ClientPlayerActionsContext = createContext(null);
@@ -62,6 +63,21 @@ export function ClientPlayerProvider({ children }) {
   const [duration, setDuration] = useState(0);
   const [lyricsData, setLyricsData] = useState({ isSynced: false, lines: [], plainText: '' });
 
+  const [autoplay, setAutoplay] = useState(() => {
+    return localStorage.getItem('musicflow_autoplay') !== 'false';
+  });
+
+  const autoplayRef = useRef(autoplay);
+  useEffect(() => {
+    autoplayRef.current = autoplay;
+    localStorage.setItem('musicflow_autoplay', String(autoplay));
+  }, [autoplay]);
+
+  const isPrefetchingAutoplayRef = useRef(false);
+  const prefetchedSongIdRef = useRef(null);
+  const prefetchedSongsRef = useRef([]);
+  const abortControllerRef = useRef(null);
+
   const currentSongRef = useRef(null);
   const queueRef = useRef([]);
   const queueIndexRef = useRef(0);
@@ -83,6 +99,115 @@ export function ClientPlayerProvider({ children }) {
       submitted: false,
     };
   }, []);
+
+  const toggleAutoplay = useCallback(() => {
+    setAutoplay((prev) => !prev);
+  }, []);
+
+  const prefetchAutoplaySongs = useCallback(async (songId) => {
+    if (isPrefetchingAutoplayRef.current) return;
+    isPrefetchingAutoplayRef.current = true;
+    prefetchedSongsRef.current = [];
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const response = await clientSongsApi.getSimilar(songId, { limit: 10 }, {
+        signal: abortControllerRef.current.signal
+      });
+      if (response.data?.success && Array.isArray(response.data?.data)) {
+        prefetchedSongsRef.current = response.data.data;
+        prefetchedSongIdRef.current = songId;
+      }
+    } catch (err) {
+      if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+        console.warn('Failed to prefetch autoplay songs:', err.message);
+      }
+    } finally {
+      isPrefetchingAutoplayRef.current = false;
+    }
+  }, []);
+
+  const appendAutoplaySongs = useCallback((songsList, audioInstance) => {
+    const activeQueue = [...queueRef.current];
+    const activeIndex = queueIndexRef.current;
+
+    const existingIds = new Set(activeQueue.map(s => s._id));
+    const newSongs = songsList.filter(s => !existingIds.has(s._id));
+
+    if (newSongs.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const updatedQueue = [...activeQueue, ...newSongs];
+    const nextIndex = activeIndex + 1;
+    const nextSong = normalizeSong(updatedQueue[nextIndex]);
+
+    if (!nextSong?._id) {
+      setIsPlaying(false);
+      return;
+    }
+
+    setQueue(updatedQueue);
+    setQueueIndex(nextIndex);
+    queueRef.current = updatedQueue;
+    queueIndexRef.current = nextIndex;
+
+    currentSongRef.current = nextSong;
+    resetPlayTracking(nextSong._id);
+    if (audioInstance) {
+      audioInstance.src = nextSong.streamUrl;
+      audioInstance.currentTime = 0;
+      setCurrentSong(nextSong);
+      setCurrentTime(0);
+      loadLyrics(nextSong._id);
+      saveRecentPlayedSong(updatedQueue[nextIndex]);
+      audioInstance.play().catch(() => setIsPlaying(false));
+    }
+  }, [resetPlayTracking, loadLyrics]);
+
+  const handleAutoplayEnd = useCallback(async (audioInstance) => {
+    const activeSong = currentSongRef.current;
+    if (!activeSong?._id) {
+      setIsPlaying(false);
+      return;
+    }
+
+    if (prefetchedSongIdRef.current === activeSong._id && prefetchedSongsRef.current.length > 0) {
+      const listToAppend = prefetchedSongsRef.current;
+      prefetchedSongsRef.current = [];
+      prefetchedSongIdRef.current = null;
+      appendAutoplaySongs(listToAppend, audioInstance);
+      return;
+    }
+
+    if (isPrefetchingAutoplayRef.current) return;
+    isPrefetchingAutoplayRef.current = true;
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const response = await clientSongsApi.getSimilar(activeSong._id, { limit: 10 }, {
+        signal: abortControllerRef.current.signal
+      });
+      if (response.data?.success && Array.isArray(response.data?.data) && response.data.data.length > 0) {
+        appendAutoplaySongs(response.data.data, audioInstance);
+      } else {
+        setIsPlaying(false);
+      }
+    } catch (err) {
+      if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+        console.warn('Autoplay fetch failed:', err.message);
+      }
+      setIsPlaying(false);
+    } finally {
+      isPrefetchingAutoplayRef.current = false;
+    }
+  }, [appendAutoplaySongs]);
 
   const finishListeningSegment = useCallback(() => {
     const tracking = playTrackingRef.current;
@@ -148,6 +273,21 @@ export function ClientPlayerProvider({ children }) {
       if (now - lastTimelineUpdateRef.current < 400 && !audio.ended) return;
       lastTimelineUpdateRef.current = now;
       setCurrentTime(audio.currentTime || 0);
+
+      // PREFETCH AUTOPLAY TRIGGER (80% progress on last song in queue)
+      const activeSong = currentSongRef.current;
+      const durationVal = audio.duration || activeSong?.duration || 0;
+      if (
+        autoplayRef.current &&
+        activeSong?._id &&
+        durationVal > 0 &&
+        audio.currentTime / durationVal >= 0.8 &&
+        prefetchedSongIdRef.current !== activeSong._id &&
+        !isPrefetchingAutoplayRef.current &&
+        queueIndexRef.current === queueRef.current.length - 1
+      ) {
+        prefetchAutoplaySongs(activeSong._id);
+      }
     };
     const handleLoadedMetadata = () => setDuration(audio.duration || 0);
     const handlePlaying = () => {
@@ -192,6 +332,10 @@ export function ClientPlayerProvider({ children }) {
       }
 
       if (nextIndex === null) {
+        if (autoplayRef.current && currentSongRef.current?._id) {
+          handleAutoplayEnd(audio);
+          return;
+        }
         setIsPlaying(false);
         return;
       }
@@ -238,6 +382,7 @@ export function ClientPlayerProvider({ children }) {
   useEffect(() => {
     currentSongRef.current = currentSong;
   }, [currentSong]);
+
 
   useEffect(() => {
     queueRef.current = queue;
@@ -291,6 +436,41 @@ export function ClientPlayerProvider({ children }) {
       setIsPlaying(false);
     }
   }, [finishListeningSegment, loadLyrics, resetPlayTracking]);
+
+  // Try to use assistant context if available
+  let assistant = null;
+  try {
+    assistant = useAssistant();
+  } catch (e) {
+    // Outside assistant provider boundary
+  }
+
+  // Register capabilities and sync current song with assistant
+  useEffect(() => {
+    if (assistant) {
+      assistant.registerCapability('PLAY_SONG', (payload) => {
+        if (payload?.song) {
+          playSong(payload.song, { queue: payload.songs || [payload.song] });
+        }
+      });
+      assistant.registerCapability('LOAD_PLAYLIST', (payload) => {
+        if (payload?.songs && payload.songs.length > 0) {
+          playSong(payload.songs[0], { queue: payload.songs });
+        }
+      });
+      
+      return () => {
+        assistant.unregisterCapability('PLAY_SONG');
+        assistant.unregisterCapability('LOAD_PLAYLIST');
+      };
+    }
+  }, [assistant, playSong]);
+
+  useEffect(() => {
+    if (assistant) {
+      assistant.setCurrentSong(currentSong);
+    }
+  }, [assistant, currentSong]);
 
   const playSongAtIndex = useCallback(async (nextIndex) => {
     const activeQueue = queueRef.current;
@@ -384,8 +564,16 @@ export function ClientPlayerProvider({ children }) {
       nextIndex = 0;
     }
 
-    return nextIndex === null ? false : playSongAtIndex(nextIndex);
-  }, [playSongAtIndex]);
+    if (nextIndex === null) {
+      if (autoplayRef.current && currentSongRef.current?._id) {
+        await handleAutoplayEnd(audioRef.current);
+        return true;
+      }
+      return false;
+    }
+
+    return playSongAtIndex(nextIndex);
+  }, [playSongAtIndex, handleAutoplayEnd]);
 
   const toggleShuffle = useCallback(() => {
     setShuffle((prev) => {
@@ -424,6 +612,7 @@ export function ClientPlayerProvider({ children }) {
     lyricsLines: lyricsData.lines,
     hasSyncedLyrics: lyricsData.isSynced,
     activeLyricIndex,
+    autoplay,
   }), [
     currentSong,
     queue,
@@ -436,6 +625,7 @@ export function ClientPlayerProvider({ children }) {
     lyricsData.lines,
     lyricsData.isSynced,
     activeLyricIndex,
+    autoplay,
   ]);
 
   const actionsValue = useMemo(() => ({
@@ -446,6 +636,7 @@ export function ClientPlayerProvider({ children }) {
     cycleRepeatMode,
     togglePlay,
     seekTo,
+    toggleAutoplay,
   }), [
     playSong,
     playPrevious,
@@ -454,6 +645,7 @@ export function ClientPlayerProvider({ children }) {
     cycleRepeatMode,
     togglePlay,
     seekTo,
+    toggleAutoplay,
   ]);
 
   const metaValue = useMemo(() => ({

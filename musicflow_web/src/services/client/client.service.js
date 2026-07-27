@@ -18,6 +18,7 @@ export const clientSongsApi = {
     cachedGet('/songs/rankings', { params: { period } }, 30000),
   search: (params) => api.get('/songs/search', { params }),
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
+  getSimilar: (songId, params = {}, options = {}) => api.get(`/songs/${songId}/similar`, { params, ...options }),
   trackPlay: (songId) => api.post(`/songs/${songId}/play`),
   getMyUploads: () => api.get('/songs/my-uploads'),
   getMyDownloadHistory: (params) => api.get('/songs/download-history', { params }),
@@ -73,6 +74,14 @@ export const clientAiApi = {
   getConversation: (id) => api.get(`/ai/mood/conversations/${id}`),
   sendPrompt: (payload) => api.post('/ai/playlist', payload),
   deleteConversation: (id) => api.delete(`/ai/mood/conversations/${id}`),
+};
+
+export const clientAssistantApi = {
+  getConversations: (params) => api.get('/ai/assistant/conversations', { params }),
+  getConversation: (id) => api.get(`/ai/assistant/conversations/${id}`),
+  sendMessage: (payload) => api.post('/ai/assistant/messages', payload),
+  deleteConversation: (id) => api.delete(`/ai/assistant/conversations/${id}`),
+  confirmAction: (actionId) => api.post(`/ai/assistant/actions/${actionId}/confirm`),
 };
 
 // Client User API

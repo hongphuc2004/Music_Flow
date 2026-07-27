@@ -131,6 +131,21 @@ export function ClientPlayerProvider({ children }) {
     }
   }, []);
 
+  const loadLyrics = useCallback(async (songId) => {
+    if (!songId) {
+      setLyricsData({ isSynced: false, lines: [], plainText: '' });
+      return;
+    }
+
+    try {
+      const response = await clientSongsApi.getLyrics(songId);
+      const parsed = parseLyrics(response.data?.lyrics || '');
+      setLyricsData(parsed);
+    } catch {
+      setLyricsData({ isSynced: false, lines: [], plainText: '' });
+    }
+  }, []);
+
   const appendAutoplaySongs = useCallback((songsList, audioInstance) => {
     const activeQueue = [...queueRef.current];
     const activeIndex = queueIndexRef.current;
@@ -245,21 +260,6 @@ export function ClientPlayerProvider({ children }) {
       // Allow a retry during the same listening session if the request fails.
       tracking.submitted = false;
     });
-  }, []);
-
-  const loadLyrics = useCallback(async (songId) => {
-    if (!songId) {
-      setLyricsData({ isSynced: false, lines: [], plainText: '' });
-      return;
-    }
-
-    try {
-      const response = await clientSongsApi.getLyrics(songId);
-      const parsed = parseLyrics(response.data?.lyrics || '');
-      setLyricsData(parsed);
-    } catch {
-      setLyricsData({ isSynced: false, lines: [], plainText: '' });
-    }
   }, []);
 
   useEffect(() => {

@@ -4,6 +4,9 @@ const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
 const dotenv = require("dotenv");
+const rateLimit = require("express-rate-limit");
+const morgan = require("morgan");
+const logger = require("./utils/logger");
 
 const envFileFromVar = process.env.ENV_FILE;
 const envFileName = envFileFromVar
@@ -39,35 +42,23 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http:
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-function createRateLimiter({ windowMs, max, message }) {
-  const hitsByKey = new Map();
-
-  return (req, res, next) => {
-    const now = Date.now();
-    const key = `${req.ip || "unknown"}:${req.path}`;
-    const bucket = hitsByKey.get(key);
-
-    if (!bucket || now > bucket.resetAt) {
-      hitsByKey.set(key, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-
-    if (bucket.count >= max) {
-      return res.status(429).json({
-        success: false,
-        message,
-      });
-    }
-
-    bucket.count += 1;
-    return next();
-  };
-}
-
-const authRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
+// Rate limiter — using express-rate-limit (proper in-process store with TTL cleanup).
+// The previous custom implementation used a Map that was never cleaned up,
+// causing a memory leak under sustained traffic.
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 50,
-  message: "Too many authentication requests. Please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many authentication requests. Please try again later." },
+});
+
+const generalRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests. Please slow down." },
 });
 
 app.use(cors({
@@ -82,10 +73,28 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// HTTP Request logging using Morgan, piped to Winston
+const morganFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
+app.use(
+  morgan(morganFormat, {
+    stream: {
+      write: (message) => logger.info(message.trim()),
+    },
+  })
+);
+
 app.use("/api/auth", authRateLimiter);
 app.use("/api/admin/auth/login", authRateLimiter);
 app.use("/api/artist/login", authRateLimiter);
 app.use("/api/artist/google", authRateLimiter);
+
+// Health check endpoint (no rate limit, no auth)
+app.get("/health", (req, res) =>
+  res.json({ status: "ok", uptime: Math.floor(process.uptime()) })
+);
+
+// General rate limit applies to all API routes
+app.use("/api", generalRateLimiter);
 
 // routes
 app.use("/api/upload", uploadRoute);
@@ -135,7 +144,7 @@ app.use((err, req, res, next) => {
     });
   }
 
-  console.error("Unhandled server error:", err);
+  logger.error("Unhandled server error: %s", err.stack || err.message || err);
   return res.status(500).json({
     success: false,
     message: "Internal server error",
@@ -148,23 +157,23 @@ mongoose
     serverSelectionTimeoutMS: 5000
   })
   .then((conn) => {
-    console.log(`Environment: ${process.env.NODE_ENV}`);
-    console.log(`MongoDB connected: ${conn.connection.host}`);
+    logger.info(`Environment: ${process.env.NODE_ENV}`);
+    logger.info(`MongoDB connected: ${conn.connection.host}`);
     startMonthlyListenersJob();
   })
-  .catch((err) => console.error("MongoDB connection error on startup:", err));
+  .catch((err) => logger.error("MongoDB connection error on startup: %s", err.stack || err));
 
 mongoose.connection.on('error', err => {
-  console.error('Mongoose connection error:', err);
+  logger.error('Mongoose connection error: %s', err.stack || err);
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.log('Mongoose disconnected');
+  logger.info('Mongoose disconnected');
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Env file: ${envFileName}`);
-  console.log(`Cloudinary folder: ${cloudinaryRootFolder}`);
+  logger.info(`Server running on port ${PORT}`);
+  logger.info(`Env file: ${envFileName}`);
+  logger.info(`Cloudinary folder: ${cloudinaryRootFolder}`);
 });

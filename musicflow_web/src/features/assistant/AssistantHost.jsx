@@ -52,6 +52,71 @@ export default function AssistantHost() {
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Drag and drop state & handlers for floating launcher button
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const buttonPosRef = useRef({ x: 0, y: 0 });
+  const dragThreshold = 5;
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0) return;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    buttonPosRef.current = { ...position };
+
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.currentTarget.addEventListener('pointermove', handlePointerMove);
+    e.currentTarget.addEventListener('pointerup', handlePointerUp);
+    e.currentTarget.addEventListener('pointercancel', handlePointerUp);
+  };
+
+  const handlePointerMove = (e) => {
+    const deltaX = e.clientX - dragStartRef.current.x;
+    const deltaY = e.clientY - dragStartRef.current.y;
+
+    if (!isDragging && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+      setIsDragging(true);
+    }
+
+    let newX = buttonPosRef.current.x + deltaX;
+    let newY = buttonPosRef.current.y + deltaY;
+
+    const btnSize = 56;
+    const padding = 12;
+    const nativeRight = 24;
+    const nativeBottom = hasPlayer ? 104 : 24;
+
+    const maxRight = nativeRight - padding;
+    const maxLeft = -(window.innerWidth - nativeRight - btnSize - padding);
+    const maxBottom = nativeBottom - padding;
+    const maxTop = -(window.innerHeight - nativeBottom - btnSize - padding);
+
+    newX = Math.max(maxLeft, Math.min(maxRight, newX));
+    newY = Math.max(maxTop, Math.min(maxBottom, newY));
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    e.currentTarget.removeEventListener('pointermove', handlePointerMove);
+    e.currentTarget.removeEventListener('pointerup', handlePointerUp);
+    e.currentTarget.removeEventListener('pointercancel', handlePointerUp);
+
+    setTimeout(() => {
+      setIsDragging(false);
+    }, 50);
+  };
+
+  const handleButtonClick = (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    setIsOpen(true);
+  };
+
   const userRole = localStorage.getItem('role');
   const hasPlayer = userRole === 'user'; // Client player is active for regular user role
 
@@ -105,7 +170,8 @@ export default function AssistantHost() {
       {!isOpen && (
         <Tooltip title="Trợ lý AI MusicFlow" placement="left">
           <IconButton
-            onClick={() => setIsOpen(true)}
+            onPointerDown={handlePointerDown}
+            onClick={handleButtonClick}
             sx={{
               position: 'fixed',
               bottom: hasPlayer ? '104px' : '24px', // Shift up on client view to clear player bar
@@ -115,14 +181,17 @@ export default function AssistantHost() {
               bgcolor: 'primary.main',
               color: 'white',
               boxShadow: '0 8px 32px rgba(108, 99, 255, 0.4)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: `translate(${position.x}px, ${position.y}px)`,
+              cursor: isDragging ? 'grabbing' : 'pointer',
+              touchAction: 'none',
+              transition: 'background-color 0.2s, box-shadow 0.2s, color 0.2s',
               '&:hover': {
                 bgcolor: 'primary.dark',
-                transform: 'scale(1.1) rotate(10deg)',
+                transform: `translate(${position.x}px, ${position.y}px) scale(1.1) rotate(10deg)`,
                 boxShadow: '0 12px 40px rgba(108, 99, 255, 0.6)',
               },
               '&:active': {
-                transform: 'scale(0.95)',
+                transform: `translate(${position.x}px, ${position.y}px) scale(0.95)`,
               },
             }}
           >

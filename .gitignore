@@ -78,3 +78,7 @@ backup
 
 # Backend temporary uploads (multer)
 musicflow_backend/uploads/
+
+# Ignore all dot-directories (IDE/editor configs, agent folders, etc.)
+.*/
+

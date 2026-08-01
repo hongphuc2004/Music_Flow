@@ -7,6 +7,7 @@ const AssistantConversation = require("../models/assistant-conversation.model");
 const AssistantMessage = require("../models/assistant-message.model");
 const MoodPlaylist = require("../models/mood-playlist.model");
 const User = require("../models/user.model");
+const { normalizeText, unique, escapeRegex, extractPromptTerms } = require("../utils/string.util");
 
 const MAX_PLAYLIST_SONGS = 20;
 const PLAYLIST_MIN_TARGET_SONGS = 15;
@@ -49,37 +50,6 @@ const MOOD_TOPIC_MAP = {
     keywords: ["tuc gian", "angry", "buc", "rock", "metal", "rage", "aggressive"],
   },
 };
-
-// --- UTILITY FUNCTIONS ---
-function normalizeText(value = "") {
-  return String(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\u0111/g, "d")
-    .replace(/Ä‘/g, "d")
-    .replace(/[^a-z0-9\s&-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function unique(values) {
-  return [...new Set(values.filter(Boolean))];
-}
-
-function escapeRegex(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function extractPromptTerms(prompt = "") {
-  const normalized = normalizeText(prompt);
-  return unique(
-    normalized
-      .split(" ")
-      .map((term) => term.trim())
-      .filter((term) => term.length >= 2)
-  ).slice(0, 20);
-}
 
 function isPlaylistIntent(prompt = "") {
   const text = normalizeText(prompt);

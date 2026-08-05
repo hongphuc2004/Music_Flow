@@ -70,3 +70,17 @@ export const topicsApi = {
   delete: (id) => api.delete(`/admin/topics/${id}`),
   getSongsByTopic: (id) => api.get(`/admin/topics/${id}/songs`),
 };
+
+// Premium Management API
+export const adminPremiumApi = {
+  getStats: () => api.get('/admin/premium/stats'),
+  // Plans CRUD
+  getPlans: () => api.get('/admin/premium/plans'),
+  createPlan: (payload) => api.post('/admin/premium/plans', payload),
+  updatePlan: (id, payload) => api.put(`/admin/premium/plans/${id}`, payload),
+  deletePlan: (id) => api.delete(`/admin/premium/plans/${id}`),
+  // Transactions
+  getTransactions: (params) => api.get('/admin/premium/transactions', { params }),
+  // Subscriptions
+  getSubscriptions: (params) => api.get('/admin/premium/subscriptions', { params }),
+};

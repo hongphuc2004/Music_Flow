@@ -719,6 +719,12 @@ class AssistantService {
       throw new Error("Prompt is empty");
     }
 
+    // Kiểm tra cước AIDJ / Assistant nếu là tài khoản User
+    if (actorType === "User") {
+      const aiQuotaService = require("./aiQuota.service");
+      await aiQuotaService.checkQuota(actorId);
+    }
+
     // 1. Resolve or Create Conversation
     let conversation = null;
     if (conversationId && mongoose.Types.ObjectId.isValid(conversationId)) {

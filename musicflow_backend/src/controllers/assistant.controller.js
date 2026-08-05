@@ -44,7 +44,8 @@ exports.sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("Assistant sendMessage error:", error);
-    return res.status(500).json({
+    const status = error.status || 500;
+    return res.status(status).json({
       success: false,
       message: error.message || "Đã xảy ra lỗi khi trợ lý xử lý tin nhắn.",
     });

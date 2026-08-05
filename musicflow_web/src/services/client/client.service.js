@@ -92,6 +92,20 @@ export const clientUserApi = {
   }),
 };
 
+// Client Plans API
+export const clientPlansApi = {
+  getActive: () => api.get('/plans'),
+};
+
+// Client Subscription API
+export const clientSubscriptionApi = {
+  checkout: (payload) => api.post('/subscriptions/checkout', payload),
+  mockConfirm: (payload) => api.post('/subscriptions/mock-confirm', payload),
+  vnpayReturn: (params) => api.get('/subscriptions/vnpay-return', { params }),
+  getStatus: (ref) => api.get(`/subscriptions/transactions/${ref}/status`),
+  getCurrent: () => api.get('/subscriptions/current'),
+};
+
 // Client Comments API
 export const clientCommentsApi = {
   getSongComments: (songId, params) => api.get(`/comments/song/${songId}`, { params }),

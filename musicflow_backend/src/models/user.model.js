@@ -51,6 +51,20 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Artist",
     }],
+    isPremium: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    premiumExpiry: {
+      type: Date,
+      default: null,
+    },
+    premiumPlan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Plan",
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -83,9 +83,10 @@ exports.aiPlaylist = async (req, res) => {
         message: "AI chat chưa sẵn sàng: thiếu cấu hình GEMINI_API_KEY ở backend.",
       });
     }
-    return res.status(500).json({
+    const status = error.status || 500;
+    return res.status(status).json({
       success: false,
-      message: `Đã xảy ra lỗi khi xử lý AI: ${error.message || "unknown error"}`,
+      message: error.message || "Đã xảy ra lỗi khi xử lý AI.",
     });
   }
 };

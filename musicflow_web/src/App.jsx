@@ -15,6 +15,7 @@ const Songs = createLazyRoute('/songs');
 const Topics = createLazyRoute('/topics');
 const Playlists = createLazyRoute('/playlists');
 const Settings = createLazyRoute('/settings');
+const AdminPremium = createLazyRoute('/premium');
 const AdminLogin = createLazyRoute('/adminlogin');
 
 const ArtistAnalytics = createLazyRoute('/artist/analytics');
@@ -35,6 +36,8 @@ const ClientPlaylist = createLazyRoute('/client/playlists/:playlistId');
 const ClientGenres = createLazyRoute('/client/genres');
 const ClientRankings = createLazyRoute('/client/rankings');
 const ClientAiMood = createLazyRoute('/client/ai-mood');
+const ClientPremium = createLazyRoute('/client/premium');
+const ClientPaymentReturn = createLazyRoute('/client/premium/vnpay-return');
 const ClientPlayerBoundary = lazy(() => import('./components/Layout/client/ClientPlayerBoundary'));
 
 
@@ -379,11 +382,28 @@ function App() {
               </ClientRoute>
             }
           />
+          <Route
+            path="/client/premium"
+            element={
+              <ClientRoute requireAuth>
+                <ClientPremium />
+              </ClientRoute>
+            }
+          />
+          <Route
+            path="/client/premium/vnpay-return"
+            element={
+              <ClientRoute requireAuth>
+                <ClientPaymentReturn />
+              </ClientRoute>
+            }
+          />
           <Route path="/client" element={<Navigate to="/client/home" replace />} />
           <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
           <Route path="/songs" element={<ProtectedRoute><Songs /></ProtectedRoute>} />
           <Route path="/topics" element={<ProtectedRoute><Topics /></ProtectedRoute>} />
           <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
+          <Route path="/premium" element={<ProtectedRoute role="admin"><AdminPremium /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="*" element={<HomeRedirect />} />
               </Routes>

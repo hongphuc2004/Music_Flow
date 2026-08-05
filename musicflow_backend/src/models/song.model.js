@@ -49,6 +49,10 @@ const songSchema = new mongoose.Schema(
     duration: {
       type: Number,
     },
+    fileSize: {
+      type: Number,
+      default: 0,
+    },
 
     // 🖼️ IMAGE
     imageUrl: {

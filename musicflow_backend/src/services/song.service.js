@@ -188,7 +188,7 @@ const registerPlay = async (songId, req) => {
  * @returns {Promise<{ songId: string, title: string, audioUrl: string }>}
  */
 const downloadSong = async (songId, userId) => {
-  const song = await Song.findById(songId).select("_id title source allowDownload audioUrl");
+  const song = await Song.findById(songId).select("_id title source allowDownload audioUrl fileSize");
   if (!song) {
     const err = new Error("Không tìm thấy bài hát");
     err.status = 404;
@@ -201,8 +201,41 @@ const downloadSong = async (songId, userId) => {
     throw err;
   }
 
+  const SongDownloadEvent = require("../models/song-download-event.model");
+
   if (userId) {
-    const SongDownloadEvent = require("../models/song-download-event.model");
+    // Kiểm tra hạn mức Download (100MB) cho tài khoản Free
+    const user = await User.findById(userId).select("isPremium premiumExpiry");
+    const { hasPremiumAccess } = require("../utils/premium.util");
+    if (!user || !hasPremiumAccess(user)) {
+      const downloads = await SongDownloadEvent.find({ userId }).populate("songId", "fileSize");
+      const seenSongIds = new Set();
+      let totalDownloadedBytes = 0;
+      
+      for (const event of downloads) {
+        if (!event.songId) continue;
+        const sId = String(event.songId._id);
+        if (seenSongIds.has(sId)) continue;
+        seenSongIds.add(sId);
+        totalDownloadedBytes += event.songId.fileSize && event.songId.fileSize > 0
+          ? event.songId.fileSize
+          : 4.5 * 1024 * 1024; // Fallback 4.5MB
+      }
+
+      // Chỉ tính thêm dung lượng nếu bài hát này chưa từng được tải về
+      if (!seenSongIds.has(String(song._id))) {
+        const newDownloadSize = song.fileSize && song.fileSize > 0
+          ? song.fileSize
+          : 4.5 * 1024 * 1024; // Fallback 4.5MB
+        const downloadLimitBytes = 100 * 1024 * 1024; // 100MB
+        if (totalDownloadedBytes + newDownloadSize > downloadLimitBytes) {
+          const err = new Error(`Tài khoản miễn phí bị giới hạn 100MB dung lượng tải xuống. Bạn đã dùng ${(totalDownloadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp cần tải mới là ${(newDownloadSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp Premium để tải xuống không giới hạn.`);
+          err.status = 403;
+          throw err;
+        }
+      }
+    }
+
     SongDownloadEvent.create({
       userId,
       songId: song._id,
@@ -324,6 +357,28 @@ const uploadSong = async (body, files, userId, userRole) => {
     throw err;
   }
 
+  // Kiểm tra hạn mức Upload (50MB) của tài khoản Free
+  if (userRole === "user") {
+    const user = await User.findById(userId).select("isPremium premiumExpiry");
+    const { hasPremiumAccess } = require("../utils/premium.util");
+    if (!user || !hasPremiumAccess(user)) {
+      const userSongs = await Song.find({ uploadedBy: userId, source: "user" }).select("fileSize");
+      const totalUploadedBytes = userSongs.reduce((sum, s) => sum + (s.fileSize && s.fileSize > 0 ? s.fileSize : 4.8 * 1024 * 1024), 0); // Fallback 4.8MB
+      const newFileSize = audioFile.size || 0;
+      const uploadLimitBytes = 50 * 1024 * 1024; // 50MB
+      
+      if (totalUploadedBytes + newFileSize > uploadLimitBytes) {
+        // Dọn dẹp các tệp tạm thời multer
+        safeUnlink(audioFile.path);
+        if (imageFile) safeUnlink(imageFile.path);
+        
+        const err = new Error(`Tài khoản miễn phí bị giới hạn 50MB dung lượng tải lên. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp tải lên mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp Premium để tải lên không giới hạn.`);
+        err.status = 403;
+        throw err;
+      }
+    }
+  }
+
   const artists =
     userRole === "user" ? [] : await resolveArtistIds(body.artists);
   const topicIds = parseArrayField(body.topicIds);
@@ -366,6 +421,7 @@ const uploadSong = async (body, files, userId, userRole) => {
       audioUrl: audio.secure_url,
       audioPublicId: audio.public_id,
       duration: audio.duration,
+      fileSize: audioFile.size || 0,
       imageUrl,
       imagePublicId,
     });

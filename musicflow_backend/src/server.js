@@ -27,6 +27,9 @@ const playlistRoute = require("./routes/playlist.route");
 const favoriteRoute = require("./routes/favorite.route");
 const songLikeRoute = require("./routes/song-like.route");
 const userRoute = require("./routes/user.route");
+const planRoute = require("./routes/plan.route");
+const subscriptionRoute = require("./routes/subscription.route");
+const adminPremiumRoute = require("./routes/admin-premium.route");
 
 const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
@@ -105,6 +108,9 @@ app.use("/api/playlists", playlistRoute);
 app.use("/api/favorites", favoriteRoute);
 app.use("/api/song-likes", songLikeRoute);
 app.use("/api/users", userRoute);
+app.use("/api/plans", planRoute);
+app.use("/api/subscriptions", subscriptionRoute);
+app.use("/api/admin/premium", adminPremiumRoute);
 app.use("/api/admin", adminRoute);
 
 app.use("/api/comments", commentRoute);

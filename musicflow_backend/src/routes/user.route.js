@@ -25,6 +25,14 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
+    // Lazy check & tự động cập nhật trạng thái hết hạn Premium
+    if (user.isPremium && user.premiumExpiry && new Date(user.premiumExpiry) < new Date()) {
+      user.isPremium = false;
+      user.premiumExpiry = null;
+      user.premiumPlan = null;
+      await user.save();
+    }
+
     return res.json({
       success: true,
       user,

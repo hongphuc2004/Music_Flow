@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../widgets/music_flow_backdrop.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -59,24 +61,38 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return MusicFlowBackdrop(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        title: const Text(
-          'Playlist của bạn',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          if (_isLoggedIn)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _showCreatePlaylistDialog,
-              tooltip: 'Tạo playlist mới',
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              size: 20,
             ),
-        ],
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Playlist của bạn',
+            style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+          ),
+          actions: [
+            if (_isLoggedIn)
+              IconButton(
+                icon: Icon(Icons.add_rounded, color: isDark ? Colors.white : AppColors.lightTextPrimary),
+                onPressed: _showCreatePlaylistDialog,
+                tooltip: 'Tạo playlist mới',
+              ),
+          ],
+        ),
+        body: MiniPlayerWrapper(child: _buildBody()),
       ),
-      body: MiniPlayerWrapper(child: _buildBody()),
     );
   }
 
@@ -87,7 +103,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
 
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.greenAccent),
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
@@ -97,7 +113,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadPlaylists,
-      color: Colors.greenAccent,
+      color: AppColors.primary,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: _playlists.length,

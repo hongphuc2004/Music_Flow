@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/services/song_api_service.dart';
 import '../../../data/services/topic_api_service.dart';
 import '../../../data/models/song_model.dart';
@@ -49,8 +51,6 @@ class _SearchScreenState extends State<SearchScreen> {
     _loadSearchHistory();
     _loadTopics();
     _initSpeech();
-
-    // Lắng nghe focus của search input
     _searchFocusNode.addListener(_onFocusChange);
   }
 
@@ -148,7 +148,6 @@ class _SearchScreenState extends State<SearchScreen> {
   void _onFocusChange() {
     setState(() {
       _isSearchFocused = _searchFocusNode.hasFocus;
-      // Khi focus vào search, reset selected topic
       if (_isSearchFocused) {
         _selectedTopic = null;
         _topicSongs = [];
@@ -156,7 +155,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Load danh sách topics
   Future<void> _loadTopics() async {
     setState(() {
       _isLoadingTopics = true;
@@ -177,7 +175,6 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  // Load bài hát theo topic
   Future<void> _loadSongsByTopic(Topic topic) async {
     setState(() {
       _selectedTopic = topic;
@@ -188,7 +185,6 @@ class _SearchScreenState extends State<SearchScreen> {
       _searchResults = [];
     });
 
-    // Unfocus search input
     _searchFocusNode.unfocus();
 
     try {
@@ -205,7 +201,6 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  // Quay lại danh sách topics
   void _backToTopics() {
     setState(() {
       _selectedTopic = null;
@@ -213,7 +208,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Load lịch sử tìm kiếm từ SharedPreferences
   Future<void> _loadSearchHistory() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -221,7 +215,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Lưu lịch sử tìm kiếm
   Future<void> _saveToHistory(String query) async {
     if (query.trim().isEmpty) return;
 
@@ -235,7 +228,6 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {});
   }
 
-  // Xóa một mục lịch sử
   Future<void> _removeFromHistory(String query) async {
     final prefs = await SharedPreferences.getInstance();
     _searchHistory.remove(query);
@@ -243,7 +235,6 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {});
   }
 
-  // Xóa toàn bộ lịch sử
   Future<void> _clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('search_history');
@@ -252,7 +243,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Tìm kiếm với debounce
   void _onSearch(String query) {
     _debounceTimer?.cancel();
 
@@ -270,7 +260,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Thực hiện tìm kiếm
   Future<void> _performSearch(String query) async {
     if (query.trim().isEmpty) return;
 
@@ -297,15 +286,12 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  // Tìm kiếm từ lịch sử
   void _searchFromHistory(String query) {
     _searchController.text = query;
     _performSearch(query);
   }
 
-  // Xử lý nút back
   Future<bool> _onWillPop() async {
-    // Nếu đang xem kết quả tìm kiếm -> quay về lịch sử/topics
     if (_hasSearched) {
       setState(() {
         _hasSearched = false;
@@ -316,7 +302,6 @@ class _SearchScreenState extends State<SearchScreen> {
       return false;
     }
 
-    // Nếu đang focus search -> unfocus và quay về topics
     if (_isSearchFocused) {
       _searchFocusNode.unfocus();
       setState(() {
@@ -325,13 +310,11 @@ class _SearchScreenState extends State<SearchScreen> {
       return false;
     }
 
-    // Nếu đang xem bài hát của topic -> quay về danh sách topics
     if (_selectedTopic != null) {
       _backToTopics();
       return false;
     }
 
-    // Mặc định cho phép back (thoát)
     return true;
   }
 
@@ -347,12 +330,17 @@ class _SearchScreenState extends State<SearchScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildSearchBar(),
-              Expanded(child: _buildContent()),
+              Column(
+                children: [
+                  _buildSearchBar(),
+                  Expanded(child: _buildContent()),
+                ],
+              ),
+              if (_isListening) _buildVoiceSearchOverlay(),
             ],
           ),
         ),
@@ -360,66 +348,94 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // 🔍 Search bar
   Widget _buildSearchBar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              onChanged: (value) {
-                setState(() {});
-                _onSearch(value);
-              },
-              onSubmitted: _performSearch,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Tìm bài hát, nghệ sĩ...',
-                hintStyle: const TextStyle(color: Colors.grey),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_searchController.text.isNotEmpty)
-                      IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.grey),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _hasSearched = false;
-                            _searchResults = [];
-                            _artistResults = [];
-                          });
-                        },
-                      ),
-                    IconButton(
-                      icon: Icon(
-                        _isListening ? Icons.mic : Icons.mic_none,
-                        color: _isListening ? Colors.greenAccent : Colors.grey,
-                      ),
-                      tooltip: _isListening
-                          ? 'Dừng ghi âm'
-                          : 'Tìm bằng giọng nói',
-                      onPressed: _toggleVoiceSearch,
-                    ),
-                    const SizedBox(width: 4),
-                  ],
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: _isSearchFocused ? AppShadows.neonGlow(AppColors.primary) : null,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                onChanged: (value) {
+                  setState(() {});
+                  _onSearch(value);
+                },
+                onSubmitted: _performSearch,
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                  fontSize: 15,
                 ),
-                filled: true,
-                fillColor: Colors.grey.shade900,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                decoration: InputDecoration(
+                  hintText: 'Tìm bài hát, nghệ sĩ...',
+                  hintStyle: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary.withOpacity(0.6) : AppColors.lightTextSecondary.withOpacity(0.6),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_searchController.text.isNotEmpty)
+                        IconButton(
+                          icon: Icon(
+                            Icons.clear_rounded,
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _hasSearched = false;
+                              _searchResults = [];
+                              _artistResults = [];
+                            });
+                          },
+                        ),
+                      IconButton(
+                        icon: Icon(
+                          _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                          color: _isListening ? AppColors.secondary : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                        ),
+                        tooltip: 'Tìm bằng giọng nói',
+                        onPressed: _toggleVoiceSearch,
+                      ),
+                      const SizedBox(width: AppSpacing.xxs),
+                    ],
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? Colors.white.withOpacity(0.04)
+                      : Colors.black.withOpacity(0.02),
+                  contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          // Nút hủy khi đang focus search
           if (_isSearchFocused) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             TextButton(
               onPressed: () {
                 _searchFocusNode.unfocus();
@@ -431,7 +447,13 @@ class _SearchScreenState extends State<SearchScreen> {
                   _isSearchFocused = false;
                 });
               },
-              child: const Text('Hủy', style: TextStyle(color: Colors.white)),
+              child: Text(
+                'Hủy',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ],
@@ -439,9 +461,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // 📄 Nội dung chính
   Widget _buildContent() {
-    // Nếu đang focus vào search -> hiển thị lịch sử hoặc kết quả
     if (_isSearchFocused || _hasSearched) {
       if (_hasSearched) {
         return _buildSearchResult();
@@ -449,42 +469,51 @@ class _SearchScreenState extends State<SearchScreen> {
       return _buildSearchHistory();
     }
 
-    // Nếu đang xem bài hát theo topic
     if (_selectedTopic != null) {
       return _buildTopicSongs();
     }
 
-    // Mặc định hiển thị danh sách topics
     return _buildTopicsGrid();
   }
 
-  // 🎵 Danh sách Topics dạng Grid
   Widget _buildTopicsGrid() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_isLoadingTopics) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.green),
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
 
     if (_topicsErrorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
+              Icon(Icons.wifi_off_rounded, size: 56, color: theme.disabledColor),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Không tải được danh mục',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 _topicsErrorMessage!,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ElevatedButton(
                 onPressed: _loadTopics,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: const Text('Thu lai'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.smallBorder),
+                ),
+                child: const Text('Thử lại'),
               ),
             ],
           ),
@@ -497,11 +526,11 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.category_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            Icon(Icons.category_outlined, size: 56, color: Colors.grey),
+            SizedBox(height: AppSpacing.md),
             Text(
               'Chưa có chủ đề nào',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              style: TextStyle(color: Colors.grey, fontSize: 15),
             ),
           ],
         ),
@@ -511,24 +540,22 @@ class _SearchScreenState extends State<SearchScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
           child: Text(
-            'Vibes',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+            'Vibes & Thể loại',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisSpacing: AppSpacing.md,
               childAspectRatio: 1.6,
             ),
             itemCount: _topics.length,
@@ -542,82 +569,86 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // 🎨 Card cho mỗi Topic
   Widget _buildTopicCard(Topic topic) {
     return GestureDetector(
       onTap: () => _loadSongsByTopic(topic),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey.shade800,
-          borderRadius: BorderRadius.circular(8),
-          image: topic.avatar.isNotEmpty
-              ? DecorationImage(
-                  image: NetworkImage(topic.avatar),
-                  fit: BoxFit.cover,
-                )
-              : null,
-        ),
-        child: Stack(
-          children: [
-            // Overlay gradient để text dễ đọc hơn
-            if (topic.avatar.isNotEmpty)
+      child: ClipRRect(
+        borderRadius: AppRadius.mediumBorder,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: AppRadius.mediumBorder,
+            image: topic.avatar.isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(topic.avatar),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: Stack(
+            children: [
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.black.withOpacity(0.3), Colors.transparent],
+                    colors: [
+                      Colors.black.withOpacity(0.15),
+                      Colors.black.withOpacity(0.70),
+                    ],
                   ),
                 ),
               ),
-            Positioned(
-              left: 12,
-              top: 12,
-              child: Text(
-                topic.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Positioned(
+                left: AppSpacing.sm,
+                bottom: AppSpacing.sm,
+                child: Text(
+                  topic.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // 🎵 Danh sách bài hát theo Topic
   Widget _buildTopicSongs() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_isLoadingTopicSongs) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.green),
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
 
     if (_topicSongsErrorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
+              const Icon(Icons.error_outline_rounded, size: 56, color: Colors.grey),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 _topicSongsErrorMessage!,
                 style: const TextStyle(color: Colors.grey, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ElevatedButton(
                 onPressed: _selectedTopic == null
                     ? null
                     : () => _loadSongsByTopic(_selectedTopic!),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: const Text('Thu lai'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Thử lại'),
               ),
             ],
           ),
@@ -630,11 +661,11 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.music_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
+            const Icon(Icons.music_off_rounded, size: 56, color: Colors.grey),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Chưa có bài hát trong "${_selectedTopic?.name}"',
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
+              style: const TextStyle(color: Colors.grey, fontSize: 15),
             ),
           ],
         ),
@@ -645,18 +676,28 @@ class _SearchScreenState extends State<SearchScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            _selectedTopic?.name ?? '',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                  size: 20,
+                ),
+                onPressed: _backToTopics,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                _selectedTopic?.name ?? '',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
         ),
         Expanded(
           child: ListView.builder(
+            padding: const EdgeInsets.only(bottom: 24),
             itemCount: _topicSongs.length,
             itemBuilder: (context, index) {
               final song = _topicSongs[index];
@@ -668,18 +709,27 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // 🕐 Lịch sử tìm kiếm
   Widget _buildSearchHistory() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_searchHistory.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            Icon(
+              Icons.search_rounded,
+              size: 64,
+              color: isDark ? AppColors.darkTextSecondary.withOpacity(0.5) : AppColors.lightTextSecondary.withOpacity(0.5),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Tìm kiếm bài hát, nghệ sĩ yêu thích',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                fontSize: 15,
+              ),
             ),
           ],
         ),
@@ -690,23 +740,19 @@ class _SearchScreenState extends State<SearchScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Tìm kiếm gần đây',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               TextButton(
                 onPressed: _clearHistory,
-                child: const Text(
+                child: Text(
                   'Xóa tất cả',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: isDark ? AppColors.secondary : AppColors.primary),
                 ),
               ),
             ],
@@ -718,10 +764,20 @@ class _SearchScreenState extends State<SearchScreen> {
             itemBuilder: (context, index) {
               final query = _searchHistory[index];
               return ListTile(
-                leading: const Icon(Icons.history, color: Colors.grey),
-                title: Text(query, style: const TextStyle(color: Colors.white)),
+                leading: Icon(
+                  Icons.history_rounded,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                ),
+                title: Text(
+                  query,
+                  style: TextStyle(color: isDark ? Colors.white : AppColors.lightTextPrimary),
+                ),
                 trailing: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    size: 18,
+                  ),
                   onPressed: () => _removeFromHistory(query),
                 ),
                 onTap: () => _searchFromHistory(query),
@@ -733,11 +789,13 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // 📄 Danh sách kết quả tìm kiếm
   Widget _buildSearchResult() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.green),
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
 
@@ -746,12 +804,15 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_errorMessage!, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+            ),
+            const SizedBox(height: AppSpacing.md),
             ElevatedButton(
               onPressed: () => _performSearch(_searchController.text),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('Thu lai'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Thử lại'),
             ),
           ],
         ),
@@ -759,41 +820,34 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     if (_searchResults.isEmpty && _artistResults.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'Không tìm thấy kết quả',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
         ),
       );
     }
 
     return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
         if (_artistResults.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
             child: Text(
               'Nghệ sĩ',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           ..._artistResults.map(_buildArtistTile),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs),
         ],
         if (_searchResults.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
             child: Text(
               'Bài hát',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           ..._searchResults.map(_buildSongTile),
@@ -803,6 +857,9 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildArtistTile(SearchArtist artist) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListTile(
       onTap: () {
         Navigator.of(context).push(
@@ -812,55 +869,69 @@ class _SearchScreenState extends State<SearchScreen> {
         );
       },
       leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: Colors.grey.shade800,
-        backgroundImage: artist.avatar.isNotEmpty
-            ? NetworkImage(artist.avatar)
-            : null,
+        radius: 22,
+        backgroundColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        backgroundImage: artist.avatar.isNotEmpty ? NetworkImage(artist.avatar) : null,
         child: artist.avatar.isEmpty
-            ? const Icon(Icons.person, color: Colors.white70)
+            ? Icon(Icons.person_rounded, color: isDark ? Colors.white70 : Colors.black45)
             : null,
       ),
       title: Text(
         artist.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
+        style: TextStyle(
+          color: isDark ? Colors.white : AppColors.lightTextPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
         ),
       ),
-      subtitle: const Text('Nghệ sĩ', style: TextStyle(color: Colors.grey)),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      subtitle: Text(
+        'Nghệ sĩ',
+        style: TextStyle(
+          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          fontSize: 12,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+      ),
     );
   }
 
   Widget _buildSongTile(Song song) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return InkWell(
       onTap: () => widget.onSongTap?.call(song),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.small),
               child: Image.network(
                 song.imageUrl,
-                width: 54,
-                height: 54,
+                width: 52,
+                height: 52,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  width: 54,
-                  height: 54,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade800,
-                    borderRadius: BorderRadius.circular(8),
+                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    borderRadius: BorderRadius.circular(AppRadius.small),
                   ),
-                  child: const Icon(Icons.music_note, color: Colors.white),
+                  child: Icon(
+                    Icons.music_note_rounded,
+                    color: isDark ? Colors.white30 : Colors.black26,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,51 +941,52 @@ class _SearchScreenState extends State<SearchScreen> {
                     song.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     song.artists.join(', '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    style: TextStyle(
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      fontSize: 12,
+                    ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.play_arrow_rounded,
-                        color: Colors.grey,
-                        size: 16,
+                        color: isDark ? AppColors.darkTextSecondary.withOpacity(0.7) : AppColors.lightTextSecondary.withOpacity(0.7),
+                        size: 14,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Text(
                         '${song.playCount}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                        style: TextStyle(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          fontSize: 11,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      const Text(
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
                         '·',
                         style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.xs),
                       Text(
                         _formatDuration(song.duration),
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
+                        style: TextStyle(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -923,11 +995,9 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             IconButton(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              constraints: const BoxConstraints(),
-              icon: const Icon(
+              icon: Icon(
                 Icons.more_vert_rounded,
-                color: Colors.grey,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                 size: 20,
               ),
               onPressed: () {
@@ -935,7 +1005,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   context: context,
                   backgroundColor: Colors.transparent,
                   isScrollControlled: true,
-                  builder: (context) => SongOptionsMenu(song: song),
+                  builder: (context) => SongOptionsSheet(song: song),
                 );
               },
             ),
@@ -951,5 +1021,159 @@ class _SearchScreenState extends State<SearchScreen> {
     final int minutes = totalSeconds ~/ 60;
     final int seconds = totalSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildVoiceSearchOverlay() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Positioned.fill(
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            color: (isDark ? AppColors.darkBackground : AppColors.lightBackground).withOpacity(0.85),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    boxShadow: AppShadows.neonGlow(AppColors.secondary),
+                  ),
+                  child: const Icon(
+                    Icons.mic_rounded,
+                    size: 48,
+                    color: AppColors.secondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Đang lắng nghe...',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                  child: Text(
+                    _searchController.text.isNotEmpty
+                        ? '"${_searchController.text}"'
+                        : 'Hãy nói tên bài hát hoặc nghệ sĩ',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontStyle: _searchController.text.isEmpty ? FontStyle.italic : FontStyle.normal,
+                      color: _searchController.text.isNotEmpty
+                          ? (isDark ? Colors.white : AppColors.lightTextPrimary)
+                          : theme.hintColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
+                // Audio Wave animation
+                SizedBox(
+                  height: 40,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return _VoiceWaveBar(index: index);
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 60),
+                // Cancel button
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.badgeBorder,
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    ),
+                  ),
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      await _speechToText.stop();
+                      setState(() {
+                        _isListening = false;
+                      });
+                    },
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                    ),
+                    label: Text(
+                      'Hủy bỏ',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VoiceWaveBar extends StatefulWidget {
+  final int index;
+  const _VoiceWaveBar({required this.index});
+
+  @override
+  State<_VoiceWaveBar> createState() => _VoiceWaveBarState();
+}
+
+class _VoiceWaveBarState extends State<_VoiceWaveBar> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300 + widget.index * 80),
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 8.0, end: 32.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: 5,
+          height: _animation.value,
+          margin: const EdgeInsets.symmetric(horizontal: 2.5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.secondary],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(2.5),
+          ),
+        );
+      },
+    );
   }
 }

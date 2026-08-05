@@ -820,7 +820,18 @@ class AssistantService {
               }
 
               let songsList = [];
-              if (queryStr) {
+
+              // 1. Try matching queryStr or artistQuery against artists in DB first
+              const targetArtistQuery = queryStr || artistQuery;
+              if (targetArtistQuery) {
+                const matchedArtistsList = await findMatchedArtists(targetArtistQuery);
+                if (matchedArtistsList.length > 0) {
+                  songsList = await findSongsByArtists(matchedArtistsList, 20);
+                }
+              }
+
+              // 2. If no songs found by artist, fallback to text search
+              if (songsList.length === 0 && queryStr) {
                 songsList = await Song.find(filter)
                   .populate("artists", "name avatar")
                   .populate("topicIds", "name")
@@ -829,6 +840,7 @@ class AssistantService {
                   .lean();
               }
 
+              // 3. Fallback to regex search on title/lyrics
               if (songsList.length === 0 && queryStr) {
                 const regex = new RegExp(escapeRegex(queryStr), "i");
                 const regexFilter = {
@@ -846,12 +858,14 @@ class AssistantService {
                   .lean();
               }
 
-              if (artistQuery && songsList.length > 0) {
+              if (artistQuery && songsList.length > 0 && !targetArtistQuery) {
                 const artistRegex = new RegExp(escapeRegex(artistQuery), "i");
                 songsList = songsList.filter(s => 
                   (s.artists || []).some(a => artistRegex.test(a.name || ""))
                 );
               }
+
+              const displayQuery = queryStr || artistQuery || "tìm kiếm";
 
               if (songsList.length > 0) {
                 if (intent === "play") {
@@ -863,20 +877,20 @@ class AssistantService {
                     payload: { songId: firstSong._id, song: firstSong, songs: songsList },
                   });
                   songs = [firstSong];
-                  metadata = { type: "play_song_natural", songId: firstSong._id, query: queryStr };
+                  metadata = { type: "play_song_natural", songId: firstSong._id, query: displayQuery };
                 } else {
                   const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title} - ${(s.artists || []).map(a => a.name).join(", ")}`).join("\n");
-                  assistantText = `Mình đã tìm thấy một số bài hát phù hợp với yêu cầu "${queryStr}" của bạn:\n${songTitles}`;
+                  assistantText = `Mình đã tìm thấy một số bài hát phù hợp với yêu cầu "${displayQuery}" của bạn:\n${songTitles}`;
                   clientActions.push({
                     type: "SHOW_SEARCH_RESULTS",
-                    payload: { query: queryStr, songs: songsList },
+                    payload: { query: displayQuery, songs: songsList },
                   });
                   songs = songsList;
-                  metadata = { type: "search_songs_natural", query: queryStr, count: songsList.length };
+                  metadata = { type: "search_songs_natural", query: displayQuery, count: songsList.length };
                 }
               } else {
-                assistantText = `Mình đã tìm kiếm khắp nơi nhưng không thấy bài hát nào khớp với yêu cầu "${queryStr}" của bạn. Bạn thử tìm kiếm một từ khóa khác nhé!`;
-                metadata = { type: "search_songs_natural_failed", query: queryStr };
+                assistantText = `Mình đã tìm kiếm khắp nơi nhưng không thấy bài hát nào khớp với yêu cầu "${displayQuery}" của bạn. Bạn thử tìm kiếm một từ khóa khác nhé!`;
+                metadata = { type: "search_songs_natural_failed", query: displayQuery };
               }
             } else if (name === "open_route") {
               // Ensure route fits the user's role

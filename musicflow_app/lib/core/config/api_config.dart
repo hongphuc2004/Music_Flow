@@ -26,6 +26,10 @@ class ApiConfig {
   static const String aiMoodHistoryEndpoint = "$baseUrl/api/ai/mood/history";
   static const String aiMoodConversationEndpoint =
       "$baseUrl/api/ai/mood/conversations";
+  static const String assistantEndpoint = "$baseUrl/api/ai/assistant";
+  static const String assistantMessagesEndpoint = "$assistantEndpoint/messages";
+  static const String assistantConversationsEndpoint =
+      "$assistantEndpoint/conversations";
   static String aiMoodConversationByIdEndpoint(String conversationId) =>
       "$aiMoodConversationEndpoint/$conversationId";
   static const String usersMeEndpoint = "$baseUrl/api/users/me";

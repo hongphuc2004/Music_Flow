@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:musicflow_app/data/models/user_model.dart';
-import 'package:musicflow_app/data/services/auth_service.dart';
-import 'package:musicflow_app/data/services/play_history_service.dart';
-import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
-import 'package:musicflow_app/core/theme/theme_service.dart';
-
+import '../../widgets/music_flow_backdrop.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../data/models/user_model.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/play_history_service.dart';
+import '../login/login_screen.dart';
+import '../../../core/theme/theme_service.dart';
 import 'edit_profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -86,26 +87,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Đăng Xuất', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'Bạn có chắc muốn đăng xuất?',
-          style: TextStyle(color: Colors.grey[400]),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mediumBorder),
+        title: const Text('Đăng Xuất'),
+        content: const Text('Bạn có chắc muốn đăng xuất khỏi tài khoản này?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: const Text('Hủy'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Đăng xuất',
-              style: TextStyle(color: Colors.redAccent),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.smallBorder),
             ),
+            child: const Text('Đăng xuất'),
           ),
         ],
       ),
@@ -126,23 +129,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
-          'Xóa lịch sử phát',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          'Bạn có chắc muốn xóa toàn bộ lịch sử phát nhạc?',
-          style: TextStyle(color: Colors.grey[400]),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mediumBorder),
+        title: const Text('Xóa lịch sử phát'),
+        content: const Text('Bạn có chắc muốn xóa toàn bộ lịch sử nghe nhạc?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            child: const Text('Hủy'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xóa', style: TextStyle(color: Colors.redAccent)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.smallBorder),
+            ),
+            child: const Text('Xóa'),
           ),
         ],
       ),
@@ -161,48 +163,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mediumBorder),
         title: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Colors.greenAccent, Colors.tealAccent],
+                  colors: [AppColors.primary, AppColors.secondary],
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.music_note, color: Colors.black),
+              child: const Icon(Icons.music_note_rounded, color: Colors.white),
             ),
             const SizedBox(width: 12),
-            const Text('MusicFlow', style: TextStyle(color: Colors.white)),
+            const Text('MusicFlow'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Phien ban: 1.0.0', style: TextStyle(color: Colors.grey[400])),
-            const SizedBox(height: 8),
+          children: const [
+            Text('Phiên bản: 1.0.0'),
+            SizedBox(height: 8),
+            Text('Ứng dụng nghe nhạc trực tuyến đa nền tảng.'),
+            SizedBox(height: 16),
             Text(
-              'Ung dung nghe nhac truc tuyen',
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '© 2024 MusicFlow',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              '© 2026 MusicFlow',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Dong',
-              style: TextStyle(color: Colors.greenAccent),
-            ),
+            child: const Text('Đóng'),
           ),
         ],
       ),
@@ -212,206 +208,269 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        foregroundColor: theme.appBarTheme.foregroundColor,
-        title: const Text('Cài đặt'),
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(color: theme.colorScheme.primary),
-            )
-          : ListView(
-              children: [
-                _buildSectionHeader('Tài khoản'),
-                if (_isLoggedIn && _currentUser != null)
-                  _buildAccountCard()
-                else
-                  _buildLoginPrompt(),
-                const SizedBox(height: 16),
-                _buildSectionHeader('Phát nhạc'),
-                _buildSwitchTile(
-                  icon: Icons.high_quality,
-                  title: 'Chất lượng cao',
-                  subtitle: 'Phát nhạc ở chất lượng cao nhất',
-                  value: _highQualityStreaming,
-                  onChanged: (value) =>
-                      setState(() => _highQualityStreaming = value),
-                ),
-                _buildSwitchTile(
-                  icon: Icons.lyrics,
-                  title: 'Hiển thị lời bài hát',
-                  subtitle: 'Hiển thị lời khi phát nhạc',
-                  value: _showLyrics,
-                  onChanged: (value) => setState(() => _showLyrics = value),
-                ),
-                _buildSwitchTile(
-                  icon: Icons.play_circle_outline,
-                  title: 'Tự động phát',
-                  subtitle: 'Tự động phát bài hát tiếp theo',
-                  value: _autoPlay,
-                  onChanged: (value) => setState(() => _autoPlay = value),
-                ),
-                const SizedBox(height: 16),
-                _buildSectionHeader('Tải xuống'),
-                _buildSwitchTile(
-                  icon: Icons.wifi,
-                  title: 'Chỉ tải qua Wi-Fi',
-                  subtitle: 'Tải nhạc chỉ khi có Wi-Fi',
-                  value: _downloadOverWifiOnly,
-                  onChanged: (value) =>
-                      setState(() => _downloadOverWifiOnly = value),
-                ),
-                const SizedBox(height: 16),
-                _buildSectionHeader('Bộ nhớ'),
-                _buildActionTile(
-                  icon: Icons.history,
-                  title: 'Xóa lịch sử phát',
-                  subtitle: 'Xóa toàn bộ lịch sử nghe nhạc',
-                  onTap: _clearPlayHistory,
-                ),
-                _buildActionTile(
-                  icon: Icons.cached,
-                  title: 'Xóa bộ nhớ cache',
-                  subtitle: 'Giải phóng dung lượng',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã xóa cache')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildSectionHeader('Giao diện'),
-                _buildSwitchTile(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'Chế độ tối',
-                  subtitle: 'Sử dụng giao diện màu tối cho ứng dụng',
-                  value: ThemeService().isDarkMode,
-                  onChanged: (value) {
-                    ThemeService().toggleTheme(value);
-                    setState(() {});
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildSectionHeader('Khác'),
-                _buildActionTile(
-                  icon: Icons.info_outline,
-                  title: 'Về ứng dụng',
-                  subtitle: 'Phiên bản 1.0.0',
-                  onTap: _showAboutDialog,
-                ),
-                _buildActionTile(
-                  icon: Icons.privacy_tip_outlined,
-                  title: 'Chính sách bảo mật',
-                  onTap: () {},
-                ),
-                _buildActionTile(
-                  icon: Icons.description_outlined,
-                  title: 'Điều khoản sử dụng',
-                  onTap: () {},
-                ),
-                if (_isLoggedIn) ...[
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton.icon(
-                      onPressed: _logout,
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Đăng xuất'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.withOpacity(0.2),
-                        foregroundColor: Colors.redAccent,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+    final isDark = theme.brightness == Brightness.dark;
+
+    return MusicFlowBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Cài đặt',
+            style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+          ),
+        ),
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              )
+            : ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                children: [
+                  _buildSectionHeader('Tài khoản'),
+                  if (_isLoggedIn && _currentUser != null)
+                    _buildAccountCard()
+                  else
+                    _buildLoginPrompt(),
+                  const SizedBox(height: AppSpacing.md),
+
+                  _buildSectionHeader('Phát nhạc'),
+                  _buildGroupContainer(
+                    children: [
+                      _buildSwitchTile(
+                        icon: Icons.high_quality_rounded,
+                        title: 'Chất lượng cao',
+                        subtitle: 'Phát nhạc ở chất lượng cao nhất',
+                        value: _highQualityStreaming,
+                        onChanged: (value) =>
+                            setState(() => _highQualityStreaming = value),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildSwitchTile(
+                        icon: Icons.lyrics_rounded,
+                        title: 'Hiển thị lời bài hát',
+                        subtitle: 'Hiển thị lời khi phát nhạc',
+                        value: _showLyrics,
+                        onChanged: (value) => setState(() => _showLyrics = value),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildSwitchTile(
+                        icon: Icons.play_circle_outline_rounded,
+                        title: 'Tự động phát',
+                        subtitle: 'Tự động phát bài hát tiếp theo',
+                        value: _autoPlay,
+                        onChanged: (value) => setState(() => _autoPlay = value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  _buildSectionHeader('Tải xuống'),
+                  _buildGroupContainer(
+                    children: [
+                      _buildSwitchTile(
+                        icon: Icons.wifi_rounded,
+                        title: 'Chỉ tải qua Wi-Fi',
+                        subtitle: 'Tải nhạc chỉ khi có kết nối Wi-Fi',
+                        value: _downloadOverWifiOnly,
+                        onChanged: (value) =>
+                            setState(() => _downloadOverWifiOnly = value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  _buildSectionHeader('Bộ nhớ'),
+                  _buildGroupContainer(
+                    children: [
+                      _buildActionTile(
+                        icon: Icons.history_rounded,
+                        title: 'Xóa lịch sử phát',
+                        subtitle: 'Xóa toàn bộ lịch sử nghe nhạc',
+                        onTap: _clearPlayHistory,
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildActionTile(
+                        icon: Icons.cleaning_services_rounded,
+                        title: 'Xóa bộ nhớ cache',
+                        subtitle: 'Giải phóng bộ nhớ tạm trên máy',
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Đã xóa cache thành công')),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  _buildSectionHeader('Giao diện'),
+                  _buildGroupContainer(
+                    children: [
+                      _buildSwitchTile(
+                        icon: Icons.dark_mode_outlined,
+                        title: 'Chế độ tối',
+                        subtitle: 'Sử dụng giao diện màu tối cho ứng dụng',
+                        value: ThemeService().isDarkMode,
+                        onChanged: (value) {
+                          ThemeService().toggleTheme(value);
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  _buildSectionHeader('Khác'),
+                  _buildGroupContainer(
+                    children: [
+                      _buildActionTile(
+                        icon: Icons.info_outline_rounded,
+                        title: 'Về ứng dụng',
+                        subtitle: 'Phiên bản 1.0.0',
+                        onTap: _showAboutDialog,
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildActionTile(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Chính sách bảo mật',
+                        onTap: () {},
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildActionTile(
+                        icon: Icons.description_outlined,
+                        title: 'Điều khoản sử dụng',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+
+                  if (_isLoggedIn) ...[
+                    const SizedBox(height: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ElevatedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                        label: const Text('Đăng xuất tài khoản', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentPink.withOpacity(0.18),
+                          foregroundColor: AppColors.accentPink,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: AppColors.accentPink, width: 1),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
+                  const SizedBox(height: 48),
                 ],
-                const SizedBox(height: 100),
-              ],
-            ),
+              ),
+      ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.grey[500],
+          color: isDark ? AppColors.darkTextSecondary.withOpacity(0.8) : AppColors.lightTextSecondary.withOpacity(0.8),
           fontSize: 13,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+
+  Widget _buildGroupContainer({required List<Widget> children}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceGlass : AppColors.lightSurfaceGlass,
+        borderRadius: AppRadius.mediumBorder,
+        border: Border.all(color: isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass),
+      ),
+      child: Column(
+        children: children,
       ),
     );
   }
 
   Widget _buildAccountCard() {
     final hasAvatar = _currentUser?.avatar.trim().isNotEmpty == true;
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            primaryColor.withOpacity(0.18),
-            secondaryColor.withOpacity(0.08),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryColor.withOpacity(0.25)),
+        color: isDark ? AppColors.darkSurfaceGlass : AppColors.lightSurfaceGlass,
+        borderRadius: AppRadius.mediumBorder,
+        border: Border.all(color: isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 30,
-            backgroundColor: primaryColor,
+            radius: 28,
+            backgroundColor: AppColors.primary,
             backgroundImage: hasAvatar
                 ? NetworkImage(_currentUser!.avatar)
                 : null,
             child: !hasAvatar
                 ? Text(
                     _currentUser?.name.substring(0, 1).toUpperCase() ?? 'U',
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
-                      fontSize: 24,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   )
                 : null,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   _currentUser?.name ?? 'Người dùng',
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   _currentUser?.email ?? '',
-                  style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 14),
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
+            icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
             onPressed: _openEditProfile,
           ),
         ],
@@ -422,31 +481,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildLoginPrompt() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161922) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF262C3A) : Colors.grey[200]!),
+        color: isDark ? AppColors.darkSurfaceGlass : AppColors.lightSurfaceGlass,
+        borderRadius: AppRadius.mediumBorder,
+        border: Border.all(color: isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass),
       ),
       child: Column(
         children: [
           Icon(
             Icons.account_circle_outlined,
-            size: 48,
-            color: theme.disabledColor,
+            size: 44,
+            color: isDark ? AppColors.darkTextSecondary.withOpacity(0.5) : AppColors.lightTextSecondary.withOpacity(0.5),
           ),
           const SizedBox(height: 12),
           Text(
-            'Đăng nhập để sử dụng các tính năng của MusicFlow',
-            style: TextStyle(fontSize: 16, color: theme.textTheme.titleMedium?.color),
+            'Đăng nhập để sử dụng đầy đủ các tính năng',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.lightTextPrimary),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            'Playlist và yêu thích sẽ được lưu trữ an toàn',
-            style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 13),
+            'Playlist và thư viện cá nhân sẽ được đồng bộ',
+            style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 12),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -459,13 +518,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: isDark ? Colors.black : Colors.white,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
             ),
-            child: const Text('Đăng nhập'),
+            child: const Text('Đăng nhập ngay'),
           ),
         ],
       ),
@@ -480,19 +540,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required ValueChanged<bool> onChanged,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListTile(
-      leading: Icon(icon, color: theme.colorScheme.primary),
-      title: Text(title),
+      leading: Icon(icon, color: AppColors.primary, size: 22),
+      title: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : AppColors.lightTextPrimary)),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12),
+              style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 11),
             )
           : null,
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: theme.colorScheme.primary,
+        activeColor: AppColors.secondary,
       ),
     );
   }
@@ -505,16 +567,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color? textColor,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListTile(
-      leading: Icon(icon, color: theme.colorScheme.primary),
-      title: Text(title, style: textColor != null ? TextStyle(color: textColor) : null),
+      leading: Icon(icon, color: AppColors.primary, size: 22),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: textColor ?? (isDark ? Colors.white : AppColors.lightTextPrimary),
+        ),
+      ),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12),
+              style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 11),
             )
           : null,
-      trailing: Icon(Icons.chevron_right, color: theme.disabledColor),
+      trailing: Icon(Icons.chevron_right_rounded, color: isDark ? AppColors.darkTextSecondary.withOpacity(0.5) : AppColors.lightTextSecondary.withOpacity(0.5), size: 20),
       onTap: onTap,
     );
   }

@@ -322,13 +322,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: HomePalette.background(context),
-      body: Stack(
-        children: [
-          const HomeBackdrop(),
-          SafeArea(bottom: false, child: _buildBody()),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(bottom: false, child: _buildBody()),
     );
   }
 
@@ -370,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:musicflow_app/data/models/song_model.dart';
-import 'package:musicflow_app/data/services/favorite_service.dart';
-import 'package:musicflow_app/data/services/auth_service.dart';
-import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
-import 'package:musicflow_app/presentation/widgets/mini_player_wrapper.dart';
-import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
+import '../../widgets/music_flow_backdrop.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../data/models/song_model.dart';
+import '../../../data/services/favorite_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../widgets/song_options_menu.dart';
+import '../../widgets/mini_player_wrapper.dart';
+import '../login/login_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -43,9 +45,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Future<void> _loadFavorites() async {
     setState(() => _isLoading = true);
-
     final result = await FavoriteService.getFavorites();
-
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -58,16 +58,30 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return MusicFlowBackdrop(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        title: const Text(
-          'Bài hát yêu thích',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Bài hát yêu thích',
+            style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+          ),
         ),
+        body: MiniPlayerWrapper(child: _buildBody()),
       ),
-      body: MiniPlayerWrapper(child: _buildBody()),
     );
   }
 
@@ -78,7 +92,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.redAccent),
+        child: CircularProgressIndicator(color: AppColors.accentPink),
       );
     }
 
@@ -88,55 +102,44 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadFavorites,
-      color: Colors.redAccent,
+      color: AppColors.accentPink,
       child: Column(
         children: [
           // Play all button
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      widget.onPlayAll?.call(_favoriteSongs, startIndex: 0);
-                    },
-                    icon: const Icon(Icons.play_arrow),
-                    label: Text('Phát tất cả (${_favoriteSongs.length})'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.secondary],
+                      ),
+                      borderRadius: AppRadius.smallBorder,
+                      boxShadow: AppShadows.neonGlow(AppColors.primary),
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () => widget.onPlayAll?.call(_favoriteSongs, startIndex: 0),
+                      icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                      label: const Text(
+                        'Phát tất cả',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.shuffle, color: Colors.white),
-                    onPressed: () {
-                      final shuffled = List<Song>.from(_favoriteSongs)
-                        ..shuffle();
-                      widget.onPlayAll?.call(shuffled, startIndex: 0);
-                    },
-                    tooltip: 'Phát ngẫu nhiên',
                   ),
                 ),
               ],
             ),
           ),
-
-          // Song list
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.only(bottom: 24),
               itemCount: _favoriteSongs.length,
               itemBuilder: (context, index) {
                 final song = _favoriteSongs[index];
@@ -150,59 +153,44 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildLoginPrompt() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.favorite_border,
-                size: 50,
-                color: Colors.redAccent,
-              ),
+            Icon(
+              Icons.favorite_rounded,
+              size: 64,
+              color: AppColors.accentPink.withOpacity(0.4),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Đăng nhập để xem bài hát yêu thích',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.md),
             Text(
-              'Lưu những bài hát bạn yêu thích\nvà nghe mọi lúc mọi nơi',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+              'Yêu cầu đăng nhập',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Đăng nhập để xem danh sách bài hát đã yêu thích của bạn',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
                 ).then((_) => _loadData());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.badgeBorder),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
               ),
               child: const Text('Đăng nhập'),
             ),
@@ -213,6 +201,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -220,32 +211,28 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 120,
-              height: 120,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
-                color: Colors.grey[900],
+                color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.favorite_border,
-                size: 60,
-                color: Colors.redAccent,
+                Icons.favorite_outline_rounded,
+                size: 48,
+                color: AppColors.accentPink,
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
+            const SizedBox(height: AppSpacing.lg),
+            Text(
               'Chưa có bài hát yêu thích',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'Nhấn vào biểu tượng ❤️ trên bài hát\nđể thêm vào danh sách yêu thích',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+              style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13),
             ),
           ],
         ),
@@ -254,8 +241,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildSongTile(Song song, int index) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -264,25 +254,25 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             child: Text(
               '${index + 1}',
               style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.xs),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadius.small),
             child: Image.network(
               song.imageUrl,
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
-                width: 50,
-                height: 50,
-                color: Colors.grey[800],
-                child: const Icon(Icons.favorite, color: Colors.redAccent),
+                width: 48,
+                height: 48,
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                child: const Icon(Icons.favorite_rounded, color: AppColors.accentPink, size: 20),
               ),
             ),
           ),
@@ -290,16 +280,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
       title: Text(
         song.title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w500,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
         ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
         song.artists.join(', '),
-        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+        style: TextStyle(
+          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          fontSize: 12,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

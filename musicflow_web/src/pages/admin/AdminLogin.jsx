@@ -23,7 +23,8 @@ import {
   LibraryMusicOutlined,
   ShieldOutlined,
 } from '@mui/icons-material';
-import { authApi, setAccessToken } from '../../services/api';
+import { authApi } from '../../services/admin/admin.service';
+import { setAccessToken } from '../../services/api';
 
 function AdminLogin() {
   const navigate = useNavigate();

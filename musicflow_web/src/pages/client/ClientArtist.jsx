@@ -23,9 +23,9 @@ import {
   CategoryRounded as CategoryIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientSongsApi } from '../../services/api';
+import { clientSongsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 
 function ClientArtist() {
   const navigate = useNavigate();
@@ -368,7 +368,7 @@ function ClientArtist() {
                         </IconButton>
                       </Tooltip>
                       
-                      <SongMoreMenu 
+                      <ClientSongMoreMenu 
                         song={song} 
                         buttonSx={{
                           color: 'text.secondary',

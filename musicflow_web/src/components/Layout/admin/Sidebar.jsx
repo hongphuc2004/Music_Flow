@@ -26,6 +26,7 @@ import {
   Logout as LogoutIcon,
   Headphones as HeadphonesIcon,
   ViewSidebarRounded as SidebarIcon,
+  WorkspacePremiumRounded as PremiumIcon,
 } from '@mui/icons-material';
 import useAppToast from '../../common/useAppToast';
 import { preloadRoute } from '../../../utils/routePreload';
@@ -40,6 +41,7 @@ const menuItems = [
   { text: 'Bài Hát', icon: <MusicNoteIcon />, path: '/songs' },
   { text: 'Chủ Đề', icon: <CategoryIcon />, path: '/topics' },
   { text: 'Playlists', icon: <PlaylistIcon />, path: '/playlists' },
+  { text: 'Premium', icon: <PremiumIcon />, path: '/premium' },
   { text: 'Cài Đặt', icon: <SettingsIcon />, path: '/settings' },
 ];
 

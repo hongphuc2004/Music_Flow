@@ -20,15 +20,18 @@ import {
   FlashOnRounded as FlashIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientUserApi, clientSongsApi } from '../../services/api';
+import { clientUserApi, clientSongsApi } from '../../services/client/client.service';
 import useAppToast from '../../components/common/useAppToast';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import { notifyClientSessionChanged } from '../../hooks/useClientSession';
+import { useNavigate } from 'react-router-dom';
 
 function ClientProfile() {
   const { showToast } = useAppToast();
   const { playSong } = useClientPlayerActions();
+  const navigate = useNavigate();
 
+  const [user, setUser] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', avatarUrl: '' });
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,28 +45,33 @@ function ClientProfile() {
 
   const userName = useMemo(() => form.name || 'Người nghe', [form.name]);
 
+  const isPremium = useMemo(() => {
+    return user?.isPremium && user?.premiumExpiry && new Date(user.premiumExpiry) > new Date();
+  }, [user]);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
         setError('');
         const response = await clientUserApi.getMe();
-        const user = response.data?.user;
+        const userObj = response.data?.user;
+        setUser(userObj);
 
         setForm({
-          name: user?.name || '',
-          email: user?.email || '',
-          avatarUrl: user?.avatar || '',
+          name: userObj?.name || '',
+          email: userObj?.email || '',
+          avatarUrl: userObj?.avatar || '',
         });
 
-        localStorage.setItem('userName', user?.name || '');
-        localStorage.setItem('email', user?.email || '');
-        localStorage.setItem('userId', user?._id || '');
-        localStorage.setItem('userAvatar', user?.avatar || '');
+        localStorage.setItem('userName', userObj?.name || '');
+        localStorage.setItem('email', userObj?.email || '');
+        localStorage.setItem('userId', userObj?._id || '');
+        localStorage.setItem('userAvatar', userObj?.avatar || '');
         notifyClientSessionChanged();
 
         // Load recent songs
-        const userId = user?._id || 'anonymous';
+        const userId = userObj?._id || 'anonymous';
         const rawRecent = localStorage.getItem(`musicflow_recent_played_${userId}`);
         if (rawRecent) {
           try {
@@ -121,22 +129,23 @@ function ClientProfile() {
       if (avatarFile) payload.append('avatar', avatarFile);
 
       const response = await clientUserApi.updateMe(payload);
-      const user = response.data?.user;
+      const userObj = response.data?.user;
+      setUser(userObj);
 
       setForm((prev) => ({
         ...prev,
-        name: user?.name || prev.name,
-        email: user?.email || prev.email,
-        avatarUrl: user?.avatar || prev.avatarUrl,
+        name: userObj?.name || prev.name,
+        email: userObj?.email || prev.email,
+        avatarUrl: userObj?.avatar || prev.avatarUrl,
       }));
       setAvatarFile(null);
       setSuccess('Đã cập nhật thông tin tài khoản.');
       showToast({ severity: 'success', message: 'Cập nhật thông tin tài khoản thành công.' });
 
-      localStorage.setItem('userName', user?.name || form.name || '');
-      localStorage.setItem('email', user?.email || form.email || '');
-      localStorage.setItem('userId', user?._id || localStorage.getItem('userId') || '');
-      localStorage.setItem('userAvatar', user?.avatar || form.avatarUrl || '');
+      localStorage.setItem('userName', userObj?.name || form.name || '');
+      localStorage.setItem('email', userObj?.email || form.email || '');
+      localStorage.setItem('userId', userObj?._id || localStorage.getItem('userId') || '');
+      localStorage.setItem('userAvatar', userObj?.avatar || form.avatarUrl || '');
       notifyClientSessionChanged();
     } catch (err) {
       setError(err.response?.data?.message || 'Cập nhật thất bại.');
@@ -256,11 +265,40 @@ function ClientProfile() {
               </Box>
 
               <Box sx={{ mt: { xs: 1, md: 0 } }}>
-                <Typography variant="h4" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '-1px', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                  {userName}
-                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Typography variant="h4" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '-1px', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                    {userName}
+                  </Typography>
+                  {isPremium && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(255, 215, 0, 0.2)',
+                        border: '1px solid rgba(255, 215, 0, 0.4)',
+                        backdropFilter: 'blur(4px)',
+                      }}
+                    >
+                      <PremiumIcon sx={{ color: '#ffd700', fontSize: 16, mr: 0.5 }} />
+                      <Typography variant="caption" sx={{ color: '#ffd700', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Premium
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
                 <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 500, mt: 0.5 }}>
-                  Loại tài khoản: <span style={{ color: '#ffffff', fontWeight: 700 }}>Basic Listener</span>
+                  Loại tài khoản: <span style={{ color: isPremium ? '#ffd700' : '#ffffff', fontWeight: 700 }}>
+                    {isPremium ? 'Premium Listener' : 'Basic Listener'}
+                  </span>
+                  {isPremium && user?.premiumExpiry && (
+                    <span style={{ fontSize: '11px', display: 'block', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
+                      Hạn dùng: {new Date(user.premiumExpiry).toLocaleDateString('vi-VN')}
+                    </span>
+                  )}
                 </Typography>
               </Box>
             </Stack>
@@ -333,9 +371,11 @@ function ClientProfile() {
                     p: 3.5,
                     borderRadius: 4.5,
                     border: '1px solid',
-                    borderColor: 'rgba(20, 184, 166, 0.2)',
+                    borderColor: isPremium ? 'rgba(255, 215, 0, 0.3)' : 'rgba(20, 184, 166, 0.2)',
                     background: (theme) => theme.palette.mode === 'dark'
-                      ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(20, 184, 166, 0.05) 100%)'
+                      ? isPremium
+                        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(255, 215, 0, 0.03) 100%)'
+                        : 'linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(20, 184, 166, 0.05) 100%)'
                       : 'linear-gradient(135deg, #fff 0%, rgba(20, 184, 166, 0.02) 100%)',
                     position: 'relative',
                     overflow: 'hidden',
@@ -350,16 +390,18 @@ function ClientProfile() {
                       width: 180,
                       height: 180,
                       borderRadius: '50%',
-                      background: 'radial-gradient(circle, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0) 70%)',
+                      background: isPremium
+                        ? 'radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0) 70%)'
+                        : 'radial-gradient(circle, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0) 70%)',
                       zIndex: 1,
                     }}
                   />
 
                   <Stack spacing={3} sx={{ position: 'relative', zIndex: 2 }}>
                     <Stack direction="row" spacing={1.5} alignItems="center">
-                      <PremiumIcon sx={{ color: '#14b8a6', fontSize: 26 }} />
+                      <PremiumIcon sx={{ color: isPremium ? '#ffd700' : '#14b8a6', fontSize: 26 }} />
                       <Typography variant="h6" fontWeight={850}>
-                        Giới hạn tải lên & Nâng cấp VIP
+                        {isPremium ? 'Hạn mức cước Premium của bạn' : 'Giới hạn tải lên & Nâng cấp Premium'}
                       </Typography>
                     </Stack>
 
@@ -369,25 +411,29 @@ function ClientProfile() {
                           Dung lượng tải lên đã dùng:
                         </Typography>
                         <Typography variant="body2" fontWeight={800} color="#14b8a6">
-                          {uploadUsed} MB / 50 MB
+                          {isPremium ? `${uploadUsed} MB / Không giới hạn` : `${uploadUsed} MB / 50 MB`}
                         </Typography>
                       </Stack>
                       <LinearProgress
                         variant="determinate"
-                        value={Math.min((uploadUsed / 50) * 100, 100)}
+                        value={isPremium ? 0 : Math.min((uploadUsed / 50) * 100, 100)}
                         sx={{
                           height: 8,
                           borderRadius: 4,
                           bgcolor: 'divider',
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 4,
-                            bgcolor: '#14b8a6',
-                            backgroundImage: 'linear-gradient(90deg, #14b8a6, #00bcd4)',
+                            bgcolor: isPremium ? '#d97706' : '#14b8a6',
+                            backgroundImage: isPremium 
+                              ? 'linear-gradient(90deg, #ffd700, #d97706)' 
+                              : 'linear-gradient(90deg, #14b8a6, #00bcd4)',
                           },
                         }}
                       />
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                        Bản miễn phí giới hạn tối đa 50MB tải bài hát lên hệ thống.
+                        {isPremium 
+                          ? 'Tài khoản Premium được phép tải lên bài hát không giới hạn dung lượng.' 
+                          : 'Bản miễn phí giới hạn tối đa 50MB tải bài hát lên hệ thống.'}
                       </Typography>
                     </Box>
 
@@ -397,25 +443,29 @@ function ClientProfile() {
                           Dung lượng tải xuống đã dùng:
                         </Typography>
                         <Typography variant="body2" fontWeight={800} color="#7c3aed">
-                          {downloadUsed} MB / 100 MB
+                          {isPremium ? `${downloadUsed} MB / Không giới hạn` : `${downloadUsed} MB / 100 MB`}
                         </Typography>
                       </Stack>
                       <LinearProgress
                         variant="determinate"
-                        value={Math.min((downloadUsed / 100) * 100, 100)}
+                        value={isPremium ? 0 : Math.min((downloadUsed / 100) * 100, 100)}
                         sx={{
                           height: 8,
                           borderRadius: 4,
                           bgcolor: 'divider',
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 4,
-                            bgcolor: '#7c3aed',
-                            backgroundImage: 'linear-gradient(90deg, #7c3aed, #a855f7)',
+                            bgcolor: isPremium ? '#7c3aed' : '#7c3aed',
+                            backgroundImage: isPremium
+                              ? 'linear-gradient(90deg, #a855f7, #7c3aed)'
+                              : 'linear-gradient(90deg, #7c3aed, #a855f7)',
                           },
                         }}
                       />
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                        Bản miễn phí giới hạn tối đa 100MB tải bài hát về máy.
+                        {isPremium 
+                          ? 'Tài khoản Premium được phép tải về ngoại tuyến không giới hạn dung lượng.' 
+                          : 'Bản miễn phí giới hạn tối đa 100MB tải bài hát về máy.'}
                       </Typography>
                     </Box>
 
@@ -430,17 +480,17 @@ function ClientProfile() {
                       }}
                     >
                       <Typography variant="subtitle2" fontWeight={750} color="text.primary">
-                        Đặc quyền tài khoản VIP:
+                        Đặc quyền tài khoản Premium:
                       </Typography>
                       <Stack spacing={1}>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           ● Tải lên không giới hạn dung lượng lưu trữ bài hát
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          ● Chất lượng âm thanh chuẩn Lossless (320kbps)
+                          ● Trò chuyện & Tạo Playlist AI không giới hạn (Free giới hạn 10 yêu cầu / 24 giờ)
                         </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          ● Công cụ phân tích số liệu lượt nghe thời gian thực
+                        <Typography variant="caption" color="text.disabled" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontStyle: 'italic' }}>
+                          ● Chất lượng âm thanh chuẩn High Quality (Future Scope)
                         </Typography>
                       </Stack>
                     </Stack>
@@ -449,28 +499,31 @@ function ClientProfile() {
                       variant="contained"
                       startIcon={<FlashIcon />}
                       onClick={() => {
-                        showToast({
-                          severity: 'info',
-                          title: 'Nâng cấp Premium',
-                          message: 'Chức năng đăng ký nâng cấp tài khoản đang được hoàn thiện và sẽ sớm ra mắt!',
-                        });
+                        navigate('/client/premium');
                       }}
                       sx={{
                         width: '100%',
-                        bgcolor: '#14b8a6',
-                        backgroundImage: 'linear-gradient(135deg, #14b8a6, #00bcd4)',
+                        bgcolor: isPremium ? '#ffd700' : '#14b8a6',
+                        backgroundImage: isPremium
+                          ? 'linear-gradient(135deg, #ffd700, #d97706)'
+                          : 'linear-gradient(135deg, #14b8a6, #00bcd4)',
                         borderRadius: 3,
                         fontWeight: 800,
                         py: 1.5,
+                        color: isPremium ? '#000' : '#fff',
                         textTransform: 'none',
-                        boxShadow: '0 4px 16px rgba(20, 184, 166, 0.2)',
+                        boxShadow: isPremium
+                          ? '0 4px 16px rgba(217, 119, 6, 0.2)'
+                          : '0 4px 16px rgba(20, 184, 166, 0.2)',
                         '&:hover': {
-                          bgcolor: '#0d9488',
-                          boxShadow: '0 8px 24px rgba(20, 184, 166, 0.35)',
+                          bgcolor: isPremium ? '#fbbf24' : '#0d9488',
+                          boxShadow: isPremium
+                            ? '0 8px 24px rgba(217, 119, 6, 0.35)'
+                            : '0 8px 24px rgba(20, 184, 166, 0.35)',
                         },
                       }}
                     >
-                      Nâng cấp tài khoản VIP
+                      {isPremium ? 'Gia hạn gói Premium' : 'Nâng cấp tài khoản Premium'}
                     </Button>
                   </Stack>
                 </Paper>

@@ -27,7 +27,7 @@ import {
   AlternateEmailOutlined as BioIcon,
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../../../services/api';
-import useClientToast from './useClientToast';
+import useAppToast from '../../../components/common/useAppToast';
 import { notifyClientSessionChanged } from '../../../hooks/useClientSession';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -99,7 +99,7 @@ const requestGoogleAccessToken = ({ clientId, onSuccess, onError }) => {
 function ClientAuthDialog() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const authMode = params.get('auth');
   

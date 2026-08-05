@@ -13,9 +13,9 @@ import {
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import MusicIcon from '@mui/icons-material/MusicNoteRounded';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientFavoritesApi } from '../../services/api';
+import { clientFavoritesApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 
 function ClientFavorites() {
   const { playSong } = useClientPlayerActions();
@@ -101,7 +101,7 @@ function ClientFavorites() {
                       <Button size="small" onClick={(event) => { event.stopPropagation(); playSong(song, { queue: favorites }); }}>
                         Play
                       </Button>
-                      <SongMoreMenu song={song} />
+                      <ClientSongMoreMenu song={song} />
                       <Button
                         size="small"
                         color="error"

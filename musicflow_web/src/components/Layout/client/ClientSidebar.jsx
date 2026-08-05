@@ -33,7 +33,7 @@ import {
   AutoAwesomeRounded as SparklesIcon,
   ViewSidebarRounded as SidebarIcon,
 } from '@mui/icons-material';
-import useClientToast from './useClientToast';
+import useAppToast from '../../../components/common/useAppToast';
 import useClientSession from '../../../hooks/useClientSession';
 import { preloadRoute } from '../../../utils/routePreload';
 import { logout } from '../../../services/api';
@@ -70,7 +70,7 @@ function ClientSidebar({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast } = useClientToast();
+  const { showToast } = useAppToast();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { isLoggedIn, userName, userAvatar } = useClientSession();

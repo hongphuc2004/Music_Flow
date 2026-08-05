@@ -70,7 +70,7 @@ const initializeGoogle = (clientId) => {
 
 const requestGoogleAccessToken = ({ clientId, onSuccess, onError }) => {
   if (!window.google?.accounts?.oauth2 || !clientId) {
-    onError?.(new Error('Google OAuth chua san sang.'));
+    onError?.(new Error('Google OAuth chưa sẵn sàng.'));
     return;
   }
 
@@ -82,10 +82,10 @@ const requestGoogleAccessToken = ({ clientId, onSuccess, onError }) => {
         onSuccess(response.access_token);
         return;
       }
-      onError?.(new Error(response?.error || 'Khong lay duoc Google token.'));
+      onError?.(new Error(response?.error || 'Không lấy được Google token.'));
     },
     error_callback: (error) => {
-      onError?.(new Error(error?.message || error?.type || 'Dang nhap Google bi huy.'));
+      onError?.(new Error(error?.message || error?.type || 'Đăng nhập Google bị hủy.'));
     },
   });
 
@@ -113,7 +113,7 @@ function ArtistAuthDialog() {
         initializeGoogle(GOOGLE_CLIENT_ID);
         setGoogleReady(true);
       })
-      .catch(() => setError('Khong the tai Google SDK.'));
+      .catch(() => setError('Không thể tải Google SDK.'));
   }, []);
 
   const closeDialog = useCallback(() => {
@@ -151,7 +151,7 @@ function ArtistAuthDialog() {
       const res = await api.post('/artist/login', formData);
       completeArtistAuth(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Email hoac mat khau khong dung.');
+      setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
     } finally {
       setLoading(false);
     }
@@ -187,12 +187,12 @@ function ArtistAuthDialog() {
           }
         },
         onError: (err) => {
-          setError(err.message || 'Dang nhap Google that bai.');
+          setError(err.message || 'Đăng nhập Google thất bại.');
           setGoogleLoading(false);
         },
       });
     } catch {
-      setError('Khong the tai Google SDK.');
+      setError('Không thể tải Google SDK.');
       setGoogleLoading(false);
     }
   };
@@ -277,7 +277,7 @@ function ArtistAuthDialog() {
                 }}
               />
               <Button type="submit" fullWidth variant="contained" disabled={loading} startIcon={<MicExternalOnOutlined />} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)' }}>
-                {loading ? 'Dang dang nhap...' : 'Dang nhap Artist'}
+                {loading ? 'Đang đăng nhập...' : 'Đăng nhập Artist'}
               </Button>
             </Stack>
           </Box>
@@ -285,11 +285,11 @@ function ArtistAuthDialog() {
           <Divider>Hoac</Divider>
           {GOOGLE_CLIENT_ID ? (
             <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={googleLoading || !googleReady} onClick={handleGoogleLogin} sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
-              {googleLoading ? 'Dang xu ly...' : 'Dang nhap Artist bang Google'}
+              {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
             </Button>
           ) : (
             <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
-              Chua cau hinh Google Login
+              Chưa cấu hình Google Login
             </Button>
           )}
 
@@ -300,7 +300,7 @@ function ArtistAuthDialog() {
               sx={{ fontWeight: 800, color: '#6c63ff' }}
               onClick={() => navigate('/artist/register')}
             >
-              Dang ky Artist
+              Đăng ký Artist
             </Button>
           </Box>
         </Stack>

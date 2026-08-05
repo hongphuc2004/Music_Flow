@@ -30,9 +30,9 @@ import {
   WhatshotRounded as FireIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientSongsApi } from '../../services/api';
+import { clientSongsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 
 const PERIODS = ['Today', 'This Week', 'This Month'];
 const PERIOD_VALUES = ['today', 'week', 'month'];
@@ -585,11 +585,11 @@ export default function ClientRankings() {
 
                         {/* Stats & Actions */}
                         <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80, textAlign: 'right', mr: 2 }}>
-                          {song.periodPlayCount || 0} lượt nghe trong kỳ
+                          {song.periodPlayCount || 0} lượt nghe
                         </Typography>
 
                         <Box onClick={(e) => e.stopPropagation()}>
-                          <SongMoreMenu
+                          <ClientSongMoreMenu
                             song={song}
                             buttonSx={{
                               color: 'text.secondary',
@@ -667,7 +667,7 @@ export default function ClientRankings() {
                             {artist.name}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
-                            {(artist.periodPlayCount || 0).toLocaleString('vi-VN')} lượt nghe trong kỳ • {artist.songCount} bài hát
+                            {(artist.periodPlayCount || 0).toLocaleString('vi-VN')} lượt nghe • {artist.songCount} bài hát
                           </Typography>
                         </Box>
                       </Stack>

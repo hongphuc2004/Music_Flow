@@ -22,7 +22,7 @@ import {
   CloudQueueRounded as CloudIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { statsApi } from '../../services/api';
+import { statsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
 
 function Settings() {

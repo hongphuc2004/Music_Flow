@@ -31,6 +31,7 @@ const authMiddleware = (req, res, next) => {
     req.userRole = decoded.role || null;
     next();
   } catch (error) {
+    console.error("JWT Verification Error:", error);
     return res.status(401).json({
       success: false,
       message: "Token không hợp lệ",

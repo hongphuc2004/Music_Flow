@@ -33,6 +33,7 @@ SplashScreen (/)
 **File:** `presentation/screens/splash/splash_screen.dart` (83 dòng)
 
 **Chức năng:**
+
 - Hiển thị logo/animation trong khi check auth
 - `AuthService.isLoggedIn()` → đọc token từ `flutter_secure_storage`
 - Nếu có token hợp lệ → `Navigator.pushReplacement('/main')`
@@ -53,6 +54,7 @@ SplashScreen
 **File:** `presentation/screens/login/login_screen.dart` (230 dòng)
 
 **Chức năng:**
+
 - Form email + password với validation
 - Nút Google Sign-In (sử dụng `google_sign_in`)
 - Toggle hiển thị password
@@ -60,6 +62,7 @@ SplashScreen
 - Xử lý lỗi bằng SnackBar
 
 **Luồng:**
+
 ```
 LoginScreen
   ├─ _loginWithEmail()
@@ -106,6 +109,7 @@ Bao bọc bởi `MiniPlayerWrapper` → MiniPlayer luôn visible.
 **File:** `presentation/screens/home/home_screen.dart` (473 dòng)
 
 **Sections:**
+
 1. **Top Section** — Banner bài hát nổi bật (horizontal scroll)
 2. **System Playlists** — Carousel do admin tạo
 3. **Recommended Songs** — 12 bài random
@@ -113,12 +117,14 @@ Bao bọc bởi `MiniPlayerWrapper` → MiniPlayer luôn visible.
 5. **All Songs** — Grid view toàn bộ bài hát public
 
 **API calls:**
+
 - `GET /api/playlists/system` → system playlists
 - `GET /api/songs/recommended` → 12 bài random
 - `GET /api/songs` → tất cả bài
 - `GET /api/artist/profile?name=...` → avatar nghệ sĩ (pre-fetch)
 
 **Sub-files:**
+
 ```
 home/
 ├─ home_screen.dart              ← Orchestrator
@@ -138,6 +144,7 @@ home/
 **File:** `presentation/screens/chart/flowchart_screen.dart`
 
 **Chức năng:**
+
 - Hiển thị top bài hát trending theo thời gian
 - Dữ liệu từ `GET /api/songs/flowchart` → play counts theo giờ
 - Chart visualization (bar chart hoặc list với rank)
@@ -151,6 +158,7 @@ home/
 **3 states:**
 
 **State 1: Topic grid** (mặc định, không có query)
+
 ```
 TopicGrid
   └─ GET /api/topics → 2-column grid
@@ -159,6 +167,7 @@ TopicGrid
 ```
 
 **State 2: Text search**
+
 ```
 TextField input (debounce 500ms)
   └─ GET /api/songs/search?q=...
@@ -166,6 +175,7 @@ TextField input (debounce 500ms)
 ```
 
 **State 3: Voice search**
+
 ```
 Mic button
   └─ speech_to_text: startListening()
@@ -173,6 +183,7 @@ Mic button
 ```
 
 **Search History:**
+
 - Lưu 10 queries gần nhất vào `SharedPreferences`
 - Hiển thị dưới search bar khi focus
 
@@ -185,6 +196,7 @@ Mic button
 **Layout:** PageView ngang với 3 pages
 
 ### Page 1: Album Art
+
 ```
 Column
   ├─ AppBar (back button, title "Now Playing", share)
@@ -203,6 +215,7 @@ Column
 ```
 
 ### Page 2: Lyrics
+
 ```
 SyncedLyricsView
   └─ LyricsApiService.getLyrics(songId)
@@ -213,6 +226,7 @@ SyncedLyricsView
 ```
 
 ### Page 3: Queue
+
 ```
 ListView.builder
   └─ queue songs
@@ -221,6 +235,7 @@ ListView.builder
 ```
 
 **Bottom Action Bar (PlayerBottomActionBar widget):**
+
 ```
 Row
   ├─ Like button    → LikeService.toggle(songId)
@@ -230,6 +245,7 @@ Row
 ```
 
 **Spinning disc animation:**
+
 ```dart
 // Khi isPlaying = true → disc xoay liên tục
 AnimationController(vsync: this, duration: Duration(seconds: 10))
@@ -252,6 +268,7 @@ Xem chi tiết tại [ai-dj.md](./ai-dj.md).
 **File:** `presentation/screens/library/library_screen.dart`
 
 **Menu items:**
+
 ```
 LibraryScreen
   ├─ Yêu thích      → FavoritesScreen
@@ -262,29 +279,35 @@ LibraryScreen
 ```
 
 ### FavoritesScreen
+
 - `GET /api/favorites` → danh sách bài yêu thích
 - SongTile với swipe-to-remove
 
 ### PlaylistsScreen
+
 - `GET /api/playlists` → user playlists
 - Nút tạo playlist mới → Dialog đặt tên
 - `POST /api/playlists`
 
 ### PlaylistDetailScreen
+
 - `GET /api/playlists/:id` → songs list
 - Drag to reorder → `PUT /api/playlists/:id/reorder`
 - Add songs → search + add
 
 ### HistoryScreen
+
 - `PlayHistoryService.getHistory()` → local SharedPreferences
 - Lịch sử 50 bài gần nhất, có timestamp
 
 ### DownloadedSongsScreen
+
 - `OfflineSongService.getDownloadedSongs()` → Hive
 - Hiển thị bài đã download với kích thước file
 - Swipe to delete → xóa file + Hive record
 
 ### YourUploadsScreen
+
 - `GET /api/songs/my-uploads` → bài user đã upload
 - Toggle public/private → `PATCH /api/songs/:id/toggle-public`
 - Upload bài mới → FilePicker + `POST /api/songs`
@@ -296,6 +319,7 @@ LibraryScreen
 **File:** `presentation/screens/artist/artist_screen.dart`
 
 **Sections:**
+
 ```
 artist/
 ├─ artist_screen.dart          ← Orchestrator
@@ -307,6 +331,7 @@ artist/
 ```
 
 **API:**
+
 - `GET /api/artist/profile?name=<name>` → ArtistProfile
 - `GET /api/artist/:id/follow-status` → following?
 - `POST /api/artist/:id/follow` → toggle follow
@@ -322,6 +347,7 @@ artist/
 - Đăng xuất → `AuthService.logout()` → xóa tokens → LoginScreen
 
 ### EditProfileScreen
+
 - Đổi tên → `PUT /api/users/update { name }`
 - Đổi avatar → `image_picker` → `PUT /api/users/update { avatar }`
 
@@ -330,6 +356,7 @@ artist/
 ## Widgets chia sẻ
 
 ### MiniPlayer (`mini_player.dart`)
+
 ```
 Card (elevation 4)
   └─ Row
@@ -337,9 +364,11 @@ Card (elevation 4)
        ├─ Column (tên bài, nghệ sĩ — 1 line, ellipsis)
        └─ Row (Like, Previous, Play/Pause, Next)
 ```
+
 Tap → `Navigator.push(PlayerScreen)`
 
 ### MiniPlayerWrapper (`mini_player_wrapper.dart`)
+
 ```
 Stack
   ├─ child (nội dung screen)
@@ -350,7 +379,9 @@ Stack
 ```
 
 ### SongOptionsMenu (`song_options_menu.dart`)
+
 Bottom sheet xuất hiện khi long-press bài hát:
+
 - Thêm vào playlist
 - Thêm vào yêu thích
 - Tải xuống
@@ -358,12 +389,14 @@ Bottom sheet xuất hiện khi long-press bài hát:
 - Xem nghệ sĩ
 
 ### SongCommentsSheet (`song_comments_sheet.dart`)
+
 - Comment list với threading (replies)
 - TextField để gửi comment mới
 - Long-press → sửa/xóa (nếu là chủ comment)
 - Reaction (like) bằng double-tap
 
 ### SyncedLyricsView (`synced_lyrics_view.dart`)
+
 - Nhận `List<LrcLine>` + `Duration position`
 - Highlight dòng hiện tại dựa trên timestamp
 - Auto-scroll mượt mà

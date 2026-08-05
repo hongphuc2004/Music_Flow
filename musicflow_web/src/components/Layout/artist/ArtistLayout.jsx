@@ -48,6 +48,7 @@ function ArtistLayout({ children, title }) {
         <Toolbar />
         {children}
       </Box>
+      <ArtistAuthDialog />
     </Box>
   );
 }

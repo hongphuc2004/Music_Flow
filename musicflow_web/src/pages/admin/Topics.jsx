@@ -43,7 +43,7 @@ import {
   FeaturedPlayListRounded as TopicIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
-import { topicsApi, songsApi } from '../../services/api';
+import { topicsApi, songsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
 
 function Topics() {
@@ -413,86 +413,89 @@ function Topics() {
                 <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={topic._id}>
                   <Card 
                     elevation={0}
+                    onClick={() => openEditDialog(topic)}
                     sx={{ 
                       borderRadius: 5, 
                       border: '1px solid', 
                       borderColor: 'divider', 
-                      height: '100%',
+                      height: 350,
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden',
                       position: 'relative',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
+                      cursor: 'pointer',
+                      transform: 'translateY(0)',
                       '&:hover': {
+                        transform: 'translateY(-6px)',
                         boxShadow: '0 12px 28px rgba(108,99,255,0.08)',
                         borderColor: 'primary.main',
-                        '& .topic-cover': { transform: 'scale(1.04)' },
+                        '& .topic-cover': { transform: 'scale(1.05)' },
                         '& .topic-actions-hover': { opacity: 1, transform: 'scale(1)' },
                       },
                       transition: 'all 0.25s ease'
                     }}
                   >
                     {/* Header Image Cover */}
-                    <Box sx={{ position: 'relative', height: 130, overflow: 'hidden', bgcolor: 'action.hover' }}>
-                      <CardMedia
-                        component="img"
-                        className="topic-cover"
-                        image={topic.avatar || 'none'}
-                        alt={topic.name}
-                        sx={{
-                          height: '100%',
-                          objectFit: 'cover',
-                          transition: 'transform 0.25s ease',
-                          display: topic.avatar ? 'block' : 'none'
-                        }}
-                      />
-                      {/* Fallback avatar box */}
-                      {!topic.avatar && (
-                        <Box sx={{ 
-                          height: '100%', 
-                          background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', 
-                          display: 'grid', 
-                          placeItems: 'center', 
-                          color: '#fff' 
-                        }}>
-                          <CategoryIcon sx={{ fontSize: 44 }} />
+                    <Box sx={{ position: 'relative', flexGrow: 1, overflow: 'hidden', bgcolor: 'action.hover' }}>
+                      {topic.avatar ? (
+                        <CardMedia
+                          component="img"
+                          className="topic-cover"
+                          image={topic.avatar}
+                          alt={topic.name}
+                          sx={{
+                            height: '100%',
+                            width: '100%',
+                            objectFit: 'cover',
+                            transition: 'transform 0.25s ease',
+                          }}
+                        />
+                      ) : (
+                        <Box 
+                          className="topic-cover"
+                          sx={{ 
+                            height: '100%', 
+                            width: '100%',
+                            background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', 
+                            display: 'grid', 
+                            placeItems: 'center', 
+                            color: '#fff',
+                            transition: 'transform 0.25s ease',
+                          }}
+                        >
+                          <CategoryIcon sx={{ fontSize: 50 }} />
                         </Box>
                       )}
-
                     </Box>
 
-                    <CardContent sx={{ p: 2.5, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="h6" fontWeight={850} sx={{ lineHeight: 1.3, mb: 1 }} noWrap>
-                        {topic.name}
-                      </Typography>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary" 
-                        sx={{ 
-                          lineHeight: 1.5, 
-                          mb: 2.5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          height: 40,
-                          fontWeight: 500
-                        }}
-                      >
-                        {topic.description || 'Không có mô tả chi tiết cho chủ đề này.'}
-                      </Typography>
-
-                      <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
-                      
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 'auto' }}>
-                        <Chip
-                          icon={<TracksIcon style={{ fontSize: 13 }} />}
-                          label={`${topic.songCount || 0} tracks`}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                          sx={{ fontWeight: 700, borderRadius: 2 }}
-                        />
+                    {/* Card Content - White Bottom */}
+                    <CardContent sx={{ p: 2, bgcolor: 'background.paper', borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ overflow: 'hidden', flexGrow: 1 }}>
+                          <Chip
+                            icon={<TracksIcon style={{ fontSize: 13 }} />}
+                            label={`${topic.songCount || 0} tracks`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ fontWeight: 700, borderRadius: 2, flexShrink: 0 }}
+                          />
+                          <Typography 
+                            variant="subtitle1" 
+                            fontWeight={800} 
+                            sx={{ 
+                              lineHeight: 1.3,
+                              color: 'text.primary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {topic.name}
+                          </Typography>
+                        </Stack>
+                        
                         {/* Hover/Touch Actions */}
                         <Box 
                           className="topic-actions-hover"
@@ -501,7 +504,8 @@ function Topics() {
                             transform: { xs: 'none', md: 'scale(0.85)' },
                             transition: 'opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             display: 'flex',
-                            gap: 1
+                            gap: 1,
+                            flexShrink: 0
                           }}
                         >
                           <Tooltip title="Hiệu chỉnh chủ đề" arrow>

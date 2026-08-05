@@ -6,6 +6,8 @@ import { refreshAccessToken, setAccessToken } from './services/api';
 import { notifyClientSessionChanged } from './hooks/useClientSession';
 import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/routePreload';
 import { ColorModeContext } from './context/ColorModeContext';
+import { AssistantProvider } from './features/assistant/AssistantProvider';
+import AssistantHost from './features/assistant/AssistantHost';
 
 const Dashboard = createLazyRoute('/');
 const Accounts = createLazyRoute('/accounts');
@@ -13,6 +15,7 @@ const Songs = createLazyRoute('/songs');
 const Topics = createLazyRoute('/topics');
 const Playlists = createLazyRoute('/playlists');
 const Settings = createLazyRoute('/settings');
+const AdminPremium = createLazyRoute('/premium');
 const AdminLogin = createLazyRoute('/adminlogin');
 
 const ArtistAnalytics = createLazyRoute('/artist/analytics');
@@ -33,6 +36,8 @@ const ClientPlaylist = createLazyRoute('/client/playlists/:playlistId');
 const ClientGenres = createLazyRoute('/client/genres');
 const ClientRankings = createLazyRoute('/client/rankings');
 const ClientAiMood = createLazyRoute('/client/ai-mood');
+const ClientPremium = createLazyRoute('/client/premium');
+const ClientPaymentReturn = createLazyRoute('/client/premium/vnpay-return');
 const ClientPlayerBoundary = lazy(() => import('./components/Layout/client/ClientPlayerBoundary'));
 
 
@@ -244,8 +249,9 @@ function App() {
         <CssBaseline />
         <AppToastProvider>
           <Router>
-            <RouteProviders>
-              <Suspense fallback={<RouteFallback />}>
+            <AssistantProvider>
+              <RouteProviders>
+                <Suspense fallback={<RouteFallback />}>
                 <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
@@ -376,16 +382,35 @@ function App() {
               </ClientRoute>
             }
           />
+          <Route
+            path="/client/premium"
+            element={
+              <ClientRoute requireAuth>
+                <ClientPremium />
+              </ClientRoute>
+            }
+          />
+          <Route
+            path="/client/premium/vnpay-return"
+            element={
+              <ClientRoute requireAuth>
+                <ClientPaymentReturn />
+              </ClientRoute>
+            }
+          />
           <Route path="/client" element={<Navigate to="/client/home" replace />} />
           <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
           <Route path="/songs" element={<ProtectedRoute><Songs /></ProtectedRoute>} />
           <Route path="/topics" element={<ProtectedRoute><Topics /></ProtectedRoute>} />
           <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
+          <Route path="/premium" element={<ProtectedRoute role="admin"><AdminPremium /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="*" element={<HomeRedirect />} />
               </Routes>
               </Suspense>
-            </RouteProviders>
+              </RouteProviders>
+              <AssistantHost />
+            </AssistantProvider>
           </Router>
         </AppToastProvider>
     </ThemeProvider>

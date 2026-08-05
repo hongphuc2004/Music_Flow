@@ -25,6 +25,9 @@ router.get("/:id/lyrics", songController.getSongLyrics);
 // Record a qualified play
 router.post("/:id/play", songController.registerPlay);
 
+// 📻 GET SIMILAR SONGS (SONG RADIO)
+router.get("/:id/similar", songController.getSimilarSongs);
+
 // Return the Cloudinary URL redirect
 router.get("/:id/stream", songController.streamSong);
 

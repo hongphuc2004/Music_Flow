@@ -218,9 +218,7 @@ class PlaylistApiService {
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await ApiClient.delete(
-            Uri.parse('$baseUrl/$playlistId'),
-          );
+          response = await ApiClient.delete(Uri.parse('$baseUrl/$playlistId'));
         }
       }
       final data = jsonDecode(response.body);

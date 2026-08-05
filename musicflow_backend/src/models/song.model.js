@@ -49,6 +49,10 @@ const songSchema = new mongoose.Schema(
     duration: {
       type: Number,
     },
+    fileSize: {
+      type: Number,
+      default: 0,
+    },
 
     // 🖼️ IMAGE
     imageUrl: {
@@ -118,6 +122,6 @@ songSchema.index({ isPublic: 1, createdAt: -1 });
 songSchema.index({ artists: 1, createdAt: -1 });
 songSchema.index({ topicIds: 1, createdAt: -1 });
 songSchema.index({ uploadedBy: 1, createdAt: -1 });
-songSchema.index({ title: "text" });
+songSchema.index({ title: "text", lyrics: "text" }, { weights: { title: 10, lyrics: 2 } });
 
 module.exports = mongoose.model("Song", songSchema);

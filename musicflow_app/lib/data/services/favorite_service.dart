@@ -46,9 +46,7 @@ class FavoriteService {
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await ApiClient.post(
-            Uri.parse('$baseUrl/add/$songId'),
-          );
+          response = await ApiClient.post(Uri.parse('$baseUrl/add/$songId'));
         }
       }
       final data = jsonDecode(response.body);
@@ -98,9 +96,7 @@ class FavoriteService {
       if (response.statusCode == 401) {
         final refreshed = await AuthService.tryRefreshToken();
         if (refreshed) {
-          response = await ApiClient.post(
-            Uri.parse('$baseUrl/toggle/$songId'),
-          );
+          response = await ApiClient.post(Uri.parse('$baseUrl/toggle/$songId'));
         }
       }
       final data = jsonDecode(response.body);

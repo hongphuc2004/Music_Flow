@@ -23,9 +23,9 @@ import {
   HeadphonesRounded as PlayCountIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientPlaylistsApi } from '../../services/api';
+import { clientPlaylistsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import SongMoreMenu from '../../components/Layout/client/SongMoreMenu';
+import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 
 function ClientPlaylist() {
   const navigate = useNavigate();
@@ -384,7 +384,7 @@ function ClientPlaylist() {
                         </IconButton>
                       </Tooltip>
                       
-                      <SongMoreMenu 
+                      <ClientSongMoreMenu 
                         song={song} 
                         buttonSx={{
                           color: 'text.secondary',

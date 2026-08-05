@@ -234,7 +234,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final avatar = result.artist?.avatarUrl ?? '';
       updates[remainingTargets[i]] = avatar; 
       if (result.success && avatar.isNotEmpty) {
-        final queryName = queryNameByNormalized[remainingTargets[i]] ?? remainingTargets[i];
+        final queryName =
+            queryNameByNormalized[remainingTargets[i]] ?? remainingTargets[i];
         ArtistApiService.cacheAvatar(queryName, avatar);
       }
     }

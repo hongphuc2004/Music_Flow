@@ -3,6 +3,7 @@ import 'package:musicflow_app/data/models/user_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
 import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
+import 'package:musicflow_app/core/theme/theme_service.dart';
 
 import 'edit_profile_screen.dart';
 
@@ -210,16 +211,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
         title: const Text('Cài đặt'),
         elevation: 0,
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.greenAccent),
+          ? Center(
+              child: CircularProgressIndicator(color: theme.colorScheme.primary),
             )
           : ListView(
               children: [
@@ -278,6 +281,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đã xóa cache')),
                     );
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildSectionHeader('Giao diện'),
+                _buildSwitchTile(
+                  icon: Icons.dark_mode_outlined,
+                  title: 'Chế độ tối',
+                  subtitle: 'Sử dụng giao diện màu tối cho ứng dụng',
+                  value: ThemeService().isDarkMode,
+                  onChanged: (value) {
+                    ThemeService().toggleTheme(value);
+                    setState(() {});
                   },
                 ),
                 const SizedBox(height: 16),
@@ -340,6 +355,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildAccountCard() {
     final hasAvatar = _currentUser?.avatar.trim().isNotEmpty == true;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -347,26 +364,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.greenAccent.withOpacity(0.2),
-            Colors.tealAccent.withOpacity(0.1),
+            primaryColor.withOpacity(0.18),
+            secondaryColor.withOpacity(0.08),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
+        border: Border.all(color: primaryColor.withOpacity(0.25)),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundColor: Colors.greenAccent,
+            backgroundColor: primaryColor,
             backgroundImage: hasAvatar
                 ? NetworkImage(_currentUser!.avatar)
                 : null,
             child: !hasAvatar
                 ? Text(
                     _currentUser?.name.substring(0, 1).toUpperCase() ?? 'U',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -381,7 +398,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   _currentUser?.name ?? 'Người dùng',
                   style: const TextStyle(
-                    color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -389,13 +405,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _currentUser?.email ?? '',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 14),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.greenAccent),
+            icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
             onPressed: _openEditProfile,
           ),
         ],
@@ -404,29 +420,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLoginPrompt() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: isDark ? const Color(0xFF161922) : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? const Color(0xFF262C3A) : Colors.grey[200]!),
       ),
       child: Column(
         children: [
           Icon(
             Icons.account_circle_outlined,
             size: 48,
-            color: Colors.grey[600],
+            color: theme.disabledColor,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Đăng nhập để sử dụng các tính năng của MusicFlow',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(fontSize: 16, color: theme.textTheme.titleMedium?.color),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'Playlist và yêu thích sẽ được lưu trữ an toàn',
-            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 13),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -439,8 +459,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent,
-              foregroundColor: Colors.black,
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: isDark ? Colors.black : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -459,19 +479,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: Colors.greenAccent),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
+      leading: Icon(icon, color: theme.colorScheme.primary),
+      title: Text(title),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12),
             )
           : null,
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeThumbColor: Colors.greenAccent,
+        activeColor: theme.colorScheme.primary,
       ),
     );
   }
@@ -481,18 +502,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     String? subtitle,
     required VoidCallback onTap,
-    Color textColor = Colors.white,
+    Color? textColor,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: Colors.greenAccent),
-      title: Text(title, style: TextStyle(color: textColor)),
+      leading: Icon(icon, color: theme.colorScheme.primary),
+      title: Text(title, style: textColor != null ? TextStyle(color: textColor) : null),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12),
             )
           : null,
-      trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+      trailing: Icon(Icons.chevron_right, color: theme.disabledColor),
       onTap: onTap,
     );
   }

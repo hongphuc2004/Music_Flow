@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'home_shared.dart';
 
-class HomePlaylistCarousel extends StatelessWidget {
+class HomeNewReleasesSection extends StatelessWidget {
   final List<Playlist> playlists;
   final ValueChanged<Playlist> onPlaylistTap;
 
-  const HomePlaylistCarousel({
+  const HomeNewReleasesSection({
     super.key,
     required this.playlists,
     required this.onPlaylistTap,
@@ -14,15 +14,29 @@ class HomePlaylistCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (playlists.isEmpty) return const SizedBox.shrink();
+
+    // Sort by createdAt descending if dates are available, otherwise keep original order
+    final sortedPlaylists = List<Playlist>.from(playlists)
+      ..sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
+
+    // Display only top 6 new releases
+    final newReleases = sortedPlaylists.take(6).toList();
+
     return SizedBox(
       height: 260,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: playlists.length,
+        itemCount: newReleases.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
-          final playlist = playlists[index];
-          return _PlaylistCard(
+          final playlist = newReleases[index];
+          return _NewReleaseCard(
             playlist: playlist,
             index: index,
             onTap: () => onPlaylistTap(playlist),
@@ -33,12 +47,12 @@ class HomePlaylistCarousel extends StatelessWidget {
   }
 }
 
-class _PlaylistCard extends StatelessWidget {
+class _NewReleaseCard extends StatelessWidget {
   final Playlist playlist;
   final int index;
   final VoidCallback onTap;
 
-  const _PlaylistCard({
+  const _NewReleaseCard({
     required this.playlist,
     required this.index,
     required this.onTap,
@@ -88,11 +102,43 @@ class _PlaylistCard extends StatelessWidget {
                     fallbackColor: color,
                     label: playlist.name,
                   ),
+                  // Glowing "NEW" badge on the top left
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6C63FF), Color(0xFF00BCD4)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'NEW',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ),
                   Positioned(
                     right: 8,
                     top: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(20),
@@ -103,14 +149,14 @@ class _PlaylistCard extends StatelessWidget {
                           const Icon(
                             Icons.music_note_rounded,
                             color: Colors.white,
-                            size: 12,
+                            size: 10,
                           ),
-                          const SizedBox(width: 3),
+                          const SizedBox(width: 2),
                           Text(
                             '${playlist.songCount}',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -157,7 +203,7 @@ class _PlaylistCard extends StatelessWidget {
               Text(
                 playlist.description.isNotEmpty
                     ? playlist.description
-                    : 'Bộ sưu tập nhạc tuyệt đỉnh cho bạn.',
+                    : 'Album mới phát hành tuyệt vời cho bạn.',
                 style: TextStyle(
                   color: HomePalette.textSecondary(context),
                   fontSize: 11,

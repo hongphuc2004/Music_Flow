@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
-
 import 'home_shared.dart';
 
-class HomeSongList extends StatelessWidget {
+class HomeTrendingChart extends StatelessWidget {
   final List<Song> songs;
   final ValueChanged<Song> onSongTap;
   final String Function(Duration?) formatDuration;
 
-  const HomeSongList({
+  const HomeTrendingChart({
     super.key,
     required this.songs,
     required this.onSongTap,
@@ -18,13 +17,16 @@ class HomeSongList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Only display up to top 5 songs for chart
+    final top5 = songs.take(5).toList();
+
     return Column(
-      children: songs.asMap().entries.map((entry) {
+      children: top5.asMap().entries.map((entry) {
         final index = entry.key;
         final song = entry.value;
         return Padding(
-          padding: EdgeInsets.only(bottom: index == songs.length - 1 ? 0 : 10),
-          child: _SongRow(
+          padding: EdgeInsets.only(bottom: index == top5.length - 1 ? 0 : 8),
+          child: _TrendingSongRow(
             song: song,
             index: index,
             onSongTap: onSongTap,
@@ -36,95 +38,126 @@ class HomeSongList extends StatelessWidget {
   }
 }
 
-class _SongRow extends StatelessWidget {
+class _TrendingSongRow extends StatelessWidget {
   final Song song;
   final int index;
   final ValueChanged<Song> onSongTap;
   final String Function(Duration?) formatDuration;
 
-  const _SongRow({
+  const _TrendingSongRow({
     required this.song,
     required this.index,
     required this.onSongTap,
     required this.formatDuration,
   });
 
+  Color _getRankColor(int rank) {
+    switch (rank) {
+      case 0:
+        return const Color(0xFFFFD700); // Gold
+      case 1:
+        return const Color(0xFFC0C0C0); // Silver
+      case 2:
+        return const Color(0xFFCD7F32); // Bronze
+      default:
+        return HomePalette.secondary; // Cyan for Rank 4 and 5
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onSongTap(song),
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: HomePalette.card.withOpacity(0.92),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: HomePalette.cardBorder),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 34,
-              child: Text(
-                '${index + 1}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+    final rankColor = _getRankColor(index);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onSongTap(song),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: HomePalette.card(context).withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: HomePalette.cardBorder(context)),
+          ),
+          child: Row(
+            children: [
+              // Glowing Rank Number
+              SizedBox(
+                width: 32,
+                child: Center(
+                  child: Text(
+                    '#${index + 1}',
+                    style: TextStyle(
+                      color: rankColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      shadows: [
+                        BoxShadow(
+                          color: rankColor.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            HomeArtwork(
-              imageUrl: song.imageUrl,
-              size: 58,
-              borderRadius: 16,
-              iconSize: 26,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    song.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    song.artists.isNotEmpty
-                        ? song.artists.join(', ')
-                        : 'Unknown artist',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      HomeMiniInfo(
-                        icon: Icons.schedule,
-                        label: formatDuration(song.durationAsDuration),
-                      ),
-                      HomeMiniInfo(
-                        icon: Icons.favorite_border,
-                        label: '${song.likeCount}',
-                      ),
-                    ],
-                  ),
-                ],
+              const SizedBox(width: 8),
+              HomeArtwork(
+                imageUrl: song.imageUrl,
+                size: 52,
+                borderRadius: 12,
+                iconSize: 22,
               ),
-            ),
-            SongOptionsMenu(song: song),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      song.title,
+                      style: TextStyle(
+                        color: HomePalette.textPrimary(context),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      song.artists.isNotEmpty
+                          ? song.artists.join(', ')
+                          : 'Nghệ sĩ ẩn danh',
+                      style: TextStyle(
+                        color: HomePalette.textSecondary(context),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        HomeMiniInfo(
+                          icon: Icons.schedule,
+                          label: formatDuration(song.durationAsDuration),
+                        ),
+                        const SizedBox(width: 6),
+                        HomeMiniInfo(
+                          icon: Icons.favorite_rounded,
+                          label: '${song.likeCount}',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SongOptionsMenu(song: song),
+            ],
+          ),
         ),
       ),
     );

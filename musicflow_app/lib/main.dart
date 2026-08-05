@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
@@ -11,9 +11,11 @@ import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/library_screen.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
+import 'package:musicflow_app/core/theme/theme_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ThemeService().init();
   runApp(const MusicFlowApp());
   unawaited(_bootstrapAudioServices());
 }
@@ -32,20 +34,45 @@ class MusicFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MusicFlow',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.black,
-          elevation: 0,
-        ),
-      ),
-      home: const SplashScreen(),
+    return AnimatedBuilder(
+      animation: ThemeService(),
+      builder: (context, child) {
+        return MaterialApp(
+          title: 'MusicFlow',
+          debugShowCheckedModeBanner: false,
+          themeMode: ThemeService().themeMode,
+          theme: ThemeData.light().copyWith(
+            scaffoldBackgroundColor: const Color(0xFFF6F8FA),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFFF6F8FA),
+              foregroundColor: Colors.black,
+              elevation: 0,
+            ),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF6C63FF),
+              secondary: Color(0xFF00BCD4),
+              surface: Colors.white,
+            ),
+          ),
+          darkTheme: ThemeData.dark().copyWith(
+            scaffoldBackgroundColor: Colors.black,
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.black,
+              elevation: 0,
+            ),
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF6C63FF),
+              secondary: Color(0xFF00BCD4),
+              surface: Color(0xFF15181F),
+            ),
+          ),
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

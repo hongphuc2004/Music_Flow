@@ -1,12 +1,40 @@
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 class HomePalette {
-  static const Color accent = Color(0xFF5BE584);
-  static const Color secondaryAccent = Color(0xFFFF8A5B);
-  static const Color card = Color(0xFF15181F);
-  static const Color cardBorder = Color(0xFF262C36);
+  static const Color primary = Color(0xFF6C63FF); // Deep purple/indigo matching React web theme
+  static const Color secondary = Color(0xFF00BCD4); // Cyan matching React web secondary theme
+
+  // Legacy fallback compatibility
+  static Color get accent => primary;
+  static Color get secondaryAccent => secondary;
+
+  // Theme-aware dynamic colors
+  static Color background(BuildContext context) => Theme.of(context).scaffoldBackgroundColor;
+  
+  static Color card(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? const Color(0xFF161922) 
+        : Colors.white;
+  }
+  
+  static Color cardBorder(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? const Color(0xFF262C3A) 
+        : const Color(0xFFE5E9F0);
+  }
+  
+  static Color textPrimary(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? Colors.white 
+        : const Color(0xFF1A202C);
+  }
+  
+  static Color textSecondary(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark 
+        ? const Color(0xFF8E9BAE) 
+        : const Color(0xFF718096);
+  }
 }
 
 class HomeBackdrop extends StatelessWidget {
@@ -14,24 +42,48 @@ class HomeBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    if (!isDark) {
+      // Soft, light gradients for Light Mode
+      return IgnorePointer(
+        child: Stack(
+          children: [
+            Container(color: const Color(0xFFF6F8FA)),
+            Positioned(
+              top: -100,
+              right: -50,
+              child: _Glow(size: 280, color: const Color(0xFF6C63FF).withValues(alpha: 0.05)),
+            ),
+            Positioned(
+              top: 120,
+              left: -80,
+              child: _Glow(size: 240, color: const Color(0xFF00BCD4).withValues(alpha: 0.04)),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Luxurious dark neon glows for Dark Mode
     return IgnorePointer(
       child: Stack(
         children: [
-          Container(color: Colors.black),
-          const Positioned(
-            top: -120,
-            right: -40,
-            child: _Glow(size: 260, color: Color.fromRGBO(91, 229, 132, 0.18)),
-          ),
-          const Positioned(
-            top: 140,
-            left: -80,
-            child: _Glow(size: 220, color: Color.fromRGBO(255, 138, 91, 0.10)),
+          Container(color: const Color(0xFF0A0D14)),
+          Positioned(
+            top: -140,
+            right: -60,
+            child: _Glow(size: 320, color: const Color(0xFF6C63FF).withValues(alpha: 0.12)),
           ),
           Positioned(
-            bottom: 120,
-            right: -100,
-            child: _Glow(size: 260, color: Colors.blueAccent.withOpacity(0.08)),
+            top: 160,
+            left: -100,
+            child: _Glow(size: 260, color: const Color(0xFF00BCD4).withValues(alpha: 0.10)),
+          ),
+          Positioned(
+            bottom: 80,
+            right: -120,
+            child: _Glow(size: 300, color: const Color(0xFF6C63FF).withValues(alpha: 0.05)),
           ),
         ],
       ),
@@ -52,7 +104,7 @@ class _Glow extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [color, color.withOpacity(0)]),
+        gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
       ),
     );
   }
@@ -81,16 +133,20 @@ class HomeSectionHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: HomePalette.textPrimary(context),
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                style: TextStyle(
+                  color: HomePalette.textSecondary(context),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -115,25 +171,28 @@ class HomeGhostButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.07)),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: Colors.white70),
+            Icon(icon, size: 16, color: HomePalette.textPrimary(context).withValues(alpha: 0.8)),
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: HomePalette.textPrimary(context),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -152,17 +211,20 @@ class HomeCountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.07)),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+        ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: Colors.grey[300],
+          color: HomePalette.textPrimary(context).withValues(alpha: 0.8),
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
@@ -220,22 +282,25 @@ class HomeMetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white70, size: 14),
+          Icon(icon, color: HomePalette.textSecondary(context), size: 14),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color: HomePalette.textSecondary(context),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -257,18 +322,20 @@ class HomeMiniInfo extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Theme.of(context).brightness == Brightness.dark 
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: Colors.grey[500]),
+          Icon(icon, size: 12, color: HomePalette.textSecondary(context)),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey[400],
+              color: HomePalette.textSecondary(context),
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -293,7 +360,7 @@ class HomeArtwork extends StatelessWidget {
     required this.size,
     required this.borderRadius,
     required this.iconSize,
-    this.fallbackColor = HomePalette.accent,
+    this.fallbackColor = HomePalette.primary,
     this.label,
   });
 
@@ -306,9 +373,9 @@ class HomeArtwork extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 18,
-            offset: const Offset(0, 10),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -353,7 +420,7 @@ class _ArtworkFallback extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(0.92),
+            color.withValues(alpha: 0.90),
             Color.lerp(color, Colors.black, 0.55) ?? color,
           ],
         ),

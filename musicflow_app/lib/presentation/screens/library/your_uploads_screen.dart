@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import '../../widgets/music_flow_backdrop.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/song_model.dart';
 import '../../../data/services/song_api_service.dart';
 import '../../../data/services/topic_api_service.dart';
 import '../../../data/models/topic_model.dart';
 import '../../../presentation/widgets/mini_player_wrapper.dart';
+import 'package:file_picker/file_picker.dart';
 
 class YourUploadsScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -279,30 +281,47 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return MusicFlowBackdrop(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        title: const Text(
-          'Bài hát của bạn',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_rounded),
-            onPressed: _startUpload,
-            tooltip: 'Upload bài hát mới',
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
           ),
-        ],
-      ),
-      body: MiniPlayerWrapper(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF1DB954)),
-              )
-            : _uploadedSongs.isEmpty
-            ? _buildEmptyState()
-            : _buildSongList(),
+          title: Text(
+            'Bài hát của bạn',
+            style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(
+                Icons.upload_rounded,
+                color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              ),
+              onPressed: _startUpload,
+              tooltip: 'Upload bài hát mới',
+            ),
+          ],
+        ),
+        body: MiniPlayerWrapper(
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
+              : _uploadedSongs.isEmpty
+              ? _buildEmptyState()
+              : _buildSongList(),
+        ),
       ),
     );
   }

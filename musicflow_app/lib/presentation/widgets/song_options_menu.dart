@@ -47,7 +47,7 @@ class SongOptionsMenu extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => _SongOptionsSheet(
+      builder: (context) => SongOptionsSheet(
         song: song,
         onAddToFavorite: onAddToFavorite,
         onShare: onShare,
@@ -60,7 +60,7 @@ class SongOptionsMenu extends StatelessWidget {
   }
 }
 
-class _SongOptionsSheet extends StatefulWidget {
+class SongOptionsSheet extends StatefulWidget {
   final Song song;
   final VoidCallback? onAddToFavorite;
   final VoidCallback? onShare;
@@ -69,7 +69,8 @@ class _SongOptionsSheet extends StatefulWidget {
   final VoidCallback? onRemovedFromPlaylist;
   final VoidCallback? onFavoriteChanged;
 
-  const _SongOptionsSheet({
+  const SongOptionsSheet({
+    super.key,
     required this.song,
     this.onAddToFavorite,
     this.onShare,
@@ -80,10 +81,10 @@ class _SongOptionsSheet extends StatefulWidget {
   });
 
   @override
-  State<_SongOptionsSheet> createState() => _SongOptionsSheetState();
+  State<SongOptionsSheet> createState() => _SongOptionsSheetState();
 }
 
-class _SongOptionsSheetState extends State<_SongOptionsSheet> {
+class _SongOptionsSheetState extends State<SongOptionsSheet> {
   final GlobalAudioState _audioState = GlobalAudioState();
   bool _isFavorite = false;
   bool _isCheckingFavorite = true;
@@ -136,14 +137,16 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Handle bar
           Container(
             width: 40,
@@ -162,21 +165,31 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    widget.song.imageUrl,
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 56,
-                      height: 56,
-                      color: Colors.grey[800],
-                      child: const Icon(
-                        Icons.music_note,
-                        color: Colors.white54,
-                      ),
-                    ),
-                  ),
+                  child: (widget.song.imageUrl.trim().isEmpty || !widget.song.imageUrl.startsWith('http'))
+                      ? Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.grey[800],
+                          child: const Icon(
+                            Icons.music_note,
+                            color: Colors.white54,
+                          ),
+                        )
+                      : Image.network(
+                          widget.song.imageUrl,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 56,
+                            height: 56,
+                            color: Colors.grey[800],
+                            child: const Icon(
+                              Icons.music_note,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -260,8 +273,9 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
           const SizedBox(height: 16),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildOptionTile({
     required IconData icon,

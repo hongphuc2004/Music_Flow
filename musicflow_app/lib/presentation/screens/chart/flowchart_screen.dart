@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:musicflow_app/data/models/song_model.dart';
-import 'package:musicflow_app/data/services/song_api_service.dart';
-import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../data/models/song_model.dart';
+import '../../../data/services/song_api_service.dart';
+import '../../widgets/song_options_menu.dart';
 
 class FlowchartScreen extends StatefulWidget {
   final void Function(Song song)? onSongTap;
@@ -140,35 +140,27 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF120C21),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFF281A4F),
-              Color(0xFF2D1956),
-              Color(0xFF191329),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: _loadTrendingData,
-            color: const Color(0xFF4AF2E2),
-            child: _buildBody(),
-          ),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadTrendingData,
+          color: theme.colorScheme.primary,
+          child: _buildBody(),
         ),
       ),
     );
   }
 
   Widget _buildBody() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF4AF2E2)),
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
 
@@ -177,10 +169,10 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 100, 20, 24),
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 42, color: Colors.white54),
+          Icon(Icons.wifi_off_rounded, size: 42, color: theme.disabledColor),
           const SizedBox(height: 12),
           const Text(
-            'Khong tai duoc Trending Feed',
+            'Không tải được Trending Feed',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
@@ -188,17 +180,17 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
           Text(
             _error!,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
           ),
           const SizedBox(height: 16),
           Center(
             child: ElevatedButton(
               onPressed: _loadTrendingData,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4AF2E2),
-                foregroundColor: const Color(0xFF151024),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
               ),
-              child: const Text('Thu lai'),
+              child: const Text('Thử lại'),
             ),
           ),
         ],
@@ -235,17 +227,20 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+            padding: const EdgeInsets.fromLTRB(18, 24, 18, 10),
             child: Row(
-              children: const [
+              children: [
                 Text(
                   'Top Flow',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, fontSize: 18),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
-                  '(Nghe nhieu nhat)',
-                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                  '(Nghe nhiều nhất)',
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -283,110 +278,24 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                     _flowDisplayLimit == 10
                         ? Icons.keyboard_arrow_down_rounded
                         : Icons.keyboard_arrow_up_rounded,
-                    color: Colors.white70,
+                    color: isDark ? Colors.white70 : AppColors.lightTextPrimary,
                     size: 18,
                   ),
                   label: Text(
                     _flowDisplayLimit == 10
-                        ? 'XEM THEM TOP FLOW'
-                        : 'RUT GON TOP FLOW',
-                    style: const TextStyle(
-                      color: Colors.white,
+                        ? 'XEM THÊM TOP FLOW'
+                        : 'RÚT GỌN TOP FLOW',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.3,
                       fontSize: 12,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0x1E261F49),
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white12),
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 11,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-            child: Row(
-              children: const [
-                Text(
-                  'Top Rising',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(width: 8),
-                Text(
-                  '(Tang nhanh 24h)',
-                  style: TextStyle(color: Colors.white60, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final song = risingVisible[index];
-              final metrics = _risingMetrics[song.id];
-              final risingScore = metrics?.risingScore ?? 0;
-              final up = risingScore >= 0;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 9),
-                child: _FeedTile(
-                  rank: index + 1,
-                  song: song,
-                  subtitle:
-                      '${up ? '+' : '-'}${risingScore.abs()} trong 24h (${_formatCount(metrics?.last24h ?? 0)})',
-                  subtitleColor: up
-                      ? const Color(0xFF49E7CF)
-                      : const Color(0xFFFFAA63),
-                  onTap: () => _playFromQueue(risingTop50, index),
-                ),
-              );
-            }, childCount: risingVisible.length),
-          ),
-        ),
-        if (risingTop50.length > 10)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-              child: Center(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _risingDisplayLimit = _risingDisplayLimit == 10 ? 50 : 10;
-                    });
-                  },
-                  icon: Icon(
-                    _risingDisplayLimit == 10
-                        ? Icons.keyboard_arrow_down_rounded
-                        : Icons.keyboard_arrow_up_rounded,
-                    color: Colors.white70,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _risingDisplayLimit == 10
-                        ? 'XEM THEM TOP RISING'
-                        : 'RUT GON TOP RISING',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      fontSize: 12,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0x1E261F49),
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white12),
+                    backgroundColor: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.01),
+                    foregroundColor: isDark ? Colors.white : AppColors.lightTextPrimary,
+                    side: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
                     shape: const StadiumBorder(),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -409,28 +318,31 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       children: [
         Expanded(
           child: RichText(
             text: const TextSpan(
               style: TextStyle(
-                fontSize: 40,
+                fontSize: 36,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -1.3,
               ),
               children: [
                 TextSpan(
                   text: '#',
-                  style: TextStyle(color: Color(0xFFFFB15B)),
+                  style: TextStyle(color: AppColors.primary),
                 ),
                 TextSpan(
                   text: 'flow',
-                  style: TextStyle(color: Color(0xFFFF4FA3)),
+                  style: TextStyle(color: AppColors.secondary),
                 ),
                 TextSpan(
-                  text: 'feed',
-                  style: TextStyle(color: Color(0xFF58A6FF)),
+                  text: 'charts',
+                  style: TextStyle(color: AppColors.accentPink),
                 ),
               ],
             ),
@@ -440,18 +352,13 @@ class _Header extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.mic_none_rounded, color: Colors.white70, size: 24),
-                SizedBox(width: 12),
-                Icon(Icons.search_rounded, color: Colors.white70, size: 25),
-              ],
-            ),
-            const SizedBox(height: 12),
             Text(
               nowLabel,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -474,104 +381,245 @@ class _TrendingSpotlight extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final highlights = songs.take(3).toList();
+    if (highlights.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Song? first = highlights.isNotEmpty ? highlights[0] : null;
+    Song? second = highlights.length > 1 ? highlights[1] : null;
+    Song? third = highlights.length > 2 ? highlights[2] : null;
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: const Color(0x38201A3E),
-        border: Border.all(color: Colors.white10),
+        borderRadius: AppRadius.mediumBorder,
+        color: isDark ? AppColors.darkSurfaceGlass : AppColors.lightSurfaceGlass,
+        border: Border.all(color: isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 20),
       child: Column(
         children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Trending Feed',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-            ),
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                'Top Spotlight',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          ...List.generate(highlights.length, (index) {
-            final song = highlights[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => onTapSong(index),
-                child: Ink(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: const Color(0x3520183A),
-                    border: Border.all(color: Colors.white12),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // 2nd Place
+              if (second != null)
+                Expanded(
+                  child: _PodiumItem(
+                    song: second,
+                    rank: 2,
+                    medalColor: const Color(0xFFC0C0C0),
+                    onTap: () => onTapSong(1),
+                    formatCount: formatCount,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3A2A72),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '${index + 1}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: _SongArt(imageUrl: song.imageUrl, size: 42),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                song.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${song.artists.join(', ')} • ${formatCount(song.playCount)} nghe',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: Color(0xFF49E7CF),
-                          size: 22,
+                )
+              else
+                const Spacer(),
+
+              // 1st Place
+              if (first != null)
+                Expanded(
+                  child: _PodiumItem(
+                    song: first,
+                    rank: 1,
+                    medalColor: const Color(0xFFFFD700),
+                    onTap: () => onTapSong(0),
+                    formatCount: formatCount,
+                  ),
+                )
+              else
+                const Spacer(),
+
+              // 3rd Place
+              if (third != null)
+                Expanded(
+                  child: _PodiumItem(
+                    song: third,
+                    rank: 3,
+                    medalColor: const Color(0xFFCD7F32),
+                    onTap: () => onTapSong(2),
+                    formatCount: formatCount,
+                  ),
+                )
+              else
+                const Spacer(),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PodiumItem extends StatelessWidget {
+  final Song song;
+  final int rank;
+  final Color medalColor;
+  final VoidCallback onTap;
+  final String Function(int) formatCount;
+
+  const _PodiumItem({
+    required this.song,
+    required this.rank,
+    required this.medalColor,
+    required this.onTap,
+    required this.formatCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final imageSize = rank == 1 ? 82.0 : 66.0;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              if (rank == 1)
+                Positioned(
+                  child: Container(
+                    width: imageSize + 12,
+                    height: imageSize + 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: medalColor.withOpacity(0.35),
+                          blurRadius: 16,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
                   ),
                 ),
+              Container(
+                width: imageSize,
+                height: imageSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: medalColor,
+                    width: rank == 1 ? 3 : 2,
+                  ),
+                ),
+                child: ClipOval(
+                  child: Image.network(
+                    song.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      child: const Icon(Icons.music_note_rounded, color: Colors.white24),
+                    ),
+                  ),
+                ),
               ),
-            );
-          }),
+              Positioned(
+                bottom: -8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: medalColor,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: Text(
+                    '$rank',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  song.title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: rank == 1 ? 12 : 11,
+                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  song.artists.join(', '),
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    fontSize: 9,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.play_arrow_rounded,
+                      size: 11,
+                      color: AppColors.secondary,
+                    ),
+                    const SizedBox(width: 1),
+                    Text(
+                      formatCount(song.playCount),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -603,11 +651,14 @@ class _FeedTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final rankColor = switch (rank) {
       1 => const Color(0xFFFFD873),
       2 => const Color(0xFFE4E7EF),
       3 => const Color(0xFFFFB07A),
-      _ => Colors.white,
+      _ => isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
     };
 
     return InkWell(
@@ -616,8 +667,8 @@ class _FeedTile extends StatelessWidget {
       child: Ink(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: const Color(0x3B1D1838),
-          border: Border.all(color: Colors.white12),
+          color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+          border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -634,7 +685,7 @@ class _FeedTile extends StatelessWidget {
                   '$rank',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w900,
                     color: rankColor,
                     height: 1,
@@ -651,10 +702,10 @@ class _FeedTile extends StatelessWidget {
                       song.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : AppColors.lightTextPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -662,43 +713,43 @@ class _FeedTile extends StatelessWidget {
                       song.artists.join(', '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 13,
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.play_arrow_rounded,
-                          color: Colors.white60,
-                          size: 16,
+                          color: isDark ? AppColors.darkTextSecondary.withOpacity(0.7) : AppColors.lightTextSecondary.withOpacity(0.7),
+                          size: 14,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 2),
                         Text(
                           subtitle,
                           style: TextStyle(
-                            color: subtitleColor,
-                            fontSize: 13,
+                            color: isDark ? AppColors.secondary : AppColors.primary,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
+                        Text(
                           '·',
                           style: TextStyle(
-                            color: Colors.white60,
-                            fontSize: 13,
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           _formatDuration(song.duration),
-                          style: const TextStyle(
-                            color: Colors.white60,
-                            fontSize: 13,
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -710,9 +761,9 @@ class _FeedTile extends StatelessWidget {
               IconButton(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 constraints: const BoxConstraints(),
-                icon: const Icon(
+                icon: Icon(
                   Icons.more_vert_rounded,
-                  color: Colors.white70,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                   size: 20,
                 ),
                 onPressed: () {
@@ -720,7 +771,7 @@ class _FeedTile extends StatelessWidget {
                     context: context,
                     backgroundColor: Colors.transparent,
                     isScrollControlled: true,
-                    builder: (context) => SongOptionsMenu(song: song),
+                    builder: (context) => SongOptionsSheet(song: song),
                   );
                 },
               ),

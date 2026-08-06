@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../../widgets/music_flow_backdrop.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
@@ -164,13 +166,10 @@ class _ArtistScreenState extends State<ArtistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          const ArtistBackdrop(),
-          SafeArea(bottom: false, child: _buildBody()),
-        ],
+    return MusicFlowBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(bottom: false, child: _buildBody()),
       ),
     );
   }
@@ -181,10 +180,10 @@ class _ArtistScreenState extends State<ArtistScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: ArtistPalette.accent),
+            CircularProgressIndicator(color: AppColors.primary),
             SizedBox(height: 14),
             Text(
-              'Dang tai khong gian artist...',
+              'Đang tải không gian nghệ sĩ...',
               style: TextStyle(color: Colors.white70),
             ),
           ],
@@ -213,7 +212,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'Khong tim thay artist',
+                  'Không tìm thấy nghệ sĩ',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -235,10 +234,10 @@ class _ArtistScreenState extends State<ArtistScreen> {
                 ElevatedButton.icon(
                   onPressed: _loadArtist,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Thu lai'),
+                  label: const Text('Thử lại'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: ArtistPalette.accent,
-                    foregroundColor: Colors.black,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
@@ -250,14 +249,14 @@ class _ArtistScreenState extends State<ArtistScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadArtist,
-      color: ArtistPalette.accent,
+      color: AppColors.primary,
       backgroundColor: ArtistPalette.surface,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

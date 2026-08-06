@@ -319,6 +319,14 @@ class CommentService {
       return CommentActionResult(success: false, message: 'Loi: $e');
     }
   }
+
+  static Future<int> getCommentsCount(String songId) async {
+    final result = await getSongComments(songId, limit: 1);
+    if (result.success) {
+      return result.totalComments;
+    }
+    return 0;
+  }
 }
 
 class CommentListResult {

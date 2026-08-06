@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:musicflow_app/data/models/song_model.dart';
-import 'package:musicflow_app/data/models/playlist_model.dart';
-import 'package:musicflow_app/data/services/playlist_api_service.dart';
-import 'package:musicflow_app/data/services/play_history_service.dart';
-import 'package:musicflow_app/data/services/auth_service.dart';
-import 'package:musicflow_app/data/services/favorite_service.dart';
-import 'package:musicflow_app/data/services/song_api_service.dart';
-import 'package:musicflow_app/data/services/offline_song_service.dart';
-import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
-import 'package:musicflow_app/presentation/screens/library/history_screen.dart';
-import 'package:musicflow_app/presentation/screens/settings/settings_screen.dart';
-import 'package:musicflow_app/presentation/screens/library/your_uploads_screen.dart';
-import 'package:musicflow_app/presentation/screens/library/favorites_screen.dart';
-import 'package:musicflow_app/presentation/screens/library/playlists_screen.dart';
-import 'package:musicflow_app/presentation/screens/library/downloaded_songs_screen.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../data/models/song_model.dart';
+import '../../../data/models/playlist_model.dart';
+import '../../../data/services/playlist_api_service.dart';
+import '../../../data/services/play_history_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/services/favorite_service.dart';
+import '../../../data/services/song_api_service.dart';
+import '../../../data/services/offline_song_service.dart';
+import '../../widgets/song_options_menu.dart';
+import '../library/history_screen.dart';
+import '../settings/settings_screen.dart';
+import '../library/your_uploads_screen.dart';
+import '../library/favorites_screen.dart';
+import '../library/playlists_screen.dart';
+import '../library/downloaded_songs_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -23,6 +24,22 @@ class LibraryScreen extends StatefulWidget {
 
   @override
   State<LibraryScreen> createState() => LibraryScreenState();
+}
+
+class _MenuData {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  _MenuData({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 }
 
 class LibraryScreenState extends State<LibraryScreen> {
@@ -48,12 +65,10 @@ class LibraryScreenState extends State<LibraryScreen> {
     super.dispose();
   }
 
-  /// Refresh all data - có thể gọi từ bên ngoài
   Future<void> refresh() async {
     await _loadData();
   }
 
-  /// Chỉ refresh favorites - dùng khi toggle favorite
   Future<void> refreshFavorites() async {
     await _loadFavorites();
   }
@@ -122,7 +137,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   Future<void> _loadRecentHistory() async {
     setState(() => _isLoadingHistory = true);
 
-    final history = await PlayHistoryService.getRecentHistory(limit: 3);
+    final history = await PlayHistoryService.getRecentHistory(limit: 6);
 
     if (mounted) {
       setState(() {
@@ -191,45 +206,48 @@ class LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _loadData,
-        color: Colors.greenAccent,
+        color: theme.colorScheme.primary,
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // App Bar
             SliverAppBar(
-              backgroundColor: Colors.black,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
               floating: true,
-              title: const Text(
+              title: Text(
                 'Thư viện',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.settings),
+                  icon: Icon(
+                    Icons.settings_rounded,
+                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                  ),
                   onPressed: _openSettings,
                   tooltip: 'Cài đặt',
                 ),
               ],
             ),
-
-            // Content
             SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Menu Section (like SoundCloud)
+                  const SizedBox(height: AppSpacing.sm),
                   _buildMenuSection(),
-
-                  const SizedBox(height: 24),
-
-                  // Recently Played Section
+                  const SizedBox(height: AppSpacing.lg),
                   _buildRecentlyPlayedSection(),
-
-                  // Bottom padding for mini player
-                  const SizedBox(height: 100),
+                  const SizedBox(height: AppSpacing.lg),
                 ],
               ),
             ),
@@ -239,39 +257,149 @@ class LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  // ==================== RECENTLY PLAYED ====================
+  Widget _buildMenuSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final items = [
+      _MenuData(
+        icon: Icons.favorite_rounded,
+        color: AppColors.accentPink,
+        title: 'Bài hát yêu thích',
+        subtitle: _favoriteSongs.isNotEmpty ? '${_favoriteSongs.length} bài hát' : '0 bài hát',
+        onTap: _openFavorites,
+      ),
+      _MenuData(
+        icon: Icons.playlist_play_rounded,
+        color: AppColors.secondary,
+        title: 'Playlists',
+        subtitle: _playlists.isNotEmpty ? '${_playlists.length} playlist' : '0 playlist',
+        onTap: _openPlaylists,
+      ),
+      _MenuData(
+        icon: Icons.cloud_upload_rounded,
+        color: AppColors.primary,
+        title: 'Bài hát của bạn',
+        subtitle: _uploadedSongsCount > 0 ? '$_uploadedSongsCount bài hát' : '0 bài hát',
+        onTap: _openYourUploads,
+      ),
+      _MenuData(
+        icon: Icons.download_done_rounded,
+        color: AppColors.secondary,
+        title: 'Bài hát đã tải',
+        subtitle: _downloadedSongsCount > 0 ? '$_downloadedSongsCount bài hát' : '0 bài hát',
+        onTap: _openDownloadedSongs,
+      ),
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: AppSpacing.md,
+        mainAxisSpacing: AppSpacing.md,
+        childAspectRatio: 1.35,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return GestureDetector(
+          onTap: item.onTap,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurfaceGlass : AppColors.lightSurfaceGlass,
+              borderRadius: AppRadius.mediumBorder,
+              border: Border.all(
+                color: isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass,
+              ),
+              boxShadow: isDark
+                  ? [
+                      BoxShadow(
+                        color: item.color.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: item.color.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(item.icon, color: item.color, size: 24),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  item.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.subtitle,
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildRecentlyPlayedSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   const Icon(
-                    Icons.history,
-                    color: Colors.greenAccent,
+                    Icons.history_rounded,
+                    color: AppColors.secondary,
                     size: 24,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Nghe gần đây',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               TextButton(
                 onPressed: _openFullHistory,
-                child: const Text(
+                child: Text(
                   'Xem tất cả',
-                  style: TextStyle(color: Colors.greenAccent),
+                  style: TextStyle(color: isDark ? AppColors.secondary : AppColors.primary),
                 ),
               ),
             ],
@@ -282,26 +410,30 @@ class LibraryScreenState extends State<LibraryScreen> {
           const Center(
             child: Padding(
               padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(color: Colors.greenAccent),
+              child: CircularProgressIndicator(color: AppColors.primary),
             ),
           )
         else if (_recentHistory.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(12),
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                borderRadius: AppRadius.mediumBorder,
               ),
               child: Row(
                 children: [
-                  Icon(Icons.music_note, color: Colors.grey[600], size: 40),
+                  Icon(Icons.music_note_rounded, color: theme.disabledColor, size: 36),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       'Chưa có lịch sử phát nhạc.\nHãy phát một bài hát!',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                      style: TextStyle(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
@@ -309,14 +441,83 @@ class LibraryScreenState extends State<LibraryScreen> {
             ),
           )
         else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _recentHistory.length,
-            itemBuilder: (context, index) {
-              final song = _recentHistory[index];
-              return _buildSongTile(song);
-            },
+          SizedBox(
+            height: 146,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              itemCount: _recentHistory.length,
+              itemBuilder: (context, index) {
+                final song = _recentHistory[index];
+                return GestureDetector(
+                  onTap: () => widget.onSongTap?.call(song),
+                  child: Container(
+                    width: 100,
+                    margin: const EdgeInsets.only(right: AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: AppRadius.smallBorder,
+                          child: Stack(
+                            children: [
+                              Image.network(
+                                song.imageUrl,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 100,
+                                  height: 100,
+                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  child: const Icon(Icons.music_note_rounded, color: Colors.white24),
+                                ),
+                              ),
+                              Positioned(
+                                right: 6,
+                                bottom: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          song.title,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          song.artists.join(', '),
+                          style: TextStyle(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            fontSize: 10,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
       ],
     );
@@ -335,7 +536,7 @@ class LibraryScreenState extends State<LibraryScreen> {
           onPlayAll: widget.onPlayAll,
         ),
       ),
-    ).then((_) => _loadRecentHistory()); // Refresh on return
+    ).then((_) => _loadRecentHistory());
   }
 
   void _openSettings() {
@@ -344,12 +545,11 @@ class LibraryScreenState extends State<LibraryScreen> {
       MaterialPageRoute(
         builder: (context) => SettingsScreen(
           onLogout: () {
-            // Reload data after logout
             _loadData();
           },
         ),
       ),
-    ).then((_) => _loadData()); // Refresh on return
+    ).then((_) => _loadData());
   }
 
   void _openYourUploads() {
@@ -398,142 +598,5 @@ class LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
     ).then((_) => _loadDownloadedSongsCount());
-  }
-
-  // ==================== MENU SECTION ====================
-  Widget _buildMenuSection() {
-    return Column(
-      children: [
-        _buildMenuItem(
-          icon: Icons.favorite,
-          iconColor: Colors.red,
-          title: 'Bài hát yêu thích',
-          subtitle: _favoriteSongs.isNotEmpty
-              ? '${_favoriteSongs.length} bài hát'
-              : null,
-          onTap: _openFavorites,
-        ),
-        _buildMenuItem(
-          icon: Icons.queue_music,
-          iconColor: Colors.greenAccent,
-          title: 'Playlists',
-          subtitle: _playlists.isNotEmpty
-              ? '${_playlists.length} playlist'
-              : null,
-          onTap: _openPlaylists,
-        ),
-        _buildMenuItem(
-          icon: Icons.cloud_upload,
-          iconColor: Colors.blueAccent,
-          title: 'Bài hát của bạn',
-          subtitle: _uploadedSongsCount > 0
-              ? '$_uploadedSongsCount bài hát'
-              : null,
-          onTap: _openYourUploads,
-        ),
-        _buildMenuItem(
-          icon: Icons.download_done,
-          iconColor: Colors.greenAccent,
-          title: 'Bài hát đã tải',
-          subtitle: _downloadedSongsCount > 0
-              ? '$_downloadedSongsCount bài hát'
-              : null,
-          onTap: _openDownloadedSongs,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[900]!, width: 0.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                    ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==================== COMMON ====================
-  Widget _buildSongTile(Song song, {bool isFavorite = false}) {
-    final artistText = song.artists
-        .map((artist) => artist.trim())
-        .where((artist) => artist.isNotEmpty)
-        .join(', ');
-
-    return ListTile(
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          song.imageUrl,
-          width: 50,
-          height: 50,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            width: 50,
-            height: 50,
-            color: Colors.grey[800],
-            child: Icon(
-              isFavorite ? Icons.favorite : Icons.music_note,
-              color: isFavorite ? Colors.redAccent : Colors.white54,
-            ),
-          ),
-        ),
-      ),
-      title: Text(
-        song.title,
-        style: const TextStyle(color: Colors.white),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        artistText.isNotEmpty ? artistText : 'Không rõ nghệ sĩ',
-        style: TextStyle(color: Colors.grey[400]),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: SongOptionsMenu(
-        song: song,
-        onFavoriteChanged: isFavorite ? refreshFavorites : null,
-      ),
-      onTap: () => widget.onSongTap?.call(song),
-    );
   }
 }

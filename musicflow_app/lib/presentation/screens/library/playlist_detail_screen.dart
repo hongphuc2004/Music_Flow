@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../widgets/music_flow_backdrop.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
@@ -93,205 +95,246 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          RefreshIndicator(
-            onRefresh: _refreshPlaylist,
-            color: Colors.greenAccent,
-            child: CustomScrollView(
-              slivers: [
-                // App Bar with cover image
-                SliverAppBar(
-                  expandedHeight: 280,
-                  pinned: true,
-                  backgroundColor: Colors.black,
-                  flexibleSpace: FlexibleSpaceBar(
-                    title: Text(
-                      _playlist.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        shadows: [Shadow(color: Colors.black, blurRadius: 10)],
-                      ),
-                    ),
-                    background: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // Cover image
-                        if (_playlist.displayCoverImage.isNotEmpty)
-                          Image.network(
-                            _playlist.displayCoverImage,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildDefaultCover(),
-                          )
-                        else
-                          _buildDefaultCover(),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-                        // Gradient overlay
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.7),
-                                Colors.black,
-                              ],
-                              stops: const [0.3, 0.7, 1.0],
-                            ),
-                          ),
+    return MusicFlowBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            RefreshIndicator(
+              onRefresh: _refreshPlaylist,
+              color: AppColors.primary,
+              child: CustomScrollView(
+                slivers: [
+                  // App Bar with cover image
+                  SliverAppBar(
+                    expandedHeight: 340,
+                    pinned: true,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: (isDark ? Colors.black : Colors.white).withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: _showPlaylistOptions,
-                    ),
-                  ],
-                ),
-
-                // Playlist info and play button
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_playlist.description.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              _playlist.description,
-                              style: TextStyle(color: Colors.grey[400]),
-                            ),
-                          ),
-
-                        Row(
-                          children: [
-                            Text(
-                              '${_playlist.songCount} bài hát',
-                              style: TextStyle(color: Colors.grey[400]),
-                            ),
-                            const Spacer(),
-
-                            // Shuffle button
-                            IconButton(
-                              icon: const Icon(
-                                Icons.shuffle,
-                                color: Colors.greenAccent,
-                              ),
-                              onPressed: _playlist.songs.isNotEmpty
-                                  ? () {
-                                      // TODO: Shuffle play
-                                    }
-                                  : null,
-                            ),
-
-                            // Play all button
-                            ElevatedButton.icon(
-                              onPressed: _playlist.songs.isNotEmpty
-                                  ? _playAll
-                                  : null,
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Phát'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.greenAccent,
-                                foregroundColor: Colors.black,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Song list
-                if (_isLoading)
-                  const SliverToBoxAdapter(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(40),
-                        child: CircularProgressIndicator(
-                          color: Colors.greenAccent,
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                          size: 18,
                         ),
                       ),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  )
-                else if (_playlist.songs.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(40),
-                      child: Column(
+                    actions: [
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: (isDark ? Colors.black : Colors.white).withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.more_vert_rounded,
+                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                          ),
+                          onPressed: () {
+                            _showPlaylistOptions();
+                          },
+                        ),
+                      ),
+                    ],
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Icon(
-                            Icons.music_off,
-                            color: Colors.grey[600],
-                            size: 64,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Playlist trống',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 18,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Thêm bài hát vào playlist từ thư viện',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
+                          if (_playlist.displayCoverImage.isNotEmpty)
+                            Image.network(_playlist.displayCoverImage, fit: BoxFit.cover)
+                          else
+                            _buildDefaultCover(),
+                          // Gradient overlay
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  isDark ? AppColors.darkBackground.withValues(alpha: 0.5) : AppColors.lightBackground.withValues(alpha: 0.5),
+                                  isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  )
-                else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final song = _playlist.songs[index];
-                      return _buildSongTile(song, index);
-                    }, childCount: _playlist.songs.length),
                   ),
 
-                // Bottom padding
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
-            ),
-          ),
+                  // Header details
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _playlist.name,
+                            style: theme.textTheme.displayLarge?.copyWith(fontSize: 28),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Text(
+                                'Playlist',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.fiber_manual_record, size: 6, color: isDark ? Colors.white38 : Colors.black38),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_playlist.songs.length} bài hát',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              // Shuffle button
+                              IconButton(
+                                icon: Icon(
+                                  Icons.shuffle_rounded,
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ),
+                                onPressed: _playlist.songs.isNotEmpty
+                                    ? () {
+                                        // TODO: Shuffle play
+                                      }
+                                    : null,
+                              ),
 
-          // Mini Player - hiển thị khi có bài hát đang phát
-          if (_audioState.currentSong != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: MiniPlayer(
-                isPlaying: _audioState.isPlaying,
-                songTitle: _audioState.currentSong!.title,
-                artist: _audioState.currentSong!.artists.join(', '),
-                song: _audioState.currentSong,
-                progress: _audioState.progress,
-                playlist: _audioState.playlist,
-                currentIndex: _audioState.currentIndex,
-                onPlayPause: _audioState.togglePlayPause,
-                onNext: _audioState.playNext,
-                onPrevious: _audioState.playPrevious,
-                onPlaylistItemTap: _audioState.playAtIndex,
-                onClose: _audioState.stop,
+                              // Play all button
+                              Container(
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [AppColors.primary, AppColors.secondary],
+                                  ),
+                                  borderRadius: AppRadius.badgeBorder,
+                                  boxShadow: AppShadows.neonGlow(AppColors.primary),
+                                ),
+                                child: ElevatedButton.icon(
+                                  onPressed: _playlist.songs.isNotEmpty
+                                      ? _playAll
+                                      : null,
+                                  icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                                  label: const Text(
+                                    'Phát',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Song list
+                  if (_isLoading)
+                    const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: CircularProgressIndicator(
+                            color: Colors.greenAccent,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (_playlist.songs.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.music_off,
+                              color: Colors.grey[600],
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Playlist trống',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Thêm bài hát vào playlist từ thư viện',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final song = _playlist.songs[index];
+                        return _buildSongTile(song, index);
+                      }, childCount: _playlist.songs.length),
+                    ),
+
+                  // Bottom padding
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
               ),
             ),
-        ],
+
+            // Mini Player - hiển thị khi có bài hát đang phát
+            if (_audioState.currentSong != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: MiniPlayer(
+                  isPlaying: _audioState.isPlaying,
+                  songTitle: _audioState.currentSong!.title,
+                  artist: _audioState.currentSong!.artists.join(', '),
+                  song: _audioState.currentSong,
+                  progress: _audioState.progress,
+                  playlist: _audioState.playlist,
+                  currentIndex: _audioState.currentIndex,
+                  onPlayPause: _audioState.togglePlayPause,
+                  onNext: _audioState.playNext,
+                  onPrevious: _audioState.playPrevious,
+                  onPlaylistItemTap: _audioState.playAtIndex,
+                  onClose: _audioState.stop,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

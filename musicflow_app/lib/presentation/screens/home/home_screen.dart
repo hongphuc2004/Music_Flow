@@ -7,6 +7,9 @@ import 'package:musicflow_app/data/services/artist_api_service.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/playlist_api_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
+import 'package:musicflow_app/data/services/play_history_service.dart';
+import 'package:musicflow_app/data/models/topic_model.dart';
+import 'package:musicflow_app/data/services/topic_api_service.dart';
 import 'package:musicflow_app/presentation/screens/home/home_playlist_detail_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_artist_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_playlist_section.dart';
@@ -14,6 +17,9 @@ import 'package:musicflow_app/presentation/screens/home/home_recommended_section
 import 'package:musicflow_app/presentation/screens/home/home_shared.dart';
 import 'package:musicflow_app/presentation/screens/home/home_song_list_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_top_section.dart';
+import 'package:musicflow_app/presentation/screens/home/home_topic_section.dart';
+import 'package:musicflow_app/presentation/screens/home/home_new_releases_section.dart';
+import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -29,10 +35,13 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Song> songs = [];
   List<Playlist> systemPlaylists = [];
   List<Song> recommendedSongs = [];
+  List<Song> recentHistory = [];
+  List<Topic> topics = [];
   final Map<String, String> _artistAvatarByName = {};
   User? _currentUser;
   bool isLoading = true;
   String? errorMessage;
+  String _selectedMood = '🎯 Tất cả';
 
   Song? get _featuredSong {
     if (recommendedSongs.isNotEmpty) return recommendedSongs.first;
@@ -50,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final normalized = artistName.trim().toLowerCase();
         if (normalized.isEmpty || seen.contains(normalized)) continue;
 
+        seen.add(normalized);
         final verified = Song.artistVerified[normalized] ?? false;
         final followers = Song.artistFollowers[normalized] ?? 0;
         artists.add(
@@ -108,10 +118,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      final history = await PlayHistoryService.getRecentHistory(limit: 8);
+
       final results = await Future.wait([
         SongApiService.fetchSongs(),
         SongApiService.fetchRecommendedSongs(limit: 12),
         PlaylistApiService.getSystemPlaylists(limit: 12),
+        TopicApiService.fetchTopics(),
       ]);
 
       final systemPlaylistResult = results[2] as PlaylistResult;
@@ -125,6 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
         songs = results[0] as List<Song>;
         recommendedSongs = results[1] as List<Song>;
         systemPlaylists = systemPlaylistResult.playlists ?? [];
+        topics = results[3] as List<Topic>;
+        recentHistory = history;
         isLoading = false;
       });
 
@@ -217,8 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var i = 0; i < remainingTargets.length; i++) {
       final result = responses[i];
       final avatar = result.artist?.avatarUrl ?? '';
-      updates[remainingTargets[i]] =
-          avatar; // Always map the target name to prevent repeat lookups
+      updates[remainingTargets[i]] = avatar; 
       if (result.success && avatar.isNotEmpty) {
         final queryName =
             queryNameByNormalized[remainingTargets[i]] ?? remainingTargets[i];
@@ -235,8 +249,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _onSongTap(Song song) {
+  void _onSongTap(Song song) async {
     widget.onSongTap?.call(song);
+    await PlayHistoryService.addToHistory(song);
+    final history = await PlayHistoryService.getRecentHistory(limit: 8);
+    if (mounted) {
+      setState(() {
+        recentHistory = history;
+      });
+    }
   }
 
   void _onAlbumTap(Playlist playlist) {
@@ -268,30 +289,60 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'MusicFlow';
   }
 
+  // Filter songs dynamically based on selected Mood Chip
+  List<Song> get _filteredSongs {
+    if (_selectedMood == '🎯 Tất cả') return songs;
+    
+    final filterText = _selectedMood.split(' ').last.toLowerCase();
+    return songs.where((song) {
+      final titleMatch = song.title.toLowerCase().contains(filterText);
+      final lyricMatch = song.lyrics.toLowerCase().contains(filterText);
+      return titleMatch || lyricMatch;
+    }).toList();
+  }
+
+  List<Playlist> get _filteredPlaylists {
+    if (_selectedMood == '🎯 Tất cả') return systemPlaylists;
+    
+    final filterText = _selectedMood.split(' ').last.toLowerCase();
+    return systemPlaylists.where((p) {
+      final nameMatch = p.name.toLowerCase().contains(filterText);
+      final descMatch = p.description.toLowerCase().contains(filterText);
+      return nameMatch || descMatch;
+    }).toList();
+  }
+
+  // Calculate top trending songs sorted by likeCount descending
+  List<Song> get _trendingSongs {
+    final sList = _filteredSongs.isNotEmpty ? _filteredSongs : songs;
+    final sorted = [...sList]..sort((a, b) => b.likeCount.compareTo(a.likeCount));
+    return sorted;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          const HomeBackdrop(),
-          SafeArea(bottom: false, child: _buildBody()),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(bottom: false, child: _buildBody()),
     );
   }
 
   Widget _buildBody() {
+    final theme = Theme.of(context);
+
     if (isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: HomePalette.accent),
-            SizedBox(height: 16),
+            CircularProgressIndicator(color: theme.colorScheme.primary),
+            const SizedBox(height: 16),
             Text(
               'Đang tải không gian âm nhạc...',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(
+                color: HomePalette.textSecondary(context),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -302,16 +353,19 @@ class _HomeScreenState extends State<HomeScreen> {
       return _buildErrorWidget();
     }
 
+    final filteredP = _filteredPlaylists;
+    final trendingList = _trendingSongs;
+
     return RefreshIndicator(
       onRefresh: fetchData,
-      color: HomePalette.accent,
-      backgroundColor: HomePalette.card,
+      color: theme.colorScheme.primary,
+      backgroundColor: HomePalette.card(context),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -320,24 +374,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context, currentUser, _) {
                       return HomeTopBar(
                         displayName: _resolveHomeDisplayName(currentUser),
+                        onSearchTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Vui lòng chuyển sang Tab Tìm kiếm ở thanh điều hướng để tìm nhạc!'),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
+                  const SizedBox(height: 16),
+                  HomeMoodFilter(
+                    selectedMood: _selectedMood,
+                    onMoodChanged: (mood) {
+                      setState(() {
+                        _selectedMood = mood;
+                      });
+                    },
+                  ),
                   const SizedBox(height: 20),
-                  if (_featuredSong != null)
-                    HomeHeroSection(
-                      featuredSong: _featuredSong!,
-                      librarySongCount: songs.length,
+                  if (recommendedSongs.isNotEmpty) ...[
+                    HomeHeroCarousel(
                       recommendedSongs: recommendedSongs,
                       onPlaySong: _onSongTap,
                       onPlayRecommended: recommendedSongs.isEmpty
                           ? null
                           : () => widget.onPlayAll?.call(
-                              recommendedSongs,
-                              startIndex: 0,
-                            ),
+                                recommendedSongs,
+                                startIndex: 0,
+                              ),
                     ),
-                  const SizedBox(height: 18),
+                    const SizedBox(height: 20),
+                  ],
                   HomeQuickActions(
                     featuredSong: _featuredSong,
                     playlistCount: systemPlaylists.length,
@@ -356,22 +425,55 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                   ),
                   const SizedBox(height: 28),
-                  if (systemPlaylists.isNotEmpty) ...[
+                  
+                  // Recently Played (Nghe gần đây)
+                  if (recentHistory.isNotEmpty) ...[
                     HomeSectionHeader(
-                      title: 'Playlist cho hôm nay',
-                      subtitle: 'Chọn nhanh một mood để bắt đầu nghe',
+                      title: 'Nghe gần đây',
+                      subtitle: 'Tiếp tục thưởng thức các giai điệu yêu thích',
+                    ),
+                    const SizedBox(height: 14),
+                    HomeRecommendedList(
+                      songs: recentHistory,
+                      formatDuration: _formatDuration,
+                      onPlayAll: (list, {startIndex = 0}) => widget.onPlayAll?.call(list, startIndex: startIndex),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // AI DJ Banner Card
+                  HomeAiDjBanner(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AiDjScreen(
+                            onSongTap: (song) => widget.onSongTap?.call(song),
+                            onPlayAll: (songs, {startIndex = 0}) =>
+                                widget.onPlayAll?.call(songs, startIndex: startIndex),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 28),
+
+                  if (filteredP.isNotEmpty) ...[
+                    HomeSectionHeader(
+                      title: 'Playlists nổi bật',
+                      subtitle: 'Chọn một tâm trạng phù hợp để bắt đầu nghe',
                       trailing: Text(
-                        '${systemPlaylists.length} playlist',
+                        '${filteredP.length} playlist',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: HomePalette.textSecondary(context),
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                     const SizedBox(height: 14),
                     HomePlaylistCarousel(
-                      playlists: systemPlaylists,
+                      playlists: filteredP,
                       onPlaylistTap: _onAlbumTap,
                     ),
                     const SizedBox(height: 28),
@@ -379,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (recommendedSongs.isNotEmpty) ...[
                     HomeSectionHeader(
                       title: 'Gợi ý dành cho bạn',
-                      subtitle: 'Những bài hát để vào mood nhanh hơn',
+                      subtitle: 'Những bài hát giúp bạn vào mood nhanh hơn',
                       trailing: HomeGhostButton(
                         icon: Icons.refresh,
                         label: 'Làm mới',
@@ -394,30 +496,63 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 28),
                   ],
+                  
+                  // Bảng xếp hạng Hot 5 (replaces All Songs)
+                  if (trendingList.isNotEmpty) ...[
+                    HomeSectionHeader(
+                      title: 'Bảng Xếp Hạng Hot 5',
+                      subtitle: 'Những bài hát đang thịnh hành nhất hệ thống',
+                      trailing: HomeCountBadge(label: 'Trending 🔥'),
+                    ),
+                    const SizedBox(height: 14),
+                    HomeTrendingChart(
+                      songs: trendingList,
+                      onSongTap: _onSongTap,
+                      formatDuration: _formatDuration,
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+
                   if (_featuredArtists.isNotEmpty) ...[
                     HomeSectionHeader(
                       title: 'Nghệ sĩ nổi bật',
-                      subtitle:
-                          'Lướt ngang để khám phá nhanh những cái tên đang hot',
+                      subtitle: 'Khám phá những gương mặt đang thịnh hành',
                     ),
                     const SizedBox(height: 14),
                     HomeArtistCarousel(
                       artists: _featuredArtists.take(6).toList(),
                       allArtists: _featuredArtists,
                     ),
-                    const SizedBox(height: 28),
                   ],
-                  HomeSectionHeader(
-                    title: 'Tất cả bài hát',
-                    subtitle: 'Thư viện đang có sẵn cho buổi nghe của bạn',
-                    trailing: HomeCountBadge(label: '${songs.length} bài'),
-                  ),
-                  const SizedBox(height: 14),
-                  HomeSongList(
-                    songs: songs,
-                    onSongTap: _onSongTap,
-                    formatDuration: _formatDuration,
-                  ),
+
+                  // Chủ đề & Thể loại (Topics)
+                  if (topics.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    HomeSectionHeader(
+                      title: 'Chủ đề & Thể loại',
+                      subtitle: 'Khám phá âm nhạc theo tâm trạng và phong cách',
+                    ),
+                    const SizedBox(height: 14),
+                    HomeTopicSection(
+                      topics: topics,
+                      onSongTap: _onSongTap,
+                      onPlayAll: widget.onPlayAll,
+                    ),
+                  ],
+
+                  // Album & Playlist Mới (New Releases)
+                  if (systemPlaylists.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    HomeSectionHeader(
+                      title: 'Album & Playlist Mới',
+                      subtitle: 'Những tuyển tập âm nhạc vừa mới được ra mắt',
+                    ),
+                    const SizedBox(height: 14),
+                    HomeNewReleasesSection(
+                      playlists: systemPlaylists,
+                      onPlaylistTap: _onAlbumTap,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -428,58 +563,62 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildErrorWidget() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: HomePalette.card,
+            color: HomePalette.card(context),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+            border: Border.all(color: HomePalette.cardBorder(context)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.wifi_off_rounded,
-                size: 64,
-                color: Colors.white54,
+                size: 56,
+                color: theme.disabledColor,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Ket noi dang gap van de',
+              Text(
+                'Lỗi kết nối mạng',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                  color: HomePalette.textPrimary(context),
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 errorMessage!,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  height: 1.45,
+                style: TextStyle(
+                  color: HomePalette.textSecondary(context),
+                  fontSize: 13,
+                  height: 1.4,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: fetchData,
-                icon: const Icon(Icons.refresh_rounded),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Thử lại'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: HomePalette.accent,
-                  foregroundColor: Colors.black,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: isDark ? Colors.black : Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 22,
-                    vertical: 14,
+                    vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
             ],

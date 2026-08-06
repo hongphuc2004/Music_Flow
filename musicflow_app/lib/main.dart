@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
@@ -11,9 +11,15 @@ import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/library_screen.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
+import 'package:musicflow_app/core/theme/theme_service.dart';
 
-void main() {
+import 'package:musicflow_app/core/theme/app_theme.dart';
+import 'package:musicflow_app/presentation/widgets/music_flow_floating_nav_bar.dart';
+import 'package:musicflow_app/presentation/widgets/music_flow_backdrop.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ThemeService().init();
   runApp(const MusicFlowApp());
   unawaited(_bootstrapAudioServices());
 }
@@ -32,20 +38,22 @@ class MusicFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MusicFlow',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.black,
-          elevation: 0,
-        ),
-      ),
-      home: const SplashScreen(),
+    return AnimatedBuilder(
+      animation: ThemeService(),
+      builder: (context, child) {
+        return MaterialApp(
+          title: 'MusicFlow',
+          debugShowCheckedModeBanner: false,
+          themeMode: ThemeService().themeMode,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -124,84 +132,92 @@ class MainScreenState extends State<MainScreen> {
           : (_tabCache[index] ?? const SizedBox.shrink()),
     );
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          IndexedStack(index: _currentIndex, children: tabs),
+    return MusicFlowBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Let backdrop glow show through
+        body: IndexedStack(index: _currentIndex, children: tabs),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Mini Player
+              AnimatedBuilder(
+                animation: _audioState,
+                builder: (context, child) {
+                  if (_audioState.currentSong == null) {
+                    return const SizedBox.shrink();
+                  }
 
-          // Mini Player chỉ rebuild khi trạng thái audio thay đổi
-          AnimatedBuilder(
-            animation: _audioState,
-            builder: (context, child) {
-              if (_audioState.currentSong == null) {
-                return const SizedBox.shrink();
-              }
+                  return MiniPlayer(
+                    isPlaying: _audioState.isPlaying,
+                    songTitle: _audioState.currentSong!.title,
+                    artist: _audioState.currentSong!.artists.join(', '),
+                    song: _audioState.currentSong,
+                    progress: _audioState.progress,
+                    playlist: _audioState.playlist,
+                    currentIndex: _audioState.currentIndex,
+                    onPlayPause: _audioState.togglePlayPause,
+                    onNext: _audioState.playNext,
+                    onPrevious: _audioState.playPrevious,
+                    onPlaylistItemTap: _audioState.playAtIndex,
+                    onClose: _audioState.stop,
+                  );
+                },
+              ),
+              // Custom Floating Navigation Bar
+              MusicFlowFloatingNavBar(
+                currentIndex: _currentIndex,
+                onTap: (index) {
+                  if (_tabCache[index] == null) {
+                    setState(() {
+                      _tabCache[index] = _buildTab(index);
+                    });
+                  }
 
-              return Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: MiniPlayer(
-                  isPlaying: _audioState.isPlaying,
-                  songTitle: _audioState.currentSong!.title,
-                  artist: _audioState.currentSong!.artists.join(', '),
-                  song: _audioState.currentSong,
-                  progress: _audioState.progress,
-                  playlist: _audioState.playlist,
-                  currentIndex: _audioState.currentIndex,
-                  onPlayPause: _audioState.togglePlayPause,
-                  onNext: _audioState.playNext,
-                  onPrevious: _audioState.playPrevious,
-                  onPlaylistItemTap: _audioState.playAtIndex,
-                  onClose: _audioState.stop,
-                ),
-              );
-            },
+                  setState(() {
+                    _currentIndex = index;
+                    if (index == 1) {
+                      _flowchartRefreshTrigger++;
+                      _tabCache[1] = _buildTab(1);
+                    }
+                  });
+                  // Refresh Library khi chuyển sang tab Library
+                  if (index == 4) {
+                    _libraryKey.currentState?.refreshFavorites();
+                  }
+                },
+                items: const [
+                  FloatingNavBarItem(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
+                    label: 'Home',
+                  ),
+                  FloatingNavBarItem(
+                    icon: Icons.trending_up_rounded,
+                    activeIcon: Icons.trending_up_rounded,
+                    label: 'Trending',
+                  ),
+                  FloatingNavBarItem(
+                    icon: Icons.search_rounded,
+                    activeIcon: Icons.search_rounded,
+                    label: 'Search',
+                  ),
+                  FloatingNavBarItem(
+                    icon: Icons.auto_awesome_outlined,
+                    activeIcon: Icons.auto_awesome_rounded,
+                    label: 'AI DJ',
+                  ),
+                  FloatingNavBarItem(
+                    icon: Icons.library_music_outlined,
+                    activeIcon: Icons.library_music_rounded,
+                    label: 'Library',
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (_tabCache[index] == null) {
-            setState(() {
-              _tabCache[index] = _buildTab(index);
-            });
-          }
-
-          setState(() {
-            _currentIndex = index;
-            if (index == 1) {
-              _flowchartRefreshTrigger++;
-              _tabCache[1] = _buildTab(1);
-            }
-          });
-          // Refresh Library khi chuyển sang tab Library
-          if (index == 4) {
-            _libraryKey.currentState?.refreshFavorites();
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.black,
-        selectedItemColor: Colors.greenAccent,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.trending_up_rounded),
-            label: 'Trending',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome),
-            label: 'Mood Music',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.library_music),
-            label: 'Library',
-          ),
-        ],
+        ),
       ),
     );
   }

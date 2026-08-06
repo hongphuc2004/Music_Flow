@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/player/player_screen.dart';
 
@@ -53,9 +55,9 @@ class _MiniPlayerState extends State<MiniPlayer>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: AppDurations.hover,
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.95).animate(
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.96).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
   }
@@ -80,6 +82,9 @@ class _MiniPlayerState extends State<MiniPlayer>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: _scaleAnim,
       builder: (context, child) {
@@ -98,11 +103,11 @@ class _MiniPlayerState extends State<MiniPlayer>
           }
         },
         background: _buildSwipeBackground(
-          Icons.skip_previous,
+          Icons.skip_previous_rounded,
           Alignment.centerLeft,
         ),
         secondaryBackground: _buildSwipeBackground(
-          Icons.skip_next,
+          Icons.skip_next_rounded,
           Alignment.centerRight,
         ),
         child: GestureDetector(
@@ -110,54 +115,76 @@ class _MiniPlayerState extends State<MiniPlayer>
           onTapUp: _onTapUp,
           onTapCancel: _onTapCancel,
           onTap: () => _openFullPlayer(context),
-          child: Container(
-            height: 72,
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.grey.shade900,
-                  Colors.grey.shade900.withValues(alpha: 0.95),
-                ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+            child: ClipRRect(
+              borderRadius: AppRadius.mediumBorder,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                child: Container(
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkSurfaceGlass
+                        : AppColors.lightSurfaceGlass,
+                    borderRadius: AppRadius.mediumBorder,
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.darkBorderGlass
+                          : AppColors.lightBorderGlass,
+                      width: 1.0,
+                    ),
+                    boxShadow: isDark
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            )
+                          ]
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Smooth, thin progress indicator
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppRadius.medium),
+                        ),
+                        child: LinearProgressIndicator(
+                          value: widget.progress.clamp(0.0, 1.0),
+                          backgroundColor: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                          minHeight: 2.5,
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                          child: Row(
+                            children: [
+                              _buildAlbumArt(),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(child: _buildSongInfo()),
+                              _buildControls(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                  child: LinearProgressIndicator(
-                    value: widget.progress.clamp(0.0, 1.0),
-                    backgroundColor: Colors.grey.shade800,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.greenAccent,
-                    ),
-                    minHeight: 3,
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        _buildAlbumArt(),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildSongInfo()),
-                        _buildControls(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ),
@@ -167,14 +194,14 @@ class _MiniPlayerState extends State<MiniPlayer>
 
   Widget _buildSwipeBackground(IconData icon, Alignment alignment) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
-        color: Colors.greenAccent.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.primary.withOpacity(0.15),
+        borderRadius: AppRadius.mediumBorder,
       ),
       alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Icon(icon, color: Colors.greenAccent, size: 32),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Icon(icon, color: AppColors.primary, size: 28),
     );
   }
 
@@ -184,29 +211,22 @@ class _MiniPlayerState extends State<MiniPlayer>
 
     return Hero(
       tag: 'album_art',
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: 48,
-        height: 48,
+      child: Container(
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Colors.greenAccent, Colors.tealAccent],
+            colors: [AppColors.primary, AppColors.secondary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadius.small),
           boxShadow: widget.isPlaying
-              ? [
-                  BoxShadow(
-                    color: Colors.greenAccent.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
-                ]
+              ? AppShadows.neonGlow(AppColors.primary)
               : null,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadius.small),
           child: _buildAlbumArtImage(songImageUrl, albumArt),
         ),
       ),
@@ -247,22 +267,24 @@ class _MiniPlayerState extends State<MiniPlayer>
         duration: const Duration(milliseconds: 300),
         child: widget.isPlaying
             ? const _PlayingWaveAnimation()
-            : const Icon(Icons.music_note, color: Colors.black, size: 24),
+            : const Icon(Icons.music_note, color: Colors.white70, size: 20),
       ),
     );
   }
 
   Widget _buildSongInfo() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           widget.songTitle,
-          style: const TextStyle(
-            color: Colors.white,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontSize: 13,
             fontWeight: FontWeight.bold,
-            fontSize: 14,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -272,18 +294,21 @@ class _MiniPlayerState extends State<MiniPlayer>
           children: [
             if (widget.isPlaying)
               Container(
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 margin: const EdgeInsets.only(right: 6),
                 decoration: const BoxDecoration(
-                  color: Colors.greenAccent,
+                  color: AppColors.secondary,
                   shape: BoxShape.circle,
                 ),
               ),
             Expanded(
               child: Text(
                 widget.artist,
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 11,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -295,32 +320,32 @@ class _MiniPlayerState extends State<MiniPlayer>
   }
 
   Widget _buildControls() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.skip_previous_rounded,
-            color: Colors.white,
+            color: isDark ? Colors.white : AppColors.lightTextPrimary,
             size: 24,
           ),
           onPressed: widget.onPrevious,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
+        const SizedBox(width: 4),
         Container(
-          width: 42,
-          height: 42,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
-            color: Colors.greenAccent,
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.secondary],
+            ),
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.greenAccent.withValues(alpha: 0.4),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
+            boxShadow: AppShadows.neonGlow(AppColors.primary),
           ),
           child: IconButton(
             icon: AnimatedSwitcher(
@@ -332,23 +357,24 @@ class _MiniPlayerState extends State<MiniPlayer>
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded,
                 key: ValueKey(widget.isPlaying),
-                color: Colors.black,
-                size: 26,
+                color: Colors.white,
+                size: 24,
               ),
             ),
             onPressed: widget.onPlayPause,
             padding: EdgeInsets.zero,
           ),
         ),
+        const SizedBox(width: 4),
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.skip_next_rounded,
-            color: Colors.white,
+            color: isDark ? Colors.white : AppColors.lightTextPrimary,
             size: 24,
           ),
           onPressed: widget.onNext,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
       ],
     );
@@ -377,7 +403,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             child: child,
           );
         },
-        transitionDuration: const Duration(milliseconds: 350),
+        transitionDuration: AppDurations.pageTransition,
       ),
     );
   }
@@ -401,7 +427,7 @@ class _PlayingWaveAnimationState extends State<_PlayingWaveAnimation>
     _controllers = List.generate(3, (index) {
       return AnimationController(
         vsync: this,
-        duration: Duration(milliseconds: 400 + index * 100),
+        duration: Duration(milliseconds: 350 + index * 100),
       )..repeat(reverse: true);
     });
 
@@ -430,12 +456,12 @@ class _PlayingWaveAnimationState extends State<_PlayingWaveAnimation>
           animation: _animations[index],
           builder: (context, child) {
             return Container(
-              width: 4,
-              height: 16 * _animations[index].value,
+              width: 3.5,
+              height: 14 * _animations[index].value,
               margin: const EdgeInsets.symmetric(horizontal: 1),
               decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(2),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(2.0),
               ),
             );
           },

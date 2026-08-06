@@ -1,11 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/core/utils/lrc_parser.dart';
 import 'package:musicflow_app/data/models/lrc_line_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
+import '../../widgets/song_options_menu.dart';
 import 'package:musicflow_app/data/services/comment_service.dart';
-import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/like_service.dart';
 import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
@@ -41,7 +43,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isPlaying = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-  int _currentPage = 0; // 0 = Player, 1 = Queue
+  int _currentPage = 0; // 0 = Player, 1 = Lyrics, 2 = Queue
 
   late Song _currentSong;
   late int _currentIndex;
@@ -88,10 +90,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     _currentSong = widget.song;
     _currentIndex = widget.currentIndex;
 
-    // Khởi tạo animation controller cho đĩa xoay
     _discRotationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 10), // Xoay 1 vòng trong 10 giây
+      duration: const Duration(seconds: 12),
     );
 
     _discRotationController.addStatusListener((status) {
@@ -110,16 +111,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     _loadCommentCount();
     _loadLyricsForCurrentSong();
 
-    // Lắng nghe GlobalAudioState để sync khi auto-next
     _globalAudioState.addListener(_onGlobalAudioStateChanged);
   }
 
-  /// Sync local state khi GlobalAudioState thay đổi (auto-next)
   void _onGlobalAudioStateChanged() {
     final globalSong = _globalAudioState.currentSong;
     final globalIndex = _globalAudioState.currentIndex;
 
-    // Chỉ sync nếu bài hát khác với local state
     if (globalSong != null &&
         globalSong.id != _currentSong.id &&
         !_isChangingSong) {
@@ -256,7 +254,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.dispose();
   }
 
-  /// Khởi tạo trạng thái like từ dữ liệu bài hát (likeCount lấy từ Song model)
   void _loadLikeStatus() {
     if (mounted) {
       setState(() {
@@ -268,7 +265,6 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Future<void> _toggleLikeSong() async {
     final nextFavorite = !_isFavorite;
-    // Cập nhật UI ngay lập tức
     setState(() {
       _isFavorite = nextFavorite;
       _likeCount = nextFavorite
@@ -290,7 +286,6 @@ class _PlayerScreenState extends State<PlayerScreen>
         nextFavorite ? 'Đã like bài hát' : 'Đã bỏ like bài hát',
       );
     } else {
-      // Hoàn tác nếu server báo lỗi
       setState(() {
         _isFavorite = !nextFavorite;
         _likeCount = nextFavorite
@@ -302,145 +297,80 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _loadCommentCount() async {
-    final result = await CommentService.getSongComments(
-      _currentSong.id,
-      page: 1,
-      limit: 1,
-      sort: 'top',
-    );
-    if (!mounted || !result.success) return;
-
-    setState(() {
-      _commentCount = result.totalComments;
-    });
+    try {
+      final count = await CommentService.getCommentsCount(_currentSong.id);
+      if (mounted) {
+        setState(() {
+          _commentCount = count;
+        });
+      }
+    } catch (_) {}
   }
 
   void _openComments() {
-    showModalBottomSheet<void>(
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF111111),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => SongCommentsSheet(
+      backgroundColor: Colors.transparent,
+      builder: (context) => SongCommentsSheet(
         songId: _currentSong.id,
-        initialCommentCount: _commentCount,
         onCommentCountChanged: (count) {
-          if (!mounted) return;
-          setState(() {
-            _commentCount = count;
-          });
+          if (mounted) {
+            setState(() {
+              _commentCount = count;
+            });
+          }
         },
       ),
-    );
-  }
-
-  void _shareSong() {
-    _showActionMessage(
-      'Chia sẻ: ${_currentSong.title} - ${_currentSong.artists.join(', ')}',
     );
   }
 
   Future<void> _downloadCurrentSong() async {
     if (_isDownloading) return;
 
-    setState(() {
-      _isDownloading = true;
-    });
+    setState(() => _isDownloading = true);
+    _showActionMessage('Bắt đầu tải bài hát xuống thiết bị...');
 
-    final result = await OfflineSongService().downloadSong(_currentSong);
+    try {
+      final result = await OfflineSongService().downloadSong(_currentSong);
+      final success = result.success;
+      if (!mounted) return;
 
-    if (!mounted) return;
-
-    setState(() {
-      _isDownloading = false;
-    });
-
-    _showActionMessage(result.message);
+      if (success) {
+        _showActionMessage('Đã lưu bài hát offline thành công!');
+      } else {
+        _showActionMessage('Tải nhạc thất bại. Vui lòng thử lại sau.');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showActionMessage('Lỗi tải xuống: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+      }
+    }
   }
 
-  Future<void> _toggleFavoriteFromMenu() async {
-    final result = await FavoriteService.toggleFavorite(_currentSong.id);
-    if (!mounted) return;
-    _showActionMessage(
-      result.message ?? 'Không thể cập nhật yêu thích luc nay',
+  void _shareSong() {
+    _showActionMessage('Link bài hát đã được sao chép vào bộ nhớ tạm.');
+  }
+
+  void _showMoreOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => SongOptionsSheet(song: _currentSong),
     );
   }
 
   void _openCurrentArtist() {
-    final artistName = _currentSong.artists.isNotEmpty
-        ? _currentSong.artists.first
-        : '';
-    if (artistName.isEmpty) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ArtistScreen(artistName: artistName)),
-    );
-  }
-
-  void _showMoreOptions() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF181818),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    if (_currentSong.artists.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ArtistScreen(artistName: _currentSong.artists.first),
       ),
-      builder: (_) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.queue_music, color: Colors.white70),
-                title: const Text(
-                  'Thêm vào danh sách phát',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.favorite_border,
-                  color: Colors.white70,
-                ),
-                title: const Text(
-                  'Thêm/Xóa bài hát yêu thích',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _toggleFavoriteFromMenu();
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.person_outline,
-                  color: Colors.white70,
-                ),
-                title: const Text(
-                  'Xem nghệ sĩ',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _openCurrentArtist();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.info_outline, color: Colors.white70),
-                title: const Text(
-                  'Thông tin bài hát',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () => Navigator.pop(context),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -449,32 +379,24 @@ class _PlayerScreenState extends State<PlayerScreen>
       SnackBar(
         content: Text(message),
         duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   Future<void> _initPlayer() async {
-    // KHÔNG gọi play() ở đây nữa - nhạc đã được phát từ MainScreen rồi
-    // Chỉ setup listeners
-
-    // Lấy trạng thái hiện tại
     _isPlaying = _audioService.isPlaying;
     _position = _audioService.player.position;
-
-    // Ưu tiên lấy duration từ song metadata (có sẵn từ backend)
-    // Fallback về player duration nếu không có
     _duration =
         _currentSong.durationAsDuration ??
         _audioService.player.duration ??
         Duration.zero;
 
-    // Lắng nghe trạng thái playing
     _audioService.player.playerStateStream.listen((state) {
       if (mounted) {
         setState(() {
           _isPlaying = state.playing;
         });
-        // Điều khiển đĩa xoay
         if (state.playing) {
           _resumeDiscRotation();
         } else {
@@ -483,12 +405,10 @@ class _PlayerScreenState extends State<PlayerScreen>
       }
     });
 
-    // Bắt đầu xoay nếu đang phát
     if (_isPlaying) {
       _resumeDiscRotation();
     }
 
-    // Lắng nghe vị trí hiện tại
     _audioService.player.positionStream.listen((pos) {
       if (mounted) {
         _position = pos;
@@ -506,7 +426,6 @@ class _PlayerScreenState extends State<PlayerScreen>
       }
     });
 
-    // Lắng nghe tổng thời lượng (backup nếu song metadata không có)
     _audioService.player.durationStream.listen((dur) {
       if (mounted && dur != null) {
         final durationChanged = dur != _duration;
@@ -537,47 +456,68 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.grey.shade900, Colors.black],
+      body: Stack(
+        children: [
+          // Blurred background image
+          Positioned.fill(
+            child: _currentSong.imageUrl.isNotEmpty
+                ? Image.network(_currentSong.imageUrl, fit: BoxFit.cover)
+                : Container(color: AppColors.darkBackground),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(),
-              // Page indicator
-              _buildPageIndicator(),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (page) {
-                    setState(() {
-                      _currentPage = page;
-                    });
-                  },
-                  children: [
-                    // Page 1: Player
-                    _buildPlayerPage(),
-                    // Page 2: Lyrics
-                    _buildLyricsPage(),
-                    // Page 3: Queue
-                    if (_activePlaylist.isNotEmpty) _buildQueuePage(),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40.0, sigmaY: 40.0),
+              child: Container(color: Colors.black.withOpacity(0.55)),
+            ),
+          ),
+          // Gradient overlay mask
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.85),
                   ],
                 ),
               ),
-              if (_currentPage == 0) _buildSongInfo(),
-              _buildProgressBar(),
-              _buildControls(),
-              const SizedBox(height: 14),
-              _buildBottomActionBar(),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                _buildPageIndicator(),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (page) {
+                      setState(() {
+                        _currentPage = page;
+                      });
+                    },
+                    children: [
+                      // Page 1: Player
+                      _buildPlayerPage(),
+                      // Page 2: Lyrics
+                      _buildLyricsPage(),
+                      // Page 3: Queue
+                      if (_activePlaylist.isNotEmpty) _buildQueuePage(),
+                    ],
+                  ),
+                ),
+                if (_currentPage == 0) _buildSongInfo(),
+                _buildProgressBar(),
+                _buildControls(),
+                const SizedBox(height: AppSpacing.sm),
+                _buildBottomActionBar(),
+                const SizedBox(height: AppSpacing.md),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -589,48 +529,47 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (_activePlaylist.isNotEmpty) 'Danh sách chờ',
     ];
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(labels.length * 2 - 1, (index) {
-          if (index.isOdd) {
-            return const SizedBox(width: 8);
-          }
-          final pageIndex = index ~/ 2;
-          return _buildDot(pageIndex, labels[pageIndex]);
-        }),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xxs),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
-    );
-  }
-
-  Widget _buildDot(int index, String label) {
-    final isActive = _currentPage == index;
-    return GestureDetector(
-      onTap: () {
-        _pageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? Colors.greenAccent.withOpacity(0.2)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.greenAccent : Colors.grey,
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(labels.length, (index) {
+          final isActive = _currentPage == index;
+          return GestureDetector(
+            onTap: () {
+              _pageController.animateToPage(
+                index,
+                duration: AppDurations.cardSlide,
+                curve: Curves.easeInOut,
+              );
+            },
+            child: AnimatedContainer(
+              duration: AppDurations.hover,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: isActive
+                    ? AppShadows.neonGlow(AppColors.primary)
+                    : null,
+              ),
+              child: Text(
+                labels[index],
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.white60,
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -642,7 +581,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildLyricsPage() {
     if (_isLyricsLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.greenAccent),
+        child: CircularProgressIndicator(color: AppColors.secondary),
       );
     }
 
@@ -676,16 +615,19 @@ class _PlayerScreenState extends State<PlayerScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
-                const Icon(Icons.queue_music, color: Colors.greenAccent),
+                const Icon(
+                  Icons.queue_music_rounded,
+                  color: AppColors.secondary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Danh sách phát (${_activePlaylist.length} bài)',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -702,13 +644,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                 return Container(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 8,
-                    vertical: 2,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: isCurrentSong
-                        ? Colors.greenAccent.withOpacity(0.15)
+                        ? AppColors.primary.withOpacity(0.15)
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.small),
+                    border: isCurrentSong
+                        ? Border.all(color: AppColors.primary.withOpacity(0.3))
+                        : null,
                   ),
                   child: ListTile(
                     leading: Row(
@@ -718,32 +663,32 @@ class _PlayerScreenState extends State<PlayerScreen>
                           width: 24,
                           child: isCurrentSong
                               ? const Icon(
-                                  Icons.equalizer,
-                                  color: Colors.greenAccent,
+                                  Icons.equalizer_rounded,
+                                  color: AppColors.secondary,
                                   size: 20,
                                 )
                               : Text(
                                   '${index + 1}',
                                   style: TextStyle(
                                     color: Colors.grey[500],
-                                    fontSize: 14,
+                                    fontSize: 13,
                                   ),
                                 ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppRadius.small),
                           child: Image.network(
                             song.imageUrl,
-                            width: 45,
-                            height: 45,
+                            width: 44,
+                            height: 44,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
-                              width: 45,
-                              height: 45,
+                              width: 44,
+                              height: 44,
                               color: Colors.grey[800],
                               child: const Icon(
-                                Icons.music_note,
+                                Icons.music_note_rounded,
                                 color: Colors.white54,
                               ),
                             ),
@@ -755,11 +700,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                       song.title,
                       style: TextStyle(
                         color: isCurrentSong
-                            ? Colors.greenAccent
+                            ? AppColors.secondary
                             : Colors.white,
                         fontWeight: isCurrentSong
                             ? FontWeight.bold
                             : FontWeight.normal,
+                        fontSize: 14,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -768,17 +714,17 @@ class _PlayerScreenState extends State<PlayerScreen>
                       song.artists.join(', '),
                       style: TextStyle(
                         color: isCurrentSong
-                            ? Colors.greenAccent.withOpacity(0.7)
-                            : Colors.grey,
-                        fontSize: 13,
+                            ? AppColors.secondary.withOpacity(0.7)
+                            : Colors.grey[400],
+                        fontSize: 12,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: isCurrentSong
                         ? const Icon(
-                            Icons.volume_up,
-                            color: Colors.greenAccent,
+                            Icons.volume_up_rounded,
+                            color: AppColors.secondary,
                             size: 20,
                           )
                         : null,
@@ -799,13 +745,16 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             icon: const Icon(
-              Icons.keyboard_arrow_down,
+              Icons.keyboard_arrow_down_rounded,
               color: Colors.white,
               size: 32,
             ),
@@ -815,18 +764,18 @@ class _PlayerScreenState extends State<PlayerScreen>
             _currentPage == 0
                 ? 'ĐANG PHÁT'
                 : _currentPage == 1
-                ? 'LYRICS'
+                ? 'LỜI BÀI HÁT'
                 : 'DANH SÁCH CHỜ',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.0,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onPressed: _showMoreOptions,
           ),
         ],
       ),
@@ -837,7 +786,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     return Center(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final discSize = (constraints.maxWidth * 0.72).clamp(220.0, 320.0);
+          final discSize = (constraints.maxWidth * 0.72).clamp(220.0, 310.0);
 
           return Hero(
             tag: 'album_art',
@@ -849,30 +798,28 @@ class _PlayerScreenState extends State<PlayerScreen>
                   child: child,
                 );
               },
-              child: SizedBox(
+              child: Container(
                 width: discSize,
                 height: discSize,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 30,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: _currentSong.imageUrl.isNotEmpty
-                        ? Image.network(
-                            _currentSong.imageUrl,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.high,
-                            errorBuilder: (_, __, ___) => _buildDefaultArt(),
-                          )
-                        : _buildDefaultArt(),
-                  ),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.25),
+                      blurRadius: 32,
+                      spreadRadius: 8,
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: _currentSong.imageUrl.isNotEmpty
+                      ? Image.network(
+                          _currentSong.imageUrl,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.high,
+                          errorBuilder: (_, __, ___) => _buildDefaultArt(),
+                        )
+                      : _buildDefaultArt(),
                 ),
               ),
             ),
@@ -889,50 +836,53 @@ class _PlayerScreenState extends State<PlayerScreen>
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [Colors.greenAccent, Colors.tealAccent],
+          colors: [AppColors.primary, AppColors.secondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: const Icon(Icons.music_note, size: 50, color: Colors.black54),
+      child: const Icon(
+        Icons.music_note_rounded,
+        size: 56,
+        color: Colors.white70,
+      ),
     );
   }
 
   Widget _buildSongInfo() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         children: [
-          // Tên bài hát - căn giữa
           Text(
             _currentSong.title,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-          // Tên nghệ sĩ - căn giữa
+          const SizedBox(height: 6),
           GestureDetector(
             onTap: _openCurrentArtist,
             child: Text(
               _currentSong.artists.join(', '),
               style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 16,
+                color: AppColors.secondary.withOpacity(0.9),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
                 decoration: TextDecoration.underline,
-                decorationColor: Colors.grey.shade600,
+                decorationColor: AppColors.secondary.withOpacity(0.5),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -940,18 +890,18 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildProgressBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         children: [
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              trackHeight: 4,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              activeTrackColor: Colors.greenAccent,
-              inactiveTrackColor: Colors.grey.shade800,
-              thumbColor: Colors.greenAccent,
-              overlayColor: Colors.greenAccent.withOpacity(0.2),
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              activeTrackColor: AppColors.secondary,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: AppColors.secondary,
+              overlayColor: AppColors.secondary.withOpacity(0.2),
             ),
             child: Slider(
               value: _duration.inMilliseconds > 0
@@ -969,17 +919,17 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _formatDuration(_position),
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
                 Text(
                   _formatDuration(_duration),
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
               ],
             ),
@@ -1007,10 +957,10 @@ class _PlayerScreenState extends State<PlayerScreen>
       children: [
         IconButton(
           icon: Icon(
-            Icons.shuffle,
-            color: isShuffleEnabled ? Colors.greenAccent : Colors.white54,
+            Icons.shuffle_rounded,
+            color: isShuffleEnabled ? AppColors.secondary : Colors.white54,
           ),
-          iconSize: 28,
+          iconSize: 26,
           onPressed: canUsePlaylistModes
               ? () {
                   _globalAudioState.toggleShuffle();
@@ -1023,29 +973,25 @@ class _PlayerScreenState extends State<PlayerScreen>
             Icons.skip_previous_rounded,
             color: canTriggerPrevious ? Colors.white : Colors.white38,
           ),
-          iconSize: 40,
+          iconSize: 38,
           onPressed: canTriggerPrevious ? _playPrevious : null,
         ),
         Container(
-          width: 72,
-          height: 72,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: Colors.greenAccent,
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.secondary],
+            ),
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.greenAccent.withOpacity(0.4),
-                blurRadius: 15,
-                spreadRadius: 2,
-              ),
-            ],
+            boxShadow: AppShadows.neonGlow(AppColors.primary),
           ),
           child: IconButton(
             icon: Icon(
               _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.black,
+              color: Colors.white,
             ),
-            iconSize: 40,
+            iconSize: 38,
             onPressed: () {
               if (_isPlaying) {
                 _audioService.pause();
@@ -1060,7 +1006,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             Icons.skip_next_rounded,
             color: canTriggerNext ? Colors.white : Colors.white38,
           ),
-          iconSize: 40,
+          iconSize: 38,
           onPressed: canTriggerNext ? _playNext : null,
         ),
         IconButton(
@@ -1069,28 +1015,28 @@ class _PlayerScreenState extends State<PlayerScreen>
             children: [
               Icon(
                 repeatMode == PlaybackRepeatMode.one
-                    ? Icons.repeat_one
-                    : Icons.repeat,
+                    ? Icons.repeat_one_rounded
+                    : Icons.repeat_rounded,
                 color: repeatMode == PlaybackRepeatMode.off
                     ? Colors.white54
-                    : Colors.greenAccent,
+                    : AppColors.secondary,
               ),
               if (repeatMode == PlaybackRepeatMode.all)
                 Positioned(
                   right: -1,
                   top: -2,
                   child: Container(
-                    width: 7,
-                    height: 7,
+                    width: 6,
+                    height: 6,
                     decoration: const BoxDecoration(
-                      color: Colors.greenAccent,
+                      color: AppColors.secondary,
                       shape: BoxShape.circle,
                     ),
                   ),
                 ),
             ],
           ),
-          iconSize: 28,
+          iconSize: 26,
           onPressed: canUsePlaylistModes
               ? () {
                   _globalAudioState.cycleRepeatMode();

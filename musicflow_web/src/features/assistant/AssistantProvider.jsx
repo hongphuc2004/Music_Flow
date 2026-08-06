@@ -21,6 +21,7 @@ export const AssistantProvider = ({ children }) => {
   const [playlists, setPlaylists] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [scope, setScope] = useState('global'); // 'global' | 'mood'
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const showToast = useAppToast();
@@ -36,6 +37,14 @@ export const AssistantProvider = ({ children }) => {
 
   const unregisterCapability = useCallback((name) => {
     delete capabilitiesRef.current[name];
+  }, []);
+
+  const executeCapability = useCallback((name, payload) => {
+    if (capabilitiesRef.current[name]) {
+      capabilitiesRef.current[name](payload);
+      return true;
+    }
+    return false;
   }, []);
 
   // Update current path in context automatically
@@ -186,7 +195,18 @@ export const AssistantProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Failed to send message to assistant:', err);
-      showToast(err.response?.data?.message || 'Có lỗi xảy ra khi trò chuyện với trợ lý.', 'error');
+      const errMessage = err.response?.data?.message || '';
+      const isQuotaError = err.response?.status === 403 && 
+        (errMessage.includes("vượt quá hạn mức") || 
+         errMessage.includes("hạn mức") || 
+         errMessage.includes("yêu cầu AI") ||
+         errMessage.includes("nâng cấp"));
+
+      if (isQuotaError) {
+        setUpgradeDialogOpen(true);
+      } else {
+        showToast(errMessage || 'Có lỗi xảy ra khi trò chuyện với trợ lý.', 'error');
+      }
       
       // Rollback temporary user message on failure
       setMessages((prev) => prev.filter((m) => !m._id.startsWith('temp-user-')));
@@ -243,8 +263,11 @@ export const AssistantProvider = ({ children }) => {
         deleteConversation,
         registerCapability,
         unregisterCapability,
+        executeCapability,
         setCurrentSong,
         currentContext,
+        upgradeDialogOpen,
+        setUpgradeDialogOpen,
       }}
     >
       {children}

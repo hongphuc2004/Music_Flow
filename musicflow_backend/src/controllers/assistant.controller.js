@@ -104,7 +104,6 @@ exports.getConversationDetail = async (req, res) => {
       MoodPlaylist.find({ conversationId: id })
         .populate({
           path: "songs",
-          match: { isPublic: true },
           populate: [
             { path: "artists", select: "name avatar" },
             { path: "topicIds", select: "name description" },

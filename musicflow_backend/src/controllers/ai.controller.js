@@ -11,7 +11,6 @@ async function serializeConversation(conversationId, userId) {
     MoodPlaylist.find({ conversationId })
       .populate({
         path: "songs",
-        match: { isPublic: true },
         populate: [
           { path: "artists", select: "name avatar" },
           { path: "topicIds", select: "name description" },
@@ -105,7 +104,6 @@ exports.getMoodHistory = async (req, res) => {
     })
       .populate({
         path: "songs",
-        match: { isPublic: true },
         populate: [
           { path: "artists", select: "name avatar" },
           { path: "topicIds", select: "name description" },

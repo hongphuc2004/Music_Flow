@@ -14,7 +14,7 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit }) {
   const [favorite, setFavorite] = useState(false);
 
   const open = Boolean(anchorEl);
-  const isLoggedIn = localStorage.getItem('role') === 'user';
+  const isLoggedIn = Boolean(localStorage.getItem('role'));
 
   const songId = useMemo(() => song?._id || '', [song?._id]);
   const primaryArtistId = useMemo(() => {

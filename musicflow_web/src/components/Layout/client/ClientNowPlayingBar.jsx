@@ -53,7 +53,7 @@ function ClientNowPlayingBar({
     autoplay,
     toggleAutoplay,
   } = useClientPlayer();
-  const isLoggedIn = localStorage.getItem('role') === 'user';
+  const isLoggedIn = Boolean(localStorage.getItem('role'));
 
   useEffect(() => {
     let ignore = false;

@@ -43,7 +43,7 @@ function ClientPlaylist() {
         setLoading(true);
         setError('');
 
-        const isLoggedIn = localStorage.getItem('role') === 'user';
+        const isLoggedIn = Boolean(localStorage.getItem('role'));
         const response = isLoggedIn
           ? await clientPlaylistsApi.getById(playlistId)
           : await clientPlaylistsApi.getSystemById(playlistId);

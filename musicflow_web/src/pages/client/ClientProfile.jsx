@@ -39,8 +39,8 @@ function ClientProfile() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const [uploadUsed, setUploadUsed] = useState(15.4);
-  const [downloadUsed, setDownloadUsed] = useState(32.8);
+  const [uploadUsed, setUploadUsed] = useState(0);
+  const [downloadUsed, setDownloadUsed] = useState(0);
   const [recentSongs, setRecentSongs] = useState([]);
 
   const userName = useMemo(() => form.name || 'Người nghe', [form.name]);
@@ -93,22 +93,22 @@ function ClientProfile() {
     const fetchUploads = async () => {
       try {
         const res = await clientSongsApi.getMyUploads();
-        const mySongs = Array.isArray(res.data) ? res.data : [];
+        const mySongs = Array.isArray(res.data?.songs) ? res.data.songs : [];
         const calculatedSize = mySongs.reduce((sum, song) => sum + (song.fileSize ? song.fileSize / (1024 * 1024) : 4.8), 0);
-        setUploadUsed(Number((calculatedSize > 0 ? calculatedSize : 15.4).toFixed(1)));
+        setUploadUsed(Number(calculatedSize.toFixed(1)));
       } catch {
-        setUploadUsed(15.4);
+        setUploadUsed(0);
       }
     };
 
     const fetchDownloads = async () => {
       try {
         const res = await clientSongsApi.getMyDownloadHistory();
-        const downloadedSongs = Array.isArray(res.data) ? res.data : [];
+        const downloadedSongs = Array.isArray(res.data?.songs) ? res.data.songs : [];
         const calculatedSize = downloadedSongs.reduce((sum, song) => sum + (song.fileSize ? song.fileSize / (1024 * 1024) : 4.5), 0);
-        setDownloadUsed(Number((calculatedSize > 0 ? calculatedSize : 32.8).toFixed(1)));
+        setDownloadUsed(Number(calculatedSize.toFixed(1)));
       } catch {
-        setDownloadUsed(32.8);
+        setDownloadUsed(0);
       }
     };
 

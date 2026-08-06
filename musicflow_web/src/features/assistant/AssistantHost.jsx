@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   IconButton,
@@ -19,6 +20,8 @@ import {
   useTheme,
   useMediaQuery,
   Tooltip,
+  Dialog,
+  DialogContent,
 } from '@mui/material';
 import {
   AutoAwesomeRounded as SparklesIcon,
@@ -29,21 +32,27 @@ import {
   HistoryRounded as HistoryIcon,
   ChatBubbleOutlineRounded as ChatIcon,
   ChevronLeftRounded as BackIcon,
+  MusicNoteRounded as MusicIcon,
 } from '@mui/icons-material';
 import { useAssistant } from './AssistantProvider';
 
 export default function AssistantHost() {
+  const navigate = useNavigate();
   const {
     isOpen,
     setIsOpen,
     conversations,
     activeConversationId,
     messages,
+    playlists,
     isLoading,
     sendMessage,
     loadConversationDetail,
     startNewConversation,
     deleteConversation,
+    executeCapability,
+    upgradeDialogOpen,
+    setUpgradeDialogOpen,
   } = useAssistant();
 
   const theme = useTheme();
@@ -389,22 +398,32 @@ export default function AssistantHost() {
                             <SparklesIcon sx={{ fontSize: 14 }} />
                           </Avatar>
                         )}
-                        <Paper
-                          sx={{
-                            p: 1.5,
-                            borderRadius: isAssistant ? '0px 14px 14px 14px' : '14px 0px 14px 14px',
-                            bgcolor: isAssistant
-                              ? (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#f1f5f9')
-                              : 'primary.main',
-                            color: isAssistant ? 'text.primary' : 'white',
-                            border: isAssistant ? '1px solid' : 'none',
-                            borderColor: 'divider',
-                          }}
-                        >
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
-                            {msg.content}
-                          </Typography>
-                        </Paper>
+                        <Stack spacing={1} sx={{ minWidth: 0, flexGrow: 1 }}>
+                          <Paper
+                            sx={{
+                              p: 1.5,
+                              borderRadius: isAssistant ? '0px 14px 14px 14px' : '14px 0px 14px 14px',
+                              bgcolor: isAssistant
+                                ? (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#f1f5f9')
+                                : 'primary.main',
+                              color: isAssistant ? 'text.primary' : 'white',
+                              border: isAssistant ? '1px solid' : 'none',
+                              borderColor: 'divider',
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                              {msg.content}
+                            </Typography>
+                          </Paper>
+                          {isAssistant && msg.playlistId && (
+                            <CompactPlaylistCard
+                              playlistId={msg.playlistId}
+                              playlists={playlists}
+                              onPlaySong={(song, songs) => executeCapability('PLAY_SONG', { song, songs })}
+                              onPlayAll={(songs) => executeCapability('LOAD_PLAYLIST', { songs })}
+                            />
+                          )}
+                        </Stack>
                       </Stack>
                     );
                   })
@@ -520,6 +539,180 @@ export default function AssistantHost() {
           )}
         </Paper>
       </Collapse>
+
+      {/* Dialog Nâng cấp cước khi hết hạn mức AI */}
+      <Dialog
+        open={upgradeDialogOpen}
+        onClose={() => setUpgradeDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            background: 'rgba(21, 21, 35, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '16px',
+            border: '1px solid rgba(108, 99, 255, 0.2)',
+            color: 'white',
+            maxWidth: '400px',
+            width: '100%',
+            p: 1,
+            zIndex: 1400,
+          }
+        }}
+      >
+        <DialogContent sx={{ textAlign: 'center', p: 3 }}>
+          <Box
+            sx={{
+              width: 54,
+              height: 54,
+              borderRadius: '50%',
+              bgcolor: 'rgba(108, 99, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              border: '1px solid rgba(108, 99, 255, 0.3)',
+            }}
+          >
+            <SparklesIcon sx={{ color: '#ffd700', fontSize: 28 }} />
+          </Box>
+          
+          <Typography variant="h6" fontWeight={850} gutterBottom sx={{
+            background: 'linear-gradient(90deg, #6c63ff, #00bcd4)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            Hết hạn mức AI hôm nay
+          </Typography>
+          
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+            Tài khoản của bạn đã sử dụng hết số lượt yêu cầu trợ lý AI trong ngày. Nâng cấp các gói cước Premium để mở rộng hạn mức và trò chuyện AI không giới hạn!
+          </Typography>
+
+          <Stack spacing={1}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => {
+                setUpgradeDialogOpen(false);
+                setIsOpen(false);
+                navigate('/client/premium');
+              }}
+              sx={{
+                bgcolor: '#6c63ff',
+                '&:hover': { bgcolor: '#574feb' },
+                fontWeight: 700,
+                borderRadius: '8px',
+                py: 1,
+                textTransform: 'none',
+              }}
+            >
+              Nâng cấp tài khoản ngay
+            </Button>
+            <Button
+              variant="text"
+              fullWidth
+              onClick={() => setUpgradeDialogOpen(false)}
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 600,
+                borderRadius: '8px',
+                textTransform: 'none',
+              }}
+            >
+              Để sau
+            </Button>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Box>
+  );
+}
+
+// Hỗ trợ hiển thị Playlist thu nhỏ trong khung chat trợ lý
+function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
+  const playlist = playlists.find(p => p._id === playlistId || p.id === playlistId);
+  if (!playlist) return null;
+  const songs = playlist.songs || [];
+  
+  return (
+    <Paper
+      elevation={2}
+      sx={{
+        mt: 1,
+        p: 1.5,
+        borderRadius: 2.5,
+        border: '1px solid rgba(139, 92, 246, 0.25)',
+        background: (theme) => theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.7)' : '#f8fafc',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <SparklesIcon sx={{ color: '#8b5cf6', fontSize: 16 }} />
+        <Typography variant="caption" fontWeight={850} noWrap sx={{ flexGrow: 1, color: 'text.primary' }}>
+          {playlist.title}
+        </Typography>
+        {songs.length > 0 && (
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => onPlayAll(songs)}
+            sx={{ fontSize: 10, py: 0, textTransform: 'none', color: '#8b5cf6', minWidth: 0, fontWeight: 700 }}
+          >
+            Phát hết
+          </Button>
+        )}
+      </Stack>
+      <Divider sx={{ my: 0.75 }} />
+      <Stack spacing={0.5}>
+        {songs.slice(0, 5).map((song, index) => {
+          if (!song) return null;
+          const artistName = Array.isArray(song.artists)
+            ? song.artists.map((a) => a?.name || a).filter(Boolean).join(', ')
+            : 'Nghệ sĩ ẩn danh';
+
+          return (
+            <Stack
+              key={song._id || index}
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              onClick={() => onPlaySong(song, songs)}
+              sx={{
+                p: 0.5,
+                borderRadius: 1,
+                cursor: 'pointer',
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+            >
+              <Avatar
+                src={song.imageUrl}
+                variant="rounded"
+                sx={{ width: 24, height: 24, borderRadius: 0.5 }}
+              >
+                <MusicIcon sx={{ fontSize: 14 }} />
+              </Avatar>
+              <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                <Typography variant="caption" fontWeight={700} noWrap sx={{ display: 'block', fontSize: 11, lineHeight: 1.2, color: 'text.primary' }}>
+                  {song.title}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontSize: 9, lineHeight: 1 }}>
+                  {artistName}
+                </Typography>
+              </Box>
+            </Stack>
+          );
+        })}
+        {songs.length > 5 && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
+            và {songs.length - 5} bài hát khác...
+          </Typography>
+        )}
+        {songs.length === 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', p: 1, textAlign: 'center' }}>
+            Chưa có bài hát nào.
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
   );
 }

@@ -251,13 +251,6 @@ function ClientAuthDialog() {
         navigate('/artist/dashboard');
       } else {
         const res = await api.post('/auth/login', loginForm);
-        const { user } = res.data;
-
-        if (user.role !== 'user') {
-          setError('Tài khoản này không thuộc khu vực listener.');
-          return;
-        }
-
         completeAuth(res.data, 'Đăng nhập thành công.');
       }
     } catch (err) {

@@ -71,12 +71,8 @@ const ProtectedRoute = ({ children, role }) => {
 const ClientRoute = ({ children, requireAuth = false }) => {
   const userRole = localStorage.getItem('role');
 
-  if (requireAuth && userRole !== 'user') {
+  if (requireAuth && !userRole) {
     return <Navigate to="/client/home?auth=login" replace />;
-  }
-
-  if (userRole && userRole !== 'user') {
-    return <Navigate to={userRole === 'artist' ? '/artist/dashboard' : '/'} replace />;
   }
 
   return children;

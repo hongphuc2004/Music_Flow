@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 const CLIENT_SESSION_EVENT = 'musicflow-client-session-changed';
 
 const readClientSession = () => ({
-  isLoggedIn: localStorage.getItem('role') === 'user',
+  isLoggedIn: Boolean(localStorage.getItem('role')),
   userName: localStorage.getItem('userName') || localStorage.getItem('name') || 'Listener',
   userAvatar: localStorage.getItem('userAvatar') || '',
   userId: localStorage.getItem('userId') || '',

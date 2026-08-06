@@ -8,21 +8,35 @@ const { hasPremiumAccess } = require("../utils/premium.util");
  * @param {string} userId - ID người dùng cần kiểm tra
  */
 async function checkQuota(userId) {
-  const user = await User.findById(userId).select("isPremium premiumExpiry");
+  const user = await User.findById(userId).populate("premiumPlan");
   if (!user) {
     const error = new Error("Người dùng không tồn tại");
     error.status = 404;
     throw error;
   }
 
-  // 1. Tài khoản Premium còn hạn được miễn phí không giới hạn cước
+  let limit = 10; // Free: 10 yêu cầu
+  let planLabel = "miễn phí";
+  let isUnlimited = false;
+
   if (hasPremiumAccess(user)) {
+    const planName = user.premiumPlan?.name || "";
+    if (planName === "Gói GO") {
+      limit = 30;
+      planLabel = "Premium GO";
+    } else if (planName === "Gói PLUS") {
+      limit = 100;
+      planLabel = "Premium PLUS";
+    } else {
+      isUnlimited = true;
+    }
+  }
+
+  if (isUnlimited) {
     return { isPremium: true, remaining: -1 };
   }
 
-  // 2. Tài khoản Free: Giới hạn tối đa 5 yêu cầu trong rolling 24 giờ qua.
-  // Chỉ tính các tin nhắn do chính user gửi (role: "user").
-  // Không tính model response, internal tool calls, system messages.
+  // Tài khoản Free hoặc Gói Premium giới hạn (GO/PLUS)
   const conversations = await AssistantConversation.find({ actorId: userId }).select("_id").lean();
   const conversationIds = conversations.map((c) => c._id);
 
@@ -33,14 +47,13 @@ async function checkQuota(userId) {
     createdAt: { $gte: oneDayAgo },
   });
 
-  const limit = 10;
   if (count >= limit) {
-    const error = new Error(`Bạn đã vượt quá hạn mức ${limit} yêu cầu AI trong 24 giờ. Vui lòng nâng cấp tài khoản Premium để không giới hạn.`);
+    const error = new Error(`Bạn đã vượt quá hạn mức ${limit} yêu cầu AI trong 24 giờ của tài khoản ${planLabel}. Vui lòng nâng cấp gói cao hơn để không giới hạn.`);
     error.status = 403;
     throw error;
   }
 
-  return { isPremium: false, remaining: limit - count };
+  return { isPremium: user.isPremium, remaining: limit - count };
 }
 
 module.exports = {

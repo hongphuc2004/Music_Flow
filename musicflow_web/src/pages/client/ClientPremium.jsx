@@ -160,15 +160,15 @@ function ClientPremium() {
     if (plan.price === 19000 || plan.name.includes("GO")) {
       return [
         'Hạn mức tải lên tối đa 100 MB',
-        'Tải nhạc ngoại tuyến không giới hạn',
-        'Trò chuyện AI DJ không giới hạn 24/7',
+        'Tải nhạc ngoại tuyến tối đa 1 GB',
+        'Trò chuyện AI DJ tối đa 30 lần / ngày',
       ];
     }
     if (plan.price === 49000 || plan.name.includes("PLUS")) {
       return [
         'Hạn mức tải lên tối đa 500 MB',
-        'Tải nhạc ngoại tuyến không giới hạn',
-        'Trò chuyện AI DJ không giới hạn 24/7',
+        'Tải nhạc ngoại tuyến tối đa 5 GB',
+        'Trò chuyện AI DJ tối đa 100 lần / ngày',
       ];
     }
     if (plan.price === 89000 || plan.name.includes("PREMIUM")) {
@@ -486,8 +486,8 @@ function ClientPremium() {
                     <TableCell sx={{ fontWeight: 750 }}>Chi phí / tháng</TableCell>
                     <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Miễn phí</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 800 }}>19.000 đ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>16.333 đ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>14.833 đ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800 }}>49.000 đ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800 }}>89.000 đ</TableCell>
                   </TableRow>
                   
                   {/* Tải lên */}
@@ -503,8 +503,8 @@ function ClientPremium() {
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750 }}>Tải nhạc ngoại tuyến (Download)</TableCell>
                     <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tối đa 100 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 1 GB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 5 GB</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
                   </TableRow>
                   
@@ -512,8 +512,8 @@ function ClientPremium() {
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750 }}>Trò chuyện & Tạo Playlist AI</TableCell>
                     <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>10 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>30 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>100 yêu cầu / 24 giờ</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
                   </TableRow>
                   

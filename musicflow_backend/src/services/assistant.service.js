@@ -1219,7 +1219,7 @@ class AssistantService {
         ? "topic_match"
         : "fallback";
 
-    const playlist = await MoodPlaylist.create({
+    let playlist = await MoodPlaylist.create({
       conversationId,
       userId,
       title: playlistTitle(prompt, analysis),
@@ -1235,6 +1235,18 @@ class AssistantService {
       songs: songs.map((song) => song._id),
       songSnapshots: createSongSnapshots(songs),
     });
+
+    // Nạp đầy đủ thông tin các bài hát cho giao diện người dùng
+    playlist = await MoodPlaylist.findById(playlist._id)
+      .populate({
+        path: "songs",
+        populate: [
+          { path: "artists", select: "name avatar" },
+          { path: "topicIds", select: "name description" },
+        ],
+      })
+      .populate("matchedTopicIds", "name description")
+      .populate("matchedArtistIds", "name avatar");
 
     return {
       playlist,

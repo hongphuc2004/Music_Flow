@@ -66,7 +66,7 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
   const { currentSong } = useClientPlayer();
 
   const currentUserId = localStorage.getItem('userId');
-  const isLoggedIn = localStorage.getItem('role') === 'user';
+  const isLoggedIn = Boolean(localStorage.getItem('role'));
 
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -140,6 +140,7 @@ exports.registerPlay = async (req, res) => {
 // 🎫 ISSUE PLAYBACK TICKET
 // ---------------------------------------------------------------------------
 exports.issuePlaybackTicket = async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   try {
     const { id } = req.params;
     const { quality = "std" } = req.query;
@@ -180,6 +181,7 @@ exports.issuePlaybackTicket = async (req, res) => {
 // ---------------------------------------------------------------------------
 
 exports.streamSong = async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   try {
     const { id } = req.params;
     const { ticket } = req.query;

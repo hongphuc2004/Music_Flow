@@ -306,6 +306,10 @@ export function ClientPlayerProvider({ children }) {
             }
           } catch (err) {
             console.error('Error attaching playback ticket during intercept:', err);
+            if (currentVersion === playRequestVersionRef.current) {
+              const separator = audio.src.includes('?') ? '&' : '?';
+              audio.src = `${audio.src}${separator}ticket=error`;
+            }
           }
         }
       }

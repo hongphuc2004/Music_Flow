@@ -990,9 +990,9 @@ const issuePlaybackTicket = async (songId, quality, token) => {
     }
   }
 
-  const PLAYBACK_TICKET_SECRET = process.env.PLAYBACK_TICKET_SECRET;
+  const PLAYBACK_TICKET_SECRET = process.env.PLAYBACK_TICKET_SECRET || process.env.JWT_SECRET;
   if (!PLAYBACK_TICKET_SECRET) {
-    throw new Error("Missing PLAYBACK_TICKET_SECRET environment variable");
+    throw new Error("Missing PLAYBACK_TICKET_SECRET and JWT_SECRET environment variables");
   }
 
   // Ký vé ngắn hạn có type: "playback", songId, permittedQuality
@@ -1024,9 +1024,9 @@ const resolveStreamUrlByTicket = async (songId, ticket) => {
     throw err;
   }
 
-  const PLAYBACK_TICKET_SECRET = process.env.PLAYBACK_TICKET_SECRET;
+  const PLAYBACK_TICKET_SECRET = process.env.PLAYBACK_TICKET_SECRET || process.env.JWT_SECRET;
   if (!PLAYBACK_TICKET_SECRET) {
-    throw new Error("Missing PLAYBACK_TICKET_SECRET environment variable");
+    throw new Error("Missing PLAYBACK_TICKET_SECRET and JWT_SECRET environment variables");
   }
 
   let decoded;

@@ -28,6 +28,9 @@ router.post("/:id/play", songController.registerPlay);
 // 📻 GET SIMILAR SONGS (SONG RADIO)
 router.get("/:id/similar", songController.getSimilarSongs);
 
+// Return a playback ticket (auth optional/required depending on quality)
+router.get("/:id/ticket", songController.issuePlaybackTicket);
+
 // Return the Cloudinary URL redirect
 router.get("/:id/stream", songController.streamSong);
 

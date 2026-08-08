@@ -55,7 +55,7 @@ const ProtectedRoute = ({ children, role }) => {
 
   if (!userRole) {
     if (role === 'artist') {
-      if (location.pathname === '/artist/dashboard' && authMode === 'login') return children;
+      if (location.pathname === '/artist/dashboard' && (authMode === 'login' || authMode === 'register')) return children;
       return <Navigate to="/artist/dashboard?auth=login" replace />;
     }
     return <Navigate to="/accountlogin" replace />;
@@ -251,9 +251,9 @@ function App() {
                 <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
-          <Route path="/artist/register" element={<Navigate to="/client/home?auth=artist-register" replace />} />
+          <Route path="/artist/register" element={<PublicRoute><ArtistRegister /></PublicRoute>} />
           <Route path="/user/register" element={<Navigate to="/client/home?auth=register" replace />} />
-          <Route path="/artistlogin" element={<Navigate to="/client/home?auth=artist-login" replace />} />
+          <Route path="/artistlogin" element={<PublicRoute><ArtistLogin /></PublicRoute>} />
           <Route
             path="/artist/dashboard"
             element={

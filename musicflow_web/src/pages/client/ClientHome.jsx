@@ -78,6 +78,7 @@ function ClientHome() {
     activeLyricIndex,
     hasSyncedLyrics,
   } = useClientPlayer();
+  const displayDuration = (Number.isFinite(duration) && duration > 0) ? duration : (currentSong?.duration || 0);
   const [songs, setSongs] = useState([]);
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -810,8 +811,8 @@ function ClientHome() {
                     <Slider
                       size="small"
                       min={0}
-                      max={duration || currentSong?.duration || 1}
-                      value={Math.min(scrubTime ?? currentTime, duration || currentSong?.duration || 1)}
+                      max={displayDuration || 1}
+                      value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
                       onChange={(_, value) => setScrubTime(Number(value))}
                       onChangeCommitted={(_, value) => {
                         seekTo(value);
@@ -844,7 +845,7 @@ function ClientHome() {
                         {formatDuration(scrubTime ?? currentTime)}
                       </Typography>
                       <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
-                        {formatDuration(duration || currentSong?.duration || 0)}
+                        {formatDuration(displayDuration)}
                       </Typography>
                     </Stack>
                   </Box>

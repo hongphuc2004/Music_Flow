@@ -53,6 +53,20 @@ const songSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    audioMetadata: {
+      format: {
+        type: String,
+        default: "mp3",
+      },
+      bitrate: {
+        type: Number,
+        default: null,
+      },
+      hasHighQualitySource: {
+        type: Boolean,
+        default: false,
+      },
+    },
 
     // 🖼️ IMAGE
     imageUrl: {

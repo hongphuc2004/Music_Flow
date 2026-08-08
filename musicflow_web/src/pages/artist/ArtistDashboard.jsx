@@ -61,11 +61,12 @@ function ArtistDashboard() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const isLoginDialogRoute = new URLSearchParams(location.search).get('auth') === 'login';
+  const authMode = new URLSearchParams(location.search).get('auth');
+  const isAuthDialogRoute = authMode === 'login' || authMode === 'register';
   const isArtistLoggedIn = localStorage.getItem('role') === 'artist';
 
   const fetchDashboard = useCallback(async () => {
-    if (!isArtistLoggedIn && isLoginDialogRoute) {
+    if (!isArtistLoggedIn && isAuthDialogRoute) {
       setLoading(false);
       setError('');
       return;
@@ -99,7 +100,7 @@ function ArtistDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [isArtistLoggedIn, isLoginDialogRoute]);
+  }, [isArtistLoggedIn, isAuthDialogRoute]);
 
   useEffect(() => {
     fetchDashboard();

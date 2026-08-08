@@ -30,6 +30,7 @@ export const clientSongsApi = {
   updateSong: (songId, formData) => api.put(`/songs/${songId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  getPlaybackTicket: (songId, quality) => api.get(`/songs/${songId}/ticket`, { params: { quality } }),
 };
 
 // Client Favorites API

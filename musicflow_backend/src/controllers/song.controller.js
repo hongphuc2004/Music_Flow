@@ -137,15 +137,61 @@ exports.registerPlay = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
-// 📻 STREAM SONG (redirect to Cloudinary URL)
+// 🎫 ISSUE PLAYBACK TICKET
+// ---------------------------------------------------------------------------
+exports.issuePlaybackTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quality = "std" } = req.query;
+    
+    // Đọc token xác thực tùy chọn từ headers
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+
+    const result = await songService.issuePlaybackTicket(id, quality, token);
+    return res.status(200).json({
+      success: true,
+      ticket: result.ticket
+    });
+  } catch (error) {
+    if (error.code === "PREMIUM_REQUIRED") {
+      return res.status(403).json({
+        success: false,
+        code: "PREMIUM_REQUIRED",
+        message: error.message
+      });
+    }
+    if (error.code === "HQ_NOT_AVAILABLE") {
+      return res.status(400).json({
+        success: false,
+        code: "HQ_NOT_AVAILABLE",
+        message: error.message
+      });
+    }
+    return handleError(res, error, "Không thể cấp vé nghe nhạc");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 📻 STREAM SONG (redirect to Cloudinary URL using verified playback ticket)
 // ---------------------------------------------------------------------------
 
 exports.streamSong = async (req, res) => {
   try {
-    const audioUrl = await songService.resolveSongStreamUrl(req.params.id);
-    return res.redirect(302, audioUrl);
+    const { id } = req.params;
+    const { ticket } = req.query;
+
+    const streamUrl = await songService.resolveStreamUrlByTicket(id, ticket);
+    return res.redirect(302, streamUrl);
   } catch (error) {
-    return handleError(res, error, "Streaming failed");
+    const status = error.status || 500;
+    return res.status(status).json({
+      success: false,
+      message: error.message || "Truyền phát nhạc thất bại"
+    });
   }
 };
 

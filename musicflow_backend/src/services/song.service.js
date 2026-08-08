@@ -19,8 +19,45 @@ const playEventRepo = require("../repositories/play-event.repository");
 const { safeUnlink, uploadAudioToCloudinary, uploadImageFileToCloudinary, uploadImageUrlToCloudinary, deleteFromCloudinary } = require("../utils/cloudinary.util");
 const { isObjectIdLike, isHttpUrl, parseArrayField, toSafeSongTitleFromFileName } = require("../utils/string.util");
 const { ONE_HOUR_MS, getRankingPeriodRange, buildRankMap, buildHourlySlots } = require("../utils/ranking.util");
+const mm = require("music-metadata");
 
 const TRACK_PLAY_COOLDOWN_MS = 3 * 60 * 1000;
+
+/**
+ * Thăm dò siêu dữ liệu tập tin âm thanh (format, bitrate, và độ sẵn sàng HQ).
+ * 
+ * @param {string} filePath 
+ * @returns {Promise<{ format: string, bitrate: number|null, hasHighQualitySource: boolean }>}
+ */
+const probeAudioMetadata = async (filePath) => {
+  let format = "mp3";
+  let bitrate = null;
+  let hasHighQualitySource = false;
+
+  if (!filePath) {
+    return { format, bitrate, hasHighQualitySource };
+  }
+
+  try {
+    const metadata = await mm.parseFile(filePath);
+    if (metadata && metadata.format) {
+      format = metadata.format.container || "mp3";
+      bitrate = metadata.format.bitrate || null;
+      
+      const lowerFormat = format.toLowerCase();
+      const isLossless = lowerFormat.includes("wav") || lowerFormat.includes("flac") || lowerFormat.includes("alac");
+      const isHQBitrate = bitrate && bitrate >= 320000;
+      
+      if (isLossless || isHQBitrate) {
+        hasHighQualitySource = true;
+      }
+    }
+  } catch (err) {
+    console.error("Error reading audio metadata via music-metadata:", err);
+  }
+
+  return { format, bitrate, hasHighQualitySource };
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -426,6 +463,9 @@ const uploadSong = async (body, files, userId, userRole) => {
     toSafeSongTitleFromFileName(audioFile.originalname);
 
   try {
+    // Thăm dò siêu dữ liệu tập tin âm thanh trước khi upload
+    const audioMetadata = await probeAudioMetadata(audioFile.path);
+
     // Upload audio
     const audio = await uploadAudioToCloudinary(audioFile.path);
     safeUnlink(audioFile.path);
@@ -460,6 +500,7 @@ const uploadSong = async (body, files, userId, userRole) => {
       audioPublicId: audio.public_id,
       duration: audio.duration,
       fileSize: audioFile.size || 0,
+      audioMetadata,
       imageUrl,
       imagePublicId,
     });
@@ -527,10 +568,12 @@ const updateSong = async (songId, body, files, userId, userRole) => {
 
   try {
     if (audioFile) {
+      const audioMetadata = await probeAudioMetadata(audioFile.path);
       const audio = await uploadAudioToCloudinary(audioFile.path);
       song.audioUrl = audio.secure_url;
       song.audioPublicId = audio.public_id;
       song.duration = audio.duration;
+      song.audioMetadata = audioMetadata;
     }
 
     if (imageFile) {
@@ -893,12 +936,149 @@ const getRankings = async ({ period: rawPeriod } = {}) => {
   };
 };
 
+/**
+ * Cấp vé phát nhạc ngắn hạn (60 giây) để bắt đầu stream.
+ * Hỗ trợ Optional Auth: nếu có Token, kiểm tra phân quyền Premium.
+ * 
+ * @param {string} songId 
+ * @param {string} quality 'hq' | 'std'
+ * @param {string|null} token Authorization token truyền từ header
+ * @returns {Promise<{ ticket: string }>}
+ */
+const issuePlaybackTicket = async (songId, quality, token) => {
+  const Song = require("../models/song.model");
+  const User = require("../models/user.model");
+  const { hasPremiumAccess } = require("../utils/premium.util");
+
+  const song = await Song.findById(songId);
+  if (!song) {
+    const err = new Error("Song not found");
+    err.status = 404;
+    throw err;
+  }
+
+  // Phân giải thông tin user từ token nếu có
+  let user = null;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const resolvedUserId = decoded.userId || decoded.id || decoded._id || null;
+      if (resolvedUserId) {
+        user = await User.findById(resolvedUserId);
+      }
+    } catch (err) {
+      console.warn("JWT verification in ticket issuance failed:", err.message);
+    }
+  }
+
+  const isPremium = user && hasPremiumAccess(user);
+
+  // Nếu người dùng yêu cầu chất lượng cao (HQ 320kbps)
+  if (quality === "hq") {
+    if (!isPremium) {
+      const err = new Error("Yêu cầu tài khoản Premium để nghe chất lượng HQ.");
+      err.status = 403;
+      err.code = "PREMIUM_REQUIRED";
+      throw err;
+    }
+
+    if (!song.audioPublicId || !song.audioMetadata || !song.audioMetadata.hasHighQualitySource) {
+      const err = new Error("Chất lượng HQ không khả dụng cho bài hát này.");
+      err.status = 400;
+      err.code = "HQ_NOT_AVAILABLE";
+      throw err;
+    }
+  }
+
+  const PLAYBACK_TICKET_SECRET = process.env.PLAYBACK_TICKET_SECRET;
+  if (!PLAYBACK_TICKET_SECRET) {
+    throw new Error("Missing PLAYBACK_TICKET_SECRET environment variable");
+  }
+
+  // Ký vé ngắn hạn có type: "playback", songId, permittedQuality
+  const ticket = jwt.sign(
+    {
+      type: "playback",
+      songId: song._id.toString(),
+      permittedQuality: quality === "hq" ? "hq" : "std",
+      userId: user ? user._id.toString() : null
+    },
+    PLAYBACK_TICKET_SECRET,
+    { expiresIn: 60 } // Thời gian sống 60 giây cho handshake/redirect
+  );
+
+  return { ticket };
+};
+
+/**
+ * Phân giải đường dẫn stream Cloudinary bằng vé phát nhạc hợp lệ.
+ * 
+ * @param {string} songId 
+ * @param {string} ticket Vé phát nhạc ngắn hạn nhận được từ Query string
+ * @returns {Promise<string>}
+ */
+const resolveStreamUrlByTicket = async (songId, ticket) => {
+  if (!ticket) {
+    const err = new Error("Không tìm thấy vé phát nhạc");
+    err.status = 410;
+    throw err;
+  }
+
+  const PLAYBACK_TICKET_SECRET = process.env.PLAYBACK_TICKET_SECRET;
+  if (!PLAYBACK_TICKET_SECRET) {
+    throw new Error("Missing PLAYBACK_TICKET_SECRET environment variable");
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(ticket, PLAYBACK_TICKET_SECRET);
+  } catch (err) {
+    const error = new Error("Vé phát nhạc hết hạn hoặc không hợp lệ");
+    error.status = 410;
+    throw error;
+  }
+
+  // Xác thực các dải thông tin bắt buộc trong vé
+  if (
+    decoded.type !== "playback" ||
+    decoded.songId !== songId
+  ) {
+    const error = new Error("Vé phát nhạc không hợp lệ");
+    error.status = 403;
+    throw error;
+  }
+
+  const Song = require("../models/song.model");
+  const song = await Song.findById(songId);
+  if (!song) {
+    const error = new Error("Song not found");
+    error.status = 404;
+    throw error;
+  }
+
+  let streamUrl = song.audioUrl;
+  
+  if (song.audioPublicId) {
+    const cloudinary = require("../config/cloudinary");
+    const targetBitrate = decoded.permittedQuality === "hq" ? "320k" : "128k";
+    streamUrl = cloudinary.url(song.audioPublicId, {
+      resource_type: "video",
+      secure: true,
+      transformation: [{ bit_rate: targetBitrate }]
+    });
+  }
+
+  return streamUrl;
+};
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
 module.exports = {
   resolveSongStreamUrl,
+  issuePlaybackTicket,
+  resolveStreamUrlByTicket,
   registerPlay,
   downloadSong,
   getDownloadHistory,

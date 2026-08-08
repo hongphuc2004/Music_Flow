@@ -22,9 +22,13 @@ import {
   MusicNote as MusicNoteIcon,
   Visibility,
   VisibilityOff,
+  PersonOutline,
+  ImageOutlined,
+  AlternateEmailOutlined,
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../../../services/api';
 import { syncArtistSession } from '../../../utils/artistSession';
+import useAppToast from '../../../components/common/useAppToast';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -95,10 +99,15 @@ const requestGoogleAccessToken = ({ clientId, onSuccess, onError }) => {
 function ArtistAuthDialog() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useAppToast();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const open = params.get('auth') === 'login';
+  
+  const authParam = params.get('auth');
+  const open = authParam === 'login' || authParam === 'register';
+  const isRegister = authParam === 'register';
 
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({ name: '', email: '', password: '', avatar: '', bio: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -137,9 +146,22 @@ function ArtistAuthDialog() {
     navigate('/artist/dashboard', { replace: true });
   }, [navigate]);
 
-  const handleChange = (field) => (event) => {
+  const handleLoginChange = (field) => (event) => {
     setFormData((prev) => ({ ...prev, [field]: event.target.value }));
     setError('');
+  };
+
+  const handleRegisterChange = (field) => (event) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: event.target.value }));
+    setError('');
+  };
+
+  const switchMode = (mode) => {
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.set('auth', mode);
+    navigate(`${location.pathname}?${nextParams.toString()}`, { replace: true });
+    setError('');
+    setShowPassword(false);
   };
 
   const handleSubmit = async (event) => {
@@ -152,6 +174,27 @@ function ArtistAuthDialog() {
       completeArtistAuth(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      await api.post('/artist/register', registerForm);
+      showToast({
+        severity: 'success',
+        title: 'Đăng ký thành công!',
+        message: 'Tài khoản nghệ sĩ đã được tạo. Vui lòng đăng nhập.',
+      });
+      setRegisterForm({ name: '', email: '', password: '', avatar: '', bio: '' });
+      switchMode('login');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Đăng ký nghệ sĩ thất bại.');
     } finally {
       setLoading(false);
     }
@@ -245,52 +288,88 @@ function ArtistAuthDialog() {
               <MusicNoteIcon sx={{ fontSize: 32, color: '#fff' }} />
             </Box>
             <Typography variant="h5" fontWeight={850}>
-              Artist Studio
+              {isRegister ? 'Đăng ký Artist' : 'Artist Studio'}
             </Typography>
             <Typography color="text.secondary" sx={{ fontSize: 14.5, mt: 0.5 }}>
-              Dang nhap tai khoan nghe si cua ban
+              {isRegister ? 'Tạo hồ sơ nghệ sĩ để phát hành và quản lý nhạc' : 'Đăng nhập tài khoản nghệ sĩ của bạn'}
             </Typography>
           </Box>
 
           {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
 
-          <Box component="form" onSubmit={handleSubmit}>
-            <Stack spacing={1.6}>
-              <TextField fullWidth label="Email" type="email" value={formData.email} onChange={handleChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-              <TextField
-                fullWidth
-                label="Mat khau"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleChange('password')}
-                sx={fieldSx}
-                required
-                InputProps={{
-                  startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button type="submit" fullWidth variant="contained" disabled={loading} startIcon={<MicExternalOnOutlined />} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)' }}>
-                {loading ? 'Đang đăng nhập...' : 'Đăng nhập Artist'}
-              </Button>
-            </Stack>
-          </Box>
-
-          <Divider>Hoac</Divider>
-          {GOOGLE_CLIENT_ID ? (
-            <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={googleLoading || !googleReady} onClick={handleGoogleLogin} sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
-              {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
-            </Button>
+          {isRegister ? (
+            <Box component="form" onSubmit={handleRegisterSubmit}>
+              <Stack spacing={1.6}>
+                <TextField fullWidth label="Tên nghệ sĩ" value={registerForm.name} onChange={handleRegisterChange('name')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <TextField fullWidth label="Email" type="email" value={registerForm.email} onChange={handleRegisterChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <TextField
+                  fullWidth
+                  label="Mật khẩu"
+                  type={showPassword ? 'text' : 'password'}
+                  value={registerForm.password}
+                  onChange={handleRegisterChange('password')}
+                  sx={fieldSx}
+                  required
+                  inputProps={{ minLength: 6 }}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField fullWidth label="Avatar (URL)" value={registerForm.avatar} onChange={handleRegisterChange('avatar')} sx={fieldSx} InputProps={{ startAdornment: <InputAdornment position="start"><ImageOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <TextField fullWidth label="Giới thiệu" multiline minRows={3} value={registerForm.bio} onChange={handleRegisterChange('bio')} sx={fieldSx} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}><AlternateEmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <Button type="submit" fullWidth variant="contained" disabled={loading} startIcon={<MicExternalOnOutlined />} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)' }}>
+                  {loading ? 'Đang đăng ký nghệ sĩ...' : 'Đăng ký Artist'}
+                </Button>
+              </Stack>
+            </Box>
           ) : (
-            <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
-              Chưa cấu hình Google Login
-            </Button>
+            <>
+              <Box component="form" onSubmit={handleSubmit}>
+                <Stack spacing={1.6}>
+                  <TextField fullWidth label="Email" type="email" value={formData.email} onChange={handleLoginChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                  <TextField
+                    fullWidth
+                    label="Mat khau"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={handleLoginChange('password')}
+                    sx={fieldSx}
+                    required
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button type="submit" fullWidth variant="contained" disabled={loading} startIcon={<MicExternalOnOutlined />} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)' }}>
+                    {loading ? 'Đang đăng nhập...' : 'Đăng nhập Artist'}
+                  </Button>
+                </Stack>
+              </Box>
+
+              <Divider>Hoac</Divider>
+              {GOOGLE_CLIENT_ID ? (
+                <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={googleLoading || !googleReady} onClick={handleGoogleLogin} sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+                  {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
+                </Button>
+              ) : (
+                <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
+                  Chưa cấu hình Google Login
+                </Button>
+              )}
+            </>
           )}
 
           <Box sx={{ textAlign: 'center' }}>
@@ -298,9 +377,9 @@ function ArtistAuthDialog() {
               type="button"
               variant="text"
               sx={{ fontWeight: 800, color: '#6c63ff' }}
-              onClick={() => navigate('/artist/register')}
+              onClick={() => switchMode(isRegister ? 'login' : 'register')}
             >
-              Đăng ký Artist
+              {isRegister ? 'Đã có tài khoản? Đăng nhập Artist' : 'Đăng ký Artist'}
             </Button>
           </Box>
         </Stack>

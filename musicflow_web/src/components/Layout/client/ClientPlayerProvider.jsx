@@ -8,8 +8,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { resolveSongStreamUrl } from '../../../services/client/client.service.js';
+import { resolveSongStreamUrl, clientSongsApi, clientUserApi } from '../../../services/client/client.service.js';
 import { useAssistant } from '../../../features/assistant/AssistantProvider.jsx';
+import { API_BASE_URL } from '../../../services/api.js';
+import useAppToast from '../../../components/common/useAppToast';
 
 // Custom hooks extracted from this file
 import { useTracking } from '../../../hooks/player/useTracking.js';
@@ -72,6 +74,7 @@ function normalizeSong(song) {
 // ---------------------------------------------------------------------------
 
 export function ClientPlayerProvider({ children }) {
+  const { showToast } = useAppToast();
   // --- Core audio state ---
   const audioRef = useRef(null);
   const [currentSong, setCurrentSong] = useState(null);
@@ -95,6 +98,7 @@ export function ClientPlayerProvider({ children }) {
   const repeatModeRef = useRef('off');
   const autoplayRef = useRef(autoplay);
   const lastTimelineUpdateRef = useRef(0);
+  const playRequestVersionRef = useRef(0);
 
   useEffect(() => { autoplayRef.current = autoplay; localStorage.setItem('musicflow_autoplay', String(autoplay)); }, [autoplay]);
   useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
@@ -104,6 +108,146 @@ export function ClientPlayerProvider({ children }) {
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
   const toggleAutoplay = useCallback(() => setAutoplay((prev) => !prev), []);
+
+  const [audioQuality, setAudioQualityState] = useState(
+    () => localStorage.getItem('musicflow_audio_quality') || 'std'
+  );
+  const [actualAudioQuality, setActualAudioQuality] = useState('std');
+  const [isPremium, setIsPremium] = useState(false);
+  const [isQualityLoading, setIsQualityLoading] = useState(false);
+  const isLoggedIn = Boolean(localStorage.getItem('role'));
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setIsPremium(false);
+      return;
+    }
+    clientUserApi.getMe()
+      .then((res) => {
+        const userObj = res.data?.user;
+        const premium = Boolean(
+          userObj?.isPremium &&
+          userObj?.premiumExpiry &&
+          new Date(userObj.premiumExpiry) > new Date()
+        );
+        setIsPremium(premium);
+      })
+      .catch((err) => {
+        console.error("Failed to load user premium status:", err);
+      });
+  }, [isLoggedIn]);
+
+  const audioQualityRef = useRef(audioQuality);
+  useEffect(() => {
+    audioQualityRef.current = audioQuality;
+  }, [audioQuality]);
+
+  const fetchStreamUrl = useCallback(async (songId, quality) => {
+    if (quality === 'hq') {
+      try {
+        const response = await clientSongsApi.getPlaybackTicket(songId, 'hq');
+        if (response.data && response.data.ticket) {
+          return {
+            url: `${resolveSongStreamUrl(songId)}?ticket=${response.data.ticket}`,
+            resolvedQuality: 'hq'
+          };
+        }
+      } catch (err) {
+        const errCode = err.response?.data?.code;
+        if (errCode === 'PREMIUM_REQUIRED' || errCode === 'HQ_NOT_AVAILABLE') {
+          console.warn(`HQ quality not available (${errCode}). Falling back to Standard.`);
+          try {
+            const stdResponse = await clientSongsApi.getPlaybackTicket(songId, 'std');
+            if (stdResponse.data && stdResponse.data.ticket) {
+              return {
+                url: `${resolveSongStreamUrl(songId)}?ticket=${stdResponse.data.ticket}`,
+                resolvedQuality: 'std',
+                fallbackCode: errCode
+              };
+            }
+          } catch (stdErr) {
+            console.error("Standard playback ticket fallback failed:", stdErr);
+          }
+          if (errCode === 'HQ_NOT_AVAILABLE') {
+            const hqNotAvailErr = new Error("HQ_NOT_AVAILABLE");
+            hqNotAvailErr.code = "HQ_NOT_AVAILABLE";
+            throw hqNotAvailErr;
+          }
+        }
+      }
+    }
+
+    try {
+      const response = await clientSongsApi.getPlaybackTicket(songId, 'std');
+      if (response.data && response.data.ticket) {
+        return {
+          url: `${resolveSongStreamUrl(songId)}?ticket=${response.data.ticket}`,
+          resolvedQuality: 'std'
+        };
+      }
+    } catch (err) {
+      console.error("Failed to fetch standard playback ticket:", err);
+    }
+
+    return {
+      url: resolveSongStreamUrl(songId),
+      resolvedQuality: 'std'
+    };
+  }, []);
+
+  const setAudioQuality = useCallback(async (quality) => {
+    if (quality === audioQuality) return;
+    localStorage.setItem('musicflow_audio_quality', quality);
+    setAudioQualityState(quality);
+    
+    const activeSong = currentSongRef.current;
+    const audio = audioRef.current;
+    if (audio && activeSong?._id) {
+      const wasPlaying = !audio.paused;
+      const currentTimeVal = audio.currentTime;
+      const currentVersion = ++playRequestVersionRef.current;
+      
+      setIsQualityLoading(true);
+      try {
+        const result = await fetchStreamUrl(activeSong._id, quality);
+        if (currentVersion !== playRequestVersionRef.current) {
+          setIsQualityLoading(false);
+          return;
+        }
+        
+        if (result.fallbackCode) {
+          console.log(`Fallback occurred during switch: ${result.fallbackCode}. No reload needed.`);
+          setActualAudioQuality('std');
+          setIsQualityLoading(false);
+          return;
+        }
+        
+        if (audio.src !== result.url) {
+          audio.src = result.url;
+          setActualAudioQuality(result.resolvedQuality);
+          
+          const onLoadedMetadata = () => {
+            audio.currentTime = currentTimeVal;
+            if (wasPlaying) {
+              audio.play().catch(() => {});
+            }
+            setIsQualityLoading(false);
+            showToast({
+              severity: 'success',
+              title: 'Thành công',
+              message: quality === 'hq' ? 'Đã chuyển sang HQ 320kbps.' : 'Đã chuyển sang Standard 128kbps.',
+            });
+          };
+          audio.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+        } else {
+          setIsQualityLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to change audio quality mid-song:", err);
+        setIsQualityLoading(false);
+      }
+    }
+  }, [audioQuality, fetchStreamUrl, showToast]);
 
   // --- Custom hooks ---
   const {
@@ -145,6 +289,29 @@ export function ClientPlayerProvider({ children }) {
     audio.crossOrigin = 'anonymous';
     audioRef.current = audio;
 
+    // Intercept play calls to dynamically fetch and attach the ticket if not present
+    const originalPlay = audio.play;
+    audio.play = async function (...args) {
+      const streamPrefix = `${API_BASE_URL}/songs/`;
+      if (audio.src && audio.src.includes(streamPrefix) && !audio.src.includes('ticket=')) {
+        const match = audio.src.match(/\/songs\/([a-f\d]{24})\/stream/i);
+        if (match && match[1]) {
+          const songId = match[1];
+          const currentVersion = ++playRequestVersionRef.current;
+          try {
+            const result = await fetchStreamUrl(songId, audioQualityRef.current);
+            if (currentVersion === playRequestVersionRef.current) {
+              audio.src = result.url;
+              setActualAudioQuality(result.resolvedQuality);
+            }
+          } catch (err) {
+            console.error('Error attaching playback ticket during intercept:', err);
+          }
+        }
+      }
+      return originalPlay.apply(this, args);
+    };
+
     const handleTimeUpdate = () => {
       const now = performance.now();
       if (now - lastTimelineUpdateRef.current < 400 && !audio.ended) return;
@@ -153,7 +320,10 @@ export function ClientPlayerProvider({ children }) {
 
       // PREFETCH AUTOPLAY TRIGGER at 80% progress on last queue item
       const activeSong = currentSongRef.current;
-      const durationVal = audio.duration || activeSong?.duration || 0;
+      const rawDuration = audio.duration;
+      const durationVal = (rawDuration && Number.isFinite(rawDuration) && rawDuration > 0)
+        ? rawDuration
+        : (activeSong?.duration || 0);
       if (
         autoplayRef.current &&
         activeSong?._id &&
@@ -167,12 +337,19 @@ export function ClientPlayerProvider({ children }) {
       }
     };
 
-    const handleLoadedMetadata = () => setDuration(audio.duration || 0);
+    const handleLoadedMetadata = () => {
+      const dur = audio.duration;
+      if (dur && Number.isFinite(dur) && dur > 0) {
+        setDuration(dur);
+      } else {
+        setDuration(0);
+      }
+    };
     const handlePlaying = () => { setIsPlaying(true); startListeningSegment(); };
     const handlePause = () => { finishListeningSegment(); maybeTrackQualifiedPlay(); setIsPlaying(false); };
     const handleWaiting = () => { finishListeningSegment(); maybeTrackQualifiedPlay(); };
 
-    const handleEnded = () => {
+    const handleEnded = async () => {
       finishListeningSegment();
       maybeTrackQualifiedPlay();
       const activeQueue = queueRef.current;
@@ -208,10 +385,24 @@ export function ClientPlayerProvider({ children }) {
       const nextSong = normalizeSong(activeQueue[nextIndex]);
       if (!nextSong?._id) { setIsPlaying(false); return; }
 
+      const currentVersion = ++playRequestVersionRef.current;
+
       queueIndexRef.current = nextIndex;
       currentSongRef.current = nextSong;
       resetPlayTracking(nextSong._id);
-      audio.src = nextSong.streamUrl;
+      
+      try {
+        const streamResult = await fetchStreamUrl(nextSong._id, audioQualityRef.current);
+        if (currentVersion !== playRequestVersionRef.current) return;
+        audio.src = streamResult.url;
+        setActualAudioQuality(streamResult.resolvedQuality);
+      } catch (err) {
+        console.error("Ended handler failed to resolve ticket:", err);
+        if (currentVersion !== playRequestVersionRef.current) return;
+        audio.src = nextSong.streamUrl;
+        setActualAudioQuality('std');
+      }
+
       setQueueIndex(nextIndex);
       setCurrentSong(nextSong);
       setCurrentTime(0);
@@ -248,6 +439,7 @@ export function ClientPlayerProvider({ children }) {
     prefetchAutoplaySongs,
     isPrefetchingAutoplayRef,
     prefetchedSongIdRef,
+    fetchStreamUrl,
   ]);
 
   // ---------------------------------------------------------------------------
@@ -262,11 +454,19 @@ export function ClientPlayerProvider({ children }) {
     const nextSong = normalizeSong(activeQueue[nextIndex]);
     if (!nextSong?._id) return false;
 
+    const currentVersion = ++playRequestVersionRef.current;
+
     queueIndexRef.current = nextIndex;
     currentSongRef.current = nextSong;
     finishListeningSegment();
     resetPlayTracking(nextSong._id);
-    audio.src = nextSong.streamUrl;
+    
+    // Resolve ticketed URL
+    const streamResult = await fetchStreamUrl(nextSong._id, audioQualityRef.current);
+    if (currentVersion !== playRequestVersionRef.current) return false;
+    audio.src = streamResult.url;
+    setActualAudioQuality(streamResult.resolvedQuality);
+    
     setQueueIndex(nextIndex);
     setCurrentSong(nextSong);
     setCurrentTime(0);
@@ -280,7 +480,7 @@ export function ClientPlayerProvider({ children }) {
       setIsPlaying(false);
       return false;
     }
-  }, [finishListeningSegment, loadLyrics, resetPlayTracking]);
+  }, [finishListeningSegment, loadLyrics, resetPlayTracking, fetchStreamUrl]);
 
   const playSong = useCallback(async (song, options = {}) => {
     const audio = audioRef.current;
@@ -293,6 +493,8 @@ export function ClientPlayerProvider({ children }) {
     const nextIndex = Math.max(0, nextQueue.findIndex((item) => item?._id === song._id));
     const isSameSong = currentSongRef.current?._id === nextSong._id;
 
+    const currentVersion = ++playRequestVersionRef.current;
+
     setQueue(nextQueue);
     setQueueIndex(nextIndex);
     queueRef.current = nextQueue;
@@ -301,7 +503,13 @@ export function ClientPlayerProvider({ children }) {
     if (!isSameSong) {
       finishListeningSegment();
       resetPlayTracking(nextSong._id);
-      audio.src = nextSong.streamUrl;
+      
+      // Resolve ticketed URL
+      const streamResult = await fetchStreamUrl(nextSong._id, audioQualityRef.current);
+      if (currentVersion !== playRequestVersionRef.current) return;
+      audio.src = streamResult.url;
+      setActualAudioQuality(streamResult.resolvedQuality);
+      
       setCurrentSong(nextSong);
       currentSongRef.current = nextSong;
       setCurrentTime(0);
@@ -317,7 +525,7 @@ export function ClientPlayerProvider({ children }) {
     } catch {
       setIsPlaying(false);
     }
-  }, [finishListeningSegment, loadLyrics, resetPlayTracking]);
+  }, [finishListeningSegment, loadLyrics, resetPlayTracking, fetchStreamUrl]);
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
@@ -444,10 +652,15 @@ export function ClientPlayerProvider({ children }) {
     hasSyncedLyrics: lyricsData.isSynced,
     activeLyricIndex,
     autoplay,
+    audioQuality,
+    actualAudioQuality,
+    isPremium,
+    isQualityLoading,
   }), [
     currentSong, queue, queueIndex, shuffle, repeatMode,
     isPlaying, currentTime, duration,
     lyricsData.lines, lyricsData.isSynced, activeLyricIndex, autoplay,
+    audioQuality, actualAudioQuality, isPremium, isQualityLoading,
   ]);
 
   const actionsValue = useMemo(() => ({
@@ -459,7 +672,8 @@ export function ClientPlayerProvider({ children }) {
     togglePlay,
     seekTo,
     toggleAutoplay,
-  }), [playSong, playPrevious, playNext, toggleShuffle, cycleRepeatMode, togglePlay, seekTo, toggleAutoplay]);
+    setAudioQuality,
+  }), [playSong, playPrevious, playNext, toggleShuffle, cycleRepeatMode, togglePlay, seekTo, toggleAutoplay, setAudioQuality]);
 
   const metaValue = useMemo(() => ({ hasSong: Boolean(currentSong) }), [currentSong]);
 

@@ -238,9 +238,13 @@ export const AssistantProvider = ({ children }) => {
     }
   }, [isOpen, scope, loadConversations]);
 
-  // Sync current playing song ref
+  // Sync current playing song ref and state
+  const [currentSong, setCurrentSongState] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
   const setCurrentSong = useCallback((song) => {
     currentSongRef.current = song;
+    setCurrentSongState(song);
   }, []);
 
   return (
@@ -265,6 +269,9 @@ export const AssistantProvider = ({ children }) => {
         unregisterCapability,
         executeCapability,
         setCurrentSong,
+        currentSong,
+        isPlaying,
+        setIsPlaying,
         currentContext,
         upgradeDialogOpen,
         setUpgradeDialogOpen,

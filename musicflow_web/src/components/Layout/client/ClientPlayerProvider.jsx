@@ -628,15 +628,22 @@ export function ClientPlayerProvider({ children }) {
     assistant.registerCapability('LOAD_PLAYLIST', (payload) => {
       if (payload?.songs?.length > 0) playSong(payload.songs[0], { queue: payload.songs });
     });
+    assistant.registerCapability('TOGGLE_PLAY', () => {
+      togglePlay();
+    });
     return () => {
       assistant.unregisterCapability('PLAY_SONG');
       assistant.unregisterCapability('LOAD_PLAYLIST');
+      assistant.unregisterCapability('TOGGLE_PLAY');
     };
-  }, [assistant, playSong]);
+  }, [assistant, playSong, togglePlay]);
 
   useEffect(() => {
-    if (assistant) assistant.setCurrentSong(currentSong);
-  }, [assistant, currentSong]);
+    if (assistant) {
+      assistant.setCurrentSong(currentSong);
+      assistant.setIsPlaying(isPlaying);
+    }
+  }, [assistant, currentSong, isPlaying]);
 
   // ---------------------------------------------------------------------------
   // Context values
@@ -721,3 +728,4 @@ export function useClientPlayerMeta() {
   }
   return context;
 }
+

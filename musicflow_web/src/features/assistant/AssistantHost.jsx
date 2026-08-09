@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   IconButton,
@@ -33,11 +33,14 @@ import {
   ChatBubbleOutlineRounded as ChatIcon,
   ChevronLeftRounded as BackIcon,
   MusicNoteRounded as MusicIcon,
+  PlayArrowRounded as PlayIcon,
+  PauseRounded as PauseIcon,
 } from '@mui/icons-material';
 import { useAssistant } from './AssistantProvider';
 
 export default function AssistantHost() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     isOpen,
     setIsOpen,
@@ -127,7 +130,7 @@ export default function AssistantHost() {
   };
 
   const userRole = localStorage.getItem('role');
-  const hasPlayer = userRole === 'user'; // Client player is active for regular user role
+  const hasPlayer = location.pathname.startsWith('/client');
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -632,7 +635,50 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
   const playlist = playlists.find(p => p._id === playlistId || p.id === playlistId);
   if (!playlist) return null;
   const songs = playlist.songs || [];
-  
+  const { currentSong, isPlaying, executeCapability } = useAssistant();
+  const containerRef = useRef(null);
+
+  const isCurrentPlaylistPlaying = (() => {
+    if (!isPlaying || !currentSong) return false;
+    return songs.some(song => song._id === currentSong._id || song.id === currentSong._id);
+  })();
+
+  useEffect(() => {
+    if (!currentSong || !containerRef.current) return;
+
+    // Find the element of the currently playing song inside our container
+    const activeElement = containerRef.current.querySelector('.active-song-item');
+    if (activeElement) {
+      const container = containerRef.current;
+      const parentRect = container.getBoundingClientRect();
+      const childRect = activeElement.getBoundingClientRect();
+
+      // Check if the playing song element is out of the container's visible area
+      const isOutOfView = childRect.top < parentRect.top || childRect.bottom > parentRect.bottom;
+
+      if (isOutOfView) {
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }
+    }
+  }, [currentSong]);
+
+  const handlePlayAllClick = (e) => {
+    e.stopPropagation();
+    if (isCurrentPlaylistPlaying) {
+      executeCapability('TOGGLE_PLAY');
+    } else {
+      const isSongInPlaylist = currentSong && songs.some(song => song._id === currentSong._id || song.id === currentSong._id);
+      if (isSongInPlaylist) {
+        executeCapability('TOGGLE_PLAY');
+      } else {
+        onPlayAll(songs);
+      }
+    }
+  };
+
   return (
     <Paper
       elevation={2}
@@ -652,23 +698,58 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
           {playlist.title}
         </Typography>
         {songs.length > 0 && (
-          <Button
-            size="small"
-            variant="text"
-            onClick={() => onPlayAll(songs)}
-            sx={{ fontSize: 10, py: 0, textTransform: 'none', color: '#8b5cf6', minWidth: 0, fontWeight: 700 }}
-          >
-            Phát hết
-          </Button>
+          <Tooltip title={isCurrentPlaylistPlaying ? "Tạm dừng" : "Phát tất cả"}>
+            <IconButton
+              size="small"
+              onClick={handlePlayAllClick}
+              sx={{
+                color: '#8b5cf6',
+                p: 0.5,
+                bgcolor: 'rgba(139, 92, 246, 0.1)',
+                '&:hover': {
+                  bgcolor: 'rgba(139, 92, 246, 0.2)',
+                }
+              }}
+            >
+              {isCurrentPlaylistPlaying ? (
+                <PauseIcon sx={{ fontSize: 18 }} />
+              ) : (
+                <PlayIcon sx={{ fontSize: 18 }} />
+              )}
+            </IconButton>
+          </Tooltip>
         )}
       </Stack>
       <Divider sx={{ my: 0.75 }} />
-      <Stack spacing={0.5}>
-        {songs.slice(0, 5).map((song, index) => {
+      <Stack
+        ref={containerRef}
+        spacing={0.5}
+        sx={{
+          maxHeight: '30vh',
+          overflowY: 'auto',
+          pr: 0.5,
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(139, 92, 246, 0.3)',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: 'rgba(139, 92, 246, 0.5)',
+          },
+        }}
+      >
+        {songs.map((song, index) => {
           if (!song) return null;
           const artistName = Array.isArray(song.artists)
             ? song.artists.map((a) => a?.name || a).filter(Boolean).join(', ')
             : 'Nghệ sĩ ẩn danh';
+
+          const isCurrentSong = currentSong && (currentSong._id === song._id || currentSong.id === song._id);
 
           return (
             <Stack
@@ -677,11 +758,16 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
               alignItems="center"
               spacing={1}
               onClick={() => onPlaySong(song, songs)}
+              className={isCurrentSong ? 'active-song-item' : ''}
               sx={{
                 p: 0.5,
                 borderRadius: 1,
                 cursor: 'pointer',
-                '&:hover': { bgcolor: 'action.hover' }
+                bgcolor: isCurrentSong ? 'rgba(139, 92, 246, 0.12)' : 'transparent',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: isCurrentSong ? 'rgba(139, 92, 246, 0.2)' : 'action.hover'
+                }
               }}
             >
               <Avatar
@@ -692,7 +778,17 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
                 <MusicIcon sx={{ fontSize: 14 }} />
               </Avatar>
               <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                <Typography variant="caption" fontWeight={700} noWrap sx={{ display: 'block', fontSize: 11, lineHeight: 1.2, color: 'text.primary' }}>
+                <Typography
+                  variant="caption"
+                  fontWeight={isCurrentSong ? 850 : 700}
+                  noWrap
+                  sx={{
+                    display: 'block',
+                    fontSize: 11,
+                    lineHeight: 1.2,
+                    color: isCurrentSong ? '#8b5cf6' : 'text.primary'
+                  }}
+                >
                   {song.title}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontSize: 9, lineHeight: 1 }}>
@@ -702,11 +798,6 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
             </Stack>
           );
         })}
-        {songs.length > 5 && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
-            và {songs.length - 5} bài hát khác...
-          </Typography>
-        )}
         {songs.length === 0 && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', p: 1, textAlign: 'center' }}>
             Chưa có bài hát nào.

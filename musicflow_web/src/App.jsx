@@ -251,9 +251,9 @@ function App() {
                 <Routes>
           <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
           <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
-          <Route path="/artist/register" element={<PublicRoute><ArtistRegister /></PublicRoute>} />
+          <Route path="/artist/register" element={<Navigate to="/artist/dashboard?auth=register" replace />} />
           <Route path="/user/register" element={<Navigate to="/client/home?auth=register" replace />} />
-          <Route path="/artistlogin" element={<PublicRoute><ArtistLogin /></PublicRoute>} />
+          <Route path="/artistlogin" element={<Navigate to="/artist/dashboard?auth=login" replace />} />
           <Route
             path="/artist/dashboard"
             element={

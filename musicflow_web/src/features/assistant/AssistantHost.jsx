@@ -219,9 +219,10 @@ export default function AssistantHost() {
           sx={{
             position: 'fixed',
             bottom: isMobile ? 0 : (hasPlayer ? '104px' : '24px'),
+            top: isMobile ? 0 : 'auto',
             right: isMobile ? 0 : '24px',
             width: isMobile ? '100vw' : 400,
-            height: isMobile ? '100vh' : 600,
+            height: isMobile ? '100dvh' : 600,
             borderRadius: isMobile ? 0 : 4,
             overflow: 'hidden',
             display: 'flex',

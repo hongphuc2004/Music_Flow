@@ -127,7 +127,7 @@ export const AssistantProvider = ({ children }) => {
   }, [navigate, showToast]);
 
   // Send a message
-  const sendMessage = useCallback(async (text) => {
+  const sendMessage = useCallback(async (text, preferredModel) => {
     if (!text || !text.trim()) return;
     
     // Check if user is logged in
@@ -155,6 +155,7 @@ export const AssistantProvider = ({ children }) => {
         conversationId: activeConversationId || undefined,
         scope,
         context: currentContext,
+        model: preferredModel || undefined,
       };
 
       const res = await clientAssistantApi.sendMessage(payload);

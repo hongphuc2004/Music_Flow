@@ -40,9 +40,6 @@ const ClientPremium = createLazyRoute('/client/premium');
 const ClientPaymentReturn = createLazyRoute('/client/premium/vnpay-return');
 const ClientPlayerBoundary = lazy(() => import('./components/Layout/client/ClientPlayerBoundary'));
 
-
-
-
 const ProtectedRoute = ({ children, role }) => {
   const userRole = localStorage.getItem('role');
   const location = useLocation();

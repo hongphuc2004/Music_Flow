@@ -161,21 +161,21 @@ function ClientPremium() {
       return [
         'Hạn mức tải lên tối đa 100 MB',
         'Tải nhạc ngoại tuyến tối đa 1 GB',
-        'Trò chuyện AI DJ tối đa 30 lần / ngày',
+        'Trò chuyện AI DJ tối đa 10 lần / ngày',
       ];
     }
     if (plan.price === 49000 || plan.name.includes("PLUS")) {
       return [
         'Hạn mức tải lên tối đa 500 MB',
         'Tải nhạc ngoại tuyến tối đa 5 GB',
-        'Trò chuyện AI DJ tối đa 100 lần / ngày',
+        'Trò chuyện AI DJ tối đa 15 lần / ngày',
       ];
     }
     if (plan.price === 89000 || plan.name.includes("PREMIUM")) {
       return [
         'Tải lên KHÔNG GIỚI HẠN dung lượng',
         'Tải nhạc ngoại tuyến không giới hạn',
-        'Trò chuyện AI DJ không giới hạn 24/7',
+        'Trò chuyện AI DJ tối đa 20 lần / ngày',
       ];
     }
     return plan.description;
@@ -511,10 +511,10 @@ function ClientPremium() {
                   {/* Trợ lý AI */}
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750 }}>Trò chuyện & Tạo Playlist AI</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>10 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>30 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>100 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>5 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>10 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>15 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4' }}>20 yêu cầu / 24 giờ</TableCell>
                   </TableRow>
                   
                   {/* Chất lượng âm thanh */}

@@ -27,6 +27,19 @@ const playlistSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // Nguồn ảnh bìa (unsplash | upload | "")
+    coverSource: {
+      type: String,
+      enum: ["unsplash", "upload", ""],
+      default: "",
+    },
+    // Metadata ảnh từ Unsplash phục vụ cho attribution
+    coverMetadata: {
+      photoId: { type: String, default: "" },
+      photographer: { type: String, default: "" },
+      photographerUrl: { type: String, default: "" },
+      unsplashUrl: { type: String, default: "" }
+    },
     // Playlist công khai hay riêng tư
     isPublic: {
       type: Boolean,

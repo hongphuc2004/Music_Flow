@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/user_model.dart';
@@ -17,7 +17,7 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+  static final FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
   static final ValueNotifier<User?> currentUserNotifier = ValueNotifier<User?>(

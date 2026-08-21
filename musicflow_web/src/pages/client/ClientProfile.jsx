@@ -487,7 +487,7 @@ function ClientProfile() {
                           ● Tải lên không giới hạn dung lượng lưu trữ bài hát
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          ● Trò chuyện & Tạo Playlist AI không giới hạn (Free giới hạn 10 yêu cầu / 24 giờ)
+                          ● Trò chuyện & Tạo Playlist AI (lên tới 20 yêu cầu / 24 giờ, Free giới hạn 5 yêu cầu / 24 giờ)
                         </Typography>
                         <Typography variant="caption" color="text.disabled" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontStyle: 'italic' }}>
                           ● Chất lượng âm thanh chuẩn High Quality (Future Scope)

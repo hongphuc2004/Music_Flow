@@ -18,6 +18,7 @@ import {
   Typography,
   Switch,
   FormControlLabel,
+  Tooltip,
 } from '@mui/material';
 import {
   QueueMusicRounded as PlaylistIcon,
@@ -34,6 +35,7 @@ import {
   CloseRounded as CloseIcon,
   SearchRounded as SearchIcon,
   AddRounded as AddIcon,
+  AutorenewRounded as RefreshIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../services/client/client.service';
@@ -43,13 +45,6 @@ import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
-
-const PLAYLIST_PRESETS = [
-  { name: 'Synthwave', url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&auto=format&fit=crop&q=80' },
-  { name: 'Jazz Glow', url: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400&auto=format&fit=crop&q=80' },
-  { name: 'Ambient Chill', url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&auto=format&fit=crop&q=80' },
-  { name: 'Pop Vibe', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80' },
-];
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -90,10 +85,28 @@ function ClientLibrary() {
   const [playlistCoverImage, setPlaylistCoverImage] = useState('');
   const [playlistIsPublic, setPlaylistIsPublic] = useState(false);
   const [playlistSaving, setPlaylistSaving] = useState(false);
+  
+  // Custom states for dynamic covers and uploads (JPEG, PNG, WebP under 5MB)
+  const [playlistCoverSource, setPlaylistCoverSource] = useState('');
+  const [playlistCoverMetadata, setPlaylistCoverMetadata] = useState({
+    photoId: '',
+    photographer: '',
+    photographerUrl: '',
+    unsplashUrl: ''
+  });
+  const [currentPresets, setCurrentPresets] = useState([]);
+  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [playlistCoverImageFile, setPlaylistCoverImageFile] = useState(null);
+  const [playlistCoverImageFilePreview, setPlaylistCoverImageFilePreview] = useState('');
 
   // Playlist Delete Confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState(null);
+
+  // Song Delete Confirmation
+  const [songDeleteConfirmOpen, setSongDeleteConfirmOpen] = useState(false);
+  const [songToDelete, setSongToDelete] = useState(null);
+  const [songDeleteType, setSongDeleteType] = useState(''); // 'favorite' | 'upload' | 'download'
 
   const [coverImageError, setCoverImageError] = useState(false);
 
@@ -227,30 +240,129 @@ function ClientLibrary() {
     }
   };
 
-  const handleRemoveFavorite = async (event, songId) => {
+  const handleRemoveFavoriteClick = (event, song) => {
     event.stopPropagation();
+    setSongToDelete(song);
+    setSongDeleteType('favorite');
+    setSongDeleteConfirmOpen(true);
+  };
+
+  const handleRemoveDownloadedClick = (event, song) => {
+    event.stopPropagation();
+    setSongToDelete(song);
+    setSongDeleteType('download');
+    setSongDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteUploadedSongClick = (event, song) => {
+    event.stopPropagation();
+    setSongToDelete(song);
+    setSongDeleteType('upload');
+    setSongDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteSong = async () => {
+    if (!songToDelete || !songDeleteType) return;
     try {
-      await clientFavoritesApi.remove(songId);
-      setFavoriteSongs((prev) => prev.filter((song) => song._id !== songId));
-      showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa khỏi danh sách yêu thích.' });
-    } catch {
-      showToast({ severity: 'error', title: 'Lỗi', message: 'Không thể xóa bài hát khỏi danh sách yêu thích.' });
+      if (songDeleteType === 'favorite') {
+        await clientFavoritesApi.remove(songToDelete._id);
+        setFavoriteSongs((prev) => prev.filter((s) => s._id !== songToDelete._id));
+        showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa khỏi danh sách yêu thích.' });
+      } else if (songDeleteType === 'upload') {
+        showToast({ severity: 'info', title: 'Đang xóa', message: 'Đang xóa bài hát khỏi hệ thống...', loading: true });
+        await clientSongsApi.deleteSong(songToDelete._id);
+        showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa bài hát tải lên thành công.' });
+        await loadLibrary();
+      } else if (songDeleteType === 'download') {
+        await clientSongsApi.removeFromDownloadHistory(songToDelete._id);
+        setDownloadedSongs((prev) => prev.filter((s) => s._id !== songToDelete._id));
+        showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa khỏi lịch sử tải xuống.' });
+      }
+      setSongDeleteConfirmOpen(false);
+      setSongToDelete(null);
+      setSongDeleteType('');
+    } catch (err) {
+      const message = err.response?.data?.message || 'Không thể thực hiện thao tác xóa.';
+      showToast({ severity: 'error', title: 'Lỗi', message });
     }
   };
 
-  const handleRemoveDownloaded = async (event, songId) => {
-    event.stopPropagation();
+  const handleShufflePresets = async () => {
+    setPresetsLoading(true);
     try {
-      await clientSongsApi.removeFromDownloadHistory(songId);
-      setDownloadedSongs((prev) => prev.filter((song) => song._id !== songId));
-      showToast({ severity: 'success', title: 'Đã xóa', message: 'Đã xóa khỏi lịch sử tải xuống.' });
-    } catch {
-      showToast({ severity: 'error', title: 'Lỗi', message: 'Không thể xóa bài hát khỏi lịch sử tải xuống.' });
+      const res = await clientPlaylistsApi.getRandomCovers();
+      if (res.data?.success && Array.isArray(res.data.covers) && res.data.covers.length > 0) {
+        const shuffled = [...res.data.covers].sort(() => Math.random() - 0.5);
+        setCurrentPresets(shuffled.slice(0, 5));
+      }
+    } catch (err) {
+      console.warn("Failed to fetch dynamic covers:", err);
+      setCurrentPresets([]);
+    } finally {
+      setPresetsLoading(false);
     }
+  };
+
+  const handlePlaylistCoverFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        showToast({ severity: 'error', title: 'Định dạng lỗi', message: 'Chỉ chấp nhận file JPEG, PNG hoặc WebP.' });
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showToast({ severity: 'warning', title: 'File quá lớn', message: 'Dung lượng ảnh tối đa là 5MB.' });
+        return;
+      }
+      
+      if (playlistCoverImageFilePreview) {
+        URL.revokeObjectURL(playlistCoverImageFilePreview);
+      }
+      
+      setPlaylistCoverImageFile(file);
+      setPlaylistCoverImageFilePreview(URL.createObjectURL(file));
+      setPlaylistCoverSource('upload');
+      
+      setPlaylistCoverImage('');
+      setPlaylistCoverMetadata({
+        photoId: '',
+        photographer: '',
+        photographerUrl: '',
+        unsplashUrl: ''
+      });
+    }
+  };
+
+  const handleClearPlaylistCoverFile = () => {
+    setPlaylistCoverImageFile(null);
+    if (playlistCoverImageFilePreview) {
+      URL.revokeObjectURL(playlistCoverImageFilePreview);
+      setPlaylistCoverImageFilePreview('');
+    }
+    setPlaylistCoverSource('');
+  };
+
+  const handleSelectPreset = (preset) => {
+    handleClearPlaylistCoverFile();
+    
+    setPlaylistCoverImage(preset.coverUrl);
+    setPlaylistCoverSource('unsplash');
+    setPlaylistCoverMetadata({
+      photoId: preset.id || '',
+      photographer: preset.photographer || '',
+      photographerUrl: preset.photographerUrl || '',
+      unsplashUrl: preset.unsplashUrl || ''
+    });
   };
 
   // Playlist CRUD
   const handleOpenPlaylistDialog = (playlist = null) => {
+    if (playlistCoverImageFilePreview) {
+      URL.revokeObjectURL(playlistCoverImageFilePreview);
+      setPlaylistCoverImageFilePreview('');
+    }
+    setPlaylistCoverImageFile(null);
+
     if (playlist) {
       setIsEditMode(true);
       setEditingPlaylistId(playlist._id);
@@ -258,6 +370,13 @@ function ClientLibrary() {
       setPlaylistDescription(playlist.description || '');
       setPlaylistCoverImage(playlist.coverImage || '');
       setPlaylistIsPublic(playlist.isPublic || false);
+      setPlaylistCoverSource(playlist.coverSource || '');
+      setPlaylistCoverMetadata(playlist.coverMetadata || {
+        photoId: '',
+        photographer: '',
+        photographerUrl: '',
+        unsplashUrl: ''
+      });
     } else {
       setIsEditMode(false);
       setEditingPlaylistId(null);
@@ -265,7 +384,15 @@ function ClientLibrary() {
       setPlaylistDescription('');
       setPlaylistCoverImage('');
       setPlaylistIsPublic(false);
+      setPlaylistCoverSource('');
+      setPlaylistCoverMetadata({
+        photoId: '',
+        photographer: '',
+        photographerUrl: '',
+        unsplashUrl: ''
+      });
     }
+    handleShufflePresets();
     setPlaylistDialogOpen(true);
   };
 
@@ -277,21 +404,39 @@ function ClientLibrary() {
 
     try {
       setPlaylistSaving(true);
-      const payload = {
-        name: playlistName.trim(),
-        description: playlistDescription.trim(),
-        coverImage: playlistCoverImage.trim(),
-        isPublic: playlistIsPublic,
-      };
+      
+      const formData = new FormData();
+      formData.append('name', playlistName.trim());
+      formData.append('description', playlistDescription.trim());
+      formData.append('isPublic', String(playlistIsPublic));
+      formData.append('coverSource', playlistCoverSource);
+
+      if (playlistCoverSource === 'upload' && playlistCoverImageFile) {
+        formData.append('coverImageFile', playlistCoverImageFile);
+      } else if (playlistCoverSource === 'unsplash') {
+        formData.append('coverImage', playlistCoverImage);
+        formData.append('photoId', playlistCoverMetadata.photoId);
+        formData.append('photographer', playlistCoverMetadata.photographer);
+        formData.append('photographerUrl', playlistCoverMetadata.photographerUrl);
+        formData.append('unsplashUrl', playlistCoverMetadata.unsplashUrl);
+      } else {
+        formData.append('coverImage', playlistCoverImage);
+      }
 
       if (isEditMode) {
-        await clientPlaylistsApi.update(editingPlaylistId, payload);
+        await clientPlaylistsApi.update(editingPlaylistId, formData);
         showToast({ severity: 'success', title: 'Cập nhật', message: 'Cập nhật playlist thành công!' });
       } else {
-        await clientPlaylistsApi.create(payload);
+        await clientPlaylistsApi.create(formData);
         showToast({ severity: 'success', title: 'Tạo mới', message: 'Tạo playlist thành công!' });
       }
 
+      if (playlistCoverImageFilePreview) {
+        URL.revokeObjectURL(playlistCoverImageFilePreview);
+        setPlaylistCoverImageFilePreview('');
+      }
+      setPlaylistCoverImageFile(null);
+      
       setPlaylistDialogOpen(false);
       await loadLibrary();
     } catch (err) {
@@ -1199,7 +1344,6 @@ function ClientLibrary() {
               {/* Right Column Song Rows */}
               <Grid size={{ xs: 12, md: 8, lg: 8.5 }}>
                 <Box sx={{ maxHeight: 600, overflowY: 'auto', pr: 1.5, pt: '6px', pb: '6px' }}>
-
                   {activeSongsList.map((song, idx) => (
                     <Box key={song._id} sx={{ mb: 1.5 }}>
                       <ClientSongItem
@@ -1219,7 +1363,7 @@ function ClientLibrary() {
                             {activeTab === 1 && (
                               <IconButton
                                 size="small"
-                                onClick={(e) => handleRemoveFavorite(e, song._id)}
+                                onClick={(e) => handleRemoveFavoriteClick(e, song)}
                                 sx={{
                                   color: '#ff4e7c',
                                   backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
@@ -1231,10 +1375,25 @@ function ClientLibrary() {
                               </IconButton>
                             )}
 
+                            {activeTab === 2 && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleDeleteUploadedSongClick(e, song)}
+                                sx={{
+                                  color: '#ff4e7c',
+                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                  '&:hover': { backgroundColor: 'rgba(255,78,124,0.1)' },
+                                }}
+                                title="Xóa bài hát đã tải lên"
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            )}
+
                             {activeTab === 3 && (
                               <IconButton
                                 size="small"
-                                onClick={(e) => handleRemoveDownloaded(e, song._id)}
+                                onClick={(e) => handleRemoveDownloadedClick(e, song)}
                                 sx={{
                                   color: '#ff4e7c',
                                   backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
@@ -1265,7 +1424,15 @@ function ClientLibrary() {
       {/* ================= 5. CREATE / EDIT PLAYLIST DIALOG ================= */}
       <Dialog
         open={playlistDialogOpen}
-        onClose={() => !playlistSaving && setPlaylistDialogOpen(false)}
+        onClose={() => {
+          if (playlistSaving) return;
+          if (playlistCoverImageFilePreview) {
+            URL.revokeObjectURL(playlistCoverImageFilePreview);
+            setPlaylistCoverImageFilePreview('');
+          }
+          setPlaylistCoverImageFile(null);
+          setPlaylistDialogOpen(false);
+        }}
         fullWidth
         maxWidth="xs"
         PaperProps={{
@@ -1282,11 +1449,105 @@ function ClientLibrary() {
       >
         <DialogTitle sx={{ fontWeight: 900, fontSize: '1.35rem', pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {isEditMode ? 'Chỉnh sửa playlist' : 'Tạo playlist mới'}
-          <IconButton size="small" onClick={() => setPlaylistDialogOpen(false)} disabled={playlistSaving}>
+          <IconButton
+            size="small"
+            onClick={() => {
+              if (playlistSaving) return;
+              if (playlistCoverImageFilePreview) {
+                URL.revokeObjectURL(playlistCoverImageFilePreview);
+                setPlaylistCoverImageFilePreview('');
+              }
+              setPlaylistCoverImageFile(null);
+              setPlaylistDialogOpen(false);
+            }}
+            disabled={playlistSaving}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
+          
+          {/* Centered Premium Image Preview Area */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 0.5 }}>
+            <Box
+              sx={{
+                width: 140,
+                height: 140,
+                borderRadius: '20px',
+                overflow: 'hidden',
+                position: 'relative',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                border: '1px solid',
+                borderColor: 'divider',
+                backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {(playlistCoverSource === 'upload' && playlistCoverImageFilePreview) ? (
+                <Box component="img" src={playlistCoverImageFilePreview} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : playlistCoverImage ? (
+                <Box component="img" src={playlistCoverImage} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <MusicIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.4 }} />
+              )}
+            </Box>
+          </Box>
+
+          {/* Local Upload Form Row */}
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: -1, mb: 0.5 }}>
+            <Button
+              variant="outlined"
+              component="label"
+              disabled={playlistSaving}
+              startIcon={<UploadIcon />}
+              sx={{
+                borderRadius: '12px',
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                borderColor: 'rgba(108, 99, 255, 0.3)',
+                color: '#6c63ff',
+                py: 0.6,
+                px: 2,
+                flexShrink: 0,
+                '&:hover': {
+                  borderColor: '#6c63ff',
+                  bgcolor: 'rgba(108, 99, 255, 0.04)',
+                }
+              }}
+            >
+              Tải ảnh lên
+              <input
+                type="file"
+                hidden
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePlaylistCoverFileChange}
+              />
+            </Button>
+            
+            {playlistCoverSource === 'upload' && playlistCoverImageFile ? (
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Typography variant="caption" fontWeight={700} noWrap sx={{ display: 'block' }}>
+                    {playlistCoverImageFile.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {(playlistCoverImageFile.size / 1024 / 1024).toFixed(2)} MB
+                  </Typography>
+                </Box>
+                <IconButton size="small" onClick={handleClearPlaylistCoverFile} disabled={playlistSaving} sx={{ p: 0.5 }}>
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Stack>
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                JPEG, PNG, WebP (Tối đa 5MB)
+              </Typography>
+            )}
+          </Stack>
+
           <TextField
             autoFocus
             label="Tên playlist *"
@@ -1294,7 +1555,17 @@ function ClientLibrary() {
             onChange={(e) => setPlaylistName(e.target.value)}
             fullWidth
             variant="outlined"
+            disabled={playlistSaving}
             InputProps={{ sx: { borderRadius: '14px' } }}
+            InputLabelProps={{
+              sx: {
+                '&.MuiInputLabel-shrink': {
+                  backgroundColor: 'background.paper',
+                  px: 0.8,
+                  borderRadius: '4px',
+                },
+              }
+            }}
           />
 
           <TextField
@@ -1305,53 +1576,78 @@ function ClientLibrary() {
             multiline
             minRows={2}
             variant="outlined"
+            disabled={playlistSaving}
             InputProps={{ sx: { borderRadius: '14px' } }}
+            InputLabelProps={{
+              sx: {
+                '&.MuiInputLabel-shrink': {
+                  backgroundColor: 'background.paper',
+                  px: 0.8,
+                  borderRadius: '4px',
+                },
+              }
+            }}
           />
 
-          <TextField
-            label="URL Ảnh bìa"
-            value={playlistCoverImage}
-            onChange={(e) => setPlaylistCoverImage(e.target.value)}
-            fullWidth
-            variant="outlined"
-            InputProps={{ sx: { borderRadius: '14px' } }}
-          />
-
-          {/* Presets Row */}
+          {/* Dynamic Unsplash Presets Row */}
           <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Hoặc chọn mẫu ảnh bìa ấn tượng:
-            </Typography>
-            <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1 }}>
-              {PLAYLIST_PRESETS.map((preset, i) => (
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Hoặc chọn mẫu gợi ý từ Web:
+              </Typography>
+              <Tooltip title="Làm mới mẫu ảnh gợi ý">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={handleShufflePresets}
+                    disabled={presetsLoading || playlistSaving}
+                    sx={{ color: 'text.secondary', p: 0.25 }}
+                  >
+                    {presetsLoading ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      <RefreshIcon sx={{ fontSize: 16 }} />
+                    )}
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
+            
+            <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1, minHeight: 66 }}>
+              {currentPresets.map((preset, i) => (
                 <Box
-                  key={i}
-                  onClick={() => setPlaylistCoverImage(preset.url)}
+                  key={preset.id || i}
+                  onClick={() => !playlistSaving && handleSelectPreset(preset)}
                   sx={{
                     width: 58,
                     height: 58,
                     borderRadius: '10px',
                     overflow: 'hidden',
-                    cursor: 'pointer',
+                    cursor: playlistSaving ? 'default' : 'pointer',
                     position: 'relative',
                     border: '2.5px solid',
-                    borderColor: playlistCoverImage === preset.url ? '#6c63ff' : 'transparent',
-                    boxShadow: playlistCoverImage === preset.url ? '0 0 12px rgba(108,99,255,0.4)' : 'none',
+                    borderColor: (playlistCoverSource === 'unsplash' && playlistCoverImage === preset.coverUrl) ? '#6c63ff' : 'transparent',
+                    boxShadow: (playlistCoverSource === 'unsplash' && playlistCoverImage === preset.coverUrl) ? '0 0 12px rgba(108,99,255,0.4)' : 'none',
                     transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     '&:hover': {
-                      transform: 'scale(1.08)',
+                      transform: playlistSaving ? 'none' : 'scale(1.08)',
                     },
                   }}
-                  title={preset.name}
+                  title={preset.photographer}
                 >
                   <Box
                     component="img"
-                    src={preset.url}
-                    alt={preset.name}
+                    src={preset.thumbnailUrl}
+                    alt={preset.photographer}
                     sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </Box>
               ))}
+              {!presetsLoading && !currentPresets.length && (
+                <Typography variant="caption" color="text.secondary">
+                  Không tìm thấy gợi ý nào.
+                </Typography>
+              )}
             </Stack>
           </Box>
 
@@ -1361,6 +1657,7 @@ function ClientLibrary() {
                 checked={playlistIsPublic}
                 onChange={(e) => setPlaylistIsPublic(e.target.checked)}
                 color="primary"
+                disabled={playlistSaving}
               />
             }
             label={
@@ -1372,7 +1669,15 @@ function ClientLibrary() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
           <Button
-            onClick={() => setPlaylistDialogOpen(false)}
+            onClick={() => {
+              if (playlistSaving) return;
+              if (playlistCoverImageFilePreview) {
+                URL.revokeObjectURL(playlistCoverImageFilePreview);
+                setPlaylistCoverImageFilePreview('');
+              }
+              setPlaylistCoverImageFile(null);
+              setPlaylistDialogOpen(false);
+            }}
             disabled={playlistSaving}
             sx={{ borderRadius: '12px', fontWeight: 800, color: 'text.secondary' }}
           >
@@ -1420,6 +1725,53 @@ function ClientLibrary() {
             Hủy
           </Button>
           <Button onClick={handleConfirmDeletePlaylist} color="error" variant="contained" sx={{ borderRadius: '10px', px: 2.5, fontWeight: 700 }}>
+            Đồng ý xóa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ================= 6b. DELETE SONG CONFIRMATION DIALOG ================= */}
+      <Dialog
+        open={songDeleteConfirmOpen}
+        onClose={() => {
+          setSongDeleteConfirmOpen(false);
+          setSongToDelete(null);
+          setSongDeleteType('');
+        }}
+        PaperProps={{
+          sx: { borderRadius: '20px', p: 1 }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          {songDeleteType === 'favorite' && 'Bỏ yêu thích bài hát'}
+          {songDeleteType === 'upload' && 'Xóa bài hát đã tải lên'}
+          {songDeleteType === 'download' && 'Xóa lịch sử tải xuống'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+            {songDeleteType === 'favorite' && (
+              <>Bạn có chắc muốn bỏ yêu thích bài hát <strong>"{songToDelete?.title}"</strong> không?</>
+            )}
+            {songDeleteType === 'upload' && (
+              <>Bạn có chắc muốn xóa bài hát <strong>"{songToDelete?.title}"</strong> khỏi danh sách tải lên không? Thao tác này sẽ xóa tệp vĩnh viễn trên máy chủ Cloudinary và giải phóng dung lượng bộ nhớ của bạn.</>
+            )}
+            {songDeleteType === 'download' && (
+              <>Bạn có chắc muốn xóa bài hát <strong>"{songToDelete?.title}"</strong> khỏi lịch sử tải xuống không? Tệp đã lưu ngoại tuyến của bạn sẽ không bị ảnh hưởng.</>
+            )}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={() => {
+              setSongDeleteConfirmOpen(false);
+              setSongToDelete(null);
+              setSongDeleteType('');
+            }} 
+            sx={{ borderRadius: '10px', color: 'text.secondary', fontWeight: 700 }}
+          >
+            Hủy
+          </Button>
+          <Button onClick={handleConfirmDeleteSong} color="error" variant="contained" sx={{ borderRadius: '10px', px: 2.5, fontWeight: 700 }}>
             Đồng ý xóa
           </Button>
         </DialogActions>

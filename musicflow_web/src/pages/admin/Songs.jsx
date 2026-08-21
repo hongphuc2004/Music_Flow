@@ -200,15 +200,30 @@ function Songs() {
   };
 
   const handleVisibilityChange = async (song) => {
+    // Cập nhật trạng thái cục bộ ngay lập tức (Optimistic Update)
+    setSongs((prevSongs) =>
+      prevSongs.map((s) =>
+        s._id === song._id ? { ...s, isPublic: !s.isPublic } : s
+      )
+    );
+
     try {
       await songsApi.updateVisibility(song._id, !song.isPublic);
-      setSuccess('Song visibility updated successfully.');
-      showToast({ severity: 'success', title: 'Success!', message: 'Song visibility updated successfully.' });
-      fetchSongs();
+      showToast({
+        severity: 'success',
+        title: 'Thành công!',
+        message: 'Cập nhật trạng thái hiển thị thành công.',
+      });
     } catch (err) {
-      const message = err.response?.data?.message || 'Failed to update song visibility.';
+      // Revert lại trạng thái cũ nếu gặp lỗi
+      setSongs((prevSongs) =>
+        prevSongs.map((s) =>
+          s._id === song._id ? { ...s, isPublic: song.isPublic } : s
+        )
+      );
+      const message = err.response?.data?.message || 'Cập nhật trạng thái hiển thị thất bại.';
       setError(message);
-      showToast({ severity: 'error', title: 'Update failed', message });
+      showToast({ severity: 'error', title: 'Lỗi cập nhật', message });
     }
   };
 

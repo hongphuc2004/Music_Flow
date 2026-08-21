@@ -1,6 +1,55 @@
 const Playlist = require("../models/playlist.model");
 const PlaylistSong = require("../models/playlist-song.model");
 const User = require("../models/user.model");
+const axios = require("axios");
+const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolders");
+const fs = require("fs");
+
+const safeUnlink = (filePath) => {
+  if (!filePath) return;
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (_) {}
+};
+
+// Simple short-term memory cache for Unsplash search
+let randomCoversCache = null;
+let randomCoversCacheExpiry = 0;
+const CACHE_LIFETIME_MS = 5 * 60 * 1000; // 5 minutes
+
+async function triggerUnsplashDownload(photoId) {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey || !photoId || photoId.startsWith("fallback-")) return;
+
+  try {
+    // 1. Fetch photo details directly from Unsplash using validated photoId (SSRF safe!)
+    const detailsUrl = `https://api.unsplash.com/photos/${photoId}`;
+    const detailsResponse = await axios.get(detailsUrl, {
+      headers: {
+        Authorization: `Client-ID ${accessKey}`,
+      },
+      timeout: 5000,
+    });
+
+    // 2. Extract download_location from trusted Unsplash API response
+    const downloadLocation = detailsResponse.data?.links?.download_location;
+    if (downloadLocation) {
+      // 3. Trigger the verified download_location endpoint
+      await axios.get(downloadLocation, {
+        headers: {
+          Authorization: `Client-ID ${accessKey}`,
+        },
+        timeout: 5000,
+      });
+      console.log(`Successfully triggered Unsplash download tracking for photo: ${photoId}`);
+    }
+  } catch (err) {
+    console.warn(`Failed to trigger Unsplash download tracking for photo ${photoId}:`, err.message);
+  }
+}
 
 const PLAYLIST_SONG_SELECT =
   "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
@@ -122,7 +171,8 @@ exports.getPlaylistById = async (req, res) => {
     }
 
     // Kiểm tra quyền truy cập (chỉ chủ sở hữu hoặc playlist public)
-    if (playlist.userId._id.toString() !== req.userId && !playlist.isPublic) {
+    const ownerId = playlist.userId?._id ? playlist.userId._id.toString() : (playlist.userId ? playlist.userId.toString() : null);
+    if (ownerId !== req.userId && !playlist.isPublic) {
       return res.status(403).json({
         success: false,
         message: "Bạn không có quyền truy cập playlist này",
@@ -145,8 +195,9 @@ exports.getPlaylistById = async (req, res) => {
 
 // ================= CREATE PLAYLIST =================
 exports.createPlaylist = async (req, res) => {
+  let tempFilePath = null;
   try {
-    const { name, description, isPublic, coverImage } = req.body;
+    const { name, description, isPublic, coverImage, coverSource, photoId, photographer, photographerUrl, unsplashUrl } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -155,12 +206,50 @@ exports.createPlaylist = async (req, res) => {
       });
     }
 
+    let finalCoverImage = coverImage || "";
+    let finalCoverSource = "";
+    let finalCoverMetadata = {
+      photoId: "",
+      photographer: "",
+      photographerUrl: "",
+      unsplashUrl: ""
+    };
+
+    if (req.file) {
+      // 1. Custom Upload file
+      tempFilePath = req.file.path;
+      const uploadResult = await cloudinary.uploader.upload(tempFilePath, {
+        folder: cloudinaryFolder("playlists"),
+      });
+      finalCoverImage = uploadResult.secure_url;
+      finalCoverSource = "upload";
+    } else if (coverSource === "unsplash" && photoId) {
+      // 2. Select Unsplash cover
+      finalCoverImage = coverImage || "";
+      finalCoverSource = "unsplash";
+      finalCoverMetadata = {
+        photoId: photoId || "",
+        photographer: photographer || "",
+        photographerUrl: photographerUrl || "",
+        unsplashUrl: unsplashUrl || ""
+      };
+
+      // Trigger download tracking ngầm (SSRF safe)
+      triggerUnsplashDownload(photoId);
+    } else {
+      // 3. Defaults
+      finalCoverImage = coverImage || "";
+      finalCoverSource = coverSource || "";
+    }
+
     const playlist = await Playlist.create({
       name,
       description: description || "",
       userId: req.userId,
-      isPublic: isPublic || false,
-      coverImage: coverImage || "",
+      isPublic: isPublic === "true" || isPublic === true,
+      coverImage: finalCoverImage,
+      coverSource: finalCoverSource,
+      coverMetadata: finalCoverMetadata,
       songs: [],
     });
 
@@ -181,13 +270,16 @@ exports.createPlaylist = async (req, res) => {
       message: "Tạo playlist thất bại",
       error: error.message,
     });
+  } finally {
+    if (tempFilePath) safeUnlink(tempFilePath);
   }
 };
 
 // ================= UPDATE PLAYLIST (tên, mô tả, ảnh bìa, public/private) =================
 exports.updatePlaylist = async (req, res) => {
+  let tempFilePath = null;
   try {
-    const { name, description, isPublic, coverImage } = req.body;
+    const { name, description, isPublic, coverImage, coverSource, photoId, photographer, photographerUrl, unsplashUrl } = req.body;
 
     const playlist = await Playlist.findById(req.params.id);
 
@@ -209,8 +301,55 @@ exports.updatePlaylist = async (req, res) => {
     // Cập nhật các trường được gửi lên
     if (name !== undefined) playlist.name = name;
     if (description !== undefined) playlist.description = description;
-    if (isPublic !== undefined) playlist.isPublic = isPublic;
-    if (coverImage !== undefined) playlist.coverImage = coverImage;
+    if (isPublic !== undefined) {
+      playlist.isPublic = isPublic === "true" || isPublic === true;
+    }
+
+    if (req.file) {
+      // 1. Upload local file
+      tempFilePath = req.file.path;
+      const uploadResult = await cloudinary.uploader.upload(tempFilePath, {
+        folder: cloudinaryFolder("playlists"),
+      });
+      playlist.coverImage = uploadResult.secure_url;
+      playlist.coverSource = "upload";
+      
+      // Xóa hoàn toàn metadata Unsplash cũ khi đổi nguồn
+      playlist.coverMetadata = {
+        photoId: "",
+        photographer: "",
+        photographerUrl: "",
+        unsplashUrl: ""
+      };
+    } else if (coverSource === "unsplash" && photoId) {
+      // 2. Select Unsplash cover
+      playlist.coverImage = coverImage || "";
+      playlist.coverSource = "unsplash";
+      playlist.coverMetadata = {
+        photoId: photoId || "",
+        photographer: photographer || "",
+        photographerUrl: photographerUrl || "",
+        unsplashUrl: unsplashUrl || ""
+      };
+
+      // Trigger download tracking ngầm (SSRF safe)
+      triggerUnsplashDownload(photoId);
+    } else if (coverSource === "") {
+      // 3. Clear cover or resets
+      if (coverImage !== undefined) playlist.coverImage = coverImage;
+      playlist.coverSource = "";
+      playlist.coverMetadata = {
+        photoId: "",
+        photographer: "",
+        photographerUrl: "",
+        unsplashUrl: ""
+      };
+    } else {
+      // 4. Legacy compatibility: if client didn't send coverSource, preserve existing source/metadata
+      if (coverImage !== undefined) {
+        playlist.coverImage = coverImage;
+      }
+    }
 
     await playlist.save();
     await playlist.populate({ path: "songs", populate: { path: "artists" } });
@@ -227,6 +366,8 @@ exports.updatePlaylist = async (req, res) => {
       message: "Cập nhật playlist thất bại",
       error: error.message,
     });
+  } finally {
+    if (tempFilePath) safeUnlink(tempFilePath);
   }
 };
 
@@ -418,3 +559,151 @@ exports.reorderPlaylistSongs = async (req, res) => {
     });
   }
 };
+
+// ================= GET RANDOM COVERS FOR PRESETS (Unsplash API) =================
+exports.getRandomCovers = async (req, res) => {
+  const now = Date.now();
+  if (randomCoversCache && now < randomCoversCacheExpiry) {
+    return res.json({
+      success: true,
+      covers: randomCoversCache,
+    });
+  }
+
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey) {
+    console.warn("Missing UNSPLASH_ACCESS_KEY env variable. Using fallback covers.");
+    return res.json({
+      success: true,
+      covers: getLocalFallbackCovers(),
+    });
+  }
+
+  try {
+    const queries = ["music", "concert", "singer", "retro", "synthwave", "lofi", "ambient", "pop", "jazz", "acoustic"];
+    const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+    const randomPage = Math.floor(Math.random() * 5) + 1;
+
+    const url = `https://api.unsplash.com/search/photos?query=${randomQuery}&per_page=12&page=${randomPage}`;
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Client-ID ${accessKey}`,
+      },
+      timeout: 5000,
+    });
+
+    if (response.data && Array.isArray(response.data.results)) {
+      const results = response.data.results;
+      const covers = results.map(item => ({
+        id: item.id || "",
+        thumbnailUrl: item.urls?.small || "",
+        coverUrl: item.urls?.regular || "",
+        photographer: item.user?.name || "Photographer",
+        photographerUrl: item.user?.links?.html || "",
+        unsplashUrl: item.links?.html || "",
+      })).filter(c => c.thumbnailUrl && c.coverUrl);
+
+      // Cache the result
+      randomCoversCache = covers;
+      randomCoversCacheExpiry = now + CACHE_LIFETIME_MS;
+
+      return res.json({
+        success: true,
+        covers,
+      });
+    }
+    
+    throw new Error("Invalid Unsplash response format");
+  } catch (error) {
+    console.error("Get random covers from Unsplash failed:", error.message);
+    return res.json({
+      success: true,
+      covers: getLocalFallbackCovers(),
+    });
+  }
+};
+
+function getLocalFallbackCovers() {
+  return [
+    {
+      id: "fallback-1",
+      thumbnailUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=800&auto=format&fit=crop&q=80",
+      photographer: "Marc-Olivier Jodoin",
+      photographerUrl: "https://unsplash.com/@marcojodoin",
+      unsplashUrl: "https://unsplash.com/photos/NqOsy5m8uug",
+    },
+    {
+      id: "fallback-2",
+      thumbnailUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800&auto=format&fit=crop&q=80",
+      photographer: "Jens The缺失",
+      photographerUrl: "https://unsplash.com/@jensthe缺失",
+      unsplashUrl: "https://unsplash.com/photos/d-m4r2W5tMc",
+    },
+    {
+      id: "fallback-3",
+      thumbnailUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=80",
+      photographer: "Allexxandar",
+      photographerUrl: "https://unsplash.com/@allexxandar",
+      unsplashUrl: "https://unsplash.com/photos/some-id",
+    },
+    {
+      id: "fallback-4",
+      thumbnailUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80",
+      photographer: "Sven Brandsma",
+      photographerUrl: "https://unsplash.com/@svenbrandsma",
+      unsplashUrl: "https://unsplash.com/photos/G15-C8yJ_rA",
+    },
+    {
+      id: "fallback-5",
+      thumbnailUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80",
+      photographer: "Sunset Rock",
+      photographerUrl: "https://unsplash.com",
+      unsplashUrl: "https://unsplash.com",
+    },
+    {
+      id: "fallback-6",
+      thumbnailUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800&auto=format&fit=crop&q=80",
+      photographer: "Studio Session",
+      photographerUrl: "https://unsplash.com",
+      unsplashUrl: "https://unsplash.com",
+    },
+    {
+      id: "fallback-7",
+      thumbnailUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&auto=format&fit=crop&q=80",
+      photographer: "Singing Artist",
+      photographerUrl: "https://unsplash.com",
+      unsplashUrl: "https://unsplash.com",
+    },
+    {
+      id: "fallback-8",
+      thumbnailUrl: "https://images.unsplash.com/photo-1458560871784-56d23406c091?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1458560871784-56d23406c091?w=800&auto=format&fit=crop&q=80",
+      photographer: "Record Player",
+      photographerUrl: "https://unsplash.com",
+      unsplashUrl: "https://unsplash.com",
+    },
+    {
+      id: "fallback-9",
+      thumbnailUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800&auto=format&fit=crop&q=80",
+      photographer: "Neon Stage",
+      photographerUrl: "https://unsplash.com",
+      unsplashUrl: "https://unsplash.com",
+    },
+    {
+      id: "fallback-10",
+      thumbnailUrl: "https://images.unsplash.com/photo-1494232410401-ad00d5433cfa?w=400&auto=format&fit=crop&q=80",
+      coverUrl: "https://images.unsplash.com/photo-1494232410401-ad00d5433cfa?w=800&auto=format&fit=crop&q=80",
+      photographer: "Cassette Retro",
+      photographerUrl: "https://unsplash.com",
+      unsplashUrl: "https://unsplash.com",
+    }
+  ];
+}

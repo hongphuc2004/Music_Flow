@@ -30,6 +30,7 @@ export const clientSongsApi = {
   updateSong: (songId, formData) => api.put(`/songs/${songId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  deleteSong: (songId) => api.delete(`/songs/${songId}`),
   getPlaybackTicket: (songId, quality) => api.get(`/songs/${songId}/ticket`, { params: { quality } }),
 };
 
@@ -47,6 +48,7 @@ export const clientPlaylistsApi = {
   getSystem: (params) => cachedGet('/playlists/system', { params }, 30000),
   getSystemById: (id) => api.get(`/playlists/system/${id}`),
   getById: (id) => api.get(`/playlists/${id}`),
+  getRandomCovers: () => api.get('/playlists/random-covers'),
   create: (payload) => api.post('/playlists', payload),
   update: (id, payload) => api.put(`/playlists/${id}`, payload),
   delete: (id) => api.delete(`/playlists/${id}`),

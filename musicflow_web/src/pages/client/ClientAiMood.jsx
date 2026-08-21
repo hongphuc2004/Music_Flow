@@ -44,13 +44,7 @@ const QUICK_PROMPTS = [
   { emoji: '🎉', label: 'Nhạc party', prompt: 'Nhạc sàn EDM party bùng nổ' },
 ];
 
-// Gemini API model names (as of mid-2025)
-const AI_MODELS = [
-  { id: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash', badge: 'Mới nhất', desc: 'Nhanh + thông minh nhất' },
-  { id: 'gemini-2.5-pro-preview-06-05',   label: 'Gemini 2.5 Pro',   badge: 'Mạnh nhất', desc: 'Suy luận sâu, chậm hơn' },
-  { id: 'gemini-2.0-flash',               label: 'Gemini 2.0 Flash', badge: '',           desc: 'Ổn định, nhanh' },
-  { id: 'gemini-1.5-flash-latest',        label: 'Gemini 1.5 Flash', badge: '',           desc: 'Phiên bản cũ ổn định' },
-];
+
 
 function formatSongDuration(seconds) {
   if (!seconds) return '--:--';
@@ -348,10 +342,8 @@ export default function ClientAiMood() {
   } = useAssistant();
 
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState(AI_MODELS[0].id);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModelPicker, setShowModelPicker] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(
     () => localStorage.getItem('musicflow-ai-history-open') !== 'false'
   );
@@ -629,79 +621,7 @@ export default function ClientAiMood() {
                 </Typography>
               </Box>
 
-              {/* Model selector */}
-              <Box sx={{ position: 'relative' }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  endIcon={<ChevronIcon />}
-                  onClick={() => setShowModelPicker((v) => !v)}
-                  sx={{
-                    borderColor: 'rgba(139,92,246,0.4)',
-                    color: '#8b5cf6',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    '&:hover': { borderColor: '#8b5cf6', bgcolor: 'rgba(139,92,246,0.08)' },
-                  }}
-                >
-                  {AI_MODELS.find((m) => m.id === selectedModel)?.label || 'Model AI'}
-                </Button>
-                {showModelPicker && (
-                  <Paper
-                    elevation={8}
-                    sx={{
-                      position: 'absolute',
-                      top: 'calc(100% + 6px)',
-                      right: 0,
-                      minWidth: 200,
-                      borderRadius: 2.5,
-                      overflow: 'hidden',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      zIndex: 100,
-                    }}
-                  >
-                    {AI_MODELS.map((model) => (
-                      <Stack
-                        key={model.id}
-                        direction="row"
-                        alignItems="center"
-                        spacing={1}
-                        onClick={() => { setSelectedModel(model.id); setShowModelPicker(false); }}
-                        sx={{
-                          px: 2,
-                          py: 1.25,
-                          cursor: 'pointer',
-                          bgcolor: selectedModel === model.id ? 'rgba(139,92,246,0.1)' : 'transparent',
-                          '&:hover': { bgcolor: 'rgba(139,92,246,0.08)' },
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Stack direction="row" alignItems="center" spacing={0.75}>
-                            <Typography variant="body2" fontWeight={selectedModel === model.id ? 700 : 500} sx={{ fontSize: 13 }}>
-                              {model.label}
-                            </Typography>
-                            {model.badge && (
-                              <Chip label={model.badge} size="small" sx={{ fontSize: 9, height: 18, bgcolor: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }} />
-                            )}
-                          </Stack>
-                          {model.desc && (
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, display: 'block' }}>
-                              {model.desc}
-                            </Typography>
-                          )}
-                        </Box>
-                        {selectedModel === model.id && (
-                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#8b5cf6', flexShrink: 0 }} />
-                        )}
-                      </Stack>
-                    ))}
-                  </Paper>
-                )}
-              </Box>
+
             </Stack>
 
             {/* Messages area */}
@@ -896,7 +816,7 @@ export default function ClientAiMood() {
                 </IconButton>
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, pl: 0.5 }}>
-                Nhấn Enter để gửi · Shift+Enter để xuống dòng · Model: {AI_MODELS.find((m) => m.id === selectedModel)?.label}
+                Nhấn Enter để gửi · Shift+Enter để xuống dòng
               </Typography>
             </Box>
           </Paper>

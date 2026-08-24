@@ -1,34 +1,226 @@
-/**
- * recommendation.service.js — Similar songs and random recommendations.
- *
- * Extracted from song.controller.js so the weighted scoring algorithm lives
- * in a single, testable place.
- */
-
+const mongoose = require("mongoose");
 const Song = require("../models/song.model");
-const songRepo = require("../repositories/song.repository");
+
+/**
+ * Default Configurable Strategy Weights and Options.
+ * Easily overridable for A/B testing and benchmarking without modifying code logic.
+ */
+const DEFAULT_RECOMMENDATION_CONFIG = {
+  weights: {
+    matchingTopicWeight: 5.0,        // Score added if song matches user's preferred topics
+    matchingArtistWeight: 8.0,       // Score added if song matches user's preferred artists
+    isFavoriteOrLikedWeight: 10.0,   // Score added if song is favorited or liked by user
+    recentlyPlayedPenalty: -3.0,     // Penalty score for songs played recently to reduce repeat fatigue
+  },
+  candidateLimit: 50,                // Maximum candidates fetched for Gemini context
+  fallbackLimit: 30,                 // Candidate limit for cold-start popularity fallback
+};
+
+/**
+ * Calculates candidate recommendation score for a single song object based on user profile and config.
+ * 
+ * @param {Object} song - Populated or raw Mongoose Song document
+ * @param {Object} options
+ * @param {Object} options.userProfile - User music profile
+ * @param {Object} [options.config] - Scoring configuration
+ * @returns {number} Final calculated score
+ */
+function calculateSongScore(song, { userProfile, config = DEFAULT_RECOMMENDATION_CONFIG } = {}) {
+  if (!song || !userProfile || userProfile.isColdStart) {
+    return 0;
+  }
+
+  const weights = {
+    ...DEFAULT_RECOMMENDATION_CONFIG.weights,
+    ...(config?.weights || {}),
+  };
+
+  let score = 0;
+  const songIdStr = song._id ? song._id.toString() : song.toString();
+
+  // 1. Topic Match Score
+  if (Array.isArray(song.topicIds) && Array.isArray(userProfile.preferredTopicIds)) {
+    const topicSet = new Set(userProfile.preferredTopicIds.map((id) => id.toString()));
+    const topicMatches = song.topicIds.filter((t) => {
+      const tId = t._id ? t._id.toString() : t.toString();
+      return topicSet.has(tId);
+    }).length;
+
+    if (topicMatches > 0) {
+      score += weights.matchingTopicWeight * topicMatches;
+    }
+  }
+
+  // 2. Artist Match Score
+  if (Array.isArray(song.artists) && Array.isArray(userProfile.preferredArtistIds)) {
+    const artistSet = new Set(userProfile.preferredArtistIds.map((id) => id.toString()));
+    const artistMatches = song.artists.filter((a) => {
+      const aId = a._id ? a._id.toString() : a.toString();
+      return artistSet.has(aId);
+    }).length;
+
+    if (artistMatches > 0) {
+      score += weights.matchingArtistWeight * artistMatches;
+    }
+  }
+
+  // 3. Favorite / Liked Song Score
+  if (Array.isArray(userProfile.favoriteSongIds)) {
+    const favSet = new Set(userProfile.favoriteSongIds.map((id) => id.toString()));
+    if (favSet.has(songIdStr)) {
+      score += weights.isFavoriteOrLikedWeight;
+    }
+  }
+
+  // 4. Recently Played Penalty (prevents immediate repetition)
+  if (Array.isArray(userProfile.recentlyPlayedSongIds)) {
+    const recentSet = new Set(userProfile.recentlyPlayedSongIds.map((id) => id.toString()));
+    if (recentSet.has(songIdStr)) {
+      score += weights.recentlyPlayedPenalty;
+    }
+  }
+
+  return score;
+}
+
+/**
+ * Retrieves personalized or cold-start candidate songs from MongoDB based on query criteria & user profile.
+ * 
+ * @param {Object} options
+ * @param {Array<string|ObjectId>} [options.topicIds] - Topic IDs matched from query/mood
+ * @param {Array<string|ObjectId>} [options.artistIds] - Artist IDs matched from query/mood
+ * @param {Array<string>} [options.keywords] - Keywords extracted from query
+ * @param {Object} [options.userProfile] - User music profile (from personalization.service)
+ * @param {Object} [options.config] - Recommendation scoring configuration
+ * @returns {Promise<Object>} Object containing candidates, isPersonalized, and scoring stats
+ */
+async function getPersonalizedCandidates({
+  topicIds = [],
+  artistIds = [],
+  keywords = [],
+  userProfile = null,
+  config = DEFAULT_RECOMMENDATION_CONFIG,
+} = {}) {
+  const mergedConfig = {
+    ...DEFAULT_RECOMMENDATION_CONFIG,
+    ...config,
+    weights: {
+      ...DEFAULT_RECOMMENDATION_CONFIG.weights,
+      ...(config?.weights || {}),
+    },
+  };
+
+  const isColdStart = !userProfile || userProfile.isColdStart;
+
+  // --- COLD START / FALLBACK PATH ---
+  if (isColdStart) {
+    const filter = { isPublic: true };
+    const orConditions = [];
+
+    if (topicIds.length > 0) {
+      orConditions.push({ topicIds: { $in: topicIds } });
+    }
+    if (artistIds.length > 0) {
+      orConditions.push({ artists: { $in: artistIds } });
+    }
+    if (orConditions.length > 0) {
+      filter.$or = orConditions;
+    }
+
+    const fallbackSongs = await Song.find(filter)
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name description")
+      .sort({ playCount: -1, likeCount: -1, createdAt: -1 })
+      .limit(mergedConfig.fallbackLimit)
+      .lean();
+
+    return {
+      isPersonalized: false,
+      reason: "cold_start_fallback",
+      candidates: fallbackSongs,
+      totalCandidates: fallbackSongs.length,
+    };
+  }
+
+  // --- PERSONALIZED PATH ---
+  // Combine query topic/artist criteria with User's preferred topics & artists
+  const mergedTopicIds = Array.from(new Set([
+    ...topicIds.map((id) => id.toString()),
+    ...(userProfile.preferredTopicIds || []).map((id) => id.toString()),
+  ])).map((id) => new mongoose.Types.ObjectId(id));
+
+  const mergedArtistIds = Array.from(new Set([
+    ...artistIds.map((id) => id.toString()),
+    ...(userProfile.preferredArtistIds || []).map((id) => id.toString()),
+  ])).map((id) => new mongoose.Types.ObjectId(id));
+
+  const filter = { isPublic: true };
+  const orConditions = [];
+
+  if (mergedTopicIds.length > 0) {
+    orConditions.push({ topicIds: { $in: mergedTopicIds } });
+  }
+  if (mergedArtistIds.length > 0) {
+    orConditions.push({ artists: { $in: mergedArtistIds } });
+  }
+  if (userProfile.favoriteSongIds && userProfile.favoriteSongIds.length > 0) {
+    const favObjIds = userProfile.favoriteSongIds.map((id) => new mongoose.Types.ObjectId(id));
+    orConditions.push({ _id: { $in: favObjIds } });
+  }
+
+  if (orConditions.length > 0) {
+    filter.$or = orConditions;
+  }
+
+  // Fetch raw candidate pool
+  const candidatePool = await Song.find(filter)
+    .populate("artists", "name avatar")
+    .populate("topicIds", "name description")
+    .limit(100)
+    .lean();
+
+  // Score & Rank each candidate song
+  const scoredCandidates = candidatePool.map((song) => {
+    const personalizationScore = calculateSongScore(song, { userProfile, config: mergedConfig });
+    const popularityScore = (song.playCount || 0) * 0.05 + (song.likeCount || 0) * 0.1;
+    const finalScore = personalizationScore + popularityScore;
+
+    return {
+      song,
+      personalizationScore,
+      popularityScore,
+      finalScore,
+    };
+  });
+
+  // Sort descending by finalScore
+  scoredCandidates.sort((a, b) => b.finalScore - a.finalScore);
+
+  const finalCandidates = scoredCandidates
+    .slice(0, mergedConfig.candidateLimit)
+    .map((item) => ({
+      ...item.song,
+      _personalizationScore: item.personalizationScore,
+      _finalScore: item.finalScore,
+    }));
+
+  return {
+    isPersonalized: true,
+    reason: "personalized_scoring",
+    candidates: finalCandidates,
+    totalCandidates: finalCandidates.length,
+    topScoredCount: finalCandidates.filter((s) => (s._personalizationScore || 0) > 0).length,
+  };
+}
 
 // ---------------------------------------------------------------------------
-// Similar songs (weighted score + random top-N)
+// REST API Public Endpoints Helpers (Similar Songs & Random Recommendations)
 // ---------------------------------------------------------------------------
+
+const songRepo = require("../repositories/song.repository");
 
 /**
  * Return `limit` songs that are similar to the target song.
- *
- * Scoring weights:
- *  +5   — at least one artist in common
- *  +3   — per matching topic
- *  +log — popularity bonus (log-scaled playCount, max contribution ~5)
- *
- * After scoring the top-30 candidates are shuffled so repeated calls
- * return varied orderings without compromising relevance.
- *
- * Performance: uses a $or pre-filter so only songs with at least one
- * matching artist or topic are loaded — avoids full collection scan.
- *
- * @param {string} songId   — id of the currently playing song
- * @param {number} [limit=12]
- * @returns {Promise<object[]>}
  */
 const getSimilarSongs = async (songId, limit = 12) => {
   const clampedLimit = Math.min(Math.max(Number(limit) || 12, 1), 50);
@@ -43,7 +235,6 @@ const getSimilarSongs = async (songId, limit = 12) => {
   const targetArtistIds = (targetSong.artists || []).map((a) => a.toString());
   const targetTopicIds = (targetSong.topicIds || []).map((t) => t.toString());
 
-  // Pre-filtered candidates — only songs sharing at least one artist or topic
   const candidates = await songRepo.findSimilarCandidates({
     excludeId: targetSong._id,
     artistIds: targetArtistIds,
@@ -54,29 +245,22 @@ const getSimilarSongs = async (songId, limit = 12) => {
   const targetArtistSet = new Set(targetArtistIds);
   const targetTopicSet = new Set(targetTopicIds);
 
-  // Score each candidate
   const scored = candidates.map((song) => {
     let score = 0;
-
-    // Artist match (+5)
     const hasArtistMatch = (song.artists || []).some((a) =>
       targetArtistSet.has(a._id ? a._id.toString() : a.toString())
     );
     if (hasArtistMatch) score += 5;
 
-    // Topic match (+3 per topic)
     const matchingTopics = (song.topicIds || []).filter((t) =>
       targetTopicSet.has(t._id ? t._id.toString() : t.toString())
     ).length;
     score += matchingTopics * 3;
 
-    // Popularity (+log-scaled)
     score += Math.log((song.playCount || 0) + 1) * 0.5;
-
     return { song, score };
   });
 
-  // Sort by score, take top 30, shuffle, return limit
   scored.sort((a, b) => b.score - a.score);
   const shuffled = scored
     .slice(0, 30)
@@ -86,16 +270,8 @@ const getSimilarSongs = async (songId, limit = 12) => {
   return shuffled.slice(0, clampedLimit);
 };
 
-// ---------------------------------------------------------------------------
-// Random recommendation (aggregate $sample)
-// ---------------------------------------------------------------------------
-
 /**
- * Return `limit` randomly sampled public songs using MongoDB's $sample
- * aggregation stage (uniform distribution, no repetition bias).
- *
- * @param {number} [limit=12]
- * @returns {Promise<object[]>}
+ * Return `limit` randomly sampled public songs using MongoDB's $sample aggregation stage
  */
 const getRecommendedSongs = async (limit = 12) => {
   const clampedLimit = Math.min(Math.max(Number(limit) || 12, 1), 50);
@@ -153,8 +329,11 @@ const getRecommendedSongs = async (limit = 12) => {
   return songs;
 };
 
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
+module.exports = {
+  DEFAULT_RECOMMENDATION_CONFIG,
+  calculateSongScore,
+  getPersonalizedCandidates,
+  getSimilarSongs,
+  getRecommendedSongs,
+};
 
-module.exports = { getSimilarSongs, getRecommendedSongs };

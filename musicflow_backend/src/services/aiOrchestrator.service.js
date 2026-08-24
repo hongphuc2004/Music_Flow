@@ -10,8 +10,12 @@ const mistralEnricher = require("./mistralEnricher.service");
  * - NO business logic / MongoDB queries, NO extra user quotas.
  */
 
+const aiDataLoader = require("../ai/aiDataLoader.service");
+
+const intentRule = aiDataLoader.getRule("intent");
+
 // Personal feelings, stories, complex emotional states, or implicit context
-const EMOTIONAL_CONTEXT_SIGNALS = [
+const EMOTIONAL_CONTEXT_SIGNALS = intentRule.emotionalSignals || [
   "tôi buồn", "mình buồn", "em buồn", "anh buồn", "tôi thấy buồn",
   "mệt mỏi", "áp lực", "crush", "sếp mắng", "bị mắng", "tâm trạng tệ",
   "căng thẳng", "cô đơn", "khóc", "đau lòng", "bế tắc", "tôi mệt",
@@ -21,33 +25,13 @@ const EMOTIONAL_CONTEXT_SIGNALS = [
   "tôi thất tình", "mình thất tình", "vừa thất tình"
 ];
 
-
 // Direct music commands asking for music/playlists/artists without personal emotional context
-const EXPLICIT_MUSIC_PATTERNS = [
-  /^nhạc\s+(buồn|vui|chill|rock|pop|ballad|lofi|rap|hiphop|edm|remix|sên|trẻ|sôi\s+động|tập\s+trung|chạy\s+bộ|tập\s+gym|ru\s+ngủ|thất\s+tình|chia\s+tay)$/i,
-  /^playlist\s+/i,
-  /^tìm\s+(nhạc|bài\s+hát)\s+/i,
-  /^bật\s+(nhạc|bài|bài\s+hát)\s+/i,
-  /^cho\s+(tôi|mình)\s+(xin\s+)?(nhạc|bài\s+hát)\s+/i,
-  /^gợi\s+ý\s+(nhạc|bài\s+hát)\s+/i,
-];
+const EXPLICIT_MUSIC_PATTERNS = (intentRule.explicitMusicPatterns || []).map(p => new RegExp(p, "i"));
 
 // Pure conversational & system command bypass signals
-const BYPASS_PATTERNS = [
-  /^chào(\s+bạn|\s+ai|\s+dj)?$/i,
-  /^hi(\s+there)?$/i,
-  /^hello$/i,
-  /^cảm\s+ơn(\s+bạn|\s+ai|\s+dj)?$/i,
-  /^thank\s*(you|s)?$/i,
-  /^tạm\s+biệt$/i,
-  /^bye(\s+bye)?$/i,
-  /^bạn\s+là\s+ai$/i,
-  /^bạn\s+tên\s+(gì|là\s+gì)$/i,
-  /^dừng\s+nhạc$/i,
-  /^tắt\s+nhạc$/i,
-  /^tiếp\s+tục$/i,
-  /^hôm\s+nay\s+trời\s+.*mưa.*$/i,
-];
+const BYPASS_PATTERNS = (intentRule.bypassPatterns || []).map(p => new RegExp(p, "i"));
+
+
 
 /**
  * Determines whether a user prompt genuinely requires Music Intent/Mood Enrichment.

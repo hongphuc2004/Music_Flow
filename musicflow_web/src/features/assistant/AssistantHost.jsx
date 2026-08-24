@@ -418,6 +418,27 @@ export default function AssistantHost() {
                             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
                               {msg.content}
                             </Typography>
+
+                            {/* Render AI Generated Image Preview if available */}
+                            {(msg.metadata?.imageUrl || (msg.content && msg.content.includes("https://image.pollinations.ai"))) && (
+                              <Box sx={{ mt: 1.5, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <Box
+                                  component="img"
+                                  src={msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^\)]+)\)/)?.[1]}
+                                  alt={msg.metadata?.prompt || "AI Artwork"}
+                                  sx={{
+                                    width: '100%',
+                                    maxHeight: 280,
+                                    objectFit: 'cover',
+                                    display: 'block',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.3s',
+                                    '&:hover': { transform: 'scale(1.02)' },
+                                  }}
+                                  onClick={() => window.open(msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^\)]+)\)/)?.[1], '_blank')}
+                                />
+                              </Box>
+                            )}
                           </Paper>
                           {isAssistant && msg.playlistId && (
                             <CompactPlaylistCard
@@ -427,6 +448,7 @@ export default function AssistantHost() {
                               onPlayAll={(songs) => executeCapability('LOAD_PLAYLIST', { songs })}
                             />
                           )}
+
                         </Stack>
                       </Stack>
                     );

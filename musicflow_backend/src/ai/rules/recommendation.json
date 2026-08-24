@@ -1,0 +1,22 @@
+{
+  "phase2Config": {
+    "weights": {
+      "matchingTopicWeight": 5.0,
+      "matchingArtistWeight": 8.0,
+      "isFavoriteOrLikedWeight": 10.0,
+      "recentlyPlayedPenalty": -3.0
+    },
+    "candidateLimit": 50,
+    "fallbackLimit": 30
+  },
+  "phase3Config": {
+    "strategyWeights": {
+      "longTermWeight": 0.60,
+      "recentInterestWeight": 0.25,
+      "explorationWeight": 0.15
+    },
+    "recentWindowDays": 7,
+    "longTermWindowDays": 30,
+    "candidateLimit": 50
+  }
+}

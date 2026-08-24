@@ -7,51 +7,15 @@ const AssistantConversation = require("../models/assistant-conversation.model");
 const AssistantMessage = require("../models/assistant-message.model");
 const MoodPlaylist = require("../models/mood-playlist.model");
 const User = require("../models/user.model");
-const { normalizeText, unique, escapeRegex, extractPromptTerms } = require("../utils/string.util");
+const promptBuilder = require("../ai/promptBuilder.service");
 
 const MAX_PLAYLIST_SONGS = 20;
 const PLAYLIST_MIN_TARGET_SONGS = 15;
 
-const MOOD_TOPIC_MAP = {
-  sad: {
-    topics: ["Sad", "Lofi", "Piano", "Chill", "Acoustic"],
-    keywords: ["buon", "sad", "co don", "tam trang", "chia tay", "that tinh", "nho", "nuoc mat", "mua"],
-  },
-  happy: {
-    topics: ["Pop", "EDM", "Party"],
-    keywords: ["vui", "happy", "hanh phuc", "yeu doi", "tuoi sang", "soi dong", "dance"],
-  },
-  chill: {
-    topics: ["Chill", "Lofi", "Piano", "Acoustic"],
-    keywords: ["chill", "thu gian", "relax", "nhe nhang", "binh yen", "cafe", "acoustic"],
-  },
-  focus: {
-    topics: ["Study", "Piano", "Lofi", "Chill"],
-    keywords: ["tap trung", "focus", "hoc bai", "study", " piano", "lam viec", "work", "productive"],
-  },
-  energetic: {
-    topics: ["EDM", "Rock", "Party", "WorkOut", "Hip Hop & Rap"],
-    keywords: ["nang luong", "energetic", "soi dong", "manh me", "bung no", "hype", "gym"],
-  },
-  romantic: {
-    topics: ["Pop", "Piano", "Chill", "Acoustic"],
-    keywords: ["tinh yeu", "romantic", "lang man", "yeu", "nho nhung", "ngot ngao", "love"],
-  },
-  sleep: {
-    topics: ["Sleep", "Piano", "Lofi", "Chill"],
-    keywords: ["ngu", "sleep", "dem", "yen tinh", "calm", "ru ngu", "piano"],
-  },
-  party: {
-    topics: ["Party", "EDM", "Pop", "Hip Hop & Rap"],
-    keywords: ["party", "tiec", "vu truong", "dance", "dj", "club", "remix", "bass"],
-  },
-  angry: {
-    topics: ["Rock", "Hip Hop & Rap", "EDM"],
-    keywords: ["tuc gian", "angry", "buc", "rock", "metal", "rage", "aggressive"],
-  },
-};
+const MOOD_TOPIC_MAP = promptBuilder.getMoodTopicMap();
 
 function isPlaylistIntent(prompt = "") {
+
   const text = normalizeText(prompt);
   const strongIntent =
     /(tao|goi y|de xuat|lam|build|recommend|play|phat|mo)/.test(text) &&
@@ -295,8 +259,24 @@ async function findSongsByMood(
 
     score += Math.min((song.playCount || 0) / 100, 3);
     score += Math.min((song.likeCount || 0) / 50, 2);
+
+    // Apply adaptive/personalization score if user profile options are supplied
+    if (options.userProfile && !options.userProfile.isColdStart) {
+      const adaptiveService = require("./adaptiveRecommendation.service");
+      const recommendationService = require("./recommendation.service");
+      const adaptiveDetails = adaptiveService.calculateAdaptiveScore(song, {
+        userProfile: options.userProfile,
+        recentProfile: options.recentProfile || null,
+      });
+      score += (adaptiveDetails.finalScore > 0)
+        ? adaptiveDetails.finalScore
+        : recommendationService.calculateSongScore(song, { userProfile: options.userProfile });
+    }
+
     return { ...song, _score: score, _hasPriorityTopic: hasPriorityTopic ? 1 : 0 };
   });
+
+
 
   scoredSongs.sort((a, b) => {
     if (b._hasPriorityTopic !== a._hasPriorityTopic) {
@@ -540,34 +520,27 @@ function buildGeminiHistory(messages = []) {
     }));
 }
 
-// System instructions that change depending on user role
+// System instructions built dynamically via PromptBuilder Service
 function buildSystemInstruction(actorRole) {
-  const base = [
-    "Bạn là trợ lý AI (MusicFlow Assistant) thân thiện trong ứng dụng nghe nhạc MusicFlow.",
-    "Trả lời bằng tiếng Việt, ngắn gọn, tự nhiên như hai người đang trò chuyện.",
-    "Bạn được tích hợp hệ thống Google Search để tìm kiếm thông tin bên ngoài và công cụ nội bộ để tương tác với trình phát nhạc và tìm bài hát.",
-  ];
-
-  if (actorRole === "artist") {
-    base.push(
-      "Người dùng hiện tại là NGHỆ SĨ (Artist). Bạn có thể giúp họ xem thống kê nhạc của họ, xem các bài hát đã tải lên hoặc hướng dẫn họ tải nhạc lên ứng dụng."
-    );
-  } else if (actorRole === "admin") {
-    base.push(
-      "Người dùng hiện tại là QUẢN TRỊ VIÊN (Admin). Hãy trả lời với thái độ hỗ trợ quản trị, cung cấp số liệu phân tích tổng quan và hướng dẫn họ tới các trang cấu hình phù hợp khi được yêu cầu."
-    );
-  } else {
-    base.push(
-      "Người dùng hiện tại là NGƯỜI NGHE (User). Bạn có thể đề xuất nhạc, tạo playlist theo cảm xúc/mood, phát nhạc trực tiếp hoặc đưa họ đến trang nhạc yêu thích/thư viện."
-    );
-  }
-
-  return base.join("\n");
+  return promptBuilder.buildSystemInstruction(actorRole);
 }
+
 
 // Define Tools (Function Declarations) dynamically for Gemini based on role
 function getToolsForRole(actorRole) {
   const declarations = [
+    {
+      name: "generate_image",
+      description: "Tạo hình ảnh AI (ảnh bìa album, artwork âm nhạc, ảnh nghệ thuật...) dựa trên mô tả hoặc yêu cầu vẽ ảnh của người dùng.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          prompt: { type: "STRING", description: "Mô tả chi tiết bằng tiếng Việt hoặc tiếng Anh về hình ảnh cần vẽ/tạo." },
+          title: { type: "STRING", description: "Chủ đề hoặc tiêu đề ngắn gọn của bức ảnh." },
+        },
+        required: ["prompt"],
+      },
+    },
     {
       name: "play_song",
       description: "Phát trực tiếp một bài hát bằng cách tìm kiếm tiêu đề bài hát hoặc ca sĩ.",
@@ -627,6 +600,7 @@ function getToolsForRole(actorRole) {
         required: ["route"],
       },
     },
+
     {
       name: "search_songs_natural",
       description: "Tìm kiếm các bài hát trong thư viện bằng ngôn ngữ tự nhiên, tìm theo lyrics, tên bài hát, ca sĩ, thể loại hoặc tâm trạng.",
@@ -794,7 +768,20 @@ class AssistantService {
                 const call = functionCalls[0];
                 const { name, args } = call;
 
-                if (name === "play_song") {
+                if (name === "generate_image") {
+                  const promptStr = args.prompt || cleanPrompt;
+                  const titleStr = args.title || "Tác phẩm AI";
+                  const encodedPrompt = encodeURIComponent(promptStr);
+                  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=800&nologo=true`;
+
+                  assistantText = `🎨 Mình đã sáng tạo xong bức ảnh AI cho bạn dựa trên mô tả "${promptStr}":\n\n![${titleStr}](${imageUrl})`;
+                  clientActions.push({
+                    type: "SHOW_IMAGE",
+                    payload: { imageUrl, prompt: promptStr, title: titleStr },
+                  });
+                  metadata = { type: "generate_image", imageUrl, prompt: promptStr, title: titleStr };
+                } else if (name === "play_song") {
+
                   const song = await findSongByTitle(args.title);
                   if (song) {
                     const artistList = artistNames(song).join(", ");
@@ -1163,15 +1150,28 @@ class AssistantService {
     }
 
     if (songs.length === 0 && matchedArtists.length === 0) {
+      let userProfile = null;
+      let recentProfile = null;
+      if (userId) {
+        const personalizationService = require("./personalization.service");
+        const adaptiveService = require("./adaptiveRecommendation.service");
+        [userProfile, recentProfile] = await Promise.all([
+          personalizationService.getUserMusicProfile(userId),
+          adaptiveService.getRecentInterestProfile(userId),
+        ]);
+      }
+
       songs = await findSongsByMood(
         analysis,
         matchedTopics,
         prioritizedTopics,
         MAX_PLAYLIST_SONGS,
-        { strictTopicOnly: hasMoodSignal }
+        { strictTopicOnly: hasMoodSignal, userProfile, recentProfile }
       );
       source = songs.length > 0 ? songs.length < MAX_PLAYLIST_SONGS ? "topic_partial" : "topic_match" : "topic_only";
     }
+
+
 
     if (allowArtistFlow && songs.length === 0) {
       songs = [];
@@ -1190,17 +1190,17 @@ class AssistantService {
       const songList = songs
         .map((song, index) => `${index + 1}. ${song.title} - ${artistNames(song).join(", ") || "Unknown artist"}`)
         .join("\n");
+      const aiDataLoader = require("../ai/aiDataLoader.service");
+      const djInstruction = aiDataLoader.getPrompt("music-dj");
       const promptText = [
-        "Bạn là Mood Music assistant trong app nghe nhạc.",
-        "Trả lời bằng tiếng Việt, ngắn gọn, thân thiện, tối đa 2 câu.",
-        "Câu 1: trả lời trực tiếp ý user vừa hỏi. Câu 2: mới nói về playlist đã tạo.",
-        "Chỉ mô tả đúng kết quả tìm được theo keyword/topic của user, không nói thêm bài ngoài phạm vi.",
+        djInstruction,
         `Yêu cầu user: ${prompt}`,
         `Mood phân tích: ${analysis.mood}`,
         `Ca sĩ mục tiêu (nếu có): ${primaryArtist?.name || "không"}`,
         `Trạng thái match: ${matchStatus}`,
         `Playlist:\n${songList}`,
       ].join("\n");
+
 
       try {
         if (activeModelName) {

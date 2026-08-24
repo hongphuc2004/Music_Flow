@@ -1,0 +1,32 @@
+{
+  "emotionalSignals": [
+    "tôi buồn", "mình buồn", "em buồn", "anh buồn", "tôi thấy buồn",
+    "mệt mỏi", "áp lực", "crush", "sếp mắng", "bị mắng", "tâm trạng tệ",
+    "căng thẳng", "cô đơn", "khóc", "đau lòng", "bế tắc", "tôi mệt",
+    "yêu đời", "vui quá", "nhận lương", "bình tâm", "bình tĩnh",
+    "xoa dịu", "chữa lành", "gương vỡ", "stress", "tôi vừa", "vừa bị",
+    "tôi vừa chia tay", "mình vừa chia tay", "vừa chia tay",
+    "tôi thất tình", "mình thất tình", "vừa thất tình"
+  ],
+  "explicitMusicPatterns": [
+    "^nhạc\\s+(buồn|vui|chill|rock|pop|ballad|lofi|rap|hiphop|edm|remix|sên|trẻ|sôi\\s+động|tập\\s+trung|chạy\\s+bộ|tập\\s+gym|ru\\s+ngủ|thất\\s+tình|chia\\s+tay)$",
+    "^playlist\\s+",
+    "^tìm\\s+(nhạc|bài\\s+hát)\\s+",
+    "^bật\\s+(nhạc|bài|bài\\s+hát)\\s+",
+    "^cho\\s+(tôi|mình)\\s+(xin\\s+)?(nhạc|bài\\s+hát)\\s+",
+    "^gợi\\s+ý\\s+(nhạc|bài\\s+hát)\\s+"
+  ],
+  "bypassPatterns": [
+    "^chào(\\s+bạn|\\s+ai|\\s+dj)?$",
+    "^hi(\\s+there)?$",
+    "^hello$",
+    "^cảm\\s+ơn(\\s+bạn|\\s+ai|\\s+dj)?$",
+    "^thank\\s*(you|s)?$",
+    "^tạm\\s+biệt$",
+    "^bye(\\s+bye)?$",
+    "^dừng\\s+nhạc$",
+    "^tắt\\s+nhạc$",
+    "^tiếp\\s+tục$",
+    "^hôm\\s+nay\\s+trời\\s+.*mưa.*$"
+  ]
+}

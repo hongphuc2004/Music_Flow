@@ -1,0 +1,38 @@
+{
+  "sad": {
+    "topics": ["Sad", "Lofi", "Piano", "Chill", "Acoustic"],
+    "keywords": ["buon", "sad", "co don", "tam trang", "chia tay", "that tinh", "nho", "nuoc mat", "mua"]
+  },
+  "happy": {
+    "topics": ["Pop", "EDM", "Party"],
+    "keywords": ["vui", "happy", "hanh phuc", "yeu doi", "tuoi sang", "soi dong", "dance"]
+  },
+  "chill": {
+    "topics": ["Chill", "Lofi", "Piano", "Acoustic"],
+    "keywords": ["chill", "thu gian", "relax", "nhe nhang", "binh yen", "cafe", "acoustic"]
+  },
+  "focus": {
+    "topics": ["Study", "Piano", "Lofi", "Chill"],
+    "keywords": ["tap trung", "focus", "hoc bai", "study", "piano", "lam viec", "work", "productive"]
+  },
+  "energetic": {
+    "topics": ["EDM", "Rock", "Party", "WorkOut", "Hip Hop & Rap"],
+    "keywords": ["nang luong", "energetic", "soi dong", "manh me", "bung no", "hype", "gym"]
+  },
+  "romantic": {
+    "topics": ["Pop", "Piano", "Chill", "Acoustic"],
+    "keywords": ["tinh yeu", "romantic", "lang man", "yeu", "nho nhung", "ngot ngao", "love"]
+  },
+  "sleep": {
+    "topics": ["Sleep", "Piano", "Lofi", "Chill"],
+    "keywords": ["ngu", "sleep", "dem", "yen tinh", "calm", "ru ngu", "piano"]
+  },
+  "party": {
+    "topics": ["Party", "EDM", "Pop", "Hip Hop & Rap"],
+    "keywords": ["party", "tiec", "vu truong", "dance", "dj", "club", "remix", "bass"]
+  },
+  "angry": {
+    "topics": ["Rock", "Hip Hop & Rap", "EDM"],
+    "keywords": ["tuc gian", "angry", "buc", "rock", "metal", "rage", "aggressive"]
+  }
+}

@@ -24,7 +24,7 @@ export const AssistantProvider = ({ children }) => {
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const showToast = useAppToast();
+  const { showToast } = useAppToast();
   
   // Dynamic capabilities registry
   const capabilitiesRef = useRef({});
@@ -92,7 +92,7 @@ export const AssistantProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('Failed to load conversation detail:', err);
-      showToast('Không thể tải lịch sử cuộc trò chuyện.', 'error');
+      showToast({ message: 'Không thể tải lịch sử cuộc trò chuyện.', severity: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +134,7 @@ export const AssistantProvider = ({ children }) => {
     const userRole = localStorage.getItem('role');
     if (!userRole) {
       // Trigger login prompt or toast
-      showToast('Vui lòng đăng nhập để sử dụng trợ lý AI.', 'warning');
+      showToast({ message: 'Vui lòng đăng nhập để sử dụng trợ lý AI.', severity: 'warning' });
       window.dispatchEvent(new Event('musicflow-trigger-login-dialog'));
       return;
     }
@@ -206,7 +206,7 @@ export const AssistantProvider = ({ children }) => {
       if (isQuotaError) {
         setUpgradeDialogOpen(true);
       } else {
-        showToast(errMessage || 'Có lỗi xảy ra khi trò chuyện với trợ lý.', 'error');
+        showToast({ message: errMessage || 'Có lỗi xảy ra khi trò chuyện với trợ lý.', severity: 'error' });
       }
       
       // Rollback temporary user message on failure
@@ -220,7 +220,7 @@ export const AssistantProvider = ({ children }) => {
     try {
       const res = await clientAssistantApi.deleteConversation(convId);
       if (res.data?.success) {
-        showToast('Đã xóa cuộc hội thoại.', 'success');
+        showToast({ message: 'Đã xóa cuộc hội thoại.', severity: 'success' });
         setConversations((prev) => prev.filter((c) => c._id !== convId));
         if (activeConversationId === convId) {
           startNewConversation(scope);
@@ -228,7 +228,7 @@ export const AssistantProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('Failed to delete conversation:', err);
-      showToast('Không thể xóa cuộc trò chuyện.', 'error');
+      showToast({ message: 'Không thể xóa cuộc trò chuyện.', severity: 'error' });
     }
   }, [activeConversationId, scope, startNewConversation, showToast]);
 

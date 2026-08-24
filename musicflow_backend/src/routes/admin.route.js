@@ -823,6 +823,17 @@ router.post(
           .populate("artists", "name")
           .populate("topicIds", "name");
 
+        if (songData.isPublic && Array.isArray(artistIds)) {
+          const notificationTriggerService = require("../services/notificationTrigger.service");
+          for (const aId of artistIds) {
+            notificationTriggerService.triggerArtistReleaseNotification({
+              artistId: aId,
+              song: populatedSong,
+              wasPublicBefore: false,
+            }).catch((err) => console.error("Release notification trigger error:", err.message));
+          }
+        }
+
         res.status(201).json({
           message: "Song created successfully",
           song: serializeAdminSong(populatedSong),
@@ -855,6 +866,7 @@ router.put(
         return res.status(404).json({ message: "Song not found" });
       }
 
+      const wasPublicBefore = Boolean(song.isPublic);
       const { title, artist, topicId, lyrics, isPublic, imageUrl } = req.body;
 
       if (typeof title !== "undefined") {
@@ -912,6 +924,18 @@ router.put(
         .populate("uploadedBy", "name email")
         .populate("artists", "name")
         .populate("topicIds", "name");
+
+      if (!wasPublicBefore && populatedSong.isPublic && Array.isArray(populatedSong.artists)) {
+        const notificationTriggerService = require("../services/notificationTrigger.service");
+        for (const artistObj of populatedSong.artists) {
+          const aId = artistObj._id || artistObj;
+          notificationTriggerService.triggerArtistReleaseNotification({
+            artistId: aId,
+            song: populatedSong,
+            wasPublicBefore: false,
+          }).catch((err) => console.error("Release notification trigger error:", err.message));
+        }
+      }
 
       res.json({
         message: "Song updated successfully",

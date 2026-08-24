@@ -204,7 +204,30 @@ const registerPlay = async (songId, req) => {
   });
 
   try {
-    await songRepo.updateById(song._id, { $inc: { playCount: 1 } });
+    const updatedSong = await Song.findByIdAndUpdate(
+      song._id,
+      { $inc: { playCount: 1 } },
+      { new: true, select: "title artists playCount" }
+    ).lean();
+
+    if (updatedSong) {
+      const newPlayCount = updatedSong.playCount || 0;
+      const oldPlayCount = newPlayCount - 1;
+      const milestones = [1000, 10000, 50000, 100000, 500000, 1000000];
+      const crossedMilestone = milestones.find((m) => oldPlayCount < m && newPlayCount >= m);
+
+      if (crossedMilestone && Array.isArray(updatedSong.artists) && updatedSong.artists.length > 0) {
+        const notificationTriggerService = require("./notificationTrigger.service");
+        for (const aId of updatedSong.artists) {
+          notificationTriggerService.triggerMilestoneNotification({
+            artistId: aId,
+            songId: updatedSong._id,
+            milestoneCount: crossedMilestone,
+            songTitle: updatedSong.title,
+          }).catch((err) => console.error("Milestone notification trigger error:", err.message));
+        }
+      }
+    }
   } catch (error) {
     await playEventRepo.deletePlayEventById(playEvent._id);
     throw error;

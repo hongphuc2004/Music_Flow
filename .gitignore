@@ -76,8 +76,13 @@ $RECYCLE.BIN/
 *.lnk
 backup
 
-# Backend temporary uploads (multer)
+# Backend temporary uploads (multer), scripts, runtime data & logs
 musicflow_backend/uploads/
+musicflow_backend/src/scripts/
+musicflow_backend/data/
+musicflow_backend/logs/
+
+
 
 # Ignore all dot-directories (IDE/editor configs, agent folders, etc.)
 .*/

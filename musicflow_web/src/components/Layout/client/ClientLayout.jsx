@@ -6,6 +6,8 @@ import ClientHeader from './ClientHeader';
 import ClientNowPlayingBar from './ClientNowPlayingBar';
 import ClientAuthDialog from './ClientAuthDialog';
 import ClientSongCommentsDrawer from './ClientSongCommentsDrawer';
+import { useClientPlayer } from './ClientPlayerProvider';
+import { clientSongsApi } from '../../../services/client/client.service';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -16,9 +18,14 @@ function ClientLayout({ children, title }) {
     () => localStorage.getItem('musicflow-client-sidebar-open') !== 'false'
   );
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [targetCommentId, setTargetCommentId] = useState(null);
   const [commentCount, setCommentCount] = useState(0);
   const location = useLocation();
   const theme = useTheme();
+
+  const playerCtx = useClientPlayer();
+  const currentSong = playerCtx?.currentSong;
+  const playSong = playerCtx?.playSong;
 
   const titleByPath = {
     '/client/home': 'Trang chủ',
@@ -50,6 +57,33 @@ function ClientLayout({ children, title }) {
     setMobileOpen(false);
   };
 
+  const handleOpenCommentsTarget = async ({ songId, commentId, actionUrl }) => {
+    let resolvedCommentId = commentId;
+    if (!resolvedCommentId && actionUrl && actionUrl.includes('comment=')) {
+      const match = actionUrl.match(/comment=([^&]+)/);
+      if (match && match[1]) {
+        resolvedCommentId = match[1];
+      }
+    }
+
+    if (resolvedCommentId) {
+      setTargetCommentId(resolvedCommentId);
+    }
+
+    if (songId && songId !== currentSong?._id) {
+      try {
+        const res = await clientSongsApi.getSongById(songId);
+        if (res.data?.success && res.data.song && playSong) {
+          playSong(res.data.song);
+        }
+      } catch (err) {
+        console.warn('Failed to load song from notification:', err);
+      }
+    }
+
+    setCommentsOpen(true);
+  };
+
   return (
     <Box
       sx={{
@@ -73,6 +107,7 @@ function ClientLayout({ children, title }) {
         desktopSidebarOpen={desktopOpen}
         onToggleSidebar={handleToggleMobileSidebar}
         onLogoutSuccess={handleLogoutSuccess}
+        onOpenCommentsTarget={handleOpenCommentsTarget}
       />
       <Box
         component="main"
@@ -104,9 +139,13 @@ function ClientLayout({ children, title }) {
       />
       <ClientSongCommentsDrawer
         open={commentsOpen}
-        onClose={() => setCommentsOpen(false)}
+        onClose={() => {
+          setCommentsOpen(false);
+          setTargetCommentId(null);
+        }}
         commentCount={commentCount}
         onCommentCountChanged={setCommentCount}
+        targetCommentId={targetCommentId}
       />
       <ClientAuthDialog />
     </Box>

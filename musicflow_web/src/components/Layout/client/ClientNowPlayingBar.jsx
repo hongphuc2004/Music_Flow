@@ -316,33 +316,10 @@ function ClientNowPlayingBar({
             onClick={onToggleComments}
             sx={{
               color: commentsOpen ? '#14b8a6' : 'rgba(255,255,255,0.78)',
-              position: 'relative',
               mr: 0.5,
             }}
           >
             <CommentIcon sx={{ fontSize: 25 }} />
-            {commentCount > 0 && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  bgcolor: '#14b8a6',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  minWidth: 15,
-                  height: 15,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '9px',
-                  fontWeight: 'bold',
-                  px: 0.5,
-                }}
-              >
-                {commentCount > 99 ? '99+' : commentCount}
-              </Box>
-            )}
           </IconButton>
 
           {/* Quality Selector */}

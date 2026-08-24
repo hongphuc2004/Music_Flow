@@ -130,6 +130,19 @@ exports.createComment = async (req, res) => {
     // Tăng commentCount cho bài hát
     await Song.findByIdAndUpdate(songId, { $inc: { commentCount: 1 } });
 
+    // Trigger reply interaction notification if replying to someone else's comment
+    if (parentComment && parentComment.userId && String(parentComment.userId) !== String(req.userId)) {
+      const notificationTriggerService = require("../services/notificationTrigger.service");
+      notificationTriggerService.triggerInteractionNotification({
+        recipientUserId: parentComment.userId,
+        actorId: req.userId,
+        commentId: parentComment._id,
+        songId,
+        action: "reply",
+        replyCommentId: comment._id,
+      }).catch((err) => console.error("Reply notification trigger error:", err.message));
+    }
+
     const populatedComment = await Comment.findById(comment._id)
       .populate("userId", "name avatar")
       .populate("reactions.userId", "name avatar");
@@ -296,6 +309,18 @@ exports.reactToComment = async (req, res) => {
     comment.reactionCount = comment.reactions.length;
     await comment.save();
 
+    // Trigger like notification if liking someone else's comment
+    if (comment.userId && String(comment.userId) !== String(req.userId)) {
+      const notificationTriggerService = require("../services/notificationTrigger.service");
+      notificationTriggerService.triggerInteractionNotification({
+        recipientUserId: comment.userId,
+        actorId: req.userId,
+        commentId: comment._id,
+        songId: comment.songId,
+        action: "like",
+      }).catch((err) => console.error("Like notification trigger error:", err.message));
+    }
+
     return res.json({
       success: true,
       message: "Thả cảm xúc thành công",
@@ -337,6 +362,18 @@ exports.removeReaction = async (req, res) => {
     );
     comment.reactionCount = comment.reactions.length;
     await comment.save();
+
+    // Trigger unlike notification cleanup if unliking someone else's comment
+    if (comment.userId && String(comment.userId) !== String(req.userId)) {
+      const notificationTriggerService = require("../services/notificationTrigger.service");
+      notificationTriggerService.triggerInteractionNotification({
+        recipientUserId: comment.userId,
+        actorId: req.userId,
+        commentId: comment._id,
+        songId: comment.songId,
+        action: "unlike",
+      }).catch((err) => console.error("Unlike notification trigger error:", err.message));
+    }
 
     return res.json({
       success: true,

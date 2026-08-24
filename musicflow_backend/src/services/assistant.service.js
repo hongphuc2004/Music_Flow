@@ -749,14 +749,28 @@ class AssistantService {
       let songs = [];
       let metadata = {};
 
-      // 3. AI Orchestration using Gemini Function Calling via Model Router
+      // Determine user tier for targeted model routing
+      const aiQuotaService = require("./aiQuota.service");
+      let userTier = "basic";
+      if (actorType === "User" && actorId) {
+        const userDoc = await User.findById(actorId).populate("premiumPlan").lean();
+        userTier = aiQuotaService.getUserTier(userDoc);
+      }
+
+      // 3. AI Preprocessing via Mistral Orchestrator & Gemini Model Router
       if (process.env.GEMINI_API_KEY) {
         const geminiRouter = require("./geminiRouter.service");
+        const aiOrchestrator = require("./aiOrchestrator.service");
         const systemInstruction = buildSystemInstruction(actorRole);
+
+        // Preprocess prompt via Orchestrator (Bypass / Mistral Enricher / Fallback)
+        const orchestration = await aiOrchestrator.processUserRequest({ userPrompt: cleanPrompt });
+        const promptForGemini = orchestration.promptForGemini || cleanPrompt;
 
         try {
           await geminiRouter.executeWithModelRouter({
             preferredModel,
+            userTier,
             requiresTools: true,
             task: async (modelName) => {
               const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -770,9 +784,10 @@ class AssistantService {
               const chatHistory = buildGeminiHistory(recentMessages);
               const chat = model.startChat({ history: chatHistory });
 
-              const result = await chat.sendMessage(cleanPrompt);
+              const result = await chat.sendMessage(promptForGemini);
               const response = result.response;
               const functionCalls = response.functionCalls();
+
 
               // Check if Gemini invoked any tool
               if (functionCalls && functionCalls.length > 0) {
@@ -904,6 +919,7 @@ class AssistantService {
                     userId: actorId,
                     conversationId: conversation._id,
                     activeModelName: modelName,
+                    userTier,
                   });
 
                   playlist = resObj.playlist;
@@ -1079,7 +1095,7 @@ class AssistantService {
   /**
    * Internal helper to create the actual playlist (Mood Playlist) in DB
    */
-  async generatePlaylistInternal({ prompt, mood, artistHint, userId, conversationId, activeModelName = null }) {
+  async generatePlaylistInternal({ prompt, mood, artistHint, userId, conversationId, activeModelName = null, userTier = "basic" }) {
     const allTopics = await Topic.find({}).lean();
     const mockPrompt = artistHint ? `${prompt} ${artistHint}` : prompt;
     const analysis = analyzeMood(mockPrompt);
@@ -1198,6 +1214,7 @@ class AssistantService {
           const geminiRouter = require("./geminiRouter.service");
           assistantText = await geminiRouter.executeWithModelRouter({
             requiresTools: false,
+            userTier,
             task: async (modelName) => {
               const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
               const model = genAI.getGenerativeModel({ model: modelName });

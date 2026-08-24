@@ -59,7 +59,7 @@ const formatDate = (dateStr) => {
   });
 };
 
-function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged }) {
+function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged, targetCommentId = null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useAppToast();
@@ -88,6 +88,26 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
   const [deleteConfirmComment, setDeleteConfirmComment] = useState(null);
 
   const listRef = useRef(null);
+
+  // Scroll and highlight target comment when drawer opens from notification
+  useEffect(() => {
+    if (open && targetCommentId && comments.length > 0) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`comment-${targetCommentId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const originalBg = el.style.backgroundColor;
+          el.style.transition = 'background-color 0.5s ease';
+          el.style.backgroundColor = 'rgba(20, 184, 166, 0.3)';
+          el.style.borderRadius = '12px';
+          setTimeout(() => {
+            el.style.backgroundColor = originalBg || 'transparent';
+          }, 3000);
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [open, targetCommentId, comments]);
 
   const fetchComments = useCallback(async (reset = false) => {
     if (!currentSong?._id) return;

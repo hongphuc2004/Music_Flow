@@ -331,7 +331,7 @@ function ClientPremium() {
                       }}
                     >
                       {/* Highlight Badge */}
-                      {highlightBadge && (
+                      {highlightBadge && !isCurrentPlan && (
                         <Box
                           sx={{
                             position: 'absolute',

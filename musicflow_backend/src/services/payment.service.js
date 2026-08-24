@@ -145,8 +145,10 @@ async function activateSubscription(transactionRef, gatewayResponse, paidAt) {
 
   let startDate = new Date();
 
+  const isRenewal = Boolean(user.isPremium && user.premiumExpiry && user.premiumExpiry > new Date());
+
   // Logic Gia hạn: Cộng dồn nếu Premium cũ vẫn còn hạn
-  if (user.isPremium && user.premiumExpiry && user.premiumExpiry > new Date()) {
+  if (isRenewal) {
     startDate = new Date(user.premiumExpiry);
   }
 
@@ -168,6 +170,15 @@ async function activateSubscription(transactionRef, gatewayResponse, paidAt) {
   user.premiumExpiry = endDate;
   user.premiumPlan = transaction.plan._id;
   await user.save();
+
+  // 7. Trigger subscription notification (purchase vs renewal)
+  const notificationTriggerService = require("./notificationTrigger.service");
+  notificationTriggerService.triggerSubscriptionNotification({
+    userId: user._id,
+    action: isRenewal ? "renewal" : "purchase",
+    planName: transaction.plan?.name || "PREMIUM",
+    subscriptionId: subscription._id,
+  }).catch((err) => console.error("Subscription notification trigger error:", err.message));
 
   return {
     success: true,

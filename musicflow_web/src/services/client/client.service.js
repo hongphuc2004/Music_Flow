@@ -7,6 +7,7 @@ export const clientAuthApi = {
 
 // Client Songs API
 export const clientSongsApi = {
+  getSongById: (songId) => api.get(`/songs/${songId}`),
   getAllPublic: (params = { page: 1, limit: 50 }) => cachedGet('/songs', { params }, 30000),
   getRecommended: (params = {}) => {
     if (String(params.refresh || '').toLowerCase() === 'true') {
@@ -117,6 +118,13 @@ export const clientCommentsApi = {
   delete: (id) => api.delete(`/comments/${id}`),
   react: (id) => api.put(`/comments/${id}/reactions`, { type: 'like' }),
   unreact: (id) => api.delete(`/comments/${id}/reactions`),
+};
+
+// Client Notifications API
+export const clientNotificationsApi = {
+  getAll: () => api.get('/notifications'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
 };
 
 // Song stream url resolver

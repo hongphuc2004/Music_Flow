@@ -74,11 +74,93 @@ async function checkQuota(userId) {
     throw error;
   }
 
+  if (count < limit) {
+    // Fire-and-forget background check for quota restored event
+    checkAndTriggerQuotaRestored(userId).catch((err) =>
+      console.error("Background quota restored check error:", err.message)
+    );
+  }
+
   return { isPremium: user.isPremium, remaining: limit - count };
+}
+
+/**
+ * Evaluates whether the user's rolling 24h AI quota transitioned from exhausted (>= limit)
+ * back to available (< limit). If so, triggers triggerQuotaRestoredNotification.
+ */
+async function checkAndTriggerQuotaRestored(userId) {
+  try {
+    const user = await User.findById(userId).populate("premiumPlan").lean();
+    if (!user) return;
+
+    let limit = 5;
+    if (hasPremiumAccess(user)) {
+      const planName = user.premiumPlan?.name || "";
+      if (planName === "Gói GO") limit = 10;
+      else if (planName === "Gói PLUS") limit = 15;
+      else limit = 20;
+    }
+
+    const conversations = await AssistantConversation.find({ actorId: userId }).select("_id").lean();
+    const conversationIds = conversations.map((c) => c._id);
+    if (conversationIds.length === 0) return;
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const currentCount = await AssistantMessage.countDocuments({
+      conversationId: { $in: conversationIds },
+      role: "user",
+      createdAt: { $gte: oneDayAgo },
+    });
+
+    if (currentCount < limit) {
+      const oldestMessage24h = await AssistantMessage.findOne({
+        conversationId: { $in: conversationIds },
+        role: "user",
+        createdAt: { $gte: oneDayAgo },
+      }).sort({ createdAt: 1 }).lean();
+
+      if (oldestMessage24h) {
+        const oldestMessageExpiryTimestamp = new Date(oldestMessage24h.createdAt).getTime() + 24 * 60 * 60 * 1000;
+        const notificationTriggerService = require("./notificationTrigger.service");
+        await notificationTriggerService.triggerQuotaRestoredNotification({
+          userId,
+          previousCount: limit,
+          currentCount,
+          limit,
+          oldestMessageExpiryTimestamp,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Failed to check and trigger quota restored notification:", err.message);
+  }
+}
+
+/**
+ * Resolves the subscription tier code ("premium" | "plus" | "go" | "basic") for a user document.
+ * @param {Object} user - Mongoose User document or user object
+ * @returns {string} Tier code
+ */
+function getUserTier(user) {
+  if (!user || !hasPremiumAccess(user)) {
+    return "basic";
+  }
+  const planName = user.premiumPlan?.name || "";
+  if (planName === "Gói GO") {
+    return "go";
+  }
+  if (planName === "Gói PLUS") {
+    return "plus";
+  }
+  return "premium";
 }
 
 module.exports = {
   checkQuota,
   acquireLock,
   releaseLock,
+  getUserTier,
+  checkAndTriggerQuotaRestored,
 };
+

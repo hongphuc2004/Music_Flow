@@ -30,6 +30,7 @@ const userRoute = require("./routes/user.route");
 const planRoute = require("./routes/plan.route");
 const subscriptionRoute = require("./routes/subscription.route");
 const adminPremiumRoute = require("./routes/admin-premium.route");
+const notificationRoute = require("./routes/notification.route");
 
 const adminRoute = require("./routes/admin.route");
 const commentRoute = require("./routes/comment.route");
@@ -38,6 +39,7 @@ const aiRoute = require("./routes/ai.route");
 const assistantRoute = require("./routes/assistant.route");
 const { cloudinaryRootFolder } = require("./config/cloudinaryFolders");
 const { startMonthlyListenersJob } = require("./jobs/monthlyListeners.job");
+const { startSubscriptionExpiryJob } = require("./jobs/subscriptionExpiry.job");
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:3000")
@@ -111,6 +113,7 @@ app.use("/api/users", userRoute);
 app.use("/api/plans", planRoute);
 app.use("/api/subscriptions", subscriptionRoute);
 app.use("/api/admin/premium", adminPremiumRoute);
+app.use("/api/notifications", notificationRoute);
 app.use("/api/admin", adminRoute);
 
 app.use("/api/comments", commentRoute);
@@ -166,6 +169,7 @@ mongoose
     logger.info(`Environment: ${process.env.NODE_ENV}`);
     logger.info(`MongoDB connected: ${conn.connection.host}`);
     startMonthlyListenersJob();
+    startSubscriptionExpiryJob();
   })
   .catch((err) => logger.error("MongoDB connection error on startup: %s", err.stack || err));
 

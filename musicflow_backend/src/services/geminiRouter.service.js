@@ -11,7 +11,27 @@ const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
 const exhaustedModels = new Map(); // modelName -> unavailableUntil Date
 const prunedModels = new Set(); // modelNames that returned 404
 
-// Safe fallback pool (strictly active models as of today, no deprecated/shutdown models)
+// Local RPD limits configured directly from Google AI Studio Rate Limit Dashboard
+const MODEL_ROUTING_RPD_LIMITS = {
+  "gemini-3.5-flash-lite": 500,
+  "gemini-3.1-flash-lite": 500,
+  "gemini-3.7-flash": 20,
+  "gemini-3.5-flash": 20,
+  "gemini-2.5-flash": 20,
+  "gemini-3.6-flash": 20,
+  "gemini-3-flash-preview": 20,
+  "gemini-2.5-flash-lite": 20,
+};
+
+// Model pools mapped strictly per MusicFlow subscription tier
+const TIER_MODEL_POOLS = {
+  premium: ["gemini-3.5-flash-lite", "gemini-3.7-flash"],
+  plus: ["gemini-3.5-flash", "gemini-3.1-flash-lite"],
+  go: ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-3-flash-preview"],
+  basic: ["gemini-2.5-flash-lite"],
+};
+
+// Safe fallback pool for offline/emergency fallback
 const SAFE_FALLBACK_POOL = [
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
@@ -19,7 +39,8 @@ const SAFE_FALLBACK_POOL = [
   "gemini-1.5-pro-latest",
 ];
 
-const LAST_KNOWN_GOOD_PATH = path.join(__dirname, "../config/last_known_good_models.json");
+// Store outside src/ so nodemon does NOT watch it and restart the server on every Gemini model fetch
+const LAST_KNOWN_GOOD_PATH = path.join(__dirname, "../../data/last_known_good_models.json");
 
 // Helper to delay execution
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,7 +52,6 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function getNextMidnightLA() {
   const now = new Date();
   
-  // Get current date components in America/Los_Angeles timezone
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Los_Angeles",
     year: "numeric",
@@ -49,31 +69,75 @@ function getNextMidnightLA() {
     map[p.type] = p.value;
   });
 
-  // Construct a pseudo-UTC Date representing current LA time components
   const currentLAInUTC = Date.UTC(
     parseInt(map.year),
-    parseInt(map.month) - 1, // 0-indexed
+    parseInt(map.month) - 1,
     parseInt(map.day),
     parseInt(map.hour),
     parseInt(map.minute),
     parseInt(map.second)
   );
 
-  // Offset in milliseconds between UTC and LA time at this exact moment
   const offsetMs = now.getTime() - currentLAInUTC;
 
-  // Tomorrow's midnight components in LA
   const tomorrowMidnightLAInUTC = Date.UTC(
     parseInt(map.year),
     parseInt(map.month) - 1,
-    parseInt(map.day) + 1, // Next day
+    parseInt(map.day) + 1,
     0, 0, 0, 0
   );
 
-  // Actual UTC timestamp of tomorrow's LA midnight
   const nextMidnightUTCTimestamp = tomorrowMidnightLAInUTC + offsetMs;
-
   return new Date(nextMidnightUTCTimestamp);
+}
+
+// Local RPD usage tracking counter (modelCleanName -> localUsedCount)
+const modelRpdTracker = new Map();
+let nextResetDate = getNextMidnightLA();
+
+/**
+ * Resets local RPD usage tracker if LA midnight has passed.
+ */
+function checkAndResetRpdTracker() {
+  if (new Date() >= nextResetDate) {
+    modelRpdTracker.clear();
+    nextResetDate = getNextMidnightLA();
+    console.log("modelRpdTracker reset at America/Los_Angeles midnight:", nextResetDate.toISOString());
+  }
+}
+
+/**
+ * Calculates remaining RPD for a given model clean name based on local usage tracker.
+ */
+function getRemainingRpd(modelName) {
+  checkAndResetRpdTracker();
+  const cleanName = modelName.replace(/^models\//, "");
+  const limit = MODEL_ROUTING_RPD_LIMITS[cleanName] ?? 20;
+  const used = modelRpdTracker.get(cleanName) || 0;
+  return Math.max(0, limit - used);
+}
+
+/**
+ * Increments local RPD usage tracker when an API request is actually dispatched.
+ */
+function incrementRpdUsage(modelName) {
+  checkAndResetRpdTracker();
+  const cleanName = modelName.replace(/^models\//, "");
+  const current = modelRpdTracker.get(cleanName) || 0;
+  modelRpdTracker.set(cleanName, current + 1);
+}
+
+/**
+ * Marks a model as RPD exhausted until LA midnight.
+ */
+function markRpdExhausted(modelName) {
+  checkAndResetRpdTracker();
+  const cleanName = modelName.replace(/^models\//, "");
+  const limit = MODEL_ROUTING_RPD_LIMITS[cleanName] ?? 20;
+  modelRpdTracker.set(cleanName, limit); // Set remaining RPD to 0
+  const resetTime = getNextMidnightLA();
+  exhaustedModels.set(cleanName, resetTime);
+  exhaustedModels.set(`models/${cleanName}`, resetTime);
 }
 
 /**
@@ -130,7 +194,6 @@ async function fetchModels() {
     
     if (response.data && Array.isArray(response.data.models)) {
       const modelsList = response.data.models;
-      // Extract model names and save to memory and disk cache
       const rawModelNames = modelsList.map(m => m.name);
       saveLastKnownGoodPool(rawModelNames);
 
@@ -152,13 +215,11 @@ function loadFallbackPool() {
   const goodPool = loadLastKnownGoodPool();
   const poolToUse = goodPool || SAFE_FALLBACK_POOL;
   
-  // Format as mock API response structures
   return poolToUse.map((name) => {
-    // If name doesn't start with models/, add it for compatibility
     const fullName = name.startsWith("models/") ? name : `models/${name}`;
     return {
       name: fullName,
-      supportedGenerationMethods: ["generateContent"], // Assume basic content capability
+      supportedGenerationMethods: ["generateContent"],
       displayName: name,
     };
   });
@@ -168,46 +229,16 @@ function loadFallbackPool() {
  * Checks if a model is currently marked as exhausted.
  */
 function isModelExhausted(modelName) {
-  if (exhaustedModels.has(modelName)) {
-    const unavailableUntil = exhaustedModels.get(modelName);
+  const cleanName = modelName.replace(/^models\//, "");
+  if (exhaustedModels.has(cleanName) || exhaustedModels.has(`models/${cleanName}`)) {
+    const unavailableUntil = exhaustedModels.get(cleanName) || exhaustedModels.get(`models/${cleanName}`);
     if (new Date() < unavailableUntil) {
       return true;
     }
-    // Lock period expired
-    exhaustedModels.delete(modelName);
+    exhaustedModels.delete(cleanName);
+    exhaustedModels.delete(`models/${cleanName}`);
   }
   return false;
-}
-
-/**
- * Ranks and scores models according to version, GA stability, and workload tier.
- */
-function calculateModelScore(modelName) {
-  const cleanName = modelName.replace(/^models\//, "");
-  
-  // 1. Version extraction
-  let version = 1.0;
-  const versionMatch = cleanName.match(/gemini-(\d+\.?\d*)/);
-  if (versionMatch) {
-    version = parseFloat(versionMatch[1]);
-  }
-  let score = version * 10;
-
-  // 2. Adjust for Tier
-  if (cleanName.includes("pro")) {
-    score += 1.0; // Pro
-  } else if (cleanName.includes("flash-lite")) {
-    score += 0.2; // Lite
-  } else if (cleanName.includes("flash")) {
-    score += 0.5; // Standard Flash
-  }
-
-  // 3. Adjust for stability (Previews have penalty)
-  if (cleanName.includes("-preview") || cleanName.includes("-experimental")) {
-    score -= 0.1;
-  }
-
-  return score;
 }
 
 /**
@@ -216,36 +247,57 @@ function calculateModelScore(modelName) {
 function classifyError(error) {
   const msg = (error.message || "").toLowerCase();
   const status = error.status || (error.response ? error.response.status : null);
+  const responseData = error.response ? JSON.stringify(error.response.data || "").toLowerCase() : "";
+  const fullText = `${msg} ${responseData}`;
 
   // 1. Not Found (404)
-  if (status === 404 || msg.includes("not found") || msg.includes("404")) {
+  if (status === 404 || fullText.includes("not found") || fullText.includes("404")) {
     return { action: "prune" };
   }
 
   // 2. Bad Request (400) - Client issue (no fallback/retry)
-  if (status === 400 || msg.includes("400") || msg.includes("invalid argument") || msg.includes("invalid request")) {
+  if (status === 400 || fullText.includes("400") || fullText.includes("invalid argument") || fullText.includes("invalid request")) {
     return { action: "throw" };
   }
 
-  // 3. Quota Limit / Resource Exhausted (429)
-  if (status === 429 || msg.includes("429") || msg.includes("resource_exhausted") || msg.includes("quota")) {
-    const isDaily = (msg.includes("daily") || msg.includes("per day") || msg.includes("limit exceeded")) &&
-                    !msg.includes("rpm") && !msg.includes("tpm") && !msg.includes("minute") && !msg.includes("request");
-    if (isDaily) {
+  // 3. Quota / Rate Limit (429)
+  if (status === 429 || fullText.includes("429") || fullText.includes("resource_exhausted") || fullText.includes("quota")) {
+    // Explicit Daily Quota / RPD check
+    const isDailyQuota =
+      (fullText.includes("daily") || fullText.includes("per day") || fullText.includes("requests per day") || fullText.includes("day quota")) &&
+      !fullText.includes("rpm") &&
+      !fullText.includes("tpm") &&
+      !fullText.includes("per minute") &&
+      !fullText.includes("requests per minute") &&
+      !fullText.includes("tokens per minute");
+
+    if (isDailyQuota) {
       return { action: "exhaust" };
     }
-    
-    // Extract Retry-After if available
+
+    const isRpmOrTpm =
+      fullText.includes("rpm") ||
+      fullText.includes("tpm") ||
+      fullText.includes("per minute") ||
+      fullText.includes("requests per minute") ||
+      fullText.includes("tokens per minute");
+
     let retryAfterSecs = null;
     if (error.response && error.response.headers && error.response.headers["retry-after"]) {
       retryAfterSecs = parseInt(error.response.headers["retry-after"]);
     }
-    return { action: "retry", delayMs: retryAfterSecs ? retryAfterSecs * 1000 : null };
+
+    if (isRpmOrTpm) {
+      return { action: "retry", subType: "rpm_tpm", delayMs: retryAfterSecs ? retryAfterSecs * 1000 : null };
+    }
+
+    // Uncertain 429: DO NOT mark RPD exhausted! Retry/backoff first.
+    return { action: "retry", subType: "uncertain", delayMs: retryAfterSecs ? retryAfterSecs * 1000 : null };
   }
 
   // 4. Overloaded / Service Unavailable (503)
-  if (status === 503 || msg.includes("503") || msg.includes("unavailable") || msg.includes("overloaded")) {
-    return { action: "retry" };
+  if (status === 503 || fullText.includes("503") || fullText.includes("unavailable") || fullText.includes("overloaded")) {
+    return { action: "retry", subType: "503" };
   }
 
   // 5. Generic Error
@@ -253,85 +305,88 @@ function classifyError(error) {
 }
 
 /**
- * Resolves list of candidate models matching the requested capability.
+ * Resolves list of candidate models matching the user subscription tier.
  */
-async function getCandidateModels({ requiresTools = false, preferredModel = null }) {
+async function getCandidateModels({ requiresTools = false, preferredModel = null, userTier = "basic" }) {
   const rawPool = await fetchModels();
 
-  const filtered = rawPool.filter((m) => {
-    const fullName = m.name;
-    const cleanName = fullName.replace(/^models\//, "");
+  const normalizedTier = (userTier || "basic").toLowerCase();
+  const poolNames = TIER_MODEL_POOLS[normalizedTier] || TIER_MODEL_POOLS.basic;
 
-    // Must be in active pool
-    if (prunedModels.has(fullName) || prunedModels.has(cleanName)) return false;
-    if (isModelExhausted(fullName) || isModelExhausted(cleanName)) return false;
+  const availableSet = new Set(
+    rawPool
+      .filter((m) => {
+        const cleanName = m.name.replace(/^models\//, "");
+        if (Array.isArray(m.supportedGenerationMethods) && !m.supportedGenerationMethods.includes("generateContent")) {
+          return false;
+        }
+        if (requiresTools && cleanName.startsWith("gemma")) {
+          return false;
+        }
+        return true;
+      })
+      .map((m) => m.name.replace(/^models\//, ""))
+  );
 
-    // Rely on supportedGenerationMethods metadata
-    if (Array.isArray(m.supportedGenerationMethods) && !m.supportedGenerationMethods.includes("generateContent")) {
-      return false;
-    }
+  const candidateList = [];
 
-    // Exclude special models (Image, TTS, robotics, computer-use, deep-research, embedding, live)
-    const safetyBlacklist = [
-      "-tts",
-      "-image",
-      "image-preview",
-      "robotics",
-      "lyria",
-      "computer-use",
-      "nano-banana",
-      "deep-research",
-      "antigravity",
-      "embedding",
-      "aqa",
-      "text-embedding",
-    ];
-    if (safetyBlacklist.some((bad) => cleanName.toLowerCase().includes(bad))) {
-      return false;
-    }
+  for (const modelName of poolNames) {
+    const cleanName = modelName.replace(/^models\//, "");
 
-    // If orchestration/tools required, filter out models that lack function calling support (like Gemma)
-    if (requiresTools) {
-      if (cleanName.startsWith("gemma")) return false;
-    }
+    if (prunedModels.has(cleanName) || prunedModels.has(`models/${cleanName}`)) continue;
+    if (isModelExhausted(cleanName) || isModelExhausted(`models/${cleanName}`)) continue;
 
-    return true;
-  });
+    const remainingRpd = getRemainingRpd(cleanName);
+    if (remainingRpd <= 0) continue;
 
-  // Calculate scores and sort
-  const scored = filtered.map((m) => ({
-    model: m.name,
-    score: calculateModelScore(m.name),
-  }));
-
-  scored.sort((a, b) => b.score - a.score);
-  let candidates = scored.map((item) => item.model);
-
-  // If preferredModel is supplied, force it to the front of candidates (even if not in discovered list)
-  if (preferredModel) {
-    const cleanPref = preferredModel.replace(/^models\//, "");
-    candidates = candidates.filter(c => c.replace(/^models\//, "") !== cleanPref);
-    candidates.unshift(cleanPref);
+    candidateList.push({
+      cleanName,
+      remainingRpd,
+      isAvailableInApi: availableSet.has(cleanName),
+    });
   }
 
-  // Ensure every returned name has models/ prefix removed to match GoogleGenerativeAI SDK expectations
-  return candidates.map(name => name.replace(/^models\//, ""));
+  // Fallback to poolNames if fetchModels was empty / mocked, filtering pruned & exhausted
+  const validCandidates = candidateList.length > 0
+    ? candidateList
+    : poolNames
+        .map((name) => name.replace(/^models\//, ""))
+        .filter((cleanName) => {
+          if (prunedModels.has(cleanName) || isModelExhausted(cleanName)) return false;
+          return getRemainingRpd(cleanName) > 0;
+        })
+        .map((cleanName) => ({ cleanName, remainingRpd: getRemainingRpd(cleanName) }));
+
+  // Sort descending by remaining RPD
+  validCandidates.sort((a, b) => b.remainingRpd - a.remainingRpd);
+
+  let candidates = validCandidates.map((c) => c.cleanName);
+
+  // If preferredModel is supplied and belongs to current tier pool, force it to front
+  if (preferredModel) {
+    const cleanPref = preferredModel.replace(/^models\//, "");
+    if (poolNames.some((n) => n.replace(/^models\//, "") === cleanPref)) {
+      candidates = candidates.filter((c) => c !== cleanPref);
+      candidates.unshift(cleanPref);
+    }
+  }
+
+  return candidates;
 }
 
 /**
  * Centralized wrapper to execute a block of Gemini code with routing, retries, and fallbacks.
  */
-async function executeWithModelRouter({ task, requiresTools = true, preferredModel = null }) {
-  const candidates = await getCandidateModels({ requiresTools, preferredModel });
+async function executeWithModelRouter({ task, requiresTools = true, preferredModel = null, userTier = "basic" }) {
+  const candidates = await getCandidateModels({ requiresTools, preferredModel, userTier });
   
   if (candidates.length === 0) {
-    throw new Error("No Gemini models available in the pool");
+    throw new Error(`Không có Gemini model khả dụng nào thuộc gói tài khoản ${userTier}`);
   }
 
   let lastError = null;
   for (const modelName of candidates) {
-    // Double check exhaustion (might have updated inside loop)
-    if (isModelExhausted(modelName)) {
+    if (isModelExhausted(modelName) || getRemainingRpd(modelName) <= 0) {
       continue;
     }
 
@@ -341,6 +396,9 @@ async function executeWithModelRouter({ task, requiresTools = true, preferredMod
 
     while (attempts <= maxRetries) {
       try {
+        // Increment local RPD tracker ONLY when an actual HTTP request task is executed
+        incrementRpdUsage(modelName);
+
         // Run the task and return result immediately on success
         return await task(modelName);
       } catch (error) {
@@ -350,52 +408,53 @@ async function executeWithModelRouter({ task, requiresTools = true, preferredMod
           console.warn(`Pruning Gemini model ${modelName} due to 404/Not Found`);
           prunedModels.add(modelName);
           prunedModels.add(`models/${modelName}`);
-          // Remove from local cache file if exists
           const goodPool = loadLastKnownGoodPool();
           if (goodPool) {
             const updatedPool = goodPool.filter(n => n !== modelName && n !== `models/${modelName}`);
             saveLastKnownGoodPool(updatedPool);
           }
-          break; // Break retry loop, move to next model
+          break; // Fallback to next candidate in tier
         }
 
         if (errorInfo.action === "exhaust") {
-          const resetTime = getNextMidnightLA();
-          console.warn(`Daily quota limit hit for ${modelName}. Marking unavailable until LA midnight: ${resetTime.toISOString()}`);
-          exhaustedModels.set(modelName, resetTime);
-          exhaustedModels.set(`models/${modelName}`, resetTime);
-          break; // Break retry loop, fallback to next model
+          console.warn(`Daily RPD quota limit hit for ${modelName}. Marking unavailable until LA midnight.`);
+          markRpdExhausted(modelName);
+          break; // Fallback immediately to next model in tier
         }
 
         if (errorInfo.action === "throw") {
-          // Bad request, do not fallback or retry
-          throw error;
+          throw error; // Bad request, do not retry or fallback
         }
 
         if (errorInfo.action === "retry" && attempts < maxRetries) {
           attempts++;
           const waitTime = errorInfo.delayMs || delayMs;
-          console.warn(`Gemini rate limit or 503 on ${modelName}. Retrying attempt ${attempts}/${maxRetries} in ${waitTime}ms...`);
+          console.warn(`Gemini API retry on ${modelName} (Reason: ${errorInfo.subType || "rate_limit"}). Attempt ${attempts}/${maxRetries} in ${waitTime}ms...`);
           await sleep(waitTime);
-          delayMs *= 2; // Exponential backoff (if custom delay was not supplied)
+          delayMs *= 2;
           continue; // Loop and retry same model
         }
 
-        // Generic fallback or exhausted all retries for standard rate limit / 503
-        console.warn(`Failed execution on ${modelName} (Attempts: ${attempts + 1}). Trying next candidate.`);
+        // Generic fallback or exhausted retries for RPM/TPM/503/uncertain
+        console.warn(`Failed execution on ${modelName} (Attempts: ${attempts + 1}). Fallback to next candidate in tier.`);
         lastError = error;
-        break; // Break retry loop, fallback to next model
+        break; // Break retry loop, move to next model in tier
       }
     }
   }
 
-  throw lastError || new Error("All Gemini models in pool failed to execute");
+  throw lastError || new Error(`Tất cả Gemini model thuộc gói ${userTier} đều không thể phản hồi`);
 }
 
 module.exports = {
   executeWithModelRouter,
   getNextMidnightLA,
   getCandidateModels,
+  getRemainingRpd,
+  incrementRpdUsage,
+  markRpdExhausted,
+  MODEL_ROUTING_RPD_LIMITS,
+  TIER_MODEL_POOLS,
   prunedModels,
   exhaustedModels,
   modelCache,

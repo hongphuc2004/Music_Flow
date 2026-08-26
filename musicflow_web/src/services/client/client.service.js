@@ -21,6 +21,8 @@ export const clientSongsApi = {
   getLyrics: (songId) => api.get(`/songs/${songId}/lyrics`),
   getSimilar: (songId, params = {}, options = {}) => api.get(`/songs/${songId}/similar`, { params, ...options }),
   trackPlay: (songId) => api.post(`/songs/${songId}/play`),
+  updatePlayFeedback: (songId, eventId, payload) => api.patch(`/songs/${songId}/play-events/${eventId}`, payload),
+
   getMyUploads: () => api.get('/songs/my-uploads'),
   getMyDownloadHistory: (params) => api.get('/songs/download-history', { params }),
   removeFromDownloadHistory: (songId) => api.delete(`/songs/download-history/${songId}`),
@@ -81,7 +83,9 @@ export const clientAiApi = {
 };
 
 export const clientAssistantApi = {
+  getQuota: () => api.get('/ai/assistant/quota'),
   getConversations: (params) => api.get('/ai/assistant/conversations', { params }),
+
   getConversation: (id) => api.get(`/ai/assistant/conversations/${id}`),
   sendMessage: (payload) => api.post('/ai/assistant/messages', payload),
   deleteConversation: (id) => api.delete(`/ai/assistant/conversations/${id}`),

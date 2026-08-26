@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState, useMemo, useEffect } from 'react';
+import { Suspense, useState, useMemo, useEffect } from 'react';
+
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import AppToastProvider from './components/common/AppToastProvider';
@@ -8,6 +9,8 @@ import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/ro
 import { ColorModeContext } from './context/ColorModeContext';
 import { AssistantProvider } from './features/assistant/AssistantProvider';
 import AssistantHost from './features/assistant/AssistantHost';
+import ClientPlayerBoundary from './components/Layout/client/ClientPlayerBoundary';
+
 
 const Dashboard = createLazyRoute('/');
 const Accounts = createLazyRoute('/accounts');
@@ -38,7 +41,7 @@ const ClientRankings = createLazyRoute('/client/rankings');
 const ClientAiMood = createLazyRoute('/client/ai-mood');
 const ClientPremium = createLazyRoute('/client/premium');
 const ClientPaymentReturn = createLazyRoute('/client/premium/vnpay-return');
-const ClientPlayerBoundary = lazy(() => import('./components/Layout/client/ClientPlayerBoundary'));
+
 
 const ProtectedRoute = ({ children, role }) => {
   const userRole = localStorage.getItem('role');

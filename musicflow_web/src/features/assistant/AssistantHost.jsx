@@ -424,7 +424,7 @@ export default function AssistantHost() {
                               <Box sx={{ mt: 1.5, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
                                 <Box
                                   component="img"
-                                  src={msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^\)]+)\)/)?.[1]}
+                                  src={msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^)]+)\)/)?.[1]}
                                   alt={msg.metadata?.prompt || "AI Artwork"}
                                   sx={{
                                     width: '100%',
@@ -435,7 +435,7 @@ export default function AssistantHost() {
                                     transition: 'transform 0.3s',
                                     '&:hover': { transform: 'scale(1.02)' },
                                   }}
-                                  onClick={() => window.open(msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^\)]+)\)/)?.[1], '_blank')}
+                                  onClick={() => window.open(msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^)]+)\)/)?.[1], '_blank')}
                                 />
                               </Box>
                             )}
@@ -656,10 +656,10 @@ export default function AssistantHost() {
 // Hỗ trợ hiển thị Playlist thu nhỏ trong khung chat trợ lý
 function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
   const playlist = playlists.find(p => p._id === playlistId || p.id === playlistId);
-  if (!playlist) return null;
-  const songs = playlist.songs || [];
   const { currentSong, isPlaying, executeCapability } = useAssistant();
   const containerRef = useRef(null);
+  
+  const songs = playlist?.songs || [];
 
   const isCurrentPlaylistPlaying = (() => {
     if (!isPlaying || !currentSong) return false;
@@ -715,11 +715,29 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
         boxSizing: 'border-box',
       }}
     >
+      {playlist.imageUrl && (
+        <Box sx={{ mb: 1.5, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+          <Box
+            component="img"
+            src={playlist.imageUrl}
+            alt={playlist.title}
+            sx={{
+              width: '100%',
+              height: 140,
+              objectFit: 'cover',
+              display: 'block',
+              transition: 'transform 0.3s',
+              '&:hover': { transform: 'scale(1.03)' },
+            }}
+          />
+        </Box>
+      )}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <SparklesIcon sx={{ color: '#8b5cf6', fontSize: 16 }} />
         <Typography variant="caption" fontWeight={850} noWrap sx={{ flexGrow: 1, color: 'text.primary' }}>
           {playlist.title}
         </Typography>
+
         {songs.length > 0 && (
           <Tooltip title={isCurrentPlaylistPlaying ? "Tạm dừng" : "Phát tất cả"}>
             <IconButton

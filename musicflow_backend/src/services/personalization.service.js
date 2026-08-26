@@ -65,25 +65,39 @@ async function getUserMusicProfile(userId, options = {}) {
         .limit(100)
         .populate({
           path: "songId",
-          select: "topicIds artists",
+          select: "topicIds artists aiAnalysis title",
         })
         .lean(),
       Favorite.find({ userId: userObjId }).select("songId").lean(),
       SongLike.find({ userId: userObjId }).select("songId").lean(),
-      User.findById(userObjId).select("favoriteSongs followedArtists").lean(),
+      User.findById(userObjId).select("favoriteSongs followedArtists aiMemory").lean(),
     ]);
 
-    // Track recently played song IDs (up to 10)
+
+    // Track recently played, skipped, and completed song IDs
     const recentlyPlayedSongIds = [];
     const recentSeen = new Set();
+    const skippedSongSet = new Set();
+    const completedSongSet = new Set();
+
     for (const evt of playEvents) {
       const sId = evt.songId?._id ? evt.songId._id.toString() : evt.songId?.toString();
-      if (sId && !recentSeen.has(sId)) {
-        recentSeen.add(sId);
-        recentlyPlayedSongIds.push(sId);
-        if (recentlyPlayedSongIds.length >= 10) break;
+      if (sId) {
+        if (!recentSeen.has(sId)) {
+          recentSeen.add(sId);
+          recentlyPlayedSongIds.push(sId);
+        }
+        if (evt.skipped) {
+          skippedSongSet.add(sId);
+        }
+        if (evt.completed || (evt.replayCount || 0) > 0) {
+          completedSongSet.add(sId);
+        }
       }
     }
+    const skippedSongIds = Array.from(skippedSongSet);
+    const completedSongIds = Array.from(completedSongSet);
+
 
     // Collect all favorite & liked song IDs
     const favSet = new Set();
@@ -162,15 +176,38 @@ async function getUserMusicProfile(userId, options = {}) {
 
     const isColdStart = playEvents.length === 0 && favoriteSongIds.length === 0 && (userDoc?.followedArtists?.length || 0) === 0;
 
+    // Calculate or retrieve User.aiMemory
+    let aiMemory = userDoc?.aiMemory || null;
+    if (!isColdStart && playEvents.length >= 5) {
+      aiMemory = await computeAndUpdateUserAiMemory(userKey, userObjId, playEvents, userDoc);
+    } else if (!aiMemory) {
+      aiMemory = {
+        topMoods: [],
+        topThemes: [],
+        preferredEnergy: "mixed",
+        timeSlotPreferences: {
+          morning: { moods: [], energy: "mixed" },
+          afternoon: { moods: [], energy: "mixed" },
+          evening: { moods: [], energy: "mixed" },
+          night: { moods: [], energy: "mixed" },
+        },
+        lastCalculatedAt: new Date(),
+      };
+    }
+
     const profile = {
       userId: userKey,
       isColdStart,
       preferredTopicIds: sortedTopicIds,
       preferredArtistIds: sortedArtistIds,
       recentlyPlayedSongIds,
+      skippedSongIds,
+      completedSongIds,
       favoriteSongIds,
+      aiMemory,
       computedAt: new Date(),
     };
+
 
     // Store in cache
     profileCache.set(userKey, {
@@ -185,6 +222,7 @@ async function getUserMusicProfile(userId, options = {}) {
   }
 }
 
+
 /**
  * Clears cached profile for a user (useful during tests or when profile is updated)
  */
@@ -196,7 +234,166 @@ function clearUserCache(userId) {
   }
 }
 
+// Configurable memory weights for preference calculation
+const MEMORY_WEIGHTS = {
+  completed: 3.0,
+  normalPlay: 1.0,
+  skipped: -2.0,
+  replay: 3.0,
+};
+
+// In-memory lock map for deduplicating concurrent memory updates per user
+const activeMemoryCalculationMap = new Map();
+
+function getTimeSlot(date = new Date()) {
+  const hour = new Date(date).getHours();
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 18) return "afternoon";
+  if (hour >= 18 && hour < 23) return "evening";
+  return "night"; // 23:00 - 04:59
+}
+
+async function computeAndUpdateUserAiMemory(userKey, userObjId, playEvents, userDoc) {
+  if (activeMemoryCalculationMap.has(userKey)) {
+    return activeMemoryCalculationMap.get(userKey);
+  }
+
+  const calcPromise = (async () => {
+    try {
+      const moodScores = new Map();
+      const themeScores = new Map();
+      const energyScores = new Map();
+
+      const timeSlotMaps = {
+        morning: { moods: new Map(), energy: new Map() },
+        afternoon: { moods: new Map(), energy: new Map() },
+        evening: { moods: new Map(), energy: new Map() },
+        night: { moods: new Map(), energy: new Map() },
+      };
+
+      for (const evt of playEvents) {
+        const song = evt.songId && typeof evt.songId === "object" ? evt.songId : null;
+        if (!song || !song.aiAnalysis || song.aiAnalysis.status !== "completed") continue;
+
+        let weight = MEMORY_WEIGHTS.normalPlay;
+        if (evt.skipped) {
+          weight = MEMORY_WEIGHTS.skipped;
+        } else if (evt.completed) {
+          weight = MEMORY_WEIGHTS.completed;
+        }
+        if ((evt.replayCount || 0) > 0) {
+          weight += MEMORY_WEIGHTS.replay;
+        }
+
+        const slot = getTimeSlot(evt.playedAt || evt.createdAt || new Date());
+        const analysis = song.aiAnalysis;
+
+        // Process moodTags
+        if (Array.isArray(analysis.moodTags)) {
+          analysis.moodTags.forEach((m) => {
+            const tag = m.trim().toLowerCase();
+            if (!tag) return;
+            moodScores.set(tag, (moodScores.get(tag) || 0) + weight);
+            if (weight > 0) {
+              const slotMoods = timeSlotMaps[slot].moods;
+              slotMoods.set(tag, (slotMoods.get(tag) || 0) + weight);
+            }
+          });
+        }
+
+        // Process themes
+        if (Array.isArray(analysis.themes)) {
+          analysis.themes.forEach((t) => {
+            const theme = t.trim().toLowerCase();
+            if (!theme) return;
+            themeScores.set(theme, (themeScores.get(theme) || 0) + weight);
+          });
+        }
+
+        // Process energyLevel
+        if (analysis.energyLevel) {
+          const energy = analysis.energyLevel.toLowerCase();
+          energyScores.set(energy, (energyScores.get(energy) || 0) + weight);
+          if (weight > 0) {
+            const slotEnergy = timeSlotMaps[slot].energy;
+            slotEnergy.set(energy, (slotEnergy.get(energy) || 0) + weight);
+          }
+        }
+      }
+
+      // Sort & extract top items
+      const topMoods = Array.from(moodScores.entries())
+        .filter(([_, score]) => score > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([tag]) => tag);
+
+      const topThemes = Array.from(themeScores.entries())
+        .filter(([_, score]) => score > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([theme]) => theme);
+
+      const preferredEnergy = Array.from(energyScores.entries())
+        .filter(([_, score]) => score > 0)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || "mixed";
+
+      const timeSlotPreferences = {};
+      ["morning", "afternoon", "evening", "night"].forEach((slot) => {
+        const slotMoods = Array.from(timeSlotMaps[slot].moods.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([m]) => m);
+
+        const slotEnergy = Array.from(timeSlotMaps[slot].energy.entries())
+          .sort((a, b) => b[1] - a[1])[0]?.[0] || "mixed";
+
+        timeSlotPreferences[slot] = { moods: slotMoods, energy: slotEnergy };
+      });
+
+      const aiMemory = {
+        topMoods,
+        topThemes,
+        preferredEnergy,
+        timeSlotPreferences,
+        lastCalculatedAt: new Date(),
+      };
+
+      // Async background DB update to prevent blocking response latency
+      User.updateOne({ _id: userObjId }, { $set: { aiMemory } }).catch((err) =>
+        console.warn("[Personalization Service] User.aiMemory update failed:", err.message)
+      );
+
+      return aiMemory;
+    } catch (err) {
+      console.warn("[Personalization Service] Error in computeAndUpdateUserAiMemory:", err.message);
+      return userDoc?.aiMemory || {
+        topMoods: [],
+        topThemes: [],
+        preferredEnergy: "mixed",
+        timeSlotPreferences: {
+          morning: { moods: [], energy: "mixed" },
+          afternoon: { moods: [], energy: "mixed" },
+          evening: { moods: [], energy: "mixed" },
+          night: { moods: [], energy: "mixed" },
+        },
+        lastCalculatedAt: new Date(),
+      };
+    }
+  })();
+
+  activeMemoryCalculationMap.set(userKey, calcPromise);
+  try {
+    return await calcPromise;
+  } finally {
+    activeMemoryCalculationMap.delete(userKey);
+  }
+}
+
 module.exports = {
   getUserMusicProfile,
   clearUserCache,
+  MEMORY_WEIGHTS,
+  getTimeSlot,
 };
+

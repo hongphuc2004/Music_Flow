@@ -32,7 +32,6 @@ import {
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { useAssistant } from '../../features/assistant/AssistantProvider';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import useAppToast from '../../components/common/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 
 const QUICK_PROMPTS = [
@@ -323,8 +322,8 @@ function ThinkingBubble() {
 
 export default function ClientAiMood() {
   const { playSong } = useClientPlayerActions();
-  const { showToast } = useAppToast();
   const chatEndRef = useRef(null);
+
   const inputRef = useRef(null);
 
   const {
@@ -363,16 +362,33 @@ export default function ClientAiMood() {
 
   // Load history on mount or when session changes
   useEffect(() => {
+    let isSubscribed = true;
     if (!isLoggedIn || !userId) {
-      setIsHistoryLoading(false);
+      requestAnimationFrame(() => {
+        if (isSubscribed) setIsHistoryLoading(false);
+      });
       return;
     }
 
     setScope('mood');
-    loadConversations('mood').finally(() => {
-      setIsHistoryLoading(false);
-    });
-  }, [isLoggedIn, userId, setScope, loadConversations]);
+    loadConversations('mood')
+      .then((convs) => {
+        if (isSubscribed && Array.isArray(convs) && convs.length > 0 && !activeConversationId) {
+          loadConversationDetail(convs[0]._id);
+        }
+      })
+      .finally(() => {
+        if (isSubscribed) {
+          setIsHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [isLoggedIn, userId, setScope, loadConversations, loadConversationDetail, activeConversationId]);
+
+
 
   // Load conversation details when active conversation changes or when click history
   const loadConversation = async (conversationId) => {

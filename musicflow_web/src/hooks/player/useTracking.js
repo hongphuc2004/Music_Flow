@@ -14,9 +14,12 @@ import { clientSongsApi } from '../../services/client/client.service.js';
 export function useTracking(audioRef, currentSongRef) {
   const playTrackingRef = useRef({
     songId: null,
+    playEventId: null,
     listenedSeconds: 0,
     segmentStartedAt: null,
     submitted: false,
+    feedbackReported: false,
+    replayCount: 0,
   });
 
   /**
@@ -26,9 +29,12 @@ export function useTracking(audioRef, currentSongRef) {
   const resetPlayTracking = useCallback((songId) => {
     playTrackingRef.current = {
       songId,
+      playEventId: null,
       listenedSeconds: 0,
       segmentStartedAt: null,
       submitted: false,
+      feedbackReported: false,
+      replayCount: 0,
     };
   }, []);
 
@@ -63,7 +69,7 @@ export function useTracking(audioRef, currentSongRef) {
 
   /**
    * Called periodically (every 500 ms) and on pause/ended.
-   * Submits a play event when the user has listened long enough.
+   * Submits Stage 1 play event when the user has listened long enough.
    */
   const maybeTrackQualifiedPlay = useCallback(() => {
     const tracking = playTrackingRef.current;
@@ -87,11 +93,63 @@ export function useTracking(audioRef, currentSongRef) {
     if (listenedSeconds < thresholdSeconds) return;
 
     tracking.submitted = true;
-    clientSongsApi.trackPlay(activeSong._id).catch(() => {
-      // Allow a retry during the same listening session if the request fails.
+    clientSongsApi.trackPlay(activeSong._id).then((res) => {
+      if (res.data?.success && res.data?.playEventId) {
+        tracking.playEventId = res.data.playEventId;
+      }
+    }).catch(() => {
       tracking.submitted = false;
     });
   }, [audioRef, currentSongRef]);
+
+  /**
+   * Stage 2 Lifecycle: Finalize listening session and report feedback (playDuration, completionRate, skipped, completed).
+   */
+  const finishSessionAndReportFeedback = useCallback((reason = 'change') => {
+    const tracking = playTrackingRef.current;
+    const audio = audioRef.current;
+    const activeSong = currentSongRef.current;
+
+    if (!activeSong?._id || tracking.feedbackReported) return;
+
+    finishListeningSegment();
+
+    const totalDuration = tracking.listenedSeconds;
+    // Filter out rapid clicks (< 2s)
+    if (totalDuration < 2.0) {
+      tracking.feedbackReported = true;
+      return;
+    }
+
+    const knownDuration =
+      Number.isFinite(audio?.duration) && audio.duration > 0
+        ? audio.duration
+        : Number(activeSong.duration) || 1;
+    const completionRate = Math.min(1.0, Math.max(0, totalDuration / knownDuration));
+    const completed = reason === 'ended' || completionRate >= 0.85;
+    const skipped = totalDuration < 30 && completionRate < 0.30 && !completed;
+
+    const payload = {
+      playDuration: Math.round(totalDuration),
+      completionRate: Number(completionRate.toFixed(2)),
+      completed,
+      skipped,
+      replayCount: tracking.replayCount || 0,
+    };
+
+    tracking.feedbackReported = true;
+
+    // Use sendBeacon if available for unload/pagehide, otherwise clientSongsApi
+    if (tracking.playEventId) {
+      const url = `/api/songs/${activeSong._id}/play-events/${tracking.playEventId}`;
+      if (reason === 'unload' && navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+      } else {
+        clientSongsApi.updatePlayFeedback(activeSong._id, tracking.playEventId, payload).catch(() => {});
+      }
+    }
+  }, [audioRef, currentSongRef, finishListeningSegment]);
 
   return {
     playTrackingRef,
@@ -99,5 +157,7 @@ export function useTracking(audioRef, currentSongRef) {
     finishListeningSegment,
     startListeningSegment,
     maybeTrackQualifiedPlay,
+    finishSessionAndReportFeedback,
   };
 }
+

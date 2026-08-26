@@ -18,5 +18,13 @@
     "recentWindowDays": 7,
     "longTermWindowDays": 30,
     "candidateLimit": 50
+  },
+  "feedbackWeights": {
+    "skippedPenalty": -8.0,
+    "completionBonus": 5.0,
+    "replayBonus": 3.0,
+    "semanticMoodBonus": 4.0
   }
 }
+
+

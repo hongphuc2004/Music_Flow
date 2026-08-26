@@ -1,16 +1,24 @@
 const mongoose = require("mongoose");
 const Song = require("../models/song.model");
 
+const aiDataLoader = require("../ai/aiDataLoader.service");
+
 /**
  * Default Configurable Strategy Weights and Options.
  * Easily overridable for A/B testing and benchmarking without modifying code logic.
  */
+const recommendationRule = aiDataLoader.getRule("recommendation");
 const DEFAULT_RECOMMENDATION_CONFIG = {
   weights: {
     matchingTopicWeight: 5.0,        // Score added if song matches user's preferred topics
     matchingArtistWeight: 8.0,       // Score added if song matches user's preferred artists
     isFavoriteOrLikedWeight: 10.0,   // Score added if song is favorited or liked by user
     recentlyPlayedPenalty: -3.0,     // Penalty score for songs played recently to reduce repeat fatigue
+    skippedPenalty: -8.0,            // Penalty for songs recently skipped (<30s & <30%)
+    completionBonus: 5.0,            // Bonus for songs listened to completion (>=85%)
+    replayBonus: 3.0,                // Cautious early bonus for replayed songs
+    ...(recommendationRule.phase2Config?.weights || {}),
+    ...(recommendationRule.feedbackWeights || {}),
   },
   candidateLimit: 50,                // Maximum candidates fetched for Gemini context
   fallbackLimit: 30,                 // Candidate limit for cold-start popularity fallback
@@ -80,8 +88,31 @@ function calculateSongScore(song, { userProfile, config = DEFAULT_RECOMMENDATION
     }
   }
 
+  // 5. Skipped Song Penalty (Phase 4A Feedback Learning)
+  if (Array.isArray(userProfile.skippedSongIds)) {
+    const skipSet = new Set(userProfile.skippedSongIds.map((id) => id.toString()));
+    if (skipSet.has(songIdStr)) {
+      score += weights.skippedPenalty;
+    }
+  }
+
+  // 6. Completed / Replayed Song Bonus (Phase 4A Feedback Learning)
+  if (Array.isArray(userProfile.completedSongIds)) {
+    const completedSet = new Set(userProfile.completedSongIds.map((id) => id.toString()));
+    if (completedSet.has(songIdStr)) {
+      score += weights.completionBonus;
+    }
+  }
+
+  // 7. AI Semantic Song Intelligence Bonus (Phase 5A)
+  if (song.aiAnalysis?.status === "completed" && Array.isArray(song.aiAnalysis.moodTags) && song.aiAnalysis.moodTags.length > 0) {
+    score += (weights.semanticMoodBonus || 4.0);
+  }
+
   return score;
 }
+
+
 
 /**
  * Retrieves personalized or cold-start candidate songs from MongoDB based on query criteria & user profile.

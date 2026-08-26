@@ -221,3 +221,27 @@ exports.confirmAction = async (req, res) => {
     });
   }
 };
+
+exports.getQuota = async (req, res) => {
+  try {
+    const actorId = req.userId;
+    const aiQuotaService = require("../services/aiQuota.service");
+    const quotaInfo = await aiQuotaService.checkQuota(actorId);
+    return res.json({
+      success: true,
+      data: quotaInfo,
+    });
+  } catch (error) {
+    if (error.status === 403) {
+      return res.json({
+        success: true,
+        data: { remaining: 0, limit: 5, isExhausted: true },
+      });
+    }
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Không thể kiểm tra hạn mức AI.",
+    });
+  }
+};
+

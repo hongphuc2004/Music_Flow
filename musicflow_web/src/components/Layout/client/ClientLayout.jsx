@@ -19,13 +19,13 @@ function ClientLayout({ children, title }) {
   );
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [targetCommentId, setTargetCommentId] = useState(null);
+  const [commentTargetSong, setCommentTargetSong] = useState(null);
   const [commentCount, setCommentCount] = useState(0);
   const location = useLocation();
   const theme = useTheme();
 
   const playerCtx = useClientPlayer();
   const currentSong = playerCtx?.currentSong;
-  const playSong = playerCtx?.playSong;
 
   const titleByPath = {
     '/client/home': 'Trang chủ',
@@ -58,6 +58,14 @@ function ClientLayout({ children, title }) {
   };
 
   const handleOpenCommentsTarget = async ({ songId, commentId, actionUrl }) => {
+    let resolvedSongId = songId;
+    if (!resolvedSongId && actionUrl && actionUrl.includes('/client/song/')) {
+      const match = actionUrl.match(/\/client\/song\/([^?&]+)/);
+      if (match && match[1]) {
+        resolvedSongId = match[1];
+      }
+    }
+
     let resolvedCommentId = commentId;
     if (!resolvedCommentId && actionUrl && actionUrl.includes('comment=')) {
       const match = actionUrl.match(/comment=([^&]+)/);
@@ -70,18 +78,30 @@ function ClientLayout({ children, title }) {
       setTargetCommentId(resolvedCommentId);
     }
 
-    if (songId && songId !== currentSong?._id) {
-      try {
-        const res = await clientSongsApi.getSongById(songId);
-        if (res.data?.success && res.data.song && playSong) {
-          playSong(res.data.song);
+    if (resolvedSongId) {
+      if (resolvedSongId !== currentSong?._id) {
+        try {
+          const res = await clientSongsApi.getSongById(resolvedSongId);
+          if (res.data?.success && res.data.song) {
+            setCommentTargetSong(res.data.song);
+          }
+        } catch (err) {
+          console.warn('Failed to load song from notification:', err);
         }
-      } catch (err) {
-        console.warn('Failed to load song from notification:', err);
+      } else {
+        setCommentTargetSong(null);
       }
+    } else {
+      setCommentTargetSong(null);
     }
 
     setCommentsOpen(true);
+  };
+
+  const handleCloseComments = () => {
+    setCommentsOpen(false);
+    setTargetCommentId(null);
+    setCommentTargetSong(null);
   };
 
   return (
@@ -139,13 +159,11 @@ function ClientLayout({ children, title }) {
       />
       <ClientSongCommentsDrawer
         open={commentsOpen}
-        onClose={() => {
-          setCommentsOpen(false);
-          setTargetCommentId(null);
-        }}
+        onClose={handleCloseComments}
         commentCount={commentCount}
         onCommentCountChanged={setCommentCount}
         targetCommentId={targetCommentId}
+        targetSong={commentTargetSong}
       />
       <ClientAuthDialog />
     </Box>

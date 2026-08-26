@@ -508,6 +508,109 @@ router.patch("/users/:id/role", async (req, res) => {
   }
 });
 
+// Get AI quota configuration & status for a user
+router.get("/users/:id/ai-quota", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId).select("name email role isPremium customAiLimit bonusAiQuota").lean();
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng." });
+    }
+
+    const aiQuotaService = require("../services/aiQuota.service");
+    const quotaInfo = await aiQuotaService.checkQuota(userId).catch(async (err) => {
+      if (err.status === 403) {
+        let tierLimit = user.isPremium ? 20 : 5;
+        const baseLimit = (user.customAiLimit !== null && user.customAiLimit !== undefined && user.customAiLimit >= 0)
+          ? Number(user.customAiLimit)
+          : tierLimit;
+        const effectiveLimit = baseLimit + Number(user.bonusAiQuota || 0);
+        return {
+          isPremium: user.isPremium,
+          tierLimit,
+          customAiLimit: user.customAiLimit,
+          bonusAiQuota: user.bonusAiQuota || 0,
+          effectiveLimit,
+          used24h: effectiveLimit,
+          remaining: 0,
+        };
+      }
+      throw err;
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        user,
+        ...quotaInfo,
+      },
+    });
+  } catch (error) {
+    console.error("Admin get AI quota error:", error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Không thể lấy thông tin hạn mức AI của người dùng.",
+    });
+  }
+});
+
+// Update AI quota configuration for a user (customAiLimit, bonusAiQuota)
+router.put("/users/:id/ai-quota", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { customAiLimit, bonusAiQuota } = req.body;
+
+    const updateFields = {};
+    if (customAiLimit === null || customAiLimit === "" || customAiLimit === undefined) {
+      updateFields.customAiLimit = null;
+    } else {
+      const parsedCustom = Number(customAiLimit);
+      if (isNaN(parsedCustom) || parsedCustom < 0) {
+        return res.status(400).json({ success: false, message: "Hạn mức cố định phải là số nguyên >= 0." });
+      }
+      updateFields.customAiLimit = parsedCustom;
+    }
+
+    if (bonusAiQuota !== undefined) {
+      const parsedBonus = Number(bonusAiQuota);
+      if (isNaN(parsedBonus) || parsedBonus < 0) {
+        return res.status(400).json({ success: false, message: "Số lượt tặng thêm phải là số nguyên >= 0." });
+      }
+      updateFields.bonusAiQuota = parsedBonus;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateFields },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng." });
+    }
+
+    const aiQuotaService = require("../services/aiQuota.service");
+    const quotaInfo = await aiQuotaService.checkQuota(userId).catch(() => ({ remaining: 0 }));
+
+    return res.json({
+      success: true,
+      message: "Cập nhật hạn mức AI thành công.",
+      data: {
+        user: updatedUser,
+        quotaInfo,
+      },
+    });
+  } catch (error) {
+    console.error("Admin update AI quota error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Không thể cập nhật hạn mức AI cho người dùng.",
+    });
+  }
+});
+
+
 // ================= ACCOUNTS MANAGEMENT (User + Artist) =================
 // Get all accounts (users + artists)
 router.get("/accounts", authMiddleware, requireAdmin, async (req, res) => {

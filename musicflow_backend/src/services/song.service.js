@@ -233,8 +233,43 @@ const registerPlay = async (songId, req) => {
     throw error;
   }
 
-  return { counted: true };
+  return { counted: true, playEventId: playEvent._id };
 };
+
+/**
+ * Update feedback metadata for an existing play event (Stage 2 Lifecycle).
+ * Verifies strict listener ownership (userId or anonymousKey).
+ */
+const updatePlayFeedback = async (songId, eventId, req, body = {}) => {
+  const userId = resolveOptionalUserId(req);
+  const anonymousKey = userId ? null : buildAnonymousListenerKey(req);
+  const listenerFilter = userId ? { userId } : { anonymousKey };
+
+  const playDuration = Math.max(0, Number(body.playDuration) || 0);
+  const completionRate = Math.min(1.0, Math.max(0, Number(body.completionRate) || 0));
+  const replayCount = Math.max(0, Number(body.replayCount) || 0);
+
+  // Standardized Rules:
+  const completed = Boolean(body.completed || completionRate >= 0.85);
+  const skipped = Boolean(body.skipped || (playDuration < 30 && completionRate < 0.30 && !completed));
+
+  const updatedEvent = await playEventRepo.updatePlayEventFeedback(eventId, listenerFilter, {
+    playDuration,
+    completionRate,
+    completed,
+    skipped,
+    replayCount,
+  });
+
+  if (!updatedEvent) {
+    const err = new Error("Play event not found or unauthorized listener");
+    err.status = 403;
+    throw err;
+  }
+
+  return { success: true, event: updatedEvent };
+};
+
 
 // ---------------------------------------------------------------------------
 // Download
@@ -1094,16 +1129,37 @@ const resolveStreamUrlByTicket = async (songId, ticket) => {
   return streamUrl;
 };
 
+/**
+ * Lấy chi tiết bài hát theo ID (bao gồm thông tin artist và topic).
+ */
+const getSongById = async (songId) => {
+  const song = await Song.findById(songId)
+    .populate("artists", "name avatar bio")
+    .populate("topicIds", "name")
+    .lean();
+
+  if (!song) {
+    const error = new Error("Bài hát không tồn tại");
+    error.status = 404;
+    throw error;
+  }
+
+  return { song };
+};
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
 module.exports = {
+  getSongById,
   resolveSongStreamUrl,
   issuePlaybackTicket,
   resolveStreamUrlByTicket,
   registerPlay,
+  updatePlayFeedback,
   downloadSong,
+
   getDownloadHistory,
   removeFromDownloadHistory,
   syncDownloadHistory,

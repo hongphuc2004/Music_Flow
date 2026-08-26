@@ -31,7 +31,29 @@ const songPlayEventSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    // --- FEEDBACK METADATA (PHASE 4A) ---
+    playDuration: {
+      type: Number,
+      default: 0,
+    },
+    completionRate: {
+      type: Number,
+      default: 0,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    skipped: {
+      type: Boolean,
+      default: false,
+    },
+    replayCount: {
+      type: Number,
+      default: 0,
+    },
   },
+
   {
     versionKey: false,
   }

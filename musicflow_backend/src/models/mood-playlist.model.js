@@ -38,7 +38,12 @@ const moodPlaylistSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    imageUrl: {
+      type: String,
+      default: null,
+    },
     prompt: {
+
       type: String,
       required: true,
     },

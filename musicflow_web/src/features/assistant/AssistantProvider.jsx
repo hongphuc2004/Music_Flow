@@ -1,4 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clientAssistantApi } from '../../services/api';
 import useAppToast from '../../components/common/useAppToast';
@@ -58,17 +60,40 @@ export const AssistantProvider = ({ children }) => {
     currentSong: currentSongRef.current,
   };
 
+  // Check current user quota and reset modal state if quota restored
+  const checkUserQuota = useCallback(async () => {
+    try {
+      const res = await clientAssistantApi.getQuota();
+      if (res.data?.success) {
+        const remaining = res.data.data?.remaining ?? 5;
+        if (remaining > 0) {
+          setUpgradeDialogOpen(false);
+        }
+        return res.data.data;
+      }
+    } catch (err) {
+      console.warn('Failed to check user quota:', err);
+    }
+    return null;
+  }, []);
+
   // Load list of conversations for current role
   const loadConversations = useCallback(async (filterScope = 'all') => {
     try {
+      checkUserQuota();
       const res = await clientAssistantApi.getConversations({ scope: filterScope });
       if (res.data?.success) {
-        setConversations(res.data.data || []);
+        const convList = res.data.data || [];
+        setConversations(convList);
+        return convList;
       }
     } catch (err) {
       console.warn('Failed to load assistant conversations:', err);
     }
-  }, []);
+    return [];
+  }, [checkUserQuota]);
+
+
 
   // Load details and message history of a conversation
   const loadConversationDetail = useCallback(async (convId) => {
@@ -160,7 +185,7 @@ export const AssistantProvider = ({ children }) => {
 
       const res = await clientAssistantApi.sendMessage(payload);
       if (res.data?.success) {
-        const { conversation, message, clientActions: actions, playlist } = res.data.data;
+        const { conversation, message, assistantMessage: aiText, clientActions: actions, playlist } = res.data.data;
         
         setActiveConversationId(conversation._id);
         if (playlist) {
@@ -170,11 +195,14 @@ export const AssistantProvider = ({ children }) => {
           });
         }
         
-        // Remove temp message and append official ones
+        // Build clean response message object with safe fallbacks
         const responseMsg = {
-          ...message,
-          role: message.role === 'model' ? 'assistant' : 'user',
-          playlistId: message.metadata?.playlistId || null,
+          _id: message?._id || `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: message?.content || aiText || 'Đã nhận yêu cầu.',
+          metadata: message?.metadata || {},
+          playlistId: message?.metadata?.playlistId || playlist?._id || null,
+          createdAt: message?.createdAt || new Date().toISOString(),
         };
 
         setMessages((prev) => {
@@ -185,6 +213,7 @@ export const AssistantProvider = ({ children }) => {
             responseMsg,
           ];
         });
+
 
         // Trigger action callbacks (e.g., play song or redirect)
         if (actions && actions.length > 0) {

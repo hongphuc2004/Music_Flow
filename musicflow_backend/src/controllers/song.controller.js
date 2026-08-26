@@ -136,6 +136,18 @@ exports.registerPlay = async (req, res) => {
   }
 };
 
+exports.updatePlayFeedback = async (req, res) => {
+  try {
+    const { id, eventId } = req.params;
+    const result = await songService.updatePlayFeedback(id, eventId, req, req.body);
+    return res.json(result);
+  } catch (error) {
+    const status = error.status || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+
 // ---------------------------------------------------------------------------
 // 🎫 ISSUE PLAYBACK TICKET
 // ---------------------------------------------------------------------------
@@ -401,5 +413,18 @@ exports.getSimilarSongs = async (req, res) => {
     return res.json({ success: true, data });
   } catch (error) {
     return handleError(res, error, "Không thể lấy danh sách bài hát tương tự");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 🎵 GET SONG BY ID (PUBLIC)
+// ---------------------------------------------------------------------------
+
+exports.getSongById = async (req, res) => {
+  try {
+    const result = await songService.getSongById(req.params.id);
+    return res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    return handleError(res, error, "Không thể lấy thông tin bài hát");
   }
 };

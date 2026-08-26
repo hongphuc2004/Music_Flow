@@ -25,6 +25,10 @@ router.get("/:id/lyrics", songController.getSongLyrics);
 // Record a qualified play
 router.post("/:id/play", songController.registerPlay);
 
+// Update play feedback metadata (Stage 2 Lifecycle)
+router.patch("/:id/play-events/:eventId", songController.updatePlayFeedback);
+
+
 // 📻 GET SIMILAR SONGS (SONG RADIO)
 router.get("/:id/similar", songController.getSimilarSongs);
 
@@ -57,6 +61,9 @@ router.delete("/download-history/:songId", authMiddleware, songController.remove
 
 // 🔄 SYNC MY DOWNLOAD HISTORY FROM CLIENT (AUTH REQUIRED)
 router.post("/download-history/sync", authMiddleware, songController.syncDownloadHistory);
+
+// 🎵 GET SONG BY ID (PUBLIC)
+router.get("/:id", songController.getSongById);
 
 // 🎵 UPLOAD SONG (AUTH REQUIRED)
 router.post(

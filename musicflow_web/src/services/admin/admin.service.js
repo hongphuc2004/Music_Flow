@@ -20,7 +20,10 @@ export const accountsApi = {
   create: (payload) => api.post('/admin/accounts', payload),
   update: (id, payload) => api.put(`/admin/accounts/${id}`, payload),
   delete: (id) => api.delete(`/admin/accounts/${id}`),
+  getUserAiQuota: (id) => api.get(`/admin/users/${id}/ai-quota`),
+  updateUserAiQuota: (id, payload) => api.put(`/admin/users/${id}/ai-quota`, payload),
 };
+
 
 // Songs API
 export const songsApi = {

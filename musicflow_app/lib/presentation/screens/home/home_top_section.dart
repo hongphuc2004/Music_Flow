@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
+import '../../../core/theme/app_theme.dart';
 import 'home_shared.dart';
+
 
 class HomeTopBar extends StatelessWidget {
   final String displayName;
@@ -631,8 +633,13 @@ class _QuickActionCard extends StatelessWidget {
 
 class HomeAiDjBanner extends StatelessWidget {
   final VoidCallback onTap;
+  final VoidCallback? onVoiceTap;
 
-  const HomeAiDjBanner({super.key, required this.onTap});
+  const HomeAiDjBanner({
+    super.key,
+    required this.onTap,
+    this.onVoiceTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -707,7 +714,7 @@ class HomeAiDjBanner extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'AI DJ CHAT',
+                                'AI DJ CHAT & VOICE',
                                 style: TextStyle(
                                   color: isDark ? Colors.white : const Color(0xFF6C63FF),
                                   fontSize: 9,
@@ -732,7 +739,7 @@ class HomeAiDjBanner extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Nói chuyện với AI DJ để nhận ngay danh sách nhạc phù hợp nhất!',
+                      'Nói chuyện hoặc dùng giọng nói để nhận danh sách nhạc ngay!',
                       style: TextStyle(
                         color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF4A5568),
                         fontSize: 12,
@@ -742,10 +749,31 @@ class HomeAiDjBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
+              if (onVoiceTap != null)
+                InkWell(
+                  onTap: onVoiceTap,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.5)),
+                    ),
+                    child: const Icon(
+                      Icons.mic_rounded,
+                      color: AppColors.secondary,
+                      size: 22,
+                    ),
+
+                  ),
+                ),
+              const SizedBox(width: 8),
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
@@ -769,3 +797,4 @@ class HomeAiDjBanner extends StatelessWidget {
     );
   }
 }
+

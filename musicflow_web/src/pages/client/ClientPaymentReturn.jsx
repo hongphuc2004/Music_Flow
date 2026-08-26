@@ -76,9 +76,10 @@ function ClientPaymentReturn() {
             maxWidth: 500,
             borderRadius: 5,
             border: '1px solid',
-            borderColor: (theme) => success 
+            borderColor: () => success 
               ? 'rgba(34, 197, 94, 0.2)' 
               : 'rgba(239, 68, 68, 0.2)',
+
             background: (theme) => theme.palette.mode === 'dark'
               ? success 
                 ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(34, 197, 94, 0.05) 100%)'

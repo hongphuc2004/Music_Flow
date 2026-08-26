@@ -126,6 +126,48 @@ const songSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+
+    // 🧠 AI SONG INTELLIGENCE (PHASE 5A)
+    aiAnalysis: {
+      status: {
+        type: String,
+        enum: ["none", "pending", "completed", "failed"],
+        default: "none",
+      },
+      moodTags: {
+        type: [String],
+        default: [],
+      },
+      energyLevel: {
+        type: String,
+        enum: ["low", "medium", "high"],
+        default: "medium",
+      },
+      themes: {
+        type: [String],
+        default: [],
+      },
+      storySummary: {
+        type: String,
+        default: "",
+      },
+      healingQuotes: {
+        type: [String],
+        default: [],
+      },
+      retryCount: {
+        type: Number,
+        default: 0,
+      },
+      lastAttemptAt: {
+        type: Date,
+        default: null,
+      },
+      analyzedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,
@@ -136,6 +178,8 @@ songSchema.index({ isPublic: 1, createdAt: -1 });
 songSchema.index({ artists: 1, createdAt: -1 });
 songSchema.index({ topicIds: 1, createdAt: -1 });
 songSchema.index({ uploadedBy: 1, createdAt: -1 });
+songSchema.index({ "aiAnalysis.status": 1 });
 songSchema.index({ title: "text", lyrics: "text" }, { weights: { title: 10, lyrics: 2 } });
+
 
 module.exports = mongoose.model("Song", songSchema);

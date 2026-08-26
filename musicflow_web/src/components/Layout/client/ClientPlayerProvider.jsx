@@ -255,7 +255,9 @@ export function ClientPlayerProvider({ children }) {
     finishListeningSegment,
     startListeningSegment,
     maybeTrackQualifiedPlay,
+    finishSessionAndReportFeedback,
   } = useTracking(audioRef, currentSongRef);
+
 
   const { lyricsData, loadLyrics, activeLyricIndex } = useLyrics(audioRef, currentTime);
 
@@ -356,6 +358,8 @@ export function ClientPlayerProvider({ children }) {
     const handleEnded = async () => {
       finishListeningSegment();
       maybeTrackQualifiedPlay();
+      finishSessionAndReportFeedback('ended');
+
       const activeQueue = queueRef.current;
       const activeIndex = queueIndexRef.current;
       const activeRepeatMode = repeatModeRef.current;
@@ -366,6 +370,7 @@ export function ClientPlayerProvider({ children }) {
         audio.play().catch(() => setIsPlaying(false));
         return;
       }
+
 
       let nextIndex = null;
       if (shuffleRef.current && activeQueue.length > 1) {
@@ -703,29 +708,38 @@ export function ClientPlayerProvider({ children }) {
 // Public hooks — unchanged interface
 // ---------------------------------------------------------------------------
 
+const DEFAULT_FALLBACK_ACTIONS = {
+  playSong: () => {},
+  playQueue: () => {},
+  togglePlayPause: () => {},
+  nextSong: () => {},
+  previousSong: () => {},
+  seekTo: () => {},
+  setVolume: () => {},
+  toggleMute: () => {},
+  setRepeatMode: () => {},
+  toggleShuffle: () => {},
+  addToQueue: () => {},
+  removeFromQueue: () => {},
+  clearQueue: () => {},
+  reorderQueue: () => {},
+};
+
 export function useClientPlayer() {
-  const state = useContext(ClientPlayerStateContext);
-  const actions = useContext(ClientPlayerActionsContext);
-  const meta = useContext(ClientPlayerMetaContext);
-  if (!state || !actions || !meta) {
-    throw new Error('useClientPlayer must be used within ClientPlayerProvider');
-  }
+  const state = useContext(ClientPlayerStateContext) || {};
+  const actions = useContext(ClientPlayerActionsContext) || DEFAULT_FALLBACK_ACTIONS;
+  const meta = useContext(ClientPlayerMetaContext) || {};
   return { ...state, ...actions, ...meta };
 }
 
 export function useClientPlayerActions() {
   const context = useContext(ClientPlayerActionsContext);
-  if (!context) {
-    throw new Error('useClientPlayerActions must be used within ClientPlayerProvider');
-  }
-  return context;
+  return context || DEFAULT_FALLBACK_ACTIONS;
 }
 
 export function useClientPlayerMeta() {
   const context = useContext(ClientPlayerMetaContext);
-  if (!context) {
-    throw new Error('useClientPlayerMeta must be used within ClientPlayerProvider');
-  }
-  return context;
+  return context || {};
 }
+
 

@@ -9,11 +9,45 @@ const aiDataLoader = require("./aiDataLoader.service");
  */
 
 /**
- * Builds complete System Instruction string for Gemini based on user role
+ * Formats a compact 1-line User AI Memory summary string for system instructions
+ * @param {Object} aiMemory 
+ * @returns {string}
+ */
+function formatAiMemoryContext(aiMemory) {
+  if (!aiMemory) return "";
+  const topMoods = Array.isArray(aiMemory.topMoods) ? aiMemory.topMoods.filter(Boolean) : [];
+  const topThemes = Array.isArray(aiMemory.topThemes) ? aiMemory.topThemes.filter(Boolean) : [];
+  
+  if (topMoods.length === 0 && topThemes.length === 0) return "";
+
+  const hour = new Date().getHours();
+  let currentSlot = "night";
+  if (hour >= 5 && hour < 12) currentSlot = "morning";
+  else if (hour >= 12 && hour < 18) currentSlot = "afternoon";
+  else if (hour >= 18 && hour < 23) currentSlot = "evening";
+
+  const slotPref = aiMemory.timeSlotPreferences?.[currentSlot];
+  const slotMoods = Array.isArray(slotPref?.moods) ? slotPref.moods.filter(Boolean) : [];
+  const slotEnergy = slotPref?.energy || "mixed";
+
+  const moodPart = topMoods.length > 0 ? `Moods: ${topMoods.slice(0, 3).join(", ")}` : "";
+  const themePart = topThemes.length > 0 ? `Themes: ${topThemes.slice(0, 2).join(", ")}` : "";
+  const slotPart = slotMoods.length > 0 ? `Current ${currentSlot}: ${slotMoods.slice(0, 2).join(", ")} (${slotEnergy} energy)` : "";
+
+  const details = [moodPart, themePart, slotPart].filter(Boolean).join(" | ");
+  if (!details) return "";
+
+  return `[User Memory: ${details}]`;
+}
+
+/**
+ * Builds complete System Instruction string for Gemini based on user role and optional user memory
  * @param {string} actorRole - 'user' | 'artist' | 'admin'
+ * @param {Object} [options]
+ * @param {Object} [options.aiMemory] - User.aiMemory object
  * @returns {string} Fully assembled system instruction
  */
-function buildSystemInstruction(actorRole = "user") {
+function buildSystemInstruction(actorRole = "user", options = {}) {
   const systemBase = aiDataLoader.getPrompt("system");
   const personality = aiDataLoader.getPrompt("personality");
   const musicflowOverview = aiDataLoader.getKnowledge("musicflow");
@@ -23,6 +57,10 @@ function buildSystemInstruction(actorRole = "user") {
 
   if (systemBase) sections.push(systemBase);
   if (personality) sections.push(personality);
+
+  const memoryContext = formatAiMemoryContext(options.aiMemory);
+  if (memoryContext) sections.push(memoryContext);
+
   if (musicflowOverview) sections.push(`## Các Siêu năng lực hệ thống:\n${musicflowOverview}`);
 
   // Role-specific knowledge
@@ -42,6 +80,7 @@ function buildSystemInstruction(actorRole = "user") {
 
   return sections.filter(Boolean).join("\n\n");
 }
+
 
 /**
  * Gets Mood Topic Map rule object
@@ -69,7 +108,9 @@ function getRecommendationRules() {
 
 module.exports = {
   buildSystemInstruction,
+  formatAiMemoryContext,
   getMoodTopicMap,
   getIntentRules,
   getRecommendationRules,
 };
+

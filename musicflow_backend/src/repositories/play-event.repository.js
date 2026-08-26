@@ -40,7 +40,21 @@ const findRecentPlay = (songId, listenerFilter, cooldownStart) =>
 const createPlayEvent = (data) => SongPlayEvent.create(data);
 
 /**
+ * Update a play event feedback with strict listener ownership verification.
+ * @param {string} eventId
+ * @param {object} listenerFilter - { userId } or { anonymousKey }
+ * @param {object} feedbackData - { playDuration, completionRate, completed, skipped, replayCount }
+ */
+const updatePlayEventFeedback = (eventId, listenerFilter, feedbackData) =>
+  SongPlayEvent.findOneAndUpdate(
+    { _id: eventId, ...listenerFilter },
+    { $set: feedbackData },
+    { new: true }
+  ).lean();
+
+/**
  * Delete a play event by id (used to roll back on subsequent failure).
+
  *
  * @param {string} id
  */
@@ -160,9 +174,11 @@ module.exports = {
   // Play events
   findRecentPlay,
   createPlayEvent,
+  updatePlayEventFeedback,
   deletePlayEventById,
   findPlayEventsInRange,
   aggregatePeriodCounts,
+
 
   // Download events
   findDownloadHistory,

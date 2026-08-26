@@ -40,22 +40,31 @@ async function checkQuota(userId) {
     throw error;
   }
 
-  let limit = 5; // Free: 5 yêu cầu
+  let tierLimit = 5; // Free: 5 yêu cầu
   let planLabel = "miễn phí";
 
   if (hasPremiumAccess(user)) {
     const planName = user.premiumPlan?.name || "";
     if (planName === "Gói GO") {
-      limit = 10;
+      tierLimit = 10;
       planLabel = "Gói GO";
     } else if (planName === "Gói PLUS") {
-      limit = 15;
+      tierLimit = 15;
       planLabel = "Gói PLUS";
     } else {
-      limit = 20; // Gói PREMIUM mặc định hoặc bất kỳ gói premium nào khác
+      tierLimit = 20; // Gói PREMIUM mặc định hoặc bất kỳ gói premium nào khác
       planLabel = "Gói PREMIUM";
     }
   }
+
+  // Admin custom AI limit override (nếu admin set giá trị cố định)
+  const baseLimit = (user.customAiLimit !== null && user.customAiLimit !== undefined && user.customAiLimit >= 0)
+    ? Number(user.customAiLimit)
+    : tierLimit;
+
+  // Số lượt tặng thêm từ Admin
+  const bonusQuota = Number(user.bonusAiQuota || 0);
+  const effectiveLimit = baseLimit + bonusQuota;
 
   // Tài khoản Free hoặc Gói Premium giới hạn
   const conversations = await AssistantConversation.find({ actorId: userId }).select("_id").lean();
@@ -68,20 +77,28 @@ async function checkQuota(userId) {
     createdAt: { $gte: oneDayAgo },
   });
 
-  if (count >= limit) {
-    const error = new Error(`Bạn đã vượt quá hạn mức ${limit} yêu cầu AI trong 24 giờ của tài khoản ${planLabel}. Vui lòng nâng cấp/đổi gói để có hạn mức cao hơn.`);
+  if (count >= effectiveLimit) {
+    const error = new Error(`Bạn đã vượt quá hạn mức ${effectiveLimit} yêu cầu AI trong 24 giờ của tài khoản ${planLabel}. Vui lòng nâng cấp gói hoặc liên hệ quản trị viên.`);
     error.status = 403;
     throw error;
   }
 
-  if (count < limit) {
+  if (count < effectiveLimit) {
     // Fire-and-forget background check for quota restored event
     checkAndTriggerQuotaRestored(userId).catch((err) =>
       console.error("Background quota restored check error:", err.message)
     );
   }
 
-  return { isPremium: user.isPremium, remaining: limit - count };
+  return {
+    isPremium: user.isPremium,
+    tierLimit,
+    customAiLimit: user.customAiLimit,
+    bonusAiQuota: bonusQuota,
+    effectiveLimit,
+    used24h: count,
+    remaining: Math.max(0, effectiveLimit - count),
+  };
 }
 
 /**
@@ -93,13 +110,18 @@ async function checkAndTriggerQuotaRestored(userId) {
     const user = await User.findById(userId).populate("premiumPlan").lean();
     if (!user) return;
 
-    let limit = 5;
+    let tierLimit = 5;
     if (hasPremiumAccess(user)) {
       const planName = user.premiumPlan?.name || "";
-      if (planName === "Gói GO") limit = 10;
-      else if (planName === "Gói PLUS") limit = 15;
-      else limit = 20;
+      if (planName === "Gói GO") tierLimit = 10;
+      else if (planName === "Gói PLUS") tierLimit = 15;
+      else tierLimit = 20;
     }
+
+    const baseLimit = (user.customAiLimit !== null && user.customAiLimit !== undefined && user.customAiLimit >= 0)
+      ? Number(user.customAiLimit)
+      : tierLimit;
+    const limit = baseLimit + Number(user.bonusAiQuota || 0);
 
     const conversations = await AssistantConversation.find({ actorId: userId }).select("_id").lean();
     const conversationIds = conversations.map((c) => c._id);
@@ -112,6 +134,7 @@ async function checkAndTriggerQuotaRestored(userId) {
       role: "user",
       createdAt: { $gte: oneDayAgo },
     });
+
 
     if (currentCount < limit) {
       const oldestMessage24h = await AssistantMessage.findOne({

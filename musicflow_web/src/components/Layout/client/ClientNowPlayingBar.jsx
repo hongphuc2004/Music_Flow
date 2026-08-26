@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Avatar, Box, IconButton, Slider, Stack, Typography, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Tooltip } from '@mui/material';
+import { Avatar, Box, IconButton, Slider, Stack, Typography, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Tooltip, Badge } from '@mui/material';
+
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorderRounded';
 import FavoriteIcon from '@mui/icons-material/FavoriteRounded';
 import DownloadIcon from '@mui/icons-material/DownloadRounded';
@@ -319,8 +320,11 @@ function ClientNowPlayingBar({
               mr: 0.5,
             }}
           >
-            <CommentIcon sx={{ fontSize: 25 }} />
+            <Badge badgeContent={commentCount || 0} color="primary" max={99} sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16, bgcolor: '#14b8a6' } }}>
+              <CommentIcon sx={{ fontSize: 25 }} />
+            </Badge>
           </IconButton>
+
 
           {/* Quality Selector */}
           <Button

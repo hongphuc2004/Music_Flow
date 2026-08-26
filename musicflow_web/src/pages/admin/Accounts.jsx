@@ -39,8 +39,12 @@ import {
   AdminPanelSettingsRounded as AdminIcon,
   MusicNoteRounded as ArtistIcon,
   PersonRounded as UserIcon,
+  AutoAwesomeRounded as AiQuotaIcon,
+  Close as CloseIcon,
+  FlashOn as FlashIcon,
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
+
 import { accountsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
 
@@ -80,6 +84,75 @@ function Accounts() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState(emptyCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
+
+  // AI Quota management state
+  const [aiQuotaDialog, setAiQuotaDialog] = useState({
+    open: false,
+    user: null,
+    loading: false,
+    saving: false,
+    info: null,
+    customAiLimit: '',
+    bonusAiQuota: 0,
+  });
+
+  const handleOpenAiQuota = async (user) => {
+    setAiQuotaDialog({
+      open: true,
+      user,
+      loading: true,
+      saving: false,
+      info: null,
+      customAiLimit: '',
+      bonusAiQuota: 0,
+    });
+
+    try {
+      const res = await accountsApi.getUserAiQuota(user._id);
+      if (res.data?.success) {
+        const info = res.data.data;
+        setAiQuotaDialog({
+          open: true,
+          user,
+          loading: false,
+          saving: false,
+          info,
+          customAiLimit: info.customAiLimit !== null && info.customAiLimit !== undefined ? String(info.customAiLimit) : '',
+          bonusAiQuota: info.bonusAiQuota || 0,
+        });
+      }
+    } catch (err) {
+      showToast({ message: err.response?.data?.message || 'Không thể lấy thông tin hạn mức AI.', severity: 'error' });
+      setAiQuotaDialog((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleCloseAiQuota = () => {
+    setAiQuotaDialog({ open: false, user: null, loading: false, saving: false, info: null, customAiLimit: '', bonusAiQuota: 0 });
+  };
+
+  const handleSaveAiQuota = async () => {
+    if (!aiQuotaDialog.user) return;
+    setAiQuotaDialog((prev) => ({ ...prev, saving: true }));
+
+    try {
+      const payload = {
+        customAiLimit: aiQuotaDialog.customAiLimit === '' ? null : Number(aiQuotaDialog.customAiLimit),
+        bonusAiQuota: Number(aiQuotaDialog.bonusAiQuota || 0),
+      };
+
+      const res = await accountsApi.updateUserAiQuota(aiQuotaDialog.user._id, payload);
+      if (res.data?.success) {
+        showToast({ message: 'Cập nhật hạn mức AI thành công!', severity: 'success' });
+        handleCloseAiQuota();
+        fetchAccounts();
+      }
+    } catch (err) {
+      showToast({ message: err.response?.data?.message || 'Lỗi khi cập nhật hạn mức AI.', severity: 'error' });
+      setAiQuotaDialog((prev) => ({ ...prev, saving: false }));
+    }
+  };
+
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -523,6 +596,21 @@ function Accounts() {
                         </TableCell>
                         <TableCell align="right" sx={{ pr: 3 }}>
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <Tooltip title="Quản lý Hạn Mức AI (Rate Limit)" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenAiQuota(user)}
+                                sx={{
+                                  color: '#8b5cf6',
+                                  bgcolor: 'rgba(139,92,246,0.08)',
+                                  borderRadius: 3,
+                                  border: '1px solid rgba(139,92,246,0.2)',
+                                  '&:hover': { bgcolor: 'rgba(139,92,246,0.18)' },
+                                }}
+                              >
+                                <AiQuotaIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Hiệu chỉnh thông tin" arrow>
                               <IconButton
                                 size="small"
@@ -544,6 +632,7 @@ function Accounts() {
                               </IconButton>
                             </Tooltip>
                           </Stack>
+
                         </TableCell>
                       </TableRow>
                     ))
@@ -749,7 +838,420 @@ function Accounts() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* AI Quota Management Dialog (Redesigned Modern Glassmorphism UI) */}
+      <Dialog
+        open={aiQuotaDialog.open}
+        onClose={handleCloseAiQuota}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 6,
+            overflow: 'hidden',
+            bgcolor: (theme) => (theme.palette.mode === 'dark' ? '#121624' : '#ffffff'),
+            backgroundImage: 'none',
+            border: '1px solid',
+            borderColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
+            boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.5)',
+          },
+        }}
+      >
+        {/* Header Banner */}
+        <Box
+          sx={{
+            px: 3.5,
+            pt: 3.5,
+            pb: 2.5,
+            background: 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(6,182,212,0.12) 100%)',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            position: 'relative',
+          }}
+        >
+          <IconButton
+            onClick={handleCloseAiQuota}
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              color: 'text.secondary',
+              bgcolor: 'rgba(255,255,255,0.05)',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box
+              sx={{
+                width: 52,
+                height: 52,
+                borderRadius: 4,
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 20px rgba(139,92,246,0.35)',
+                flexShrink: 0,
+              }}
+            >
+              <AiQuotaIcon sx={{ color: '#ffffff', fontSize: 28 }} />
+            </Box>
+            <Box sx={{ minWidth: 0, pr: 3 }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                <Typography variant="h6" fontWeight={850} letterSpacing="-0.02em">
+                  Quản Lý Hạn Mức AI
+                </Typography>
+                <Chip
+                  label="Rate Limit"
+                  size="small"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: 10,
+                    height: 20,
+                    bgcolor: 'rgba(139,92,246,0.15)',
+                    color: '#a78bfa',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    borderRadius: 1.5,
+                  }}
+                />
+              </Stack>
+              <Typography variant="body2" color="text.secondary" noWrap fontWeight={500}>
+                {aiQuotaDialog.user?.name} · <span style={{ opacity: 0.7 }}>{aiQuotaDialog.user?.email}</span>
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
+
+        <DialogContent sx={{ p: 3.5 }}>
+          {aiQuotaDialog.loading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, gap: 2 }}>
+              <CircularProgress size={36} sx={{ color: '#8b5cf6' }} />
+              <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                Đang tải thông tin hạn mức AI...
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={3.5}>
+              {/* Stat Widgets */}
+              <Grid container spacing={1.5} alignItems="stretch">
+                <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      width: '100%',
+                      p: 1.75,
+                      borderRadius: 3.5,
+                      border: '1px solid',
+                      borderColor: 'rgba(139,92,246,0.2)',
+                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.04)'),
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={800}
+                      textTransform="uppercase"
+                      noWrap
+                      sx={{ fontSize: '0.66rem', letterSpacing: 0.3, width: '100%', textAlign: 'center' }}
+                    >
+                      Gói Mặc Định
+                    </Typography>
+                    <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#a78bfa', mt: 0.5, lineHeight: 1.2 }}>
+                      {aiQuotaDialog.info?.tierLimit ?? 5} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      width: '100%',
+                      p: 1.75,
+                      borderRadius: 3.5,
+                      border: '1px solid',
+                      borderColor: 'rgba(59,130,246,0.2)',
+                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.04)'),
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={800}
+                      textTransform="uppercase"
+                      noWrap
+                      sx={{ fontSize: '0.66rem', letterSpacing: 0.3, width: '100%', textAlign: 'center' }}
+                    >
+                      Đã Dùng 24h
+                    </Typography>
+                    <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#60a5fa', mt: 0.5, lineHeight: 1.2 }}>
+                      {aiQuotaDialog.info?.used24h ?? 0} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      width: '100%',
+                      p: 1.75,
+                      borderRadius: 3.5,
+                      border: '1px solid',
+                      borderColor: 'rgba(16,185,129,0.2)',
+                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(16,185,129,0.06)' : 'rgba(16,185,129,0.04)'),
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={800}
+                      textTransform="uppercase"
+                      noWrap
+                      sx={{ fontSize: '0.66rem', letterSpacing: 0.3, width: '100%', textAlign: 'center' }}
+                    >
+                      Lượt Còn Lại
+                    </Typography>
+                    <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#34d399', mt: 0.5, lineHeight: 1.2 }}>
+                      {aiQuotaDialog.info?.remaining ?? 0} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid size={{ xs: 6, sm: 3 }} sx={{ display: 'flex' }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      width: '100%',
+                      p: 1.75,
+                      borderRadius: 3.5,
+                      border: '1px solid',
+                      borderColor: 'rgba(245,158,11,0.3)',
+                      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.06)'),
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      boxShadow: '0 4px 12px rgba(245,158,11,0.1)',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={800}
+                      textTransform="uppercase"
+                      noWrap
+                      sx={{ fontSize: '0.66rem', letterSpacing: 0.3, width: '100%', textAlign: 'center' }}
+                    >
+                      Hạn Mức Tổng
+                    </Typography>
+                    <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#fbbf24', mt: 0.5, lineHeight: 1.2 }}>
+                      {aiQuotaDialog.info?.effectiveLimit ?? 5} <Typography component="span" variant="caption" fontWeight={700}>/24h</Typography>
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+
+              {/* Form Input Section */}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 4.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc'),
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2, color: 'text.primary' }}>
+                  Cấu Hình Hạn Mức Tùy Chỉnh
+                </Typography>
+
+                <Stack spacing={2.5}>
+                  {/* Custom AI Limit Override */}
+                  <Box>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                      Hạn mức cố định riêng cho user (Custom Limit Override)
+                    </Typography>
+                    <TextField
+                      placeholder="Bỏ trống để dùng mặc định của gói tài khoản"
+                      type="number"
+                      fullWidth
+                      value={aiQuotaDialog.customAiLimit}
+                      onChange={(e) => setAiQuotaDialog((prev) => ({ ...prev, customAiLimit: e.target.value }))}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">lượt / 24h</InputAdornment>,
+                        sx: {
+                          borderRadius: 3,
+                          fontWeight: 700,
+                          fontSize: 14,
+                          '& input[type=number]::-webkit-inner-spin-button': { display: 'none' },
+                        },
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: 11 }}>
+                      💡 Ví dụ nhập 50: User sẽ có 50 lượt/24h thay vì hạn mức mặc định của gói ({aiQuotaDialog.info?.tierLimit ?? 5} lượt).
+                    </Typography>
+                  </Box>
+
+                  {/* Bonus AI Quota */}
+                  <Box>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                      Số lượt AI thưởng thêm (Bonus AI Quota)
+                    </Typography>
+                    <TextField
+                      placeholder="0"
+                      type="number"
+                      fullWidth
+                      value={aiQuotaDialog.bonusAiQuota}
+                      onChange={(e) => setAiQuotaDialog((prev) => ({ ...prev, bonusAiQuota: e.target.value }))}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">lượt cộng thêm</InputAdornment>,
+                        sx: {
+                          borderRadius: 3,
+                          fontWeight: 700,
+                          fontSize: 14,
+                          '& input[type=number]::-webkit-inner-spin-button': { display: 'none' },
+                        },
+                      }}
+                    />
+
+                    {/* Quick Boost Preset Buttons */}
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1.25, flexWrap: 'wrap', gap: 0.75 }}>
+                      <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mr: 0.5 }}>
+                        Tặng nhanh:
+                      </Typography>
+                      {[5, 10, 20, 50].map((preset) => (
+                        <Chip
+                          key={preset}
+                          label={`+${preset}`}
+                          size="small"
+                          onClick={() => setAiQuotaDialog((prev) => ({ ...prev, bonusAiQuota: (Number(prev.bonusAiQuota) || 0) + preset }))}
+                          clickable
+                          sx={{
+                            fontWeight: 800,
+                            fontSize: 11,
+                            borderRadius: 2,
+                            bgcolor: 'rgba(139,92,246,0.1)',
+                            color: '#8b5cf6',
+                            border: '1px solid rgba(139,92,246,0.25)',
+                            '&:hover': { bgcolor: 'rgba(139,92,246,0.2)', borderColor: '#8b5cf6' },
+                          }}
+                        />
+                      ))}
+                      <Chip
+                        label="Reset 0"
+                        size="small"
+                        onClick={() => setAiQuotaDialog((prev) => ({ ...prev, bonusAiQuota: 0 }))}
+                        clickable
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: 11,
+                          borderRadius: 2,
+                          bgcolor: 'rgba(255,255,255,0.05)',
+                          color: 'text.secondary',
+                        }}
+                      />
+                    </Stack>
+                  </Box>
+                </Stack>
+              </Paper>
+
+              {/* Formula Calculation Live Banner */}
+              <Box
+                sx={{
+                  p: 2.25,
+                  borderRadius: 4,
+                  background: 'linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(99,102,241,0.08) 100%)',
+                  border: '1px solid rgba(139,92,246,0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(139,92,246,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <FlashIcon sx={{ color: '#a78bfa', fontSize: 20 }} />
+                </Box>
+
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700} display="block">
+                    TỔNG HẠN MỨC HIỆU LỰC MỚI CỦA USER
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight={900} sx={{ color: 'text.primary' }}>
+                    {(aiQuotaDialog.customAiLimit !== '' ? Number(aiQuotaDialog.customAiLimit) : (aiQuotaDialog.info?.tierLimit ?? 5)) +
+                      Number(aiQuotaDialog.bonusAiQuota || 0)}{' '}
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>yêu cầu / 24 giờ</span>
+                  </Typography>
+                </Box>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', gap: 1 }}>
+          <Button
+            onClick={handleCloseAiQuota}
+            disabled={aiQuotaDialog.saving}
+            sx={{ borderRadius: 3, fontWeight: 700, px: 2.5, color: 'text.secondary' }}
+          >
+            Hủy Bỏ
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveAiQuota}
+            disabled={aiQuotaDialog.saving || aiQuotaDialog.loading}
+            sx={{
+              borderRadius: 3.5,
+              fontWeight: 800,
+              px: 3.5,
+              py: 1.1,
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+              boxShadow: '0 4px 14px rgba(139,92,246,0.4)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                boxShadow: '0 6px 20px rgba(139,92,246,0.6)',
+              },
+            }}
+          >
+            {aiQuotaDialog.saving ? <CircularProgress size={20} color="inherit" /> : 'Cập Nhật Hạn Mức'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Layout>
+
   );
 }
 

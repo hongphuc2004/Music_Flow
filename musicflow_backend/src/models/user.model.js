@@ -65,7 +65,29 @@ const userSchema = new mongoose.Schema(
       ref: "Plan",
       default: null,
     },
+    aiMemory: {
+      topMoods: { type: [String], default: [] },
+      topThemes: { type: [String], default: [] },
+      preferredEnergy: { type: String, enum: ["low", "medium", "high", "mixed"], default: "mixed" },
+      timeSlotPreferences: {
+        morning: { moods: { type: [String], default: [] }, energy: { type: String, default: "mixed" } },
+        afternoon: { moods: { type: [String], default: [] }, energy: { type: String, default: "mixed" } },
+        evening: { moods: { type: [String], default: [] }, energy: { type: String, default: "mixed" } },
+        night: { moods: { type: [String], default: [] }, energy: { type: String, default: "mixed" } },
+      },
+      lastCalculatedAt: { type: Date, default: null },
+    },
+    customAiLimit: {
+      type: Number,
+      default: null,
+    },
+    bonusAiQuota: {
+      type: Number,
+      default: 0,
+    },
   },
+
+
   {
     timestamps: true,
   }

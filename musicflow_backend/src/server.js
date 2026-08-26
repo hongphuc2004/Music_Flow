@@ -40,6 +40,8 @@ const assistantRoute = require("./routes/assistant.route");
 const { cloudinaryRootFolder } = require("./config/cloudinaryFolders");
 const { startMonthlyListenersJob } = require("./jobs/monthlyListeners.job");
 const { startSubscriptionExpiryJob } = require("./jobs/subscriptionExpiry.job");
+const { startSongIntelligenceJob } = require("./jobs/songIntelligence.job");
+
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:3000")
@@ -170,6 +172,8 @@ mongoose
     logger.info(`MongoDB connected: ${conn.connection.host}`);
     startMonthlyListenersJob();
     startSubscriptionExpiryJob();
+    startSongIntelligenceJob();
+
   })
   .catch((err) => logger.error("MongoDB connection error on startup: %s", err.stack || err));
 

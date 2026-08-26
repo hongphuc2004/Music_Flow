@@ -7,7 +7,9 @@ import '../../../core/config/api_config.dart';
 import '../../../data/models/song_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../widgets/song_options_menu.dart';
+import '../../widgets/voice_ai_dj_sheet.dart';
 import '../library/favorites_screen.dart';
+
 import '../library/downloaded_songs_screen.dart';
 import '../library/your_uploads_screen.dart';
 import '../library/playlists_screen.dart';
@@ -857,12 +859,26 @@ class _AiDjScreenState extends State<AiDjScreen> {
                               width: 1.5,
                             ),
                           ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isLoading ? Icons.hourglass_empty_rounded : Icons.send_rounded,
-                              color: _isLoading ? AppColors.darkTextSecondary : AppColors.primary,
-                            ),
-                            onPressed: _isLoading ? null : _fetchAiPlaylist,
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.mic_rounded,
+                                  color: AppColors.secondary,
+                                ),
+                                tooltip: 'Trợ lý giọng nói AI',
+                                onPressed: _isLoading ? null : _openVoiceAiDjModal,
+                              ),
+
+                              IconButton(
+                                icon: Icon(
+                                  _isLoading ? Icons.hourglass_empty_rounded : Icons.send_rounded,
+                                  color: _isLoading ? AppColors.darkTextSecondary : AppColors.primary,
+                                ),
+                                onPressed: _isLoading ? null : _fetchAiPlaylist,
+                              ),
+                            ],
                           ),
                         ),
                         onSubmitted: (_) => _isLoading ? null : _fetchAiPlaylist(),
@@ -877,4 +893,21 @@ class _AiDjScreenState extends State<AiDjScreen> {
       ),
     );
   }
+
+  void _openVoiceAiDjModal() {
+    VoiceAiDjSheet.show(
+      context,
+      conversationId: _activeConversationId,
+      onExecuteActions: (actions, songs) {
+        if (actions != null && actions.isNotEmpty) {
+          _executeClientActions(actions);
+        } else if (songs.isNotEmpty) {
+          widget.onPlayAll(songs, startIndex: 0);
+        }
+        _loadHistory();
+      },
+    );
+  }
 }
+
+

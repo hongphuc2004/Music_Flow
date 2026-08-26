@@ -19,6 +19,7 @@ import 'package:musicflow_app/presentation/screens/home/home_song_list_section.d
 import 'package:musicflow_app/presentation/screens/home/home_top_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_topic_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_new_releases_section.dart';
+import 'package:musicflow_app/presentation/widgets/voice_ai_dj_sheet.dart';
 import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -455,7 +456,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                     },
+                    onVoiceTap: () {
+                      VoiceAiDjSheet.show(
+                        context,
+                        onExecuteActions: (actions, songs) {
+                          if (songs.isNotEmpty) {
+                            widget.onPlayAll?.call(songs, startIndex: 0);
+                          }
+                        },
+                      );
+                    },
                   ),
+
                   const SizedBox(height: 28),
 
                   if (filteredP.isNotEmpty) ...[

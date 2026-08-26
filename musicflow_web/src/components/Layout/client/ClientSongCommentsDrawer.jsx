@@ -31,6 +31,7 @@ import {
   ReplyRounded as ReplyIcon,
   EditRounded as EditIcon,
   DeleteOutlineRounded as DeleteIcon,
+  PlayArrowRounded as PlayIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientCommentsApi } from '../../../services/client/client.service';
@@ -59,11 +60,19 @@ const formatDate = (dateStr) => {
   });
 };
 
-function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountChanged, targetCommentId = null }) {
+function ClientSongCommentsDrawer({
+  open,
+  onClose,
+  commentCount,
+  onCommentCountChanged,
+  targetCommentId = null,
+  targetSong = null,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useAppToast();
-  const { currentSong } = useClientPlayer();
+  const { currentSong, playSong } = useClientPlayer();
+  const activeSong = targetSong || currentSong;
 
   const currentUserId = localStorage.getItem('userId');
   const isLoggedIn = Boolean(localStorage.getItem('role'));
@@ -110,7 +119,7 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
   }, [open, targetCommentId, comments]);
 
   const fetchComments = useCallback(async (reset = false) => {
-    if (!currentSong?._id) return;
+    if (!activeSong?._id) return;
 
     if (reset) {
       setLoading(true);
@@ -120,7 +129,7 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
 
     try {
       const pageToFetch = reset ? 1 : page + 1;
-      const response = await clientCommentsApi.getSongComments(currentSong._id, {
+      const response = await clientCommentsApi.getSongComments(activeSong._id, {
         sort,
         page: pageToFetch,
         limit: 10,
@@ -145,18 +154,18 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [currentSong?._id, page, sort, onCommentCountChanged, showToast]);
+  }, [activeSong?._id, page, sort, onCommentCountChanged, showToast]);
 
   // Initial fetch or when song / sort changes
   useEffect(() => {
-    if (open && currentSong?._id) {
+    if (open && activeSong?._id) {
       fetchComments(true);
     } else if (!open) {
       setComments([]);
       setReplyingTo(null);
       setEditingCommentId(null);
     }
-  }, [open, currentSong?._id, sort, fetchComments]);
+  }, [open, activeSong?._id, sort, fetchComments]);
 
   const triggerLogin = () => {
     const nextParams = new URLSearchParams(location.search);
@@ -175,12 +184,12 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
       return;
     }
 
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !activeSong?._id) return;
 
     setSending(true);
     try {
       const response = await clientCommentsApi.create({
-        songId: currentSong._id,
+        songId: activeSong._id,
         content: inputText.trim(),
         parentCommentId: replyingTo ? replyingTo._id : null,
       });
@@ -349,6 +358,7 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
     return (
       <Box
         key={comment._id}
+        id={`comment-${comment._id}`}
         sx={{
           pl: depth > 0 ? { xs: 2, sm: 3 } : 0,
           mt: 1.5,
@@ -552,10 +562,30 @@ function ClientSongCommentsDrawer({ open, onClose, commentCount, onCommentCountC
             </IconButton>
           </Stack>
 
-          {currentSong && (
-            <Typography variant="caption" display="block" sx={{ color: 'rgba(255,255,255,0.45)', mt: 0.5 }}>
-              Bài hát: {currentSong.title} - {currentSong.artistText}
-            </Typography>
+          {activeSong && (
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.5 }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                Bài hát: {activeSong.title} - {Array.isArray(activeSong.artists) ? activeSong.artists.map(a => a?.name).filter(Boolean).join(', ') : (activeSong.artistText || activeSong.artist || '')}
+              </Typography>
+              {playSong && (
+                <Button
+                  size="small"
+                  startIcon={<PlayIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => playSong(activeSong)}
+                  sx={{
+                    color: '#14b8a6',
+                    fontSize: 11,
+                    textTransform: 'none',
+                    py: 0,
+                    px: 1,
+                    minWidth: 0,
+                    '&:hover': { bgcolor: 'rgba(20, 184, 166, 0.1)' }
+                  }}
+                >
+                  Phát
+                </Button>
+              )}
+            </Stack>
           )}
 
           {/* Sort Toggles */}

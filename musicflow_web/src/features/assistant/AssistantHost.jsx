@@ -35,6 +35,8 @@ import {
   MusicNoteRounded as MusicIcon,
   PlayArrowRounded as PlayIcon,
   PauseRounded as PauseIcon,
+  DownloadRounded as DownloadIcon,
+  OpenInNewRounded as OpenIcon,
 } from '@mui/icons-material';
 import { useAssistant } from './AssistantProvider';
 
@@ -382,6 +384,13 @@ export default function AssistantHost() {
                 ) : (
                   messages.map((msg) => {
                     const isAssistant = msg.role === 'assistant';
+                    const imageUrl = isAssistant ? (msg.metadata?.imageUrl || 
+                      msg.metadata?.image || 
+                      (msg.content && msg.content.match(/\((https:\/\/image\.pollinations\.ai[^)]+)\)/)?.[1])) : null;
+                    const cleanContent = msg.content 
+                      ? msg.content.replace(/!\[.*?\]\(https:\/\/.*?\)/g, '').trim() 
+                      : '';
+
                     return (
                       <Stack
                         key={msg._id}
@@ -415,28 +424,132 @@ export default function AssistantHost() {
                               borderColor: 'divider',
                             }}
                           >
-                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
-                              {msg.content}
-                            </Typography>
+                            {cleanContent && (
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                                {cleanContent}
+                              </Typography>
+                            )}
 
                             {/* Render AI Generated Image Preview if available */}
-                            {(msg.metadata?.imageUrl || (msg.content && msg.content.includes("https://image.pollinations.ai"))) && (
-                              <Box sx={{ mt: 1.5, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            {imageUrl && (
+                              <Box
+                                sx={{
+                                  mt: cleanContent ? 1.5 : 0,
+                                  borderRadius: 2.5,
+                                  overflow: 'hidden',
+                                  border: '1px solid rgba(139,92,246,0.35)',
+                                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                                  width: '100%',
+                                }}
+                              >
                                 <Box
-                                  component="img"
-                                  src={msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^)]+)\)/)?.[1]}
-                                  alt={msg.metadata?.prompt || "AI Artwork"}
                                   sx={{
+                                    position: 'relative',
                                     width: '100%',
-                                    maxHeight: 280,
-                                    objectFit: 'cover',
-                                    display: 'block',
+                                    paddingTop: '100%', // 1:1 Aspect Ratio Square
+                                    overflow: 'hidden',
+                                    bgcolor: '#0f172a',
                                     cursor: 'pointer',
-                                    transition: 'transform 0.3s',
-                                    '&:hover': { transform: 'scale(1.02)' },
+                                    '&:hover .artwork-overlay': { opacity: 1 },
+                                    '&:hover .artwork-img': { transform: 'scale(1.04)' },
                                   }}
-                                  onClick={() => window.open(msg.metadata?.imageUrl || msg.content.match(/\((https:\/\/image\.pollinations\.ai[^)]+)\)/)?.[1], '_blank')}
-                                />
+                                  onClick={() => window.open(imageUrl, '_blank')}
+                                >
+                                  <Box
+                                    className="artwork-img"
+                                    component="img"
+                                    src={imageUrl}
+                                    alt={msg.metadata?.prompt || 'AI Artwork'}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: 0,
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                                    }}
+                                  />
+
+                                  {/* Glassmorphic Overlay on Hover */}
+                                  <Box
+                                    className="artwork-overlay"
+                                    sx={{
+                                      position: 'absolute',
+                                      inset: 0,
+                                      bgcolor: 'rgba(15, 23, 42, 0.45)',
+                                      backdropFilter: 'blur(4px)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      opacity: 0,
+                                      transition: 'opacity 0.25s ease',
+                                    }}
+                                  >
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      startIcon={<OpenIcon sx={{ fontSize: 14 }} />}
+                                      sx={{
+                                        borderRadius: 20,
+                                        bgcolor: 'rgba(255,255,255,0.9)',
+                                        color: '#0f172a',
+                                        fontWeight: 700,
+                                        fontSize: 11,
+                                        textTransform: 'none',
+                                        px: 1.5,
+                                        '&:hover': { bgcolor: '#ffffff' },
+                                      }}
+                                    >
+                                      Xem full HD
+                                    </Button>
+                                  </Box>
+                                </Box>
+
+                                {/* Bottom Action Footer Bar */}
+                                <Stack
+                                  direction="row"
+                                  alignItems="center"
+                                  justifyContent="space-between"
+                                  sx={{
+                                    px: 1.5,
+                                    py: 1,
+                                    bgcolor: (theme) =>
+                                      theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.95)' : '#f1f5f9',
+                                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                  }}
+                                >
+                                  <Stack direction="row" spacing={0.5} alignItems="center">
+                                    <SparklesIcon sx={{ fontSize: 13, color: '#a855f7' }} />
+                                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: 10 }}>
+                                      AI Cover (1024×1024)
+                                    </Typography>
+                                  </Stack>
+
+                                  <Button
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={<DownloadIcon sx={{ fontSize: 13 }} />}
+                                    onClick={() => window.open(imageUrl, '_blank')}
+                                    sx={{
+                                      borderRadius: 10,
+                                      background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                                      color: '#fff',
+                                      fontWeight: 700,
+                                      fontSize: 10,
+                                      textTransform: 'none',
+                                      px: 1.25,
+                                      py: 0.25,
+                                      minWidth: 0,
+                                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.35)',
+                                      '&:hover': {
+                                        background: 'linear-gradient(135deg, #6d28d9, #4338ca)',
+                                      },
+                                    }}
+                                  >
+                                    Tải về
+                                  </Button>
+                                </Stack>
                               </Box>
                             )}
                           </Paper>
@@ -715,23 +828,6 @@ function CompactPlaylistCard({ playlistId, playlists, onPlaySong, onPlayAll }) {
         boxSizing: 'border-box',
       }}
     >
-      {playlist.imageUrl && (
-        <Box sx={{ mb: 1.5, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
-          <Box
-            component="img"
-            src={playlist.imageUrl}
-            alt={playlist.title}
-            sx={{
-              width: '100%',
-              height: 140,
-              objectFit: 'cover',
-              display: 'block',
-              transition: 'transform 0.3s',
-              '&:hover': { transform: 'scale(1.03)' },
-            }}
-          />
-        </Box>
-      )}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <SparklesIcon sx={{ color: '#8b5cf6', fontSize: 16 }} />
         <Typography variant="caption" fontWeight={850} noWrap sx={{ flexGrow: 1, color: 'text.primary' }}>

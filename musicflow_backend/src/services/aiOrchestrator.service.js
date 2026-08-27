@@ -49,11 +49,16 @@ function shouldEnrichPrompt(userPrompt) {
   const cleaned = userPrompt.trim().toLowerCase();
   if (!cleaned) return false;
 
-  // Rule 1: Non-music greeting & system commands -> BYPASS
+  // Rule 1: Non-music greeting, system commands & explicit non-music tool commands (e.g. image generation) -> BYPASS
   for (const pattern of BYPASS_PATTERNS) {
     if (pattern.test(cleaned)) {
       return false;
     }
+  }
+
+  const isImageReq = /(tao|ve|draw|create|generate|sinh|make).*(anh|hinh|image|picture|photo|artwork|pic)/i.test(cleaned);
+  if (isImageReq) {
+    return false;
   }
 
   // Rule 2: Emotional / Implicit / Complex Context -> ENRICH

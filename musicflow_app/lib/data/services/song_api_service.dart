@@ -27,11 +27,45 @@ class SearchArtist {
   }
 }
 
+class SearchPlaylist {
+  final String id;
+  final String name;
+  final String description;
+  final String coverImage;
+  final int songCount;
+  final String ownerName;
+
+  const SearchPlaylist({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.coverImage,
+    required this.songCount,
+    required this.ownerName,
+  });
+
+  factory SearchPlaylist.fromJson(Map<String, dynamic> json) {
+    return SearchPlaylist(
+      id: json['_id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      coverImage: json['coverImage']?.toString() ?? '',
+      songCount: (json['songCount'] as num?)?.toInt() ?? 0,
+      ownerName: json['ownerName']?.toString() ?? 'Playlist',
+    );
+  }
+}
+
 class SearchResult {
   final List<Song> songs;
   final List<SearchArtist> artists;
+  final List<SearchPlaylist> playlists;
 
-  const SearchResult({required this.songs, required this.artists});
+  const SearchResult({
+    required this.songs,
+    required this.artists,
+    this.playlists = const [],
+  });
 }
 
 class SongApiService {
@@ -199,7 +233,10 @@ class SongApiService {
     String? artist,
     String? letter,
   }) async {
-    final queryParams = <String, String>{'includeArtists': 'true'};
+    final queryParams = <String, String>{
+      'includeArtists': 'true',
+      'includePlaylists': 'true',
+    };
 
     if (query != null && query.isNotEmpty) {
       queryParams['query'] = query;
@@ -222,7 +259,7 @@ class SongApiService {
 
     final dynamic decoded = json.decode(response.body);
     if (decoded is! Map<String, dynamic>) {
-      return const SearchResult(songs: [], artists: []);
+      return const SearchResult(songs: [], artists: [], playlists: []);
     }
 
     final songs = (decoded['songs'] as List<dynamic>? ?? const [])
@@ -235,7 +272,12 @@ class SongApiService {
         .map(SearchArtist.fromJson)
         .toList();
 
-    return SearchResult(songs: songs, artists: artists);
+    final playlists = (decoded['playlists'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SearchPlaylist.fromJson)
+        .toList();
+
+    return SearchResult(songs: songs, artists: artists, playlists: playlists);
   }
 
   /// Upload bài hát mới (audio + image) - YÊU CẦU ĐĂNG NHẬP

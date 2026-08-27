@@ -185,7 +185,7 @@ export const AssistantProvider = ({ children }) => {
 
       const res = await clientAssistantApi.sendMessage(payload);
       if (res.data?.success) {
-        const { conversation, message, assistantMessage: aiText, clientActions: actions, playlist } = res.data.data;
+        const { conversation, message, messages: resMessages, assistantMessage: aiText, clientActions: actions, playlist } = res.data.data;
         
         setActiveConversationId(conversation._id);
         if (playlist) {
@@ -195,18 +195,26 @@ export const AssistantProvider = ({ children }) => {
           });
         }
         
-        // Build clean response message object with safe fallbacks
-        const responseMsg = {
-          _id: message?._id || `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: message?.content || aiText || 'Đã nhận yêu cầu.',
-          metadata: message?.metadata || {},
-          playlistId: message?.metadata?.playlistId || playlist?._id || null,
-          createdAt: message?.createdAt || new Date().toISOString(),
-        };
-
         setMessages((prev) => {
           const filtered = prev.filter((m) => !m._id.startsWith('temp-user-'));
+          if (Array.isArray(resMessages) && resMessages.length >= 2) {
+            const mappedNew = resMessages.map((m) => ({
+              ...m,
+              role: m.role === 'model' ? 'assistant' : 'user',
+              playlistId: m.metadata?.playlistId || playlist?._id || null,
+            }));
+            return [...filtered, ...mappedNew];
+          }
+
+          const responseMsg = {
+            _id: message?._id || `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: message?.content || aiText || 'Đã nhận yêu cầu.',
+            metadata: message?.metadata || {},
+            playlistId: message?.metadata?.playlistId || playlist?._id || null,
+            createdAt: message?.createdAt || new Date().toISOString(),
+          };
+
           return [
             ...filtered,
             { _id: `user-${Date.now()}`, role: 'user', content: text, createdAt: new Date().toISOString() },
@@ -250,8 +258,11 @@ export const AssistantProvider = ({ children }) => {
       const res = await clientAssistantApi.deleteConversation(convId);
       if (res.data?.success) {
         showToast({ message: 'Đã xóa cuộc hội thoại.', severity: 'success' });
-        setConversations((prev) => prev.filter((c) => c._id !== convId));
-        if (activeConversationId === convId) {
+        
+        setConversations((prev) => prev.filter((c) => String(c._id) !== String(convId)));
+
+        const isDeletingActive = !activeConversationId || String(activeConversationId) === String(convId);
+        if (isDeletingActive) {
           startNewConversation(scope);
         }
       }

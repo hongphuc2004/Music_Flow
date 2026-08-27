@@ -159,22 +159,22 @@ function ClientPremium() {
   const getConciseBenefits = (plan) => {
     if (plan.price === 19000 || plan.name.includes("GO")) {
       return [
-        'Hạn mức tải lên tối đa 100 MB',
-        'Tải nhạc ngoại tuyến tối đa 1 GB',
+        'Hạn mức tải lên tối đa 250 MB',
+        'Tải nhạc ngoại tuyến tối đa 300 MB',
         'Trò chuyện AI DJ tối đa 10 lần / ngày',
       ];
     }
     if (plan.price === 49000 || plan.name.includes("PLUS")) {
       return [
         'Hạn mức tải lên tối đa 500 MB',
-        'Tải nhạc ngoại tuyến tối đa 5 GB',
+        'Tải nhạc ngoại tuyến tối đa 700 MB',
         'Trò chuyện AI DJ tối đa 15 lần / ngày',
       ];
     }
     if (plan.price === 89000 || plan.name.includes("PREMIUM")) {
       return [
-        'Tải lên KHÔNG GIỚI HẠN dung lượng',
-        'Tải nhạc ngoại tuyến không giới hạn',
+        'Hạn mức tải lên tối đa 1 GB',
+        'Tải nhạc ngoại tuyến tối đa 1 GB',
         'Trò chuyện AI DJ tối đa 20 lần / ngày',
       ];
     }
@@ -493,19 +493,19 @@ function ClientPremium() {
                   {/* Tải lên */}
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750 }}>Dung lượng tải lên (Upload)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tối đa 50 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 100 MB</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tối đa 100 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 250 MB</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 500 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4' }}>Tối đa 1 GB</TableCell>
                   </TableRow>
                   
                   {/* Tải xuống */}
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750 }}>Tải nhạc ngoại tuyến (Download)</TableCell>
                     <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tối đa 100 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 1 GB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 5 GB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#22c55e' }}>Không giới hạn</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 300 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 700 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4' }}>Tối đa 1 GB</TableCell>
                   </TableRow>
                   
                   {/* Trợ lý AI */}

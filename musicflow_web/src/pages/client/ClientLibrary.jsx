@@ -5,6 +5,7 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -36,9 +37,12 @@ import {
   SearchRounded as SearchIcon,
   AddRounded as AddIcon,
   AutorenewRounded as RefreshIcon,
+  AutoAwesomeRounded as SparklesIcon,
+  VisibilityRounded as ViewIcon,
+  OpenInNewRounded as OpenIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../services/client/client.service';
+import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi, clientAssistantApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 import useAppToast from '../../components/common/useAppToast';
@@ -109,6 +113,10 @@ function ClientLibrary() {
   const [songDeleteType, setSongDeleteType] = useState(''); // 'favorite' | 'upload' | 'download'
 
   const [coverImageError, setCoverImageError] = useState(false);
+  const [aiCoverPrompt, setAiCoverPrompt] = useState('');
+  const [aiCoverGenerating, setAiCoverGenerating] = useState(false);
+  const [imagePreviewDialogOpen, setImagePreviewDialogOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
 
   const loadLibrary = async () => {
     try {
@@ -303,6 +311,45 @@ function ClientLibrary() {
     }
   };
 
+  const handleOpenImagePreview = (url) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setImagePreviewDialogOpen(true);
+  };
+
+  const handleGenerateAiCover = async () => {
+    if (!aiCoverPrompt.trim() || aiCoverGenerating) return;
+    setAiCoverGenerating(true);
+    try {
+      const res = await clientAssistantApi.sendMessage({
+        prompt: `tạo 1 tấm hình ${aiCoverPrompt.trim()}`,
+        scope: 'global',
+      });
+      const imageUrl =
+        res.data?.data?.metadata?.imageUrl ||
+        res.data?.data?.message?.metadata?.imageUrl ||
+        res.data?.data?.clientActions?.find((a) => a.type === 'SHOW_IMAGE')?.payload?.imageUrl;
+
+      if (imageUrl) {
+        setPlaylistCoverSource('unsplash');
+        setPlaylistCoverImage(imageUrl);
+        setPlaylistCoverImageFile(null);
+        if (playlistCoverImageFilePreview) {
+          URL.revokeObjectURL(playlistCoverImageFilePreview);
+          setPlaylistCoverImageFilePreview('');
+        }
+        showToast({ severity: 'success', title: 'Thành công', message: 'Đã tạo ảnh bìa AI nghệ thuật cho playlist!' });
+      } else {
+        showToast({ severity: 'error', title: 'Lỗi', message: 'Không thể tạo ảnh bìa AI. Vui lòng thử lại!' });
+      }
+    } catch (err) {
+      console.error('Generate AI Cover Error:', err);
+      showToast({ severity: 'error', title: 'Thất bại', message: 'Tạo ảnh bìa AI thất bại. Vui lòng thử lại!' });
+    } finally {
+      setAiCoverGenerating(false);
+    }
+  };
+
   const handlePlaylistCoverFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -392,6 +439,7 @@ function ClientLibrary() {
         unsplashUrl: ''
       });
     }
+    setAiCoverPrompt('');
     handleShufflePresets();
     setPlaylistDialogOpen(true);
   };
@@ -1469,30 +1517,71 @@ function ClientLibrary() {
           
           {/* Centered Premium Image Preview Area */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 0.5 }}>
-            <Box
-              sx={{
-                width: 140,
-                height: 140,
-                borderRadius: '20px',
-                overflow: 'hidden',
-                position: 'relative',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                border: '1px solid',
-                borderColor: 'divider',
-                backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {(playlistCoverSource === 'upload' && playlistCoverImageFilePreview) ? (
-                <Box component="img" src={playlistCoverImageFilePreview} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : playlistCoverImage ? (
-                <Box component="img" src={playlistCoverImage} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <MusicIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.4 }} />
-              )}
-            </Box>
+            {(() => {
+              const activeCoverUrl = (playlistCoverSource === 'upload' && playlistCoverImageFilePreview)
+                ? playlistCoverImageFilePreview
+                : playlistCoverImage;
+
+              return (
+                <Tooltip title={activeCoverUrl ? "Click để xem ảnh kích thước đầy đủ" : ""} arrow>
+                  <Box
+                    onClick={() => activeCoverUrl && handleOpenImagePreview(activeCoverUrl)}
+                    sx={{
+                      width: 140,
+                      height: 140,
+                      borderRadius: '20px',
+                      overflow: 'hidden',
+                      position: 'relative',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                      border: '1.5px solid',
+                      borderColor: activeCoverUrl ? '#8b5cf6' : 'divider',
+                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: activeCoverUrl ? 'pointer' : 'default',
+                      '&:hover .cover-hover-overlay': { opacity: 1 },
+                      '&:hover .cover-img': { transform: 'scale(1.05)' },
+                    }}
+                  >
+                    {activeCoverUrl ? (
+                      <>
+                        <Box
+                          className="cover-img"
+                          component="img"
+                          src={activeCoverUrl}
+                          sx={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }}
+                        />
+                        <Box
+                          className="cover-hover-overlay"
+                          sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            bgcolor: 'rgba(15, 23, 42, 0.65)',
+                            backdropFilter: 'blur(3px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            gap: 0.5,
+                            opacity: 0,
+                            transition: 'opacity 0.25s ease',
+                          }}
+                        >
+                          <ViewIcon sx={{ fontSize: 24, color: '#fff' }} />
+                          <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 700 }}>
+                            Xem full HD
+                          </Typography>
+                        </Box>
+                      </>
+                    ) : (
+                      <MusicIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.4 }} />
+                    )}
+                  </Box>
+                </Tooltip>
+              );
+            })()}
           </Box>
 
           {/* Local Upload Form Row */}
@@ -1649,6 +1738,91 @@ function ClientLibrary() {
                 </Typography>
               )}
             </Stack>
+
+            {/* AI Cover Generation Suggestion Banner & Input */}
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 1.75,
+                p: 1.75,
+                borderRadius: '16px',
+                background: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(99, 102, 241, 0.08))'
+                    : 'linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(99, 102, 241, 0.04))',
+                border: '1px dashed rgba(139, 92, 246, 0.4)',
+              }}
+            >
+              <Stack spacing={1.25}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <SparklesIcon sx={{ fontSize: 18, color: '#8b5cf6' }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                      Chưa chọn được ảnh ưng ý? Sáng tạo với AI ✨
+                    </Typography>
+                  </Stack>
+                  <Chip
+                    label="AI Image"
+                    size="small"
+                    sx={{
+                      bgcolor: 'rgba(139, 92, 246, 0.15)',
+                      color: '#8b5cf6',
+                      fontWeight: 700,
+                      fontSize: 10,
+                    }}
+                  />
+                </Stack>
+
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <TextField
+                    placeholder="Mô tả ảnh bìa (Ví dụ: Bầu trời đêm lung linh, lofi...)"
+                    size="small"
+                    value={aiCoverPrompt}
+                    onChange={(e) => setAiCoverPrompt(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleGenerateAiCover();
+                      }
+                    }}
+                    disabled={aiCoverGenerating || playlistSaving}
+                    fullWidth
+                    InputProps={{
+                      sx: {
+                        borderRadius: '12px',
+                        fontSize: '0.8rem',
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff',
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={!aiCoverPrompt.trim() || aiCoverGenerating || playlistSaving}
+                    onClick={handleGenerateAiCover}
+                    startIcon={aiCoverGenerating ? <CircularProgress size={14} color="inherit" /> : <SparklesIcon sx={{ fontSize: 15 }} />}
+                    sx={{
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '0.775rem',
+                      textTransform: 'none',
+                      whiteSpace: 'nowrap',
+                      py: 0.8,
+                      px: 2,
+                      boxShadow: '0 2px 8px rgba(124, 58, 237, 0.35)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #6d28d9, #4338ca)',
+                      },
+                    }}
+                  >
+                    {aiCoverGenerating ? 'Đang tạo...' : 'Tạo với AI'}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
           </Box>
 
           <FormControlLabel
@@ -1876,6 +2050,71 @@ function ClientLibrary() {
             {uploading
               ? (editingUploadSong ? 'Đang cập nhật...' : 'Đang tải lên...')
               : (editingUploadSong ? 'Cập nhật' : 'Tải lên ngay')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* High-Resolution Image Preview Lightbox Dialog */}
+      <Dialog
+        open={imagePreviewDialogOpen}
+        onClose={() => setImagePreviewDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            overflow: 'hidden',
+            bgcolor: '#0f172a',
+            color: '#fff',
+            border: '1px solid rgba(139, 92, 246, 0.4)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, pt: 2, px: 3 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <SparklesIcon sx={{ color: '#a855f7', fontSize: 20 }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>
+              Ảnh bìa Playlist 
+            </Typography>
+          </Stack>
+          <IconButton onClick={() => setImagePreviewDialogOpen(false)} sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff' } }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {previewImageUrl && (
+            <Box
+              component="img"
+              src={previewImageUrl}
+              alt="Full Cover Preview"
+              sx={{
+                width: '100%',
+                maxWidth: 480,
+                maxHeight: 480,
+                aspectRatio: '1/1',
+                borderRadius: 4,
+                objectFit: 'cover',
+                boxShadow: '0 12px 36px rgba(0,0,0,0.5)',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, justifyContent: 'space-between' }}>
+          <Button
+            variant="outlined"
+            startIcon={<OpenIcon />}
+            onClick={() => window.open(previewImageUrl, '_blank')}
+            sx={{ borderRadius: '12px', borderColor: 'rgba(255,255,255,0.2)', color: '#fff', textTransform: 'none', fontWeight: 600, '&:hover': { borderColor: '#8b5cf6' } }}
+          >
+            Mở trong tab mới
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setImagePreviewDialogOpen(false)}
+            sx={{ borderRadius: '12px', bgcolor: '#7c3aed', color: '#fff', textTransform: 'none', fontWeight: 700, px: 3, '&:hover': { bgcolor: '#6d28d9' } }}
+          >
+            Đóng
           </Button>
         </DialogActions>
       </Dialog>

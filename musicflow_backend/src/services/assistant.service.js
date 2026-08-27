@@ -18,13 +18,16 @@ const PLAYLIST_MIN_TARGET_SONGS = 15;
 const MOOD_TOPIC_MAP = promptBuilder.getMoodTopicMap();
 
 function isPlaylistIntent(prompt = "") {
-
   const text = normalizeText(prompt);
-  const strongIntent =
-    /(tao|goi y|de xuat|lam|build|recommend|play|phat|mo)/.test(text) &&
-    /(playlist|danh sach|mix|mood|nhac|bai hat)/.test(text);
-  const explicitPlaylist = /(tao playlist|goi y playlist|de xuat playlist|play playlist|phat nhac)/.test(text);
-  return strongIntent || explicitPlaylist;
+  const actionMatch = /(tao|goi y|de xuat|lam|build|recommend|play|phat|mo|tim|cho|can|muon|nghe)/.test(text);
+  const entityMatch = /(playlist|danh sach|mix|mood|nhac|bai hat|bai|ca khuc|track|album)/.test(text);
+  const moodAnalysis = analyzeMood(prompt);
+  const hasMoodMatch = moodAnalysis.score > 0;
+
+  const strongIntent = actionMatch && (entityMatch || hasMoodMatch);
+  const explicitPlaylist = /(tao playlist|goi y playlist|de xuat playlist|play playlist|phat nhac|goi y|goi y bai|goi y nhac|cho toi nhung bai|bai vui|bai hat vui|nhung bai)/.test(text);
+
+  return strongIntent || explicitPlaylist || (actionMatch && hasMoodMatch) || hasMoodMatch;
 }
 
 function analyzeMood(prompt) {
@@ -144,7 +147,7 @@ function findExplicitTopicsFromPrompt(allTopics, promptTerms) {
 async function findMatchedArtists(prompt) {
   const normalizedPrompt = normalizeText(prompt);
   const terms = normalizedPrompt
-    .replace(/\b(nhac|bai|hat|cua|di|cho|minh|toi|nghe|playlist|tao|goi|y|ve|theo|ca|si|singer|artist)\b/g, " ")
+    .replace(/\b(nhac|bai|hat|cua|di|cho|minh|toi|nghe|playlist|tao|goi|y|ve|theo|ca|si|singer|artist|ban|giup|co|the|la|ai|gi|hoi|nay|khong|hinh|tam|buc|thien|nhien)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .split(" ")
@@ -222,20 +225,29 @@ async function findSongsByMood(
 ) {
   const { strictTopicOnly = false } = options;
   const matchedTopicIds = matchedTopics.map((topic) => topic._id);
-  if (matchedTopicIds.length === 0) {
-    return [];
-  }
   const prioritizedTopicIdSet = new Set(
     prioritizedTopics.map((topic) => topic?._id?.toString()).filter(Boolean)
   );
 
-  const topicSongs = await Song.find({
-    isPublic: true,
-    topicIds: { $in: matchedTopicIds },
-  })
-    .populate("artists", "name avatar")
-    .populate("topicIds", "name description")
-    .lean();
+  let topicSongs = [];
+  if (matchedTopicIds.length > 0) {
+    topicSongs = await Song.find({
+      isPublic: true,
+      topicIds: { $in: matchedTopicIds },
+    })
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name description")
+      .lean();
+  }
+
+  if (topicSongs.length === 0) {
+    topicSongs = await Song.find({ isPublic: true })
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name description")
+      .sort({ playCount: -1, likeCount: -1, createdAt: -1 })
+      .limit(30)
+      .lean();
+  }
 
   const scoredSongs = topicSongs.map((song) => {
     const topicNames = (song.topicIds || []).map((topic) => normalizeText(topic.name));
@@ -510,6 +522,85 @@ function fallbackAssistantText(matchStatus, songCount, source = "", prompt = "")
 
 // --- GEMINI INITIALIZATION & CANDIDATES ---
 
+function extractRecentContextFromHistory(messages = []) {
+  const context = {
+    recentSongs: [],
+    lastSong: null,
+    lastPlaylistId: null,
+  };
+
+  if (!Array.isArray(messages) || messages.length === 0) return context;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (!msg || !msg.metadata) continue;
+
+    const meta = msg.metadata;
+
+    if (Array.isArray(meta.songs) && meta.songs.length > 0 && context.recentSongs.length === 0) {
+      context.recentSongs = meta.songs.map((s) => ({
+        _id: s._id || s.songId,
+        title: s.title || s.name || "",
+        artists: s.artists || (s.artist ? [s.artist] : []),
+      })).filter((s) => s.title);
+    }
+
+    if ((meta.songId || meta.song) && !context.lastSong) {
+      const s = meta.song || {};
+      context.lastSong = {
+        _id: meta.songId || s._id,
+        title: s.title || meta.title || "",
+        artists: s.artists || (s.artist ? [s.artist] : []),
+      };
+    }
+
+    if (meta.playlistId && !context.lastPlaylistId) {
+      context.lastPlaylistId = meta.playlistId;
+    }
+  }
+
+  if (!context.lastSong && context.recentSongs.length > 0) {
+    context.lastSong = context.recentSongs[0];
+  }
+
+  return context;
+}
+
+function resolveContextualReference(prompt = "", context = {}) {
+  const text = normalizeText(prompt);
+
+  // Check ordinal references: "bài đầu tiên", "bài 1", "bài thứ 1", "bài thứ nhất"
+  const isFirst = /\b(bai\s+(dau\s+tien|1|thu\s+1|thu\s+nhat))\b/.test(text) || /\b(mo|phat)\s+(bai\s+dau|bai\s+1)\b/.test(text);
+  if (isFirst && context.recentSongs && context.recentSongs.length > 0) {
+    return { type: "song", song: context.recentSongs[0], index: 0 };
+  }
+
+  // "bài thứ 2", "bài 2", "bài hai", "bài thứ hai"
+  const isSecond = /\b(bai\s+(2|thu\s+2|hai|thu\s+hai))\b/.test(text) || /\b(mo|phat)\s+(bai\s+2)\b/.test(text);
+  if (isSecond && context.recentSongs && context.recentSongs.length > 1) {
+    return { type: "song", song: context.recentSongs[1], index: 1 };
+  }
+
+  // "bài thứ 3", "bài 3", "bài ba", "bài thứ ba"
+  const isThird = /\b(bai\s+(3|thu\s+3|ba|thu\s+ba))\b/.test(text);
+  if (isThird && context.recentSongs && context.recentSongs.length > 2) {
+    return { type: "song", song: context.recentSongs[2], index: 2 };
+  }
+
+  // Pronouns: "bài này", "nó", "mở nó đi", "phát nó", "bài đó"
+  const isPronoun = /\b(mo|phat|nghe)\s+(no|cai\s+do|bai\s+do|bai\s+nay)\b/.test(text) || /\b(bai\s+nay|cai\s+nay|no)\b/.test(text);
+  if (isPronoun) {
+    if (context.lastSong && context.lastSong.title) {
+      return { type: "song", song: context.lastSong };
+    }
+    if (context.recentSongs && context.recentSongs.length > 0) {
+      return { type: "song", song: context.recentSongs[0] };
+    }
+  }
+
+  return null;
+}
+
 function toGeminiRole(role) {
   return role === "model" ? "model" : "user";
 }
@@ -528,37 +619,40 @@ function buildSystemInstruction(actorRole) {
   return promptBuilder.buildSystemInstruction(actorRole);
 }
 
-
 // Define Tools (Function Declarations) dynamically for Gemini based on role
 function getToolsForRole(actorRole) {
   const declarations = [
     {
-      name: "generate_image",
-      description: "Tạo hình ảnh AI (ảnh bìa album, artwork âm nhạc, ảnh nghệ thuật...) dựa trên mô tả hoặc yêu cầu vẽ ảnh của người dùng.",
+      name: "search_music",
+      description: "Tìm kiếm bài hát, ca sĩ, nghệ sĩ hoặc danh sách phát trong thư viện MusicFlow bằng từ khóa, tên ca sĩ, tên bài hát.",
       parameters: {
         type: "OBJECT",
         properties: {
-          prompt: { type: "STRING", description: "Mô tả chi tiết bằng tiếng Việt hoặc tiếng Anh về hình ảnh cần vẽ/tạo." },
-          title: { type: "STRING", description: "Chủ đề hoặc tiêu đề ngắn gọn của bức ảnh." },
+          query: { type: "STRING", description: "Từ khóa tìm kiếm (tên ca sĩ, tên bài hát, chủ đề)." },
+          intent: {
+            type: "STRING",
+            description: "Mục đích: 'play' nếu phát bài hát đầu tiên tìm được, 'search' nếu hiển thị danh sách kết quả.",
+            enum: ["play", "search"],
+          },
         },
-        required: ["prompt"],
+        required: ["query"],
       },
     },
     {
       name: "play_song",
-      description: "Phát trực tiếp một bài hát bằng cách tìm kiếm tiêu đề bài hát hoặc ca sĩ.",
+      description: "Phát trực tiếp một bài hát bằng tiêu đề bài hát, ca sĩ, hoặc theo thứ tự (index: 1 cho bài đầu tiên, 2 cho bài thứ hai...).",
       parameters: {
         type: "OBJECT",
         properties: {
-          title: { type: "STRING", description: "Tên bài hát hoặc cụm từ tìm kiếm tiêu đề bài hát." },
-          artist: { type: "STRING", description: "Tên ca sĩ hát bài đó (nếu được đề cập)." },
+          title: { type: "STRING", description: "Tên bài hát cần phát." },
+          artist: { type: "STRING", description: "Tên ca sĩ (nếu có)." },
+          index: { type: "NUMBER", description: "Thứ tự bài hát trong kết quả vừa tìm (1-indexed)." },
         },
-        required: ["title"],
       },
     },
     {
       name: "create_mood_playlist",
-      description: "Tạo danh sách phát nhạc (playlist) dựa trên cảm xúc, tâm trạng (mood), hoạt động, thể loại hoặc một ca sĩ cụ thể.",
+      description: "Tạo danh sách phát nhạc (playlist) dựa trên cảm xúc, tâm trạng (sad, happy, chill, focus, energetic, romantic, sleep, party, angry) hoặc ca sĩ.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -567,26 +661,24 @@ function getToolsForRole(actorRole) {
             description: "Tâm trạng hoặc cảm xúc của người dùng.",
             enum: ["sad", "happy", "chill", "focus", "energetic", "romantic", "sleep", "party", "angry"],
           },
-          artist: { type: "STRING", description: "Tên ca sĩ mục tiêu nếu người dùng chỉ định nghe ca sĩ đó." },
+          artist: { type: "STRING", description: "Tên ca sĩ chỉ định (nếu có)." },
         },
         required: ["mood"],
       },
     },
     {
       name: "get_song_story",
-      description: "Giải thích ý nghĩa, câu chuyện hoặc thông điệp của một bài hát cụ thể khi người dùng hỏi bài hát đó nói về gì hoặc ý nghĩa bài hát.",
+      description: "Giải thích ý nghĩa, câu chuyện hoặc thông điệp của một bài hát cụ thể (hoặc bài đang phát / bài trong hội thoại).",
       parameters: {
         type: "OBJECT",
         properties: {
           title: { type: "STRING", description: "Tên bài hát cần giải thích ý nghĩa." },
         },
-        required: ["title"],
       },
     },
-
     {
       name: "open_route",
-      description: "Chuyển hướng người dùng đến một màn hình chức năng cụ thể trên ứng dụng.",
+      description: "Chuyển hướng người dùng đến màn hình chức năng cụ thể trên ứng dụng.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -615,23 +707,16 @@ function getToolsForRole(actorRole) {
         required: ["route"],
       },
     },
-
     {
-      name: "search_songs_natural",
-      description: "Tìm kiếm các bài hát trong thư viện bằng ngôn ngữ tự nhiên, tìm theo lyrics, tên bài hát, ca sĩ, thể loại hoặc tâm trạng.",
+      name: "generate_image",
+      description: "CHỈ DÙNG KHI người dùng có ý định trực tiếp yêu cầu tạo/vẽ/sinh HÌNH ẢNH hoặc ẢNH BÌA (ví dụ: 'vẽ cho tôi', 'tạo ảnh', 'generate image', 'tạo bức hình', 'vẽ tranh', 'thiết kế ảnh bìa'). KHÔNG ĐƯỢC CHỌN TOOL NÀY khi người dùng yêu cầu tạo playlist, đề xuất bài hát, tìm nhạc hoặc nghe nhạc.",
       parameters: {
         type: "OBJECT",
         properties: {
-          query: { type: "STRING", description: "Từ khóa tìm kiếm chung hoặc trích dẫn lời bài hát/lyrics." },
-          artist: { type: "STRING", description: "Tên ca sĩ hát bài đó nếu được nhắc đến." },
-          mood: { type: "STRING", description: "Tâm trạng mong muốn." },
-          intent: {
-            type: "STRING",
-            description: "Mục đích của người dùng: 'play' nếu muốn phát nhạc ngay lập tức, 'search' nếu chỉ muốn tìm kiếm và hiển thị danh sách bài hát.",
-            enum: ["play", "search"],
-          },
+          prompt: { type: "STRING", description: "Mô tả chi tiết bằng tiếng Việt hoặc tiếng Anh về hình ảnh cần vẽ/tạo." },
+          title: { type: "STRING", description: "Chủ đề hoặc tiêu đề ngắn gọn của bức ảnh." },
         },
-        required: ["query"],
+        required: ["prompt"],
       },
     },
   ];
@@ -697,7 +782,6 @@ class AssistantService {
       throw new Error("Prompt is empty");
     }
 
-
     // Kiểm tra cước AIDJ / Assistant nếu là tài khoản User
     if (actorType === "User") {
       const aiQuotaService = require("./aiQuota.service");
@@ -728,11 +812,13 @@ class AssistantService {
         });
       }
 
-      // 2. Fetch recent messages
+      // 2. Fetch recent messages & extract context memory
       const recentMessages = await AssistantMessage.find({ conversationId: conversation._id })
-        .sort({ createdAt: 1 })
+        .sort({ createdAt: 1, _id: 1 })
         .limit(30)
         .lean();
+
+      const recentContext = extractRecentContextFromHistory(recentMessages);
 
       let assistantText = "";
       let clientActions = [];
@@ -751,16 +837,30 @@ class AssistantService {
         userProfile = await personalizationService.getUserMusicProfile(actorId);
       }
 
+      // Prepare context summary string
+      let contextMemorySummary = "";
+      if (recentContext.recentSongs.length > 0) {
+        const songListStr = recentContext.recentSongs
+          .map((s, idx) => `${idx + 1}. ${s.title}${s.artists?.length ? ` (${s.artists.map(a => a.name || a).join(", ")})` : ""}`)
+          .join(", ");
+        contextMemorySummary += `[Context Memory - Recent Results: ${songListStr}] `;
+      }
+      if (recentContext.lastSong?.title) {
+        contextMemorySummary += `[Context Memory - Current Song/Item: ${recentContext.lastSong.title}] `;
+      }
+
       // 3. AI Preprocessing via Mistral Orchestrator & Gemini Model Router
       if (process.env.GEMINI_API_KEY) {
         const geminiRouter = require("./geminiRouter.service");
         const aiOrchestrator = require("./aiOrchestrator.service");
         const systemInstruction = buildSystemInstruction(actorRole, { aiMemory: userProfile?.aiMemory });
 
-
         // Preprocess prompt via Orchestrator (Bypass / Mistral Enricher / Fallback)
         const orchestration = await aiOrchestrator.processUserRequest({ userPrompt: cleanPrompt });
-        const promptForGemini = orchestration.promptForGemini || cleanPrompt;
+        let promptForGemini = orchestration.promptForGemini || cleanPrompt;
+        if (contextMemorySummary) {
+          promptForGemini = `${contextMemorySummary}\n${promptForGemini}`;
+        }
 
         try {
           await geminiRouter.executeWithModelRouter({
@@ -783,84 +883,93 @@ class AssistantService {
               const response = result.response;
               const functionCalls = response.functionCalls();
 
-
               // Check if Gemini invoked any tool
               if (functionCalls && functionCalls.length > 0) {
                 const call = functionCalls[0];
                 const { name, args } = call;
 
                 if (name === "generate_image") {
-                  const promptStr = args.prompt || cleanPrompt;
-                  const titleStr = args.title || "Tác phẩm AI";
-                  const encodedPrompt = encodeURIComponent(promptStr);
-                  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=800&nologo=true`;
+                  const normalizedPrompt = normalizeText(cleanPrompt);
+                  const hasExplicitImageKeyword = /(anh|hinh|image|picture|photo|artwork|pic|ve|draw|tranh|bua)/i.test(normalizedPrompt);
+                  const hasPlaylistKeyword = /(playlist|danh sach|nhac|bai hat|goi y|de xuat)/i.test(normalizedPrompt);
 
-                  assistantText = `🎨 Mình đã sáng tạo xong bức ảnh AI cho bạn dựa trên mô tả "${promptStr}":\n\n![${titleStr}](${imageUrl})`;
-                  clientActions.push({
-                    type: "SHOW_IMAGE",
-                    payload: { imageUrl, prompt: promptStr, title: titleStr },
-                  });
-                  metadata = { type: "generate_image", imageUrl, prompt: promptStr, title: titleStr };
+                  if (hasPlaylistKeyword && !hasExplicitImageKeyword) {
+                    const resObj = await this.generatePlaylistInternal({
+                      prompt: cleanPrompt,
+                      userId: actorId,
+                      conversationId: conversation._id,
+                      activeModelName: modelName,
+                      userTier,
+                    });
+                    playlist = resObj.playlist;
+                    songs = resObj.songs;
+                    assistantText = resObj.assistantText;
+                    clientActions.push({
+                      type: "LOAD_PLAYLIST",
+                      payload: { playlistId: playlist._id, playlist, songs },
+                    });
+                    metadata = {
+                      type: "create_mood_playlist",
+                      playlistId: playlist._id,
+                      matchStatus: resObj.matchStatus,
+                      songs: songs,
+                    };
+                  } else {
+                    const imageService = require("./imageGenerator.service");
+                    const imgRes = await imageService.generateImage({
+                      prompt: args.prompt || cleanPrompt,
+                      title: args.title || "Tác phẩm AI",
+                    });
+
+                    assistantText = "🎨 Mình đã sáng tạo xong bức ảnh AI cho bạn dựa trên mô tả của bạn:";
+                    clientActions.push({
+                      type: "SHOW_IMAGE",
+                      payload: { imageUrl: imgRes.imageUrl, prompt: cleanPrompt, title: imgRes.title },
+                    });
+                    metadata = { type: "generate_image", imageUrl: imgRes.imageUrl, prompt: cleanPrompt, title: imgRes.title, provider: imgRes.provider, enrichedPrompt: imgRes.enrichedPrompt };
+                  }
                 } else if (name === "play_song") {
+                  let targetSong = null;
+                  if (args.index && recentContext.recentSongs[args.index - 1]) {
+                    targetSong = recentContext.recentSongs[args.index - 1];
+                  }
+                  if (!targetSong && args.title) {
+                    const ctxRef = resolveContextualReference(args.title, recentContext);
+                    if (ctxRef) targetSong = ctxRef.song;
+                    else targetSong = await findSongByTitle(args.title);
+                  }
+                  if (!targetSong && recentContext.lastSong) {
+                    targetSong = recentContext.lastSong;
+                  }
 
-                  const song = await findSongByTitle(args.title);
-                  if (song) {
-                    const artistList = artistNames(song).join(", ");
-                    assistantText = `Được rồi, mình đang bật bài "${song.title}"${
+                  if (targetSong) {
+                    const fullSong = (await findSongByTitle(targetSong.title)) || targetSong;
+                    const artistList = artistNames(fullSong).join(", ");
+                    assistantText = `Được rồi, mình đang bật bài "${fullSong.title}"${
                       artistList ? ` của ${artistList}` : ""
-                    } cho bạn nghe!`;
+                    } cho bạn nghe nhé!`;
                     clientActions.push({
                       type: "PLAY_SONG",
-                      payload: { songId: song._id, song, songs: [song] },
+                      payload: { songId: fullSong._id, song: fullSong, songs: [fullSong] },
                     });
-                    songs = [song];
-                    metadata = { type: "play_song", songId: song._id };
+                    songs = [fullSong];
+                    metadata = { type: "play_song", songId: fullSong._id, song: fullSong };
                   } else {
-                    assistantText = `Mình không tìm thấy bài hát "${args.title}" trong thư viện MusicFlow, nhưng bạn có thể thử tìm một bài hát khác nhé!`;
+                    assistantText = `Mình không tìm thấy bài hát "${args.title || "này"}" trong thư viện MusicFlow, nhưng bạn có thể thử tìm bài hát khác nhé!`;
                     metadata = { type: "play_song_failed", query: args.title };
                   }
-                } else if (name === "search_songs_natural") {
-                  const queryStr = args.query || "";
-                  const artistQuery = args.artist || "";
+                } else if (name === "search_music" || name === "search_songs_natural") {
+                  const queryStr = args.query || args.artist || cleanPrompt;
                   const intent = args.intent || "search";
 
-                  const filter = { isPublic: true };
-                  if (queryStr) {
-                    filter.$text = { $search: queryStr };
-                  }
-
+                  const matchedArtistsList = await findMatchedArtists(queryStr);
                   let songsList = [];
-
-                  // 1. Try matching queryStr or artistQuery against artists in DB first
-                  const targetArtistQuery = queryStr || artistQuery;
-                  if (targetArtistQuery) {
-                    const matchedArtistsList = await findMatchedArtists(targetArtistQuery);
-                    if (matchedArtistsList.length > 0) {
-                      songsList = await findSongsByArtists(matchedArtistsList, 20);
-                    }
+                  if (matchedArtistsList.length > 0) {
+                    songsList = await findSongsByArtists(matchedArtistsList, 20);
                   }
-
-                  // 2. If no songs found by artist, fallback to text search
-                  if (songsList.length === 0 && queryStr) {
-                    songsList = await Song.find(filter)
-                      .populate("artists", "name avatar")
-                      .populate("topicIds", "name")
-                      .sort({ score: { $meta: "textScore" } })
-                      .limit(10)
-                      .lean();
-                  }
-
-                  // 3. Fallback to regex search on title/lyrics
                   if (songsList.length === 0 && queryStr) {
                     const regex = new RegExp(escapeRegex(queryStr), "i");
-                    const regexFilter = {
-                      isPublic: true,
-                      $or: [
-                        { title: regex },
-                        { lyrics: regex }
-                      ]
-                    };
-                    songsList = await Song.find(regexFilter)
+                    songsList = await Song.find({ isPublic: true, $or: [{ title: regex }, { lyrics: regex }] })
                       .populate("artists", "name avatar")
                       .populate("topicIds", "name")
                       .sort({ playCount: -1 })
@@ -868,42 +977,33 @@ class AssistantService {
                       .lean();
                   }
 
-                  if (artistQuery && songsList.length > 0 && !targetArtistQuery) {
-                    const artistRegex = new RegExp(escapeRegex(artistQuery), "i");
-                    songsList = songsList.filter(s => 
-                      (s.artists || []).some(a => artistRegex.test(a.name || ""))
-                    );
-                  }
-
-                  const displayQuery = queryStr || artistQuery || "tìm kiếm";
-
                   if (songsList.length > 0) {
                     if (intent === "play") {
                       const firstSong = songsList[0];
-                      const artistStr = (firstSong.artists || []).map(a => a.name).join(", ");
+                      const artistStr = (firstSong.artists || []).map((a) => a.name || a).join(", ");
                       assistantText = `Mình đã tìm thấy bài hát phù hợp và đang phát bài "${firstSong.title}"${artistStr ? ` của ${artistStr}` : ""} cho bạn nhé!`;
                       clientActions.push({
                         type: "PLAY_SONG",
                         payload: { songId: firstSong._id, song: firstSong, songs: songsList },
                       });
                       songs = [firstSong];
-                      metadata = { type: "play_song_natural", songId: firstSong._id, query: displayQuery };
+                      metadata = { type: "play_song_natural", songId: firstSong._id, query: queryStr, songs: songsList };
                     } else {
-                      const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title} - ${(s.artists || []).map(a => a.name).join(", ")}`).join("\n");
-                      assistantText = `Mình đã tìm thấy một số bài hát phù hợp với yêu cầu "${displayQuery}" của bạn:\n${songTitles}`;
+                      const artistNamesHeader = matchedArtistsList.length > 0 ? ` ca sĩ ${matchedArtistsList.map(a => a.name).join(", ")} cùng` : "";
+                      const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title} - ${(s.artists || []).map(a => a.name || a).join(", ")}`).join("\n");
+                      assistantText = `Trong thư viện MusicFlow hiện có ${artistNameHeader} một số bài hát phù hợp với yêu cầu "${queryStr}" của bạn:\n${songTitles}`;
                       clientActions.push({
                         type: "SHOW_SEARCH_RESULTS",
-                        payload: { query: displayQuery, songs: songsList },
+                        payload: { query: queryStr, songs: songsList },
                       });
                       songs = songsList;
-                      metadata = { type: "search_songs_natural", query: displayQuery, count: songsList.length };
+                      metadata = { type: "search_music", query: queryStr, songs: songsList, count: songsList.length };
                     }
                   } else {
-                    assistantText = `Mình đã tìm kiếm khắp nơi nhưng không thấy bài hát nào khớp với yêu cầu "${displayQuery}" của bạn. Bạn thử tìm kiếm một từ khóa khác nhé!`;
-                    metadata = { type: "search_songs_natural_failed", query: displayQuery };
+                    assistantText = `Hệ thống đã tìm kiếm theo yêu cầu "${queryStr}" của bạn nhưng hiện chưa thấy bài hát hay ca sĩ nào phù hợp trong thư viện MusicFlow. Bạn thử từ khóa khác nhé!`;
+                    metadata = { type: "search_music_failed", query: queryStr };
                   }
                 } else if (name === "open_route") {
-                  // Ensure route fits the user's role
                   let allowed = true;
                   if (args.route.startsWith("/artist") && actorRole !== "artist") allowed = false;
                   if (args.route.startsWith("/admin") && actorRole !== "admin") allowed = false;
@@ -919,7 +1019,6 @@ class AssistantService {
                     assistantText = "Xin lỗi, bạn không có quyền truy cập vào màn hình này.";
                   }
                 } else if (name === "create_mood_playlist") {
-                  // Pass activeModelName to reuse active model and prevent nested routers/fallbacks
                   const resObj = await this.generatePlaylistInternal({
                     prompt: cleanPrompt,
                     mood: args.mood,
@@ -942,16 +1041,20 @@ class AssistantService {
                     playlistId: playlist._id,
                     mood: args.mood,
                     matchStatus: resObj.matchStatus,
+                    songs: songs,
                   };
                 } else if (name === "get_song_story") {
-                  const resMeaning = await resolveSongMeaning(args.title);
+                  let songTitle = args.title;
+                  if (!songTitle || songTitle === "bài này" || songTitle === "nó") {
+                    songTitle = recentContext.lastSong?.title || cleanPrompt;
+                  }
+                  const resMeaning = await resolveSongMeaning(songTitle);
                   assistantText = resMeaning.text;
                   metadata = resMeaning.metadata;
                   if (resMeaning.song) {
                     songs = [resMeaning.song];
                   }
                 } else if (name === "get_artist_analytics" && actorRole === "artist") {
-
                   const artist = await Artist.findById(actorId).lean();
                   if (artist) {
                     assistantText = `Dưới đây là thống kê của ca sĩ ${artist.name}:\n- Lượt nghe hàng tháng: ${artist.monthlyListeners || 0} người nghe\n- Lượt theo dõi: ${artist.followersCount || 0} người theo dõi.`;
@@ -980,7 +1083,7 @@ class AssistantService {
                     type: "SHOW_ARTIST_SONGS",
                     payload: { songs: songsList },
                   });
-                  metadata = { type: "get_artist_songs", count: songsList.length };
+                  metadata = { type: "get_artist_songs", count: songsList.length, songs: songsList };
                 } else if (name === "search_accounts_admin" && actorRole === "admin") {
                   const accounts = await User.find({ role: "user" }).limit(10).lean();
                   const names = accounts.map((u, idx) => `${idx + 1}. ${u.name} (${u.email})`).join("\n");
@@ -990,6 +1093,19 @@ class AssistantService {
                     payload: { accounts },
                   });
                   metadata = { type: "search_accounts", query: args };
+                } else if (name === "generate_image") {
+                  const imageService = require("./imageGenerator.service");
+                  const imgRes = await imageService.generateImage({
+                    prompt: args.prompt || cleanPrompt,
+                    title: args.title || "Tác phẩm AI",
+                  });
+
+                  assistantText = "🎨 Mình đã sáng tạo xong bức ảnh AI cho bạn dựa trên mô tả của bạn:";
+                  clientActions.push({
+                    type: "SHOW_IMAGE",
+                    payload: { imageUrl: imgRes.imageUrl, prompt: cleanPrompt, title: imgRes.title },
+                  });
+                  metadata = { type: "generate_image", imageUrl: imgRes.imageUrl, prompt: cleanPrompt, title: imgRes.title, provider: imgRes.provider, enrichedPrompt: imgRes.enrichedPrompt };
                 } else {
                   assistantText = "Xin lỗi, chức năng này chưa thể thực hiện được hoặc bị từ chối do không đúng vai trò.";
                 }
@@ -1005,104 +1121,163 @@ class AssistantService {
         }
       }
 
-      // 4. Fallbacks (If Gemini was not initialized or failed completely)
+      // 4. Smart Fallback Engine (No Hard-coded canned greetings for specific queries)
       if (!assistantText) {
-        // Direct regex fallback matching the original backend behavior
         const targetPrompt = rawPrompt || cleanPrompt;
         const normalizedTarget = normalizeText(targetPrompt);
-        const isPlaylistReq = isPlaylistIntent(targetPrompt);
-        const isPlayReq = isPlayIntent(targetPrompt);
-        const isMeaningReq = /(noi ve gi|y nghia|cai gi|thong diep)/i.test(normalizedTarget);
-        const isSongReq = isSpecificSongIntent(targetPrompt);
 
-        if (isMeaningReq) {
-          const quoteMatch = targetPrompt.match(/["'“]([^"'”]+)["'”]/);
-          const titleQuery = quoteMatch ? quoteMatch[1].trim() : (extractSongTitleFromPrompt(targetPrompt) || targetPrompt.replace(/(bai hat|bai|noi ve gi|y nghia|la gi|chua|\?)/gi, "").trim());
-          const resMeaning = await resolveSongMeaning(titleQuery);
-          assistantText = resMeaning.text;
-          metadata = resMeaning.metadata;
-          if (resMeaning.song) {
-            songs = [resMeaning.song];
-          }
-        } else if (isSongReq) {
+        // 4.1 Social Chit-chat, Assistant Capabilities & Thanks
+        const isThanks = /\b(cam on|cảm ơn|thank|thanks|cảm ơn nhé|cảm ơn bạn|cam on nhe)\b/.test(normalizedTarget);
+        const isGreeting = /^(chao|xin chao|hi|hello|helo|hey|chao bạn|chao em|chao anh)\b/.test(normalizedTarget);
+        const isCapabilityQuery = /(giup gi|lam duoc gi|khap nang|ban la ai|tro ly gi|chuc nang)/.test(normalizedTarget);
+        const isPureEmotionalSharing = /(nay toi hoi buon|toi hoi buon|buon qua|mình hơi buồn|mệt mỏi quá)/.test(normalizedTarget) && !isPlaylistIntent(targetPrompt);
 
+        const isImageGenReq = /(ve|draw|create image|generate image|sinh anh|tao anh|tao hinh|ve anh|ve hinh|buc anh|buc hinh|buc tranh|artwork)/i.test(normalizedTarget) && !/(playlist|danh sach|nhac|bai hat)/i.test(normalizedTarget);
 
-
-
-          const titleQuery = extractSongTitleFromPrompt(cleanPrompt);
-          const song = await findSongByTitle(titleQuery);
-          if (song) {
-            const artistList = artistNames(song).join(", ");
-            assistantText = `Được rồi, mình đang bật bài "${song.title}"${
-              artistList ? ` của ${artistList}` : ""
-            } cho bạn nghe!`;
-            clientActions.push({
-              type: "PLAY_SONG",
-              payload: { songId: song._id, song, songs: [song] },
-            });
-            songs = [song];
-            metadata = { type: "play_song", songId: song._id };
-          } else {
-            assistantText = `Mình chưa tìm thấy bài hát "${titleQuery}" trong hệ thống.`;
-          }
-        } else if (isPlayReq) {
-          const songsList = await Song.find({ isPublic: true })
-            .populate("artists", "name avatar")
-            .limit(20)
-            .lean();
-          const rand = pickRandomSong(songsList);
-          if (rand) {
-            assistantText = `Mình đang bật ngẫu nhiên bài "${rand.title}" cho bạn nghe nhé.`;
-            clientActions.push({
-              type: "PLAY_SONG",
-              payload: { songId: rand._id, song: rand, songs: [rand] },
-            });
-            songs = [rand];
-          } else {
-            assistantText = "Hiện không có bài hát nào sẵn sàng.";
-          }
-        } else if (isPlaylistReq) {
-          const analysis = analyzeMood(cleanPrompt);
-          const resObj = await this.generatePlaylistInternal({
-            prompt: cleanPrompt,
-            mood: analysis.mood,
-            userId: actorId,
-            conversationId: conversation._id,
-          });
-
-          playlist = resObj.playlist;
-          songs = resObj.songs;
-          assistantText = resObj.assistantText;
-          clientActions.push({
-            type: "LOAD_PLAYLIST",
-            payload: { playlistId: playlist._id, playlist, songs },
-          });
-          metadata = {
-            type: "create_mood_playlist",
-            playlistId: playlist._id,
-            mood: analysis.mood,
-            matchStatus: resObj.matchStatus,
-          };
-        } else {
-          assistantText = "Xin chào, mình có thể giúp gì cho bạn? Hãy thử yêu cầu mình bật nhạc hoặc tạo một playlist theo tâm trạng xem.";
+        if (isThanks) {
+          assistantText = "Không có gì nè! Rất vui được hỗ trợ bạn. Chúc bạn nghe nhạc vui vẻ nhé! 🎧";
           metadata = { type: "chat_only" };
+        } else if (isGreeting) {
+          assistantText = "Xin chào! Mình là Trợ lý AI MusicFlow. Bạn muốn nghe bài hát nào, tạo playlist theo cảm xúc hay tìm kiếm ca sĩ gì hôm nay không? 🎵";
+          metadata = { type: "chat_only" };
+        } else if (isCapabilityQuery) {
+          assistantText = "Mình là Trợ lý AI MusicFlow (MusicFlow Assistant)! Mình có thể giúp bạn:\n- 🎵 Gợi ý & phát bài hát theo tên hoặc ca sĩ.\n- 🎧 Tạo playlist theo cảm xúc & tâm trạng (chill, buồn, tập trung, sôi động...).\n- 📖 Trích xuất ý nghĩa & câu chuyện sâu sắc của bài hát.\n- 🎨 Sáng tạo ảnh bìa album AI nghệ thuật.\n- 🧭 Chuyển hướng đến các trang chức năng trên ứng dụng.\n\nBạn muốn mình giúp gì ngay bây giờ không? 😊";
+          metadata = { type: "chat_only" };
+        } else if (isPureEmotionalSharing) {
+          assistantText = "Chia sẻ với bạn nhé! Nếu bạn cảm thấy mệt mỏi hay buồn phiền, âm nhạc có thể là một liều thuốc tinh thần rất tốt đấy. Bạn có muốn mình tạo một danh sách nhạc nhẹ nhàng / chill để thư giãn không? ☕🎵";
+          metadata = { type: "chat_only" };
+        } else if (isImageGenReq) {
+          const imageService = require("./imageGenerator.service");
+          const imgRes = await imageService.generateImage({
+            prompt: cleanPrompt,
+            title: "Tác phẩm AI",
+          });
+
+          assistantText = "🎨 Mình đã sáng tạo xong bức ảnh AI cho bạn dựa trên mô tả của bạn:";
+          clientActions.push({
+            type: "SHOW_IMAGE",
+            payload: { imageUrl: imgRes.imageUrl, prompt: cleanPrompt, title: imgRes.title },
+          });
+          metadata = { type: "generate_image", imageUrl: imgRes.imageUrl, prompt: cleanPrompt, title: imgRes.title, provider: imgRes.provider, enrichedPrompt: imgRes.enrichedPrompt };
+        } else {
+          // 4.2 Multi-turn Context Resolution ("bài đầu tiên", "bài 2", "bài này", "mở nó đi")
+          const ctxRef = resolveContextualReference(targetPrompt, recentContext);
+          const isSongMeaningReq = /(noi ve gi|y nghia|thong diep|cau chuyen|chua)/i.test(normalizedTarget);
+
+          if (ctxRef && ctxRef.type === "song") {
+            const targetSong = ctxRef.song;
+            if (isSongMeaningReq) {
+              const resMeaning = await resolveSongMeaning(targetSong.title || targetSong._id);
+              assistantText = resMeaning.text;
+              metadata = resMeaning.metadata;
+              if (resMeaning.song) songs = [resMeaning.song];
+            } else {
+              const fullSong = (await findSongByTitle(targetSong.title)) || targetSong;
+              const artistStr = (fullSong.artists || []).map((a) => typeof a === "string" ? a : a.name).filter(Boolean).join(", ");
+              assistantText = `Được rồi, mình đang bật bài "${fullSong.title}"${artistStr ? ` của ${artistStr}` : ""} cho bạn nghe nhé!`;
+              clientActions.push({
+                type: "PLAY_SONG",
+                payload: { songId: fullSong._id, song: fullSong, songs: [fullSong] },
+              });
+              songs = [fullSong];
+              metadata = { type: "play_song", songId: fullSong._id, song: fullSong };
+            }
+          } else if (isSongMeaningReq) {
+            const quoteMatch = targetPrompt.match(/["'“]([^"'”]+)["'”]/);
+            const titleQuery = quoteMatch
+              ? quoteMatch[1].trim()
+              : (extractSongTitleFromPrompt(targetPrompt) || recentContext.lastSong?.title || targetPrompt.replace(/(bai hat|bai|noi ve gi|y nghia|la gi|chua|\?)/gi, "").trim());
+            const resMeaning = await resolveSongMeaning(titleQuery);
+            assistantText = resMeaning.text;
+            metadata = resMeaning.metadata;
+            if (resMeaning.song) {
+              songs = [resMeaning.song];
+            }
+          } else if (isSpecificSongIntent(targetPrompt) || /\b(phat|bat|mo)\b/.test(normalizedTarget)) {
+            const titleQuery = extractSongTitleFromPrompt(cleanPrompt) || cleanPrompt.replace(/\b(phat|bat|mo|nghe|play|bai)\b/gi, "").trim();
+            const song = await findSongByTitle(titleQuery);
+            if (song) {
+              const artistList = artistNames(song).join(", ");
+              assistantText = `Được rồi, mình đang bật bài "${song.title}"${
+                artistList ? ` của ${artistList}` : ""
+              } cho bạn nghe nhé!`;
+              clientActions.push({
+                type: "PLAY_SONG",
+                payload: { songId: song._id, song, songs: [song] },
+              });
+              songs = [song];
+              metadata = { type: "play_song", songId: song._id, song };
+            } else {
+              assistantText = `Mình chưa tìm thấy bài hát "${titleQuery}" trong hệ thống MusicFlow. Bạn thử tìm kiếm bài hát khác xem sao nhé!`;
+              metadata = { type: "play_song_failed", query: titleQuery };
+            }
+          } else if (isPlaylistIntent(targetPrompt) || analyzeMood(targetPrompt).score > 0) {
+            const analysis = analyzeMood(cleanPrompt);
+            const resObj = await this.generatePlaylistInternal({
+              prompt: cleanPrompt,
+              mood: analysis.mood,
+              userId: actorId,
+              conversationId: conversation._id,
+            });
+
+            playlist = resObj.playlist;
+            songs = resObj.songs;
+            assistantText = resObj.assistantText;
+            clientActions.push({
+              type: "LOAD_PLAYLIST",
+              payload: { playlistId: playlist._id, playlist, songs },
+            });
+            metadata = {
+              type: "create_mood_playlist",
+              playlistId: playlist._id,
+              mood: analysis.mood,
+              matchStatus: resObj.matchStatus,
+              songs: songs,
+            };
+          } else {
+            // General Catalog / Artist / Song Search Fallback
+            const matchedArtistsList = await findMatchedArtists(cleanPrompt);
+            let songsList = [];
+            if (matchedArtistsList.length > 0) {
+              songsList = await findSongsByArtists(matchedArtistsList, 10);
+            }
+            if (songsList.length === 0) {
+              const titleSong = await findSongByTitle(cleanPrompt);
+              if (titleSong) songsList = [titleSong];
+            }
+
+            if (matchedArtistsList.length > 0 || songsList.length > 0) {
+              const artistNameStr = matchedArtistsList.map((a) => a.name).join(", ");
+              const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title}`).join("\n");
+              assistantText = `Trong thư viện MusicFlow hiện có ${matchedArtistsList.length > 0 ? `ca sĩ ${artistNameStr} cùng ` : ""}${songsList.length} bài hát nổi bật:\n${songTitles}\n\nBạn có muốn mình bật phát bài nào không?`;
+              clientActions.push({
+                type: "SHOW_SEARCH_RESULTS",
+                payload: { query: cleanPrompt, songs: songsList },
+              });
+              songs = songsList;
+              metadata = { type: "search_music", query: cleanPrompt, songs: songsList, count: songsList.length };
+            } else {
+              assistantText = "Mình là Trợ lý AI MusicFlow. Bạn có muốn mình tìm bài hát, ca sĩ hay tạo playlist nhạc theo cảm xúc giúp bạn không? 🎵";
+              metadata = { type: "chat_only" };
+            }
+          }
         }
       }
 
-      // Save messages (Two-Step Commit)
-      const [userMsg, assistantMsg] = await Promise.all([
-        AssistantMessage.create({
-          conversationId: conversation._id,
-          role: "user",
-          content: cleanPrompt,
-        }),
-        AssistantMessage.create({
-          conversationId: conversation._id,
-          role: "model",
-          content: assistantText,
-          metadata,
-        })
-      ]);
+      // Save messages sequentially to guarantee userMsg is created before assistantMsg
+      const userMsg = await AssistantMessage.create({
+        conversationId: conversation._id,
+        role: "user",
+        content: cleanPrompt,
+      });
+
+      const assistantMsg = await AssistantMessage.create({
+        conversationId: conversation._id,
+        role: "model",
+        content: assistantText,
+        metadata,
+        createdAt: new Date(Date.now() + 10),
+      });
 
       // Update conversation properties
       conversation.lastMessage = assistantText;
@@ -1115,6 +1290,8 @@ class AssistantService {
         songs,
         clientActions,
         assistantMessage: assistantText,
+        assistantText,
+        metadata: assistantMsg.metadata || metadata,
       };
     } finally {
       if (actorType === "User") {
@@ -1286,17 +1463,12 @@ class AssistantService {
         ? "topic_match"
         : "fallback";
 
-    const generatedTitle = playlistTitle(prompt, analysis);
-    const keywordsStr = (analysis.keywords || []).join(" ");
-    const artworkPrompt = `album cover artwork for music playlist titled "${generatedTitle}", mood ${analysis.mood || "chill"}, ${keywordsStr}, artistic 3d digital art, modern spotify aesthetic`;
-    const playlistImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(artworkPrompt)}?width=800&height=800&nologo=true`;
-
     let playlist = await MoodPlaylist.create({
       conversationId,
       userId,
       title: generatedTitle,
       description: assistantText,
-      imageUrl: playlistImageUrl,
+      imageUrl: "",
       prompt,
       mood: analysis.mood,
       energy: analysis.energy,

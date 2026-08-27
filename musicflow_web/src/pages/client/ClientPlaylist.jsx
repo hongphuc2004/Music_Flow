@@ -21,11 +21,13 @@ import {
   MusicNoteRounded as MusicIcon,
   FeaturedPlayListRounded as PlaylistCategoryIcon,
   HeadphonesRounded as PlayCountIcon,
+  DeleteOutlineRounded as DeleteIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientPlaylistsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import useAppToast from '../../components/common/useAppToast';
 
 function ClientPlaylist() {
   const navigate = useNavigate();
@@ -64,9 +66,32 @@ function ClientPlaylist() {
     return songs.reduce((sum, s) => sum + (s.playCount || 0), 0);
   }, [songs]);
 
+  const { showToast } = useAppToast();
+
   const playAll = () => {
     if (!songs.length) return;
     playSong(songs[0], { queue: songs });
+  };
+
+  const handleRemoveSongFromPlaylist = async (songToRemove) => {
+    const sId = songToRemove?._id || songToRemove?.id;
+    if (!sId || !playlistId) return;
+
+    try {
+      await clientPlaylistsApi.removeSong(playlistId, sId);
+      setSongs((prev) => prev.filter((s) => (s._id || s.id) !== sId));
+      showToast({
+        severity: 'success',
+        title: 'Đã xóa khỏi Playlist',
+        message: `Đã xóa bài hát "${songToRemove.title || 'này'}" khỏi playlist.`,
+      });
+    } catch (err) {
+      showToast({
+        severity: 'error',
+        title: 'Xóa thất bại',
+        message: err.response?.data?.message || 'Có lỗi xảy ra khi xóa bài hát khỏi playlist.',
+      });
+    }
   };
 
   return (
@@ -384,8 +409,31 @@ function ClientPlaylist() {
                         </IconButton>
                       </Tooltip>
                       
+                      <Tooltip title="Xóa khỏi playlist" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveSongFromPlaylist(song)}
+                          sx={{ 
+                            color: '#ef4444',
+                            bgcolor: 'rgba(239, 68, 68, 0.06)',
+                            p: 1,
+                            borderRadius: 3.5,
+                            border: '1px solid',
+                            borderColor: 'rgba(239, 68, 68, 0.12)',
+                            '&:hover': { 
+                              bgcolor: '#ef4444', 
+                              color: '#fff',
+                              borderColor: '#ef4444',
+                            }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+
                       <ClientSongMoreMenu 
                         song={song} 
+                        onRemoveFromPlaylist={handleRemoveSongFromPlaylist}
                         buttonSx={{
                           color: 'text.secondary',
                           bgcolor: 'action.hover',

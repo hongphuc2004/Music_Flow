@@ -254,6 +254,8 @@ exports.searchSongs = async (req, res) => {
   try {
     const includeArtists =
       String(req.query.includeArtists || "").toLowerCase() === "true";
+    const includePlaylists =
+      String(req.query.includePlaylists || "").toLowerCase() === "true";
 
     const result = await searchService.searchSongs({
       query: req.query.query,
@@ -261,10 +263,16 @@ exports.searchSongs = async (req, res) => {
       topicId: req.query.topicId,
       letter: req.query.letter,
       includeArtists,
+      includePlaylists,
     });
 
-    if (includeArtists) {
-      return res.json(result);
+    if (includeArtists || includePlaylists) {
+      return res.json({
+        success: true,
+        songs: result.songs || [],
+        artists: result.artists || [],
+        playlists: result.playlists || [],
+      });
     }
     res.json(result.songs);
   } catch (error) {

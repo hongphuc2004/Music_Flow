@@ -100,7 +100,7 @@ exports.getConversationDetail = async (req, res) => {
     }
 
     const [messages, playlists] = await Promise.all([
-      AssistantMessage.find({ conversationId: id }).sort({ createdAt: 1 }).lean(),
+      AssistantMessage.find({ conversationId: id }).sort({ createdAt: 1, _id: 1 }).lean(),
       MoodPlaylist.find({ conversationId: id })
         .populate({
           path: "songs",

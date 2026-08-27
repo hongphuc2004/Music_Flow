@@ -32,9 +32,40 @@ const { SONG_PUBLIC_SELECT, ARTIST_POPULATE, TOPIC_POPULATE } = require("../repo
  * }} params
  * @returns {Promise<{ songs: object[], artists?: object[] }>}
  */
-const searchSongs = async ({ query, artistId, topicId, letter, includeArtists = false }) => {
+const Playlist = require("../models/playlist.model");
+const PlaylistSong = require("../models/playlist-song.model");
+
+/**
+ * Full-text song, artist, and playlist search with accent-insensitive Vietnamese support.
+ *
+ * Behaviour:
+ *  - If `query` is provided, builds regex patterns (phrase + all-tokens)
+ *    and matches against song titles, artist names, and playlist names/descriptions.
+ *  - If `artistId` / `topicId` / `letter` filters are provided they are ANDed in.
+ *  - When `includeArtists` is true the matched artist documents are returned alongside.
+ *  - When `includePlaylists` is true the matched public playlists are returned alongside.
+ *
+ * @param {{
+ *   query?: string,
+ *   artistId?: string,
+ *   topicId?: string,
+ *   letter?: string,
+ *   includeArtists?: boolean,
+ *   includePlaylists?: boolean,
+ * }} params
+ * @returns {Promise<{ songs: object[], artists?: object[], playlists?: object[] }>}
+ */
+const searchSongs = async ({
+  query,
+  artistId,
+  topicId,
+  letter,
+  includeArtists = false,
+  includePlaylists = false,
+}) => {
   const conditions = [{ isPublic: true }];
   let matchedArtists = [];
+  let matchedPlaylists = [];
 
   if (query) {
     const regexes = buildSearchRegexes(query);
@@ -60,6 +91,50 @@ const searchSongs = async ({ query, artistId, topicId, letter, includeArtists = 
       }
 
       conditions.push({ $or: queryOrConditions });
+
+      // Match playlists if requested
+      if (includePlaylists) {
+        const playlistOrConditions = regexes.flatMap((regex) => [
+          { name: regex },
+          { description: regex },
+        ]);
+
+        const [userPlaylists, systemPlaylists] = await Promise.all([
+          Playlist.find({
+            isPublic: true,
+            $or: playlistOrConditions,
+          })
+            .select("_id name description coverImage songs userId createdAt")
+            .populate("userId", "name avatar")
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean(),
+          PlaylistSong.find({
+            isPublic: true,
+            $or: playlistOrConditions,
+          })
+            .select("_id name description coverImage songs createdBy createdAt")
+            .populate("createdBy", "name avatar")
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean(),
+        ]);
+
+        matchedPlaylists = [
+          ...userPlaylists.map((p) => ({
+            ...p,
+            isSystem: false,
+            songCount: Array.isArray(p.songs) ? p.songs.length : 0,
+            ownerName: p.userId?.name || "Người dùng",
+          })),
+          ...systemPlaylists.map((p) => ({
+            ...p,
+            isSystem: true,
+            songCount: Array.isArray(p.songs) ? p.songs.length : 0,
+            ownerName: "MusicFlow",
+          })),
+        ].slice(0, 10);
+      }
     }
   }
 
@@ -76,7 +151,7 @@ const searchSongs = async ({ query, artistId, topicId, letter, includeArtists = 
     .populate(TOPIC_POPULATE)
     .lean();
 
-  return includeArtists ? { songs, artists: matchedArtists } : { songs };
+  return { songs, artists: matchedArtists, playlists: matchedPlaylists };
 };
 
 // ---------------------------------------------------------------------------

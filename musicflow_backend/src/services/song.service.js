@@ -304,50 +304,48 @@ const downloadSong = async (songId, userId) => {
 
     let downloadLimitBytes = 100 * 1024 * 1024; // Mặc định Free: 100MB
     let planLabel = "miễn phí";
-    let isUnlimited = false;
 
     if (user && hasPremiumAccess(user)) {
       const planName = user.premiumPlan?.name || "";
       if (planName === "Gói GO") {
-        downloadLimitBytes = 1024 * 1024 * 1024; // 1GB
+        downloadLimitBytes = 300 * 1024 * 1024; // GO: 300MB
         planLabel = "Premium GO";
       } else if (planName === "Gói PLUS") {
-        downloadLimitBytes = 5 * 1024 * 1024 * 1024; // 5GB
+        downloadLimitBytes = 700 * 1024 * 1024; // PLUS: 700MB
         planLabel = "Premium PLUS";
       } else {
-        isUnlimited = true;
+        downloadLimitBytes = 1024 * 1024 * 1024; // PREMIUM: 1GB (1024MB)
+        planLabel = "Premium";
       }
     }
 
-    if (!isUnlimited) {
-      const downloads = await SongDownloadEvent.find({ userId }).populate("songId", "fileSize");
-      const seenSongIds = new Set();
-      let totalDownloadedBytes = 0;
-      
-      for (const event of downloads) {
-        if (!event.songId) continue;
-        const sId = String(event.songId._id);
-        if (seenSongIds.has(sId)) continue;
-        seenSongIds.add(sId);
-        totalDownloadedBytes += event.songId.fileSize && event.songId.fileSize > 0
-          ? event.songId.fileSize
-          : 4.5 * 1024 * 1024; // Fallback 4.5MB
-      }
+    const downloads = await SongDownloadEvent.find({ userId }).populate("songId", "fileSize");
+    const seenSongIds = new Set();
+    let totalDownloadedBytes = 0;
+    
+    for (const event of downloads) {
+      if (!event.songId) continue;
+      const sId = String(event.songId._id);
+      if (seenSongIds.has(sId)) continue;
+      seenSongIds.add(sId);
+      totalDownloadedBytes += event.songId.fileSize && event.songId.fileSize > 0
+        ? event.songId.fileSize
+        : 4.5 * 1024 * 1024; // Fallback 4.5MB
+    }
 
-      // Chỉ tính thêm dung lượng nếu bài hát này chưa từng được tải về
-      if (!seenSongIds.has(String(song._id))) {
-        const newDownloadSize = song.fileSize && song.fileSize > 0
-          ? song.fileSize
-          : 4.5 * 1024 * 1024; // Fallback 4.5MB
-        if (totalDownloadedBytes + newDownloadSize > downloadLimitBytes) {
-          const limitMbStr = downloadLimitBytes >= 1024 * 1024 * 1024
-            ? `${downloadLimitBytes / (1024 * 1024 * 1024)}GB`
-            : `${downloadLimitBytes / (1024 * 1024)}MB`;
+    // Chỉ tính thêm dung lượng nếu bài hát này chưa từng được tải về
+    if (!seenSongIds.has(String(song._id))) {
+      const newDownloadSize = song.fileSize && song.fileSize > 0
+        ? song.fileSize
+        : 4.5 * 1024 * 1024; // Fallback 4.5MB
+      if (totalDownloadedBytes + newDownloadSize > downloadLimitBytes) {
+        const limitMbStr = downloadLimitBytes >= 1024 * 1024 * 1024
+          ? `${(downloadLimitBytes / (1024 * 1024 * 1024)).toFixed(0)}GB`
+          : `${(downloadLimitBytes / (1024 * 1024)).toFixed(0)}MB`;
 
-          const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải xuống. Bạn đã dùng ${(totalDownloadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp cần tải mới là ${(newDownloadSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải xuống thêm.`);
-          err.status = 403;
-          throw err;
-        }
+        const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải xuống. Bạn đã dùng ${(totalDownloadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp cần tải mới là ${(newDownloadSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải xuống thêm.`);
+        err.status = 403;
+        throw err;
       }
     }
 
@@ -477,38 +475,38 @@ const uploadSong = async (body, files, userId, userRole) => {
     const user = await User.findById(userId).populate("premiumPlan");
     const { hasPremiumAccess } = require("../utils/premium.util");
     
-    let uploadLimitBytes = 50 * 1024 * 1024; // Mặc định Free: 50MB
+    let uploadLimitBytes = 100 * 1024 * 1024; // Free: 100MB
     let planLabel = "miễn phí";
-    let isUnlimited = false;
 
     if (user && hasPremiumAccess(user)) {
       const planName = user.premiumPlan?.name || "";
       if (planName === "Gói GO") {
-        uploadLimitBytes = 100 * 1024 * 1024; // 100MB
+        uploadLimitBytes = 250 * 1024 * 1024; // GO: 250MB
         planLabel = "Premium GO";
       } else if (planName === "Gói PLUS") {
-        uploadLimitBytes = 500 * 1024 * 1024; // 500MB
+        uploadLimitBytes = 500 * 1024 * 1024; // PLUS: 500MB
         planLabel = "Premium PLUS";
       } else {
-        isUnlimited = true;
+        uploadLimitBytes = 1024 * 1024 * 1024; // PREMIUM: 1GB (1024MB)
+        planLabel = "Premium";
       }
     }
 
-    if (!isUnlimited) {
-      const userSongs = await Song.find({ uploadedBy: userId, source: "user" }).select("fileSize");
-      const totalUploadedBytes = userSongs.reduce((sum, s) => sum + (s.fileSize && s.fileSize > 0 ? s.fileSize : 4.8 * 1024 * 1024), 0); // Fallback 4.8MB
-      const newFileSize = audioFile.size || 0;
+    const userSongs = await Song.find({ uploadedBy: userId, source: "user" }).select("fileSize");
+    const totalUploadedBytes = userSongs.reduce((sum, s) => sum + (s.fileSize && s.fileSize > 0 ? s.fileSize : 4.8 * 1024 * 1024), 0); // Fallback 4.8MB
+    const newFileSize = audioFile.size || 0;
+    
+    if (totalUploadedBytes + newFileSize > uploadLimitBytes) {
+      // Dọn dẹp các tệp tạm thời multer
+      safeUnlink(audioFile.path);
+      if (imageFile) safeUnlink(imageFile.path);
       
-      if (totalUploadedBytes + newFileSize > uploadLimitBytes) {
-        // Dọn dẹp các tệp tạm thời multer
-        safeUnlink(audioFile.path);
-        if (imageFile) safeUnlink(imageFile.path);
-        
-        const limitMbStr = `${uploadLimitBytes / (1024 * 1024)}MB`;
-        const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải lên. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp tải lên mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải thêm.`);
-        err.status = 403;
-        throw err;
-      }
+      const limitMbStr = uploadLimitBytes >= 1024 * 1024 * 1024
+        ? `${(uploadLimitBytes / (1024 * 1024 * 1024)).toFixed(0)}GB`
+        : `${(uploadLimitBytes / (1024 * 1024)).toFixed(0)}MB`;
+      const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải lên. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp tải lên mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải thêm.`);
+      err.status = 403;
+      throw err;
     }
   }
 

@@ -36,7 +36,9 @@ export const songsApi = {
   }),
   delete: (id) => api.delete(`/admin/songs/${id}`),
   updateVisibility: (id, isPublic) => api.patch(`/admin/songs/${id}/visibility`, { isPublic }),
+  moderate: (id) => api.post(`/admin/songs/${id}/moderate`),
 };
+
 
 // Playlists API
 export const playlistsApi = {

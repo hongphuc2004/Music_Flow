@@ -478,9 +478,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildTopicsGrid() {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     if (_isLoadingTopics) {
+
       return Center(
         child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );

@@ -45,18 +45,18 @@ const menuGroups = [
   {
     title: 'KHÁM PHÁ',
     items: [
-      { text: 'Trang Chủ', icon: <HomeIcon />, path: '/client/home' },
-      { text: 'Khám Phá', icon: <ExploreIcon />, path: '/client/discover' },
-      { text: 'Thể Loại', icon: <CategoryIcon />, path: '/client/genres' },
-      { text: 'Bảng Xếp Hạng', icon: <EqualizerIcon />, path: '/client/rankings' },
-      { text: 'AI Mood Music', icon: <SparklesIcon />, path: '/client/ai-mood', isAi: true },
+      { text: 'Trang Chủ', icon: <HomeIcon />, path: '/' },
+      { text: 'Khám Phá', icon: <ExploreIcon />, path: '/discover' },
+      { text: 'Thể Loại', icon: <CategoryIcon />, path: '/genres' },
+      { text: 'Bảng Xếp Hạng', icon: <EqualizerIcon />, path: '/rankings' },
+      { text: 'AI Mood Music', icon: <SparklesIcon />, path: '/ai-mood', isAi: true },
     ],
   },
   {
     title: 'CÁ NHÂN',
     items: [
-      { text: 'Thư Viện', icon: <LibraryMusicIcon />, path: '/client/library' },
-      { text: 'Tài Khoản', icon: <PersonIcon />, path: '/client/profile' },
+      { text: 'Thư Viện', icon: <LibraryMusicIcon />, path: '/library' },
+      { text: 'Tài Khoản', icon: <PersonIcon />, path: '/profile' },
     ],
   },
 ];
@@ -77,7 +77,7 @@ function ClientSidebar({
   const userInitial = (userName || 'U').charAt(0).toUpperCase();
 
   const handleNavigate = (path) => {
-    const privatePaths = ['/client/library', '/client/profile', '/client/ai-mood'];
+    const privatePaths = ['/library', '/profile', '/ai-mood', '/favorites', '/premium'];
     if (!isLoggedIn && privatePaths.includes(path)) {
       showToast({
         severity: 'info',
@@ -101,12 +101,12 @@ function ClientSidebar({
       title: 'Thành công!',
       message: 'Bạn đã đăng xuất khỏi tài khoản.',
     });
-    navigate('/client/home');
+    navigate('/');
   };
 
   const handleLogin = () => {
     onClose();
-    navigate('/client/home?auth=login');
+    navigate('/?auth=login');
   };
 
   const handleArtistLogin = () => {
@@ -128,7 +128,8 @@ function ClientSidebar({
       >
         <Tooltip title={collapsed && showDesktopToggle ? 'Mở thanh bên' : ''} placement="right" arrow>
         <Box
-          onClick={collapsed && showDesktopToggle ? onToggleDesktop : () => handleNavigate('/client/home')}
+          onClick={collapsed && showDesktopToggle ? onToggleDesktop : () => handleNavigate('/')}
+
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -404,7 +405,8 @@ function ClientSidebar({
         {isLoggedIn ? (
           <Tooltip title={collapsed ? userName : ''} placement="right" arrow>
           <Box
-            onClick={collapsed ? () => handleNavigate('/client/profile') : undefined}
+            onClick={collapsed ? () => handleNavigate('/profile') : undefined}
+
             sx={{
               p: collapsed ? 0.75 : 1.25,
               borderRadius: 3.5,

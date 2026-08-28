@@ -499,7 +499,8 @@ function ClientProfile() {
                       variant="contained"
                       startIcon={<FlashIcon />}
                       onClick={() => {
-                        navigate('/client/premium');
+                        navigate('/premium');
+
                       }}
                       sx={{
                         width: '100%',

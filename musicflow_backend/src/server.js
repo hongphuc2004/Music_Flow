@@ -103,6 +103,93 @@ app.get("/health", (req, res) =>
 // General rate limit applies to all API routes
 app.use("/api", generalRateLimiter);
 
+// 🌐 OPENGRAPH SOCIAL SHARE HELPER FOR CRAWLERS (Facebook, Zalo, Twitter, Telegram, etc.)
+function buildOpenGraphHtml(song, targetUrl) {
+  const { slugify } = require("./utils/string.util");
+  const artistNames = Array.isArray(song.artists)
+    ? song.artists.map((a) => (typeof a === "object" ? a.name : a)).filter(Boolean).join(", ")
+    : "Nghệ sĩ MusicFlow";
+
+  const title = `${song.title} - ${artistNames} | MusicFlow`;
+  const description = `Nghe bài hát "${song.title}" chất lượng cao của ${artistNames} trên nền tảng âm nhạc MusicFlow.`;
+  const imageUrl = song.imageUrl || "https://res.cloudinary.com/dzuhbme19/image/upload/v1778857942/musicflow/topics/zj3dxcuhyknbmfsi5zvu.jpg";
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <meta name="description" content="${description}">
+  
+  <!-- Open Graph / Facebook / Zalo -->
+  <meta property="og:type" content="music.song">
+  <meta property="og:url" content="${targetUrl}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:site_name" content="MusicFlow">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${targetUrl}">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
+  <meta name="twitter:image" content="${imageUrl}">
+
+  <meta http-equiv="refresh" content="0;url=${targetUrl}">
+  <script>window.location.replace("${targetUrl}");</script>
+</head>
+<body style="background:#0f172a;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <div style="text-align:center;">
+    <h2 style="margin-bottom:8px;">${song.title}</h2>
+    <p style="color:#94a3b8;margin-bottom:16px;">${artistNames}</p>
+    <p>Đang chuyển hướng tới MusicFlow...</p>
+    <a href="${targetUrl}" style="color:#00bcd4;text-decoration:none;font-weight:bold;">Nhấn vào đây nếu không tự chuyển</a>
+  </div>
+</body>
+</html>`;
+}
+
+// 🌐 OPENGRAPH ROUTE BY SLUG (SoundCloud-Style)
+app.get("/share/:artistSlug/:songSlug", async (req, res) => {
+  try {
+    const { artistSlug, songSlug } = req.params;
+    const songService = require("./services/song.service");
+    const { song } = await songService.getSongBySlug(artistSlug, songSlug);
+
+    const webOrigin = process.env.CLIENT_URL || process.env.CORS_ORIGINS?.split(",")[0] || "http://localhost:5173";
+    const targetUrl = `${webOrigin}/${artistSlug}/${songSlug}`;
+
+    const html = buildOpenGraphHtml(song, targetUrl);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+  } catch (error) {
+    const webOrigin = process.env.CLIENT_URL || process.env.CORS_ORIGINS?.split(",")[0] || "http://localhost:5173";
+    return res.redirect(302, `${webOrigin}/client/home`);
+  }
+});
+
+// 🌐 OPENGRAPH ROUTE BY ID (Backward Compatibility)
+app.get("/share/songs/:id", async (req, res) => {
+  try {
+    const songId = req.params.id;
+    const songService = require("./services/song.service");
+    const { song } = await songService.getSongById(songId);
+
+    const webOrigin = process.env.CLIENT_URL || process.env.CORS_ORIGINS?.split(",")[0] || "http://localhost:5173";
+    const targetUrl = `${webOrigin}/client/songs/${song._id}`;
+
+    const html = buildOpenGraphHtml(song, targetUrl);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+  } catch (error) {
+    const webOrigin = process.env.CLIENT_URL || process.env.CORS_ORIGINS?.split(",")[0] || "http://localhost:5173";
+    return res.redirect(302, `${webOrigin}/client/home`);
+  }
+});
+
+
+
 // routes
 app.use("/api/upload", uploadRoute);
 app.use("/api/songs", songRoute);

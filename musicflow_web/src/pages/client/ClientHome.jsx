@@ -91,9 +91,12 @@ function ClientHome() {
   const { showToast } = useAppToast();
   const [followedArtists, setFollowedArtists] = useState({});
   const [artistFollowersState, setArtistFollowersState] = useState({});
+  const [isArtistsExpanded, setIsArtistsExpanded] = useState(false);
+  const [isPlaylistsExpanded, setIsPlaylistsExpanded] = useState(false);
+  const [displayedSongCount, setDisplayedSongCount] = useState(8);
+  const [loadingMoreSongs, setLoadingMoreSongs] = useState(false);
 
   const greeting = useMemo(() => getPersonalizedGreeting(userName), [userName]);
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,8 +105,8 @@ function ClientHome() {
         setError('');
 
         const [songsRes, playlistsRes] = await Promise.all([
-          clientSongsApi.getRecommended({ limit: 8 }),
-          clientPlaylistsApi.getSystem({ limit: 6 }),
+          clientSongsApi.getRecommended({ limit: 24 }),
+          clientPlaylistsApi.getSystem({ limit: 16 }),
         ]);
 
         setSongs(Array.isArray(songsRes.data) ? songsRes.data : []);
@@ -239,7 +242,26 @@ function ClientHome() {
     () => [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 6),
     [songs],
   );
-  const recommendedSongs = useMemo(() => songs.slice(0, 6), [songs]);
+  const recommendedSongs = useMemo(() => songs.slice(0, displayedSongCount), [songs, displayedSongCount]);
+
+  const handleLoadMoreSongs = async () => {
+    if (displayedSongCount < songs.length) {
+      setDisplayedSongCount((prev) => Math.min(prev + 8, songs.length));
+      return;
+    }
+    try {
+      setLoadingMoreSongs(true);
+      const res = await clientSongsApi.getRecommended({ limit: displayedSongCount + 12 });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setSongs(res.data);
+        setDisplayedSongCount((prev) => prev + 8);
+      }
+    } catch (err) {
+      console.warn('Failed to load more songs:', err);
+    } finally {
+      setLoadingMoreSongs(false);
+    }
+  };
 
   const formatDuration = (seconds) => {
     const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -269,7 +291,7 @@ function ClientHome() {
       });
     });
 
-    return [...map.values()].sort((a, b) => b.plays - a.plays).slice(0, 6);
+    return [...map.values()].sort((a, b) => b.plays - a.plays).slice(0, 20);
   }, [songs]);
 
   // Set followers count directly from pre-populated song artist data
@@ -323,7 +345,7 @@ function ClientHome() {
         message: 'Vui lòng đăng nhập để quan tâm nghệ sĩ.',
         severity: 'warning'
       });
-      navigate('/client/home?auth=login');
+      navigate('/?auth=login');
       return;
     }
 
@@ -460,7 +482,7 @@ function ClientHome() {
                 <Stack direction="row" spacing={1.5} sx={{ pt: 0.5 }}>
                   <Button
                     variant="contained"
-                    onClick={() => navigate('/client/discover')}
+                    onClick={() => navigate('/discover')}
                     startIcon={<SparklesIcon sx={{ fontSize: 16 }} />}
                     sx={{
                       background: 'linear-gradient(90deg, #14b8a6, #6c63ff)',
@@ -519,11 +541,23 @@ function ClientHome() {
                 boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
               }}
             >
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, letterSpacing: -0.5 }}>
-                Nghệ Sĩ
-              </Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+                  Nghệ Sĩ
+                </Typography>
+                {topArtists.length > 5 && (
+                  <Button
+                    size="small"
+                    endIcon={<ArrowIcon sx={{ transform: isArtistsExpanded ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
+                    onClick={() => setIsArtistsExpanded((prev) => !prev)}
+                    sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
+                  >
+                    {isArtistsExpanded ? 'Thu gọn' : 'Xem tất cả'}
+                  </Button>
+                )}
+              </Stack>
               <Grid container spacing={3}>
-                {topArtists.slice(0, 5).map((artist) => {
+                {(isArtistsExpanded ? topArtists.slice(0, 20) : topArtists.slice(0, 5)).map((artist) => {
                   const isFollowed = followedArtists[artist._id] || false;
                   return (
                     <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={artist._id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -540,7 +574,7 @@ function ClientHome() {
                             transform: 'scale(1.08)',
                           }
                         }}
-                        onClick={() => navigate(`/client/artists/${artist._id}`)}
+                        onClick={() => navigate(`/artists/${artist._id}`)}
                       >
                         {artist.name.charAt(0)}
                       </Avatar>
@@ -555,7 +589,7 @@ function ClientHome() {
                           fontSize: { xs: '13px', sm: '15px' },
                           '&:hover': { color: '#14b8a6' }
                         }}
-                        onClick={() => navigate(`/client/artists/${artist._id}`)}
+                        onClick={() => navigate(`/artists/${artist._id}`)}
                       >
                         {artist.name}
                       </Typography>
@@ -613,21 +647,23 @@ function ClientHome() {
                 <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
                   Đề xuất cho bạn
                 </Typography>
-                <Button
-                  size="small"
-                  endIcon={<ArrowIcon />}
-                  onClick={() => navigate('/client/discover')}
-                  sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
-                >
-                  Xem tất cả
-                </Button>
+                {playlists.length > 4 && (
+                  <Button
+                    size="small"
+                    endIcon={<ArrowIcon sx={{ transform: isPlaylistsExpanded ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
+                    onClick={() => setIsPlaylistsExpanded((prev) => !prev)}
+                    sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
+                  >
+                    {isPlaylistsExpanded ? 'Thu gọn' : 'Xem tất cả'}
+                  </Button>
+                )}
               </Stack>
               <Grid container spacing={2}>
-                {playlists.slice(0, 4).map((playlist) => (
+                {(isPlaylistsExpanded ? playlists.slice(0, 16) : playlists.slice(0, 4)).map((playlist) => (
                   <Grid size={{ xs: 6, sm: 3 }} key={playlist._id}>
                     <ClientPlaylistCard
                       playlist={playlist}
-                      onClick={() => navigate(`/client/collections/${playlist._id}`)}
+                      onClick={() => navigate(`/collections/${playlist._id}`)}
                     />
                   </Grid>
                 ))}
@@ -668,12 +704,38 @@ function ClientHome() {
                       />
                     </Grid>
                   ))}
-                  {!songs.length && (
+                  {!recommendedSongs.length && (
                     <Grid size={{ xs: 12 }}>
                       <Typography color="text.secondary" sx={{ py: 1 }}>Chưa có bài hát để đề xuất.</Typography>
                     </Grid>
                   )}
                 </Grid>
+              )}
+              {songs.length > displayedSongCount && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                  <Button
+                    variant="outlined"
+                    size="medium"
+                    onClick={handleLoadMoreSongs}
+                    disabled={loadingMoreSongs}
+                    startIcon={loadingMoreSongs ? <CircularProgress size={16} sx={{ color: '#14b8a6' }} /> : null}
+                    sx={{
+                      color: '#14b8a6',
+                      borderColor: 'rgba(20, 184, 166, 0.3)',
+                      fontWeight: 800,
+                      borderRadius: 3,
+                      px: 3,
+                      py: 0.8,
+                      textTransform: 'none',
+                      '&:hover': {
+                        borderColor: '#14b8a6',
+                        bgcolor: 'rgba(20, 184, 166, 0.06)',
+                      },
+                    }}
+                  >
+                    {loadingMoreSongs ? 'Đang tải...' : 'Xem thêm bài hát'}
+                  </Button>
+                </Box>
               )}
             </Paper>
           </Stack>
@@ -947,9 +1009,19 @@ function ClientHome() {
                 boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
               }}
             >
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, letterSpacing: -0.5 }}>
-                Bài hát phổ biến
-              </Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+                  Bài hát phổ biến
+                </Typography>
+                <Button
+                  size="small"
+                  endIcon={<ArrowIcon />}
+                  onClick={() => navigate('/rankings')}
+                  sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
+                >
+                  Xem BXH đầy đủ
+                </Button>
+              </Stack>
               <Stack spacing={1}>
                 {topSongs.map((song, index) => {
                   const isCurrent = currentSong?._id === song._id;

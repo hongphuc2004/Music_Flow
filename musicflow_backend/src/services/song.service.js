@@ -17,7 +17,8 @@ const songRepo = require("../repositories/song.repository");
 const playEventRepo = require("../repositories/play-event.repository");
 
 const { safeUnlink, uploadAudioToCloudinary, uploadImageFileToCloudinary, uploadImageUrlToCloudinary, deleteFromCloudinary } = require("../utils/cloudinary.util");
-const { isObjectIdLike, isHttpUrl, parseArrayField, toSafeSongTitleFromFileName } = require("../utils/string.util");
+const { isObjectIdLike, isHttpUrl, parseArrayField, toSafeSongTitleFromFileName, slugify, escapeRegex } = require("../utils/string.util");
+
 const { ONE_HOUR_MS, getRankingPeriodRange, buildRankMap, buildHourlySlots } = require("../utils/ranking.util");
 const mm = require("music-metadata");
 
@@ -561,8 +562,15 @@ const uploadSong = async (body, files, userId, userRole) => {
       imagePublicId,
     });
 
+    // Trigger non-blocking AI Content Moderation
+    const aiModerationService = require("./aiModeration.service");
+    aiModerationService.processSongModeration(song._id).catch((err) =>
+      console.warn("[AIModeration] Async moderation error on upload:", err.message)
+    );
+
     return song;
   } catch (error) {
+
     safeUnlink(audioFile?.path);
     safeUnlink(imageFile?.path);
     throw error;
@@ -643,8 +651,16 @@ const updateSong = async (songId, body, files, userId, userRole) => {
     }
 
     await song.save();
+
+    // Trigger non-blocking AI Content Moderation
+    const aiModerationService = require("./aiModeration.service");
+    aiModerationService.processSongModeration(song._id).catch((err) =>
+      console.warn("[AIModeration] Async moderation error on update:", err.message)
+    );
+
     return song;
   } finally {
+
     safeUnlink(audioFile?.path);
     safeUnlink(imageFile?.path);
   }
@@ -1128,12 +1144,19 @@ const resolveStreamUrlByTicket = async (songId, ticket) => {
 };
 
 /**
- * Lấy chi tiết bài hát theo ID (bao gồm thông tin artist và topic).
+ * Lấy chi tiết bài hát công khai theo ID (bao gồm thông tin artist, topic và relatedSongs).
  */
 const getSongById = async (songId) => {
+  if (!songId || !isObjectIdLike(songId)) {
+    const error = new Error("Mã bài hát không hợp lệ");
+    error.status = 400;
+    throw error;
+  }
+
   const song = await Song.findById(songId)
     .populate("artists", "name avatar bio")
     .populate("topicIds", "name")
+    .populate("uploadedBy", "name")
     .lean();
 
   if (!song) {
@@ -1142,7 +1165,186 @@ const getSongById = async (songId) => {
     throw error;
   }
 
-  return { song };
+  // Security checks:
+  if (!song.isPublic) {
+    const error = new Error("Bài hát này hiện ở chế độ riêng tư hoặc chưa được phát hành công khai");
+    error.status = 403;
+    throw error;
+  }
+
+  if (song.moderation && String(song.moderation.status).toUpperCase() === "BLOCK") {
+    const error = new Error("Bài hát này đã bị tạm dừng phát hành do vi phạm tiêu chuẩn cộng đồng");
+    error.status = 403;
+    throw error;
+  }
+
+  // Fetch up to 6 related songs (from same artist or same topics)
+  let relatedSongs = [];
+  try {
+    const artistIds = Array.isArray(song.artists)
+      ? song.artists.map((a) => a?._id || a).filter(Boolean)
+      : [];
+    const topicIds = Array.isArray(song.topicIds)
+      ? song.topicIds.map((t) => t?._id || t).filter(Boolean)
+      : [];
+
+    relatedSongs = await Song.find({
+      _id: { $ne: song._id },
+      isPublic: true,
+      "moderation.status": { $ne: "BLOCK" },
+      $or: [
+        { artists: { $in: artistIds } },
+        { topicIds: { $in: topicIds } },
+      ],
+    })
+      .populate("artists", "name avatar")
+      .populate("topicIds", "name")
+      .sort({ playCount: -1, createdAt: -1 })
+      .limit(6)
+      .lean();
+  } catch (err) {
+    console.warn("Failed to fetch related songs for song detail:", err.message);
+  }
+
+  return { song, relatedSongs };
+};
+
+/**
+ * Lấy chi tiết bài hát công khai theo artistSlug và songSlug (SoundCloud-style).
+ */
+const getSongBySlug = async (artistSlug, songSlug) => {
+  if (!artistSlug || !songSlug) {
+    const error = new Error("Đường dẫn bài hát không hợp lệ");
+    error.status = 400;
+    throw error;
+  }
+
+  const cleanArtistSlug = String(artistSlug).trim().toLowerCase();
+  const cleanSongSlug = String(songSlug).trim().toLowerCase();
+
+  // 1. Find matching artist (by slug or computed slugify)
+  let artists = await Artist.find({
+    $or: [
+      { slug: cleanArtistSlug },
+      { name: new RegExp(`^${escapeRegex(cleanArtistSlug.replace(/-/g, " "))}$`, "i") },
+    ],
+  }).lean();
+
+  if (!artists || artists.length === 0) {
+    const allArtists = await Artist.find({}).select("_id name slug").lean();
+    artists = allArtists.filter((a) => (a.slug || slugify(a.name)) === cleanArtistSlug);
+  }
+
+  const artistIds = artists.map((a) => a._id);
+
+  // 2. Query candidate songs by artist or all songs
+  const query = artistIds.length > 0 ? { artists: { $in: artistIds } } : {};
+  let candidateSongs = await Song.find(query)
+    .populate("artists", "name avatar bio slug")
+    .populate("topicIds", "name")
+    .populate("uploadedBy", "name")
+    .lean();
+
+  let matchedSong = candidateSongs.find(
+    (s) => s.slug === cleanSongSlug || slugify(s.title) === cleanSongSlug
+  );
+
+  if (!matchedSong) {
+    const allSongs = await Song.find({})
+      .populate("artists", "name avatar bio slug")
+      .populate("topicIds", "name")
+      .populate("uploadedBy", "name")
+      .lean();
+
+    matchedSong = allSongs.find(
+      (s) => (s.slug === cleanSongSlug || slugify(s.title) === cleanSongSlug) &&
+             Array.isArray(s.artists) &&
+             s.artists.some((a) => (a.slug || slugify(a.name)) === cleanArtistSlug)
+    ) || allSongs.find((s) => s.slug === cleanSongSlug || slugify(s.title) === cleanSongSlug);
+  }
+
+  if (!matchedSong) {
+    const error = new Error("Bài hát không tồn tại hoặc đã bị ẩn");
+    error.status = 404;
+    throw error;
+  }
+
+  // Security checks:
+  if (!matchedSong.isPublic) {
+    const error = new Error("Bài hát này hiện ở chế độ riêng tư hoặc chưa được phát hành công khai");
+    error.status = 403;
+    throw error;
+  }
+
+  if (matchedSong.moderation && String(matchedSong.moderation.status).toUpperCase() === "BLOCK") {
+    const error = new Error("Bài hát này đã bị tạm dừng phát hành do vi phạm tiêu chuẩn cộng đồng");
+    error.status = 403;
+    throw error;
+  }
+
+  // Fetch related songs
+  let relatedSongs = [];
+  try {
+    const matchedArtistIds = Array.isArray(matchedSong.artists)
+      ? matchedSong.artists.map((a) => a?._id || a).filter(Boolean)
+      : [];
+    const topicIds = Array.isArray(matchedSong.topicIds)
+      ? matchedSong.topicIds.map((t) => t?._id || t).filter(Boolean)
+      : [];
+
+    const conditions = [];
+    if (matchedArtistIds.length > 0) conditions.push({ artists: { $in: matchedArtistIds } });
+    if (topicIds.length > 0) conditions.push({ topicIds: { $in: topicIds } });
+
+    const relatedFilter = {
+      _id: { $ne: matchedSong._id },
+      isPublic: true,
+      "moderation.status": { $ne: "BLOCK" },
+    };
+    if (conditions.length > 0) {
+      relatedFilter.$or = conditions;
+    }
+
+    relatedSongs = await Song.find(relatedFilter)
+      .populate("artists", "name avatar slug")
+      .populate("topicIds", "name")
+      .sort({ playCount: -1, createdAt: -1 })
+      .limit(6)
+      .lean();
+  } catch (err) {
+    console.warn("Failed to fetch related songs for slug:", err.message);
+  }
+
+  return { song: matchedSong, relatedSongs };
+};
+
+
+/**
+ * Ghi nhận sự kiện chia sẻ bài hát (Share Event Tracking).
+ */
+const recordShareEvent = async ({ songId, source, medium, campaign, si, userId, ip, userAgent }) => {
+  if (!songId || !isObjectIdLike(songId)) return null;
+
+  try {
+    const SongShareEvent = require("../models/share-event.model");
+    const [event] = await Promise.all([
+      SongShareEvent.create({
+        songId,
+        source: source || "clipboard",
+        medium: medium || "share",
+        campaign: campaign || "social_sharing",
+        si: si || null,
+        userId: userId || null,
+        ip: ip || null,
+        userAgent: userAgent || null,
+      }),
+      Song.findByIdAndUpdate(songId, { $inc: { shareCount: 1 } }),
+    ]);
+    return event;
+  } catch (err) {
+    console.warn("Failed to record song share event:", err.message);
+    return null;
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -1151,6 +1353,8 @@ const getSongById = async (songId) => {
 
 module.exports = {
   getSongById,
+  getSongBySlug,
+  recordShareEvent,
   resolveSongStreamUrl,
   issuePlaybackTicket,
   resolveStreamUrlByTicket,
@@ -1168,6 +1372,6 @@ module.exports = {
   getLyrics,
   getFlowchart,
   getRankings,
-  // helpers needed by controller for role resolution
   resolveAuthenticatedRole,
 };
+

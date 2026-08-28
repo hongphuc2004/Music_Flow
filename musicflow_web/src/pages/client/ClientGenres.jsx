@@ -28,7 +28,9 @@ import {
   ChevronRightRounded as NextIcon,
   PersonAddAltRounded as FollowIcon,
   CheckRounded as CheckIcon,
+  ChevronRightRounded as ArrowIcon,
 } from '@mui/icons-material';
+import { Chip } from '@mui/material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
@@ -469,6 +471,18 @@ function ClientGenres() {
     }
   }, [searchParams, topics, defaultSongs]);
 
+  const activeTopicTab = searchParams.get('tab') || 'all';
+
+  const handleSelectTopicTab = (tab) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (tab === 'all') {
+      newParams.delete('tab');
+    } else {
+      newParams.set('tab', tab);
+    }
+    setSearchParams(newParams);
+  };
+
   useEffect(() => {
     const initialHotSongs = getUniqueSongs(songs).slice(0, 15);
     usedHotSongKeysRef.current = new Set(initialHotSongs.map(getSongKey).filter(Boolean));
@@ -500,7 +514,7 @@ function ClientGenres() {
         message: 'Vui lòng đăng nhập để quan tâm nghệ sĩ.',
         severity: 'warning'
       });
-      navigate('/client/home?auth=login');
+      navigate('/?auth=login');
       return;
     }
     
@@ -1290,6 +1304,36 @@ function ClientGenres() {
                     </Button>
                   </Stack>
                 )}
+
+                {/* Topic sub-tabs: All, Songs, Playlists, Artists */}
+                <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'songs', label: `Bài hát (${songs.length})` },
+                    ...(relatedPlaylists.length > 0 ? [{ id: 'playlists', label: `Playlist & Album (${relatedPlaylists.length})` }] : []),
+                    ...(relatedArtists.length > 0 ? [{ id: 'artists', label: `Nghệ sĩ (${relatedArtists.length})` }] : []),
+                  ].map((t) => (
+                    <Chip
+                      key={t.id}
+                      label={t.label}
+                      onClick={() => handleSelectTopicTab(t.id)}
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: 12.5,
+                        cursor: 'pointer',
+                        borderRadius: 2.5,
+                        color: activeTopicTab === t.id ? '#000' : '#fff',
+                        bgcolor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.15)',
+                        border: '1px solid',
+                        borderColor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.3)',
+                        backdropFilter: 'blur(8px)',
+                        '&:hover': {
+                          bgcolor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.25)',
+                        },
+                      }}
+                    />
+                  ))}
+                </Stack>
               </Box>
             </Stack>
           </Paper>
@@ -1305,63 +1349,89 @@ function ClientGenres() {
             </Paper>
           ) : (
             <Stack spacing={7}>
-              {/* ──────── SECTION 1: HOT SONGS (3 Columns Grid) ──────── */}
-              <Box>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3, gap: 2 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.3px' }}>
-                    Hot Songs
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    startIcon={<RefreshIcon />}
-                    onClick={handleRefreshHotSongs}
-                    disabled={songs.length <= 1}
-                    sx={{
-                      color: '#14b8a6',
-                      borderColor: 'rgba(20, 184, 166, 0.25)',
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 800,
-                      px: 2,
-                      flexShrink: 0,
-                      '&:hover': {
-                        borderColor: '#14b8a6',
-                        bgcolor: 'rgba(20, 184, 166, 0.05)',
-                      },
-                    }}
-                  >
-                    Đổi bài hát
-                  </Button>
-                </Stack>
-                
-                <Grid container spacing={2.5}>
-                  {hotSongs.map((song) => (
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
-                      <ClientSongItem
-                        song={song}
-                        showDuration={true}
-                        isCurrent={currentSong?._id === song._id}
-                        isPlaying={currentSong?._id === song._id && isPlaying}
-                        onPlay={() => playSong(song, { queue: hotSongs })}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-
-              {/* ──────── SECTION 2: PLAYLIST / ALBUM GỢI Ý (5 Columns Grid) ──────── */}
-              {relatedPlaylists.length > 0 && (
+              {/* ──────── SECTION 1: HOT SONGS / ALL SONGS (3 Columns Grid) ──────── */}
+              {(activeTopicTab === 'all' || activeTopicTab === 'songs') && (
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-                    Playlist / Album gợi ý
-                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3, gap: 2 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.3px' }}>
+                      {activeTopicTab === 'songs' ? `Tất cả bài hát (${songs.length})` : 'Hot Songs'}
+                    </Typography>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Button
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        onClick={handleRefreshHotSongs}
+                        disabled={songs.length <= 1}
+                        sx={{
+                          color: '#14b8a6',
+                          borderColor: 'rgba(20, 184, 166, 0.25)',
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 800,
+                          px: 2,
+                          flexShrink: 0,
+                          '&:hover': {
+                            borderColor: '#14b8a6',
+                            bgcolor: 'rgba(20, 184, 166, 0.05)',
+                          },
+                        }}
+                      >
+                        Đổi bài hát
+                      </Button>
+                      {songs.length > 15 && (
+                        <Button
+                          size="small"
+                          endIcon={<ArrowIcon sx={{ transform: activeTopicTab === 'songs' ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
+                          onClick={() => handleSelectTopicTab(activeTopicTab === 'songs' ? 'all' : 'songs')}
+                          sx={{ color: '#14b8a6', fontWeight: 800, borderRadius: 2, textTransform: 'none' }}
+                        >
+                          {activeTopicTab === 'songs' ? 'Thu gọn' : 'Xem tất cả'}
+                        </Button>
+                      )}
+                    </Stack>
+                  </Stack>
                   
                   <Grid container spacing={2.5}>
-                    {relatedPlaylists.slice(0, 5).map((playlist) => (
+                    {(activeTopicTab === 'songs' ? songs : hotSongs).map((song) => (
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
+                        <ClientSongItem
+                          song={song}
+                          showDuration={true}
+                          isCurrent={currentSong?._id === song._id}
+                          isPlaying={currentSong?._id === song._id && isPlaying}
+                          onPlay={() => playSong(song, { queue: activeTopicTab === 'songs' ? songs : hotSongs })}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+
+              {/* ──────── SECTION 2: PLAYLIST / ALBUM GỢI Ý (5 Columns Grid) ──────── */}
+              {(activeTopicTab === 'all' || activeTopicTab === 'playlists') && relatedPlaylists.length > 0 && (
+                <Box>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 900, mb: 0, letterSpacing: '-0.3px' }}>
+                      {activeTopicTab === 'playlists' ? `Tất cả Playlist / Album (${relatedPlaylists.length})` : 'Playlist / Album gợi ý'}
+                    </Typography>
+                    {relatedPlaylists.length > 5 && (
+                      <Button
+                        size="small"
+                        endIcon={<ArrowIcon sx={{ transform: activeTopicTab === 'playlists' ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
+                        onClick={() => handleSelectTopicTab(activeTopicTab === 'playlists' ? 'all' : 'playlists')}
+                        sx={{ color: '#14b8a6', fontWeight: 800, borderRadius: 2, textTransform: 'none' }}
+                      >
+                        {activeTopicTab === 'playlists' ? 'Thu gọn' : 'Xem tất cả'}
+                      </Button>
+                    )}
+                  </Stack>
+                  
+                  <Grid container spacing={2.5}>
+                    {(activeTopicTab === 'playlists' ? relatedPlaylists : relatedPlaylists.slice(0, 5)).map((playlist) => (
                       <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={playlist._id}>
                         <ClientPlaylistCard
                           playlist={playlist}
-                          onClick={() => navigate(`/client/playlists/${playlist._id}`)}
+                          onClick={() => navigate(`/playlists/${playlist._id}`)}
                         />
                       </Grid>
                     ))}
@@ -1370,14 +1440,26 @@ function ClientGenres() {
               )}
 
             {/* ──────── SECTION 3: NGHỆ SĨ (5 Columns Circular Profile Grid) ──────── */}
-            {relatedArtists.length > 0 && (
+            {(activeTopicTab === 'all' || activeTopicTab === 'artists') && relatedArtists.length > 0 && (
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-                  Nghệ Sĩ
-                </Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900, mb: 0, letterSpacing: '-0.3px' }}>
+                    {activeTopicTab === 'artists' ? `Tất cả Nghệ Sĩ (${relatedArtists.length})` : 'Nghệ Sĩ'}
+                  </Typography>
+                  {relatedArtists.length > 5 && (
+                    <Button
+                      size="small"
+                      endIcon={<ArrowIcon sx={{ transform: activeTopicTab === 'artists' ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
+                      onClick={() => handleSelectTopicTab(activeTopicTab === 'artists' ? 'all' : 'artists')}
+                      sx={{ color: '#14b8a6', fontWeight: 800, borderRadius: 2, textTransform: 'none' }}
+                    >
+                      {activeTopicTab === 'artists' ? 'Thu gọn' : 'Xem tất cả'}
+                    </Button>
+                  )}
+                </Stack>
                 
                 <Grid container spacing={3}>
-                  {relatedArtists.map((artist) => {
+                  {(activeTopicTab === 'artists' ? relatedArtists : relatedArtists.slice(0, 5)).map((artist) => {
                     const isFollowed = followedArtists[artist._id] || false;
                     return (
                       <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={artist._id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -1394,7 +1476,7 @@ function ClientGenres() {
                               transform: 'scale(1.08)',
                             }
                           }}
-                          onClick={() => navigate(`/client/artists/${artist._id}`)}
+                          onClick={() => navigate(`/artists/${artist._id}`)}
                         />
                         <Typography
                           variant="subtitle1"
@@ -1406,7 +1488,7 @@ function ClientGenres() {
                             cursor: 'pointer',
                             '&:hover': { color: '#14b8a6' }
                           }}
-                          onClick={() => navigate(`/client/artists/${artist._id}`)}
+                          onClick={() => navigate(`/artists/${artist._id}`)}
                         >
                           {artist.name}
                         </Typography>

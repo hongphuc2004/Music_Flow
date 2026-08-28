@@ -36,14 +36,15 @@ const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
 
 const menuItems = [
-  { text: 'Tổng Quan', icon: <DashboardIcon />, path: '/' },
-  { text: 'Tài Khoản', icon: <PeopleIcon />, path: '/accounts' },
-  { text: 'Bài Hát', icon: <MusicNoteIcon />, path: '/songs' },
-  { text: 'Chủ Đề', icon: <CategoryIcon />, path: '/topics' },
-  { text: 'Playlists', icon: <PlaylistIcon />, path: '/playlists' },
-  { text: 'Premium', icon: <PremiumIcon />, path: '/premium' },
-  { text: 'Cài Đặt', icon: <SettingsIcon />, path: '/settings' },
+  { text: 'Tổng Quan', icon: <DashboardIcon />, path: '/admin/dashboard' },
+  { text: 'Tài Khoản', icon: <PeopleIcon />, path: '/admin/accounts' },
+  { text: 'Bài Hát', icon: <MusicNoteIcon />, path: '/admin/songs' },
+  { text: 'Chủ Đề', icon: <CategoryIcon />, path: '/admin/topics' },
+  { text: 'Playlists', icon: <PlaylistIcon />, path: '/admin/playlists' },
+  { text: 'Premium', icon: <PremiumIcon />, path: '/admin/premium' },
+  { text: 'Cài Đặt', icon: <SettingsIcon />, path: '/admin/settings' },
 ];
+
 
 function Sidebar({ desktopOpen = true, onToggleDesktop = () => {} }) {
   const navigate = useNavigate();

@@ -280,6 +280,102 @@ class NotificationTriggerService {
       return null;
     }
   }
+
+  /**
+   * Thông báo kết quả kiểm duyệt bài hát cho User/Artist upload
+   */
+  async triggerSongModerationNotification({ song, uploaderId, moderationResult }) {
+    if (!uploaderId || !song || !moderationResult) return null;
+
+    const status = moderationResult.status || "SAFE";
+    const uniqueKey = `song_moderation_${song._id.toString()}_${Date.now()}`;
+    const actionUrl = song.source === "artist" ? "/artist/songs" : "/client/library";
+
+    let title = `🎵 Kết quả kiểm duyệt bài hát "${song.title}"`;
+    let content = `Bài hát "${song.title}" đã được kiểm duyệt.`;
+
+    if (status === "SAFE") {
+      title = `✅ Bài hát "${song.title}" đã được duyệt an toàn`;
+      content = `Bài hát "${song.title}" của bạn đã vượt qua khâu kiểm duyệt tự động và sẵn sàng phát hành trên MusicFlow!`;
+    } else if (status === "REVIEW") {
+      title = `⏳ Bài hát "${song.title}" đang chờ Admin xem xét`;
+      content = `Bài hát "${song.title}" cần Admin xem xét thêm: "${moderationResult.reason || 'Nội dung cần duyệt'}" trước khi công khai.`;
+    } else if (status === "BLOCK") {
+      title = `⛔ Bài hát "${song.title}" bị từ chối công khai`;
+      content = `Bài hát "${song.title}" vi phạm tiêu chuẩn cộng đồng: "${moderationResult.reason || 'Nội dung không phù hợp'}". Bài hát đã được chuyển về riêng tư.`;
+    }
+
+    try {
+      return await Notification.create({
+        user: uploaderId,
+        title,
+        content,
+        type: "song_moderation_result",
+        isRead: false,
+        uniqueKey,
+        metadata: {
+          songId: song._id,
+          songTitle: song.title,
+          status,
+          riskLevel: moderationResult.riskLevel,
+          reason: moderationResult.reason,
+          actionUrl,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to trigger song moderation notification:", err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Gửi thông báo cảnh báo cho toàn bộ Admin khi có bài hát cần REVIEW hoặc bị BLOCK
+   */
+  async triggerAdminModerationAlert({ song, uploader, moderationResult }) {
+    if (!song || !moderationResult) return { sentCount: 0 };
+
+    const status = moderationResult.status || "REVIEW";
+    if (status === "SAFE") return { sentCount: 0 }; // Không spam admin khi bài SAFE
+
+    try {
+      const admins = await User.find({ role: "admin" }).select("_id");
+      if (!admins || admins.length === 0) return { sentCount: 0 };
+
+      const uploaderName = uploader?.name || (song.uploadedBy?.name) || "Thành viên";
+      const title = status === "BLOCK"
+        ? `🚨 [CẢNH BÁO VI PHẠM] Bài hát "${song.title}" bị AI BLOCK`
+        : `🛡️ [CẦN DUYỆT] Bài hát "${song.title}" cần Admin xem xét`;
+
+      const content = status === "BLOCK"
+        ? `${uploaderName} tải lên bài "${song.title}". AI phát hiện vi phạm: "${moderationResult.reason || 'Vi phạm nghiêm trọng'}" và đã tự động ẩn bài.`
+        : `${uploaderName} tải lên bài "${song.title}". AI đánh giá REVIEW: "${moderationResult.reason || 'Cần xem xét ngữ cảnh'}" và chờ bạn phê duyệt.`;
+
+      const notifications = admins.map((admin) => ({
+        user: admin._id,
+        title,
+        content,
+        type: "admin_moderation_alert",
+        isRead: false,
+        uniqueKey: `admin_mod_alert_${song._id.toString()}_${admin._id.toString()}_${Date.now()}`,
+        metadata: {
+          songId: song._id,
+          songTitle: song.title,
+          status,
+          riskLevel: moderationResult.riskLevel,
+          reason: moderationResult.reason,
+          uploaderName,
+          actionUrl: "/admin/songs",
+        },
+      }));
+
+      await Notification.insertMany(notifications);
+      return { sentCount: notifications.length };
+    } catch (err) {
+      console.error("Failed to trigger admin moderation alert:", err.message);
+      return { sentCount: 0 };
+    }
+  }
 }
 
 module.exports = new NotificationTriggerService();
+

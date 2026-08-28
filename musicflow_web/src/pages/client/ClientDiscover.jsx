@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Avatar,
@@ -57,6 +57,7 @@ const getPersonalizedGreeting = () => {
 
 function ClientDiscover() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { playSong } = useClientPlayerActions();
   const [songs, setSongs] = useState([]);
   const [suggestedSongs, setSuggestedSongs] = useState([]);
@@ -71,8 +72,36 @@ function ClientDiscover() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [carouselHovered, setCarouselHovered] = useState(false);
 
-  // Active Category Filtering
+  // Active Category Filtering from URL param ?view=
+  const viewParam = searchParams.get('view');
   const [activeCategory, setActiveCategory] = useState('all');
+
+  useEffect(() => {
+    if (viewParam === 'artists' || viewParam === 'mixes') {
+      setActiveCategory('mixes');
+    } else if (viewParam === 'playlists') {
+      setActiveCategory('playlists');
+    } else if (viewParam === 'top100') {
+      setActiveCategory('top100');
+    } else if (viewParam === 'songs') {
+      setActiveCategory('songs');
+    } else if (viewParam === 'recent') {
+      setActiveCategory('recent');
+    } else {
+      setActiveCategory('all');
+    }
+  }, [viewParam]);
+
+  const handleSelectCategory = (catId) => {
+    setActiveCategory(catId);
+    if (catId === 'all') {
+      setSearchParams({});
+    } else if (catId === 'mixes') {
+      setSearchParams({ view: 'artists' });
+    } else {
+      setSearchParams({ view: catId });
+    }
+  };
 
   const greeting = useMemo(() => getPersonalizedGreeting(), []);
 
@@ -80,7 +109,7 @@ function ClientDiscover() {
     { id: 'all', label: 'Tất cả' },
     { id: 'songs', label: 'Bài hát gợi ý' },
     { id: 'recent', label: 'Nghe gần đây' },
-    { id: 'mixes', label: 'Dành riêng cho bạn' },
+    { id: 'mixes', label: 'Nghệ sĩ & Mixes' },
     { id: 'top100', label: 'Top 100' },
     { id: 'playlists', label: 'Playlists' }
   ];
@@ -207,7 +236,7 @@ function ClientDiscover() {
       gradient: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
       btnText: 'Tạo nhạc AI ngay',
       btnIcon: <SparklesIcon sx={{ mr: 1, fontSize: 18 }} />,
-      action: () => navigate('/client/ai-mood'),
+      action: () => navigate('/ai-mood'),
       badge: 'Tính năng HOT',
       bgGlow: 'rgba(124, 58, 237, 0.45)'
     },
@@ -217,7 +246,7 @@ function ClientDiscover() {
       gradient: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
       btnText: 'Khám phá BXH',
       btnIcon: <FireIcon sx={{ mr: 1, fontSize: 18 }} />,
-      action: () => navigate('/client/rankings'),
+      action: () => navigate('/rankings'),
       badge: 'Xu hướng mới',
       bgGlow: 'rgba(239, 68, 68, 0.4)'
     },
@@ -227,7 +256,7 @@ function ClientDiscover() {
       gradient: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
       btnText: 'Xem tất cả thể loại',
       btnIcon: <LibraryMusicIcon sx={{ mr: 1, fontSize: 18 }} />,
-      action: () => navigate('/client/genres'),
+      action: () => navigate('/genres'),
       badge: 'Đa dạng thể loại',
       bgGlow: 'rgba(20, 184, 166, 0.45)'
     }
@@ -313,20 +342,21 @@ function ClientDiscover() {
         size="small"
         endIcon={<ArrowIcon />}
         onClick={() => {
-          if (categoryId === 'playlists') navigate('/client/genres');
-          else if (categoryId === 'top100') navigate('/client/rankings');
-          else if (categoryId === 'mixes') navigate('/client/ai-mood');
-          else setActiveCategory('all');
+          if (categoryId === 'playlists') handleSelectCategory('playlists');
+          else if (categoryId === 'top100') navigate('/rankings');
+          else if (categoryId === 'mixes') handleSelectCategory('mixes');
+          else handleSelectCategory(categoryId || 'all');
         }}
         sx={{
           color: '#14b8a6',
           fontWeight: 700,
           borderRadius: 2,
           px: 1.5,
+          textTransform: 'none',
           '&:hover': { bgcolor: 'rgba(20, 184, 166, 0.08)' }
         }}
       >
-        Tất cả
+        Xem tất cả
       </Button>
     </Stack>
   );
@@ -542,7 +572,7 @@ function ClientDiscover() {
               <Chip
                 key={cat.id}
                 label={cat.label}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => handleSelectCategory(cat.id)}
                 sx={{
                   fontWeight: 700,
                   fontSize: 13,
@@ -752,7 +782,7 @@ function ClientDiscover() {
                 {artistMixCards.map((artist) => (
                   <Box
                     key={`mix-${artist.id}`}
-                    onClick={() => navigate(`/client/artists/${artist.id}`)}
+                    onClick={() => navigate(`/artists/${artist.id}`)}
                     sx={{
                       borderRadius: 4.5,
                       p: 2,
@@ -940,7 +970,7 @@ function ClientDiscover() {
                   <Box
                     key={`playlist-${playlist._id}`}
                     sx={cardSx}
-                    onClick={() => navigate(`/client/collections/${playlist._id}`)}
+                    onClick={() => navigate(`/collections/${playlist._id}`)}
                   >
                     <Box sx={{ position: 'relative', borderRadius: 3, overflow: 'hidden', mb: 1.5, aspectRatio: '1/1' }}>
                       <Avatar
@@ -1021,7 +1051,7 @@ function ClientDiscover() {
                   <Box
                     key={`chill-${playlist._id}`}
                     sx={cardSx}
-                    onClick={() => navigate(`/client/collections/${playlist._id}`)}
+                    onClick={() => navigate(`/collections/${playlist._id}`)}
                   >
                     <Box sx={{ position: 'relative', borderRadius: 3, overflow: 'hidden', mb: 1.5, aspectRatio: '1/1' }}>
                       <Avatar
@@ -1105,7 +1135,7 @@ function ClientDiscover() {
                     key={topic._id}
                     label={`# ${topic.name}`}
                     variant="outlined"
-                    onClick={() => navigate(`/client/genres?topic=${topic._id}`)}
+                    onClick={() => navigate(`/genres?topic=${topic._id}`)}
                     sx={{
                       cursor: 'pointer',
                       borderRadius: 2.25,

@@ -8,7 +8,10 @@ export const clientAuthApi = {
 // Client Songs API
 export const clientSongsApi = {
   getSongById: (songId) => api.get(`/songs/${songId}`),
+  getBySlug: (artistSlug, songSlug) => api.get(`/songs/by-slug/${artistSlug}/${songSlug}`),
+  trackShareEvent: (songId, payload) => api.post(`/songs/${songId}/share-event`, payload),
   getAllPublic: (params = { page: 1, limit: 50 }) => cachedGet('/songs', { params }, 30000),
+
   getRecommended: (params = {}) => {
     if (String(params.refresh || '').toLowerCase() === 'true') {
       return api.get('/songs/recommended', { params });

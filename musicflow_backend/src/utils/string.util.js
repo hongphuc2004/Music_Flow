@@ -214,6 +214,42 @@ const extractPromptTerms = (prompt = "") => {
   );
 };
 
+/**
+ * Extract clean, plain-text lyrics from raw string or LRC formatted lyrics.
+ * Strips timestamp tags like [01:23.45] and metadata headers while preserving text lines.
+ *
+ * @param {string} rawLyrics
+ * @returns {string} Clean plain-text lyrics
+ */
+const extractCleanLyrics = (rawLyrics) => {
+  if (!rawLyrics || typeof rawLyrics !== "string") return "";
+  return rawLyrics
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\[[^\]]+\]/g, "").trim())
+    .filter(Boolean)
+    .join("\n");
+};
+
+/**
+
+ * Chuyển chuỗi tiếng Việt có dấu và ký tự đặc biệt sang URL slug chuẩn (kebab-case).
+ * @param {string} text
+ * @returns {string} URL slug
+ */
+const slugify = (text = "") => {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
@@ -225,6 +261,7 @@ module.exports = {
   isHttpUrl,
   normalizeSearchText,
   normalizeText,
+  slugify,
   VIET_CHAR_GROUPS,
   toAccentInsensitivePattern,
   buildSearchRegexes,
@@ -233,4 +270,7 @@ module.exports = {
   parseArrayField,
   unique,
   extractPromptTerms,
+  extractCleanLyrics,
 };
+
+

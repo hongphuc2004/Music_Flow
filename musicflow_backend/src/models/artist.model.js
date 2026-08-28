@@ -8,6 +8,11 @@ const artistSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    slug: {
+      type: String,
+      index: true,
+    },
+
     email: {
       type: String,
       required: true,

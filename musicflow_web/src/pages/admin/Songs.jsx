@@ -56,7 +56,9 @@ import {
   CloudUploadRounded as UploadIcon,
   Close as CloseIcon,
   Category as CategoryIcon,
+  SecurityRounded as SecurityIcon,
 } from '@mui/icons-material';
+
 import { Layout } from '../../components/Layout';
 import { songsApi, topicsApi, accountsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/useAppToast';
@@ -338,6 +340,28 @@ function Songs() {
     }
   };
 
+  const [moderatingId, setModeratingId] = useState(null);
+
+  const handleModerateSong = async (song) => {
+    try {
+      setModeratingId(song._id);
+      showToast({ severity: 'info', title: 'AI Moderation', message: 'Đang chạy kiểm duyệt AI...' });
+      const res = await songsApi.moderate(song._id);
+      const mod = res.data?.moderation;
+      const statusText = mod?.status === 'BLOCK' ? 'VI PHẠM (BLOCK)' : mod?.status === 'REVIEW' ? 'CẦN DUYỆT (REVIEW)' : 'AN TOÀN (SAFE)';
+      showToast({
+        severity: mod?.status === 'BLOCK' ? 'error' : mod?.status === 'REVIEW' ? 'warning' : 'success',
+        title: 'Kiểm duyệt hoàn tất',
+        message: `${statusText}: ${mod?.reason || ''}`,
+      });
+      fetchSongs();
+    } catch (err) {
+      showToast({ severity: 'error', title: 'Kiểm duyệt thất bại', message: err?.response?.data?.message || 'Có lỗi xảy ra' });
+    } finally {
+      setModeratingId(null);
+    }
+  };
+
   const formatDuration = (seconds) => {
     const num = Number(seconds);
     if (isNaN(num) || num < 0) return '--:--';
@@ -354,6 +378,7 @@ function Songs() {
       day: 'numeric',
     });
   };
+
 
   return (
     <Layout title="Songs Studio">
@@ -486,6 +511,7 @@ function Songs() {
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Nghệ sĩ</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Thời lượng</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Nguồn Upload</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Kiểm duyệt AI</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Công khai</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Ngày đăng</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 800, color: 'text.secondary', pr: 3 }}>Hành động</TableCell>
@@ -494,7 +520,7 @@ function Songs() {
                 <TableBody>
                   {songs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 8, color: 'text.secondary' }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 8, color: 'text.secondary' }}>
                         Không có dữ liệu bài hát nào phù hợp.
                       </TableCell>
                     </TableRow>
@@ -542,6 +568,43 @@ function Songs() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {song.moderation?.status === 'BLOCK' ? (
+                            <Tooltip title={`[VI PHẠM]: ${song.moderation?.reason || 'Bị chặn bởi AI Moderation'}`} arrow>
+                              <Chip
+                                label="BLOCK"
+                                size="small"
+                                color="error"
+                                sx={{ fontWeight: 800, borderRadius: 2, fontSize: 11 }}
+                              />
+                            </Tooltip>
+                          ) : song.moderation?.status === 'REVIEW' ? (
+                            <Tooltip title={`[CẦN DUYỆT]: ${song.moderation?.reason || 'Cần Admin xem xét nội dung'}`} arrow>
+                              <Chip
+                                label="REVIEW"
+                                size="small"
+                                color="warning"
+                                sx={{ fontWeight: 800, borderRadius: 2, fontSize: 11 }}
+                              />
+                            </Tooltip>
+                          ) : song.moderation?.status === 'SAFE' ? (
+                            <Tooltip title={`[AN TOÀN]: ${song.moderation?.reason || 'Đạt tiêu chuẩn cộng đồng'}`} arrow>
+                              <Chip
+                                label="SAFE"
+                                size="small"
+                                color="success"
+                                sx={{ fontWeight: 800, borderRadius: 2, fontSize: 11 }}
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Chip
+                              label="CHƯA DUYỆT"
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontWeight: 700, borderRadius: 2, fontSize: 11, opacity: 0.6 }}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <Switch
                             checked={song.isPublic}
                             onChange={() => handleVisibilityChange(song)}
@@ -552,6 +615,19 @@ function Songs() {
                         <TableCell sx={{ color: 'text.secondary', fontWeight: 500 }}>{formatDate(song.createdAt)}</TableCell>
                         <TableCell align="right" sx={{ pr: 3 }}>
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <Tooltip title="Kiểm duyệt lại bằng AI" arrow>
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="warning"
+                                  disabled={moderatingId === song._id}
+                                  onClick={() => handleModerateSong(song)}
+                                  sx={{ bgcolor: 'rgba(255,152,0,0.06)', borderRadius: 3, border: '1px solid rgba(255,152,0,0.1)' }}
+                                >
+                                  {moderatingId === song._id ? <CircularProgress size={16} color="inherit" /> : <SecurityIcon fontSize="small" />}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                             <Tooltip title="Nghe thử" arrow>
                               <IconButton
                                 size="small"

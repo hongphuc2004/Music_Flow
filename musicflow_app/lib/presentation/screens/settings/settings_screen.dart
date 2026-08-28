@@ -87,10 +87,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     final confirm = await showDialog<bool>(
+
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: AppRadius.mediumBorder),

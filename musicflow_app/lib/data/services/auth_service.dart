@@ -220,11 +220,11 @@ class AuthService {
           final now = DateTime.now();
 
           if (now.isAfter(expiry)) {
-            print("Access token đã hết hạn, tự động gọi tryRefreshToken()...");
             return await tryRefreshToken();
           } else {
             getProfile(); // Gọi ngầm để cập nhật dữ liệu user mới nhất nếu có
           }
+
         }
       }
     } catch (_) {}

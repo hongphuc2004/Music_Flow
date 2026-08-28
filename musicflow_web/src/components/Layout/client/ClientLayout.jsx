@@ -4,6 +4,7 @@ import { Box, Toolbar, useTheme } from '@mui/material';
 import ClientSidebar from './ClientSidebar';
 import ClientHeader from './ClientHeader';
 import ClientNowPlayingBar from './ClientNowPlayingBar';
+import ClientFooter from './ClientFooter';
 import ClientAuthDialog from './ClientAuthDialog';
 import ClientSongCommentsDrawer from './ClientSongCommentsDrawer';
 import { useClientPlayer } from './ClientPlayerProvider';
@@ -28,13 +29,24 @@ function ClientLayout({ children, title }) {
   const currentSong = playerCtx?.currentSong;
 
   const titleByPath = {
+    '/': 'Trang chủ',
+    '/home': 'Trang chủ',
+    '/discover': 'Khám Phá',
+    '/library': 'Thư Viện',
+    '/favorites': 'Yêu Thích',
+    '/genres': 'Chủ Đề & Thể Loại',
+    '/rankings': 'Bảng Xếp Hạng',
+    '/ai-mood': 'AI Mood DJ',
+    '/profile': 'Tài Khoản',
+    '/premium': 'Gói Premium',
     '/client/home': 'Trang chủ',
     '/client/discover': 'Khám Phá',
-    '/client/library': 'Thư Viện ',
+    '/client/library': 'Thư Viện',
     '/client/genres': 'Chủ Đề & Thể Loại',
     '/client/rankings': 'Bảng Xếp Hạng',
     '/client/profile': 'Tài Khoản',
   };
+
   const resolvedTitle = titleByPath[location.pathname] || title || 'MusicFlow';
 
   const handleToggleMobileSidebar = () => {
@@ -134,8 +146,10 @@ function ClientLayout({ children, title }) {
         sx={{
           flexGrow: 1,
           p: { xs: 2, md: 3 },
-          // Stable padding-bottom prevents CLS when NowPlayingBar appears/disappears
-          pb: { xs: '132px', sm: '120px', md: '124px' },
+          // Dynamic padding-bottom ensures no extra gap when player is hidden
+          pb: currentSong ? { xs: '100px', sm: '96px', md: '100px' } : { xs: 2, md: 3 },
+
+
           width: {
             xs: '100%',
             md: `calc(100% - ${desktopOpen ? drawerWidth : collapsedDrawerWidth}px)`,
@@ -149,6 +163,7 @@ function ClientLayout({ children, title }) {
       >
         <Toolbar />
         {children}
+        <ClientFooter />
       </Box>
       <ClientNowPlayingBar
         desktopSidebarOpen={desktopOpen}

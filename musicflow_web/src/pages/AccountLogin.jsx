@@ -108,7 +108,7 @@ function AccountLogin() {
           localStorage.setItem('email', user.email || '');
           localStorage.setItem('userId', user._id || '');
           notifyClientSessionChanged();
-          navigate('/client/home');
+          navigate('/');
         } catch (err) {
           setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
         } finally {
@@ -154,7 +154,7 @@ function AccountLogin() {
             localStorage.setItem('email', user.email || '');
             localStorage.setItem('userId', user._id || '');
             notifyClientSessionChanged();
-            navigate('/client/home');
+            navigate('/');
           } catch (err) {
             setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
           } finally {
@@ -184,7 +184,7 @@ function AccountLogin() {
       localStorage.setItem('userId', user._id || '');
       notifyClientSessionChanged();
       if (user.role === 'user') {
-        navigate('/client/home');
+        navigate('/');
       } else {
         setError('Bạn không có quyền truy cập trang này!');
       }
@@ -325,7 +325,7 @@ function AccountLogin() {
           )}
 
           <Box sx={{ mt: 3.5, display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button type="button" variant="text" sx={{ color: '#0f766e', fontWeight: 800 }} onClick={() => navigate('/client/home')}>
+            <Button type="button" variant="text" sx={{ color: '#0f766e', fontWeight: 800 }} onClick={() => navigate('/')}>
               Nghe với tư cách khách
             </Button>
             <Button type="button" variant="text" sx={{ color: '#6c63ff', fontWeight: 800 }} onClick={() => navigate('/user/register')}>

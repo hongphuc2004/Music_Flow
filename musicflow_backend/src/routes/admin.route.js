@@ -811,6 +811,11 @@ router.get("/songs", authMiddleware, requireAdmin, async (req, res) => {
       };
     }
 
+    const moderationStatus = String(req.query.moderationStatus || "").trim();
+    if (moderationStatus) {
+      query["moderation.status"] = new RegExp(`^${moderationStatus}$`, "i");
+    }
+
     const [songs, total] = await Promise.all([
       Song.find(query)
         .sort({ createdAt: -1 })
@@ -833,6 +838,7 @@ router.get("/songs", authMiddleware, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
+
   }
 });
 
@@ -937,6 +943,12 @@ router.post(
           }
         }
 
+        // Trigger non-blocking AI Content Moderation
+        const aiModerationService = require("../services/aiModeration.service");
+        aiModerationService.processSongModeration(song._id).catch((err) =>
+          console.warn("[AIModeration] Async moderation error on admin song create:", err.message)
+        );
+
         res.status(201).json({
           message: "Song created successfully",
           song: serializeAdminSong(populatedSong),
@@ -947,6 +959,7 @@ router.post(
       safeUnlink(audioFile?.path);
       safeUnlink(imageFile?.path);
     }
+
   }
 );
 
@@ -1040,6 +1053,12 @@ router.put(
         }
       }
 
+      // Trigger non-blocking AI Content Moderation
+      const aiModerationService = require("../services/aiModeration.service");
+      aiModerationService.processSongModeration(song._id).catch((err) =>
+        console.warn("[AIModeration] Async moderation error on admin update:", err.message)
+      );
+
       res.json({
         message: "Song updated successfully",
         song: serializeAdminSong(populatedSong),
@@ -1052,6 +1071,78 @@ router.put(
     }
   }
 );
+
+// Review & update song moderation status (Admin action)
+router.patch("/songs/:id/moderation", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { reviewDecision, reviewNote, isPublic } = req.body;
+    const song = await Song.findById(req.params.id);
+    if (!song) {
+      return res.status(404).json({ success: false, message: "Song not found" });
+    }
+
+    if (!song.moderation) {
+      song.moderation = {};
+    }
+
+    if (reviewDecision) {
+      song.moderation.reviewDecision = reviewDecision;
+      if (reviewDecision === "approved") {
+        song.moderation.status = "SAFE";
+      } else if (reviewDecision === "rejected") {
+        song.moderation.status = "BLOCK";
+      } else if (reviewDecision === "flagged") {
+        song.moderation.status = "REVIEW";
+      }
+    }
+
+    if (typeof reviewNote === "string") {
+      song.moderation.reviewNote = reviewNote.trim();
+    }
+
+    song.moderation.reviewedBy = req.userId;
+    song.moderation.reviewedAt = new Date();
+
+    if (typeof isPublic === "boolean" || typeof isPublic === "string") {
+      song.isPublic = isPublic === true || isPublic === "true";
+    }
+
+    await song.save();
+    const updated = await Song.findById(song._id)
+      .populate("uploadedBy", "name email")
+      .populate("artists", "name")
+      .populate("topicIds", "name");
+
+    return res.json({
+      success: true,
+      message: "Cập nhật kết quả kiểm duyệt thành công",
+      song: serializeAdminSong(updated),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Server error" });
+  }
+});
+
+// Force re-run AI Moderation on a song (Admin on-demand)
+router.post("/songs/:id/moderate", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const aiModerationService = require("../services/aiModeration.service");
+    const updated = await aiModerationService.processSongModeration(req.params.id);
+    const populated = await Song.findById(updated._id)
+      .populate("uploadedBy", "name email")
+      .populate("artists", "name")
+      .populate("topicIds", "name");
+
+    return res.json({
+      success: true,
+      message: "Kiểm duyệt AI hoàn tất",
+      moderation: populated.moderation,
+      song: serializeAdminSong(populated),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Kiểm duyệt thất bại" });
+  }
+});
 
 // Delete song
 router.delete("/songs/:id", authMiddleware, requireAdmin, async (req, res) => {
@@ -1066,6 +1157,7 @@ router.delete("/songs/:id", authMiddleware, requireAdmin, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Update song visibility
 router.patch("/songs/:id/visibility", authMiddleware, requireAdmin, async (req, res) => {

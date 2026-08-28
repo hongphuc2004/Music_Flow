@@ -436,3 +436,85 @@ exports.getSongById = async (req, res) => {
     return handleError(res, error, "Không thể lấy thông tin bài hát");
   }
 };
+
+// ---------------------------------------------------------------------------
+// 🎵 GET SONG BY SLUG (PUBLIC - SoundCloud-Style)
+// ---------------------------------------------------------------------------
+
+exports.getSongBySlug = async (req, res) => {
+  try {
+    const { artistSlug, songSlug } = req.params;
+    const result = await songService.getSongBySlug(artistSlug, songSlug);
+    return res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    return handleError(res, error, "Không thể lấy thông tin bài hát");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 📊 RECORD SHARE EVENT (PUBLIC / OPTIONAL AUTH)
+// ---------------------------------------------------------------------------
+
+exports.recordShareEvent = async (req, res) => {
+  try {
+    const { source, medium, campaign, si } = req.body || {};
+    const songId = req.params.id;
+    const event = await songService.recordShareEvent({
+      songId,
+      source,
+      medium,
+      campaign,
+      si,
+      userId: req.userId || null,
+      ip: req.ip || req.headers["x-forwarded-for"] || null,
+      userAgent: req.headers["user-agent"] || null,
+    });
+    return res.status(200).json({ success: true, event });
+  } catch (error) {
+    return handleError(res, error, "Ghi nhận chia sẻ thất bại");
+  }
+};
+
+
+// ---------------------------------------------------------------------------
+// 🏷️ AUTO-TAG SONG (AUTH REQUIRED)
+// ---------------------------------------------------------------------------
+
+exports.autoTagSong = async (req, res) => {
+  try {
+    const aiAutoTaggingService = require("../services/aiAutoTagging.service");
+    const updated = await aiAutoTaggingService.processSongAutoTagging(req.params.id);
+    return res.json({
+      success: true,
+      message: "AI Auto-Tagging thành công",
+      aiAnalysis: updated.aiAnalysis,
+      song: updated,
+    });
+  } catch (error) {
+    return handleError(res, error, "Auto-tagging thất bại");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 💡 PREVIEW / SUGGEST TAGS (AUTH REQUIRED - BEFORE SAVE)
+// ---------------------------------------------------------------------------
+
+exports.suggestSongTags = async (req, res) => {
+  try {
+    const aiAutoTaggingService = require("../services/aiAutoTagging.service");
+    const { title, lyrics, artistNames, topicNames } = req.body;
+    const suggestions = await aiAutoTaggingService.analyzeSongTags({
+      title,
+      lyrics,
+      artistNames,
+      topicNames,
+    });
+    return res.json({
+      success: true,
+      suggestions,
+    });
+  } catch (error) {
+    return handleError(res, error, "Gợi ý tag thất bại");
+  }
+};
+

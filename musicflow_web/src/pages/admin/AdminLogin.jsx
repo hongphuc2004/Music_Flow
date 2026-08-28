@@ -55,7 +55,8 @@ function AdminLogin() {
       }
       setAccessToken(token);
       localStorage.setItem('role', user.role);
-      navigate('/');
+      navigate('/admin/dashboard');
+
     } catch (err) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
     } finally {

@@ -175,15 +175,15 @@ function ClientPaymentReturn() {
                 <Button
                   variant="outlined"
                   fullWidth
-                  onClick={() => navigate('/client/home')}
+                  onClick={() => navigate('/')}
                   sx={{ py: 1.2, borderRadius: 3, fontWeight: 700, textTransform: 'none', borderColor: 'divider', color: 'text.secondary' }}
                 >
-                  Về Trang chủ
+                  Về trang chủ
                 </Button>
                 <Button
                   variant="contained"
                   fullWidth
-                  onClick={() => navigate('/client/profile')}
+                  onClick={() => navigate('/profile')}
                   sx={{
                     py: 1.2,
                     borderRadius: 3,

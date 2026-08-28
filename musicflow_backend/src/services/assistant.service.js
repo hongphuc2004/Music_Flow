@@ -505,20 +505,23 @@ function pickRandomSong(songs = []) {
 function fallbackAssistantText(matchStatus, songCount, source = "", prompt = "") {
   const normalizedPrompt = prompt?.trim();
   if (source === "artist_match") {
-    return "Mình tìm được một vài bài hát của nghệ sĩ bạn muốn nghe.";
+    return normalizedPrompt
+      ? `Mình có thể giúp bạn tìm bài hát của nghệ sĩ! Dưới đây là các ca khúc nổi bật theo yêu cầu "${normalizedPrompt}". Nếu bạn đang nghĩ tới một bài cụ thể, hãy chia sẻ thêm một đoạn lời bài hát hoặc giai điệu nhé! 🎵`
+      : "Mình có thể giúp bạn tìm bài hát của nghệ sĩ! Hãy chia sẻ thêm một đoạn lời bài hát hoặc giai điệu bạn nhớ nhé! 🎵";
   }
   if (matchStatus === "fallback") {
-    return "Mình chưa tìm thấy bài hát phù hợp theo đúng keyword/topic từ yêu cầu của bạn trong thư viện MusicFlow.";
+    return "Mình chưa tìm thấy bài hát phù hợp theo đúng keyword/topic từ yêu cầu của bạn trong thư viện MusicFlow. Bạn có thể gửi cho mình một đoạn lời bài hát (lyrics) để mình tìm giúp bạn nhé!";
   }
   if (matchStatus === "partial") {
     return normalizedPrompt
-      ? `Mình đã lọc theo "${normalizedPrompt}" và tìm được một phần bài hát phù hợp.`
+      ? `Mình đã lọc theo "${normalizedPrompt}" và tìm được một phần bài hát phù hợp. Bạn có thể chia sẻ thêm gợi ý để mình tìm chính xác hơn nhé! 🎵`
       : "Mình tìm được một vài bài hát theo keyword/topic bạn yêu cầu.";
   }
   return normalizedPrompt
     ? `Mình đã lọc theo "${normalizedPrompt}" và tạo playlist phù hợp nhất có thể.`
     : "Mình đã tạo playlist theo cảm xúc của bạn.";
 }
+
 
 // --- GEMINI INITIALIZATION & CANDIDATES ---
 
@@ -601,7 +604,59 @@ function resolveContextualReference(prompt = "", context = {}) {
   return null;
 }
 
+function extractLyricsSnippet(prompt = "") {
+  let text = prompt.trim();
+  const quoteMatch = text.match(/["'“]([^"'”]+)["'”]/);
+  if (quoteMatch && quoteMatch[1].trim().length > 2) {
+    return quoteMatch[1].trim();
+  }
+
+  if (text.includes(":")) {
+    const afterColon = text.split(":").slice(1).join(":").trim();
+    if (afterColon.length > 2) {
+      return afterColon;
+    }
+  }
+
+  let cleaned = text
+    .replace(/^(tôi|mình|em|anh)?\s*(nhớ|biết|nghe)?\s*(1|một)?\s*(đoạn|câu)?\s*(lyrics|lyric|lời|lời bài hát|lời bài|giai điệu của bài hát|giai điệu bài hát|giai điệu)\s*(là|thế này|như này|sau|này)?\s*:?\s*/i, "")
+    .replace(/^(bài gì|bài hát gì|bài nào|tìm bài|tìm bài hát|tìm bài có|có bài gì|có bài nào)?\s*(có|chứa|hát|lời)?\s*(câu|đoạn|lời|lyrics|giai điệu)?\s*:?\s*/i, "")
+    .replace(/^(lời bài hát có câu|lời có câu|câu hát là|đoạn hát là|đoạn lời là|giai điệu là)\s*:?\s*/i, "")
+    .replace(/\s*(là bài gì á|là bài gì thế|là bài gì|là bài nào|tên là gì|tên gì|thuộc bài nào|thuộc bài gì|hả bạn|hả cậu|\?)\s*$/i, "")
+    .trim();
+
+  return cleaned || text;
+}
+
+function isLyricsSearchQuery(prompt = "") {
+  const norm = normalizeText(prompt);
+  return (
+    /\b(lyrics|lyric|loi bai hat|loi bai|doan loi|cau hat|doan hat|loi co cau|cau hat la|nho mot doan|nho 1 doan|bai gi co cau|bai nao co cau|bai hat co loi|bai hat co cau|tim bai theo loi|tim bai hat theo loi|giai dieu cua bai hat|giai dieu la|nhos giai dieu)\b/i.test(norm) ||
+    /\b(la bai gi|thuoc bai nao|thuoc bai gi)\b/i.test(norm) ||
+    /^(tim|kiem|tra)\s+theo\s+loi\b/i.test(norm)
+  );
+}
+
+
+function cleanSearchQuery(prompt = "") {
+  let text = prompt.trim();
+  let cleaned = text
+    .replace(/\b(tôi|mình|em|anh)?\s*(muốn|cần|hãy)?\s*(tìm|kiếm|cho tôi|mình muốn tìm|phát|bật|mở|nghe|có|cho nghe)\s*(1|một)?\s*(bài hát|bài|ca khúc|nhạc)?\s*(của|do)?\s*/gi, " ")
+    .replace(/\b(bài hát đó của|bài đó của|bài của|ca khúc của|nhạc của|của)\b/gi, " ")
+    .replace(/\b(và tên bài hát đó có từ|và tên bài có từ|tên bài hát đó có từ|tên bài có từ|tên bài hát là|tên bài là|tên bài hát đó|tên bài đó)\b/gi, " ")
+    .replace(/\b(mà tôi|mà mình|mà em|tôi|mình|em)?\s*(chỉ nhớ được|chỉ nhớ là|chỉ nhớ mỗi|chỉ nhớ|nhớ được|nhớ là)\s*(từ|chữ|đoạn|câu)?\b/gi, " ")
+    .replace(/\b(của tên bài hát đó thôi|của tên bài hát|trong tên bài hát|trong tên bài|của bài hát đó|trong bài hát đó|của bài đó|đó thôi|thôi|nha|nhé|đi|giúp mình|giúp tôi)\b/gi, " ")
+    .replace(/\b(có chữ|có từ|tên là|tên|đoạn|chứa từ|chứa chữ|từ khóa|từ|chữ)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || text;
+}
+
+
+
+
 function toGeminiRole(role) {
+
   return role === "model" ? "model" : "user";
 }
 
@@ -624,11 +679,12 @@ function getToolsForRole(actorRole) {
   const declarations = [
     {
       name: "search_music",
-      description: "Tìm kiếm bài hát, ca sĩ, nghệ sĩ hoặc danh sách phát trong thư viện MusicFlow bằng từ khóa, tên ca sĩ, tên bài hát.",
+      description: "Tìm kiếm bài hát theo tên ca sĩ, tên bài hát (hoặc từ khóa trong tên bài hát, ví dụ: 'tìm bài của Khánh Phương có từ khóc', 'bài của Sơn Tùng có chữ Muộn'), hoặc theo LỜI BÀI HÁT / LYRICS. Đặt intent='play' nếu muốn phát ngay bài hát tìm được.",
       parameters: {
         type: "OBJECT",
         properties: {
-          query: { type: "STRING", description: "Từ khóa tìm kiếm (tên ca sĩ, tên bài hát, chủ đề)." },
+          query: { type: "STRING", description: "Từ khóa tìm kiếm kết hợp ca sĩ và tên bài hát hoặc lời bài hát (ví dụ: 'Khánh Phương khóc', 'Sơn Tùng muộn')." },
+          artist: { type: "STRING", description: "Tên ca sĩ chỉ định (nếu có, ví dụ: 'Khánh Phương', 'Sơn Tùng M-TP')." },
           intent: {
             type: "STRING",
             description: "Mục đích: 'play' nếu phát bài hát đầu tiên tìm được, 'search' nếu hiển thị danh sách kết quả.",
@@ -638,6 +694,8 @@ function getToolsForRole(actorRole) {
         required: ["query"],
       },
     },
+
+
     {
       name: "play_song",
       description: "Phát trực tiếp một bài hát bằng tiêu đề bài hát, ca sĩ, hoặc theo thứ tự (index: 1 cho bài đầu tiên, 2 cho bài thứ hai...).",
@@ -959,28 +1017,74 @@ class AssistantService {
                     metadata = { type: "play_song_failed", query: args.title };
                   }
                 } else if (name === "search_music" || name === "search_songs_natural") {
-                  const queryStr = args.query || args.artist || cleanPrompt;
-                  const intent = args.intent || "search";
-
-                  const matchedArtistsList = await findMatchedArtists(queryStr);
-                  let songsList = [];
-                  if (matchedArtistsList.length > 0) {
-                    songsList = await findSongsByArtists(matchedArtistsList, 20);
+                  let queryStr = "";
+                  if (args.artist && args.query && !args.query.toLowerCase().includes(args.artist.toLowerCase())) {
+                    queryStr = `${args.artist} ${args.query}`;
+                  } else if (args.artist && (!args.query || args.query === args.artist)) {
+                    queryStr = args.artist;
+                  } else {
+                    queryStr = args.query || cleanPrompt;
                   }
-                  if (songsList.length === 0 && queryStr) {
-                    const regex = new RegExp(escapeRegex(queryStr), "i");
-                    songsList = await Song.find({ isPublic: true, $or: [{ title: regex }, { lyrics: regex }] })
-                      .populate("artists", "name avatar")
-                      .populate("topicIds", "name")
-                      .sort({ playCount: -1 })
-                      .limit(10)
-                      .lean();
+
+                  // If prompt contained specific artist and query wasn't combined
+                  if (!args.artist && cleanPrompt) {
+                    const promptCleaned = cleanSearchQuery(cleanPrompt);
+                    if (promptCleaned && promptCleaned.length < cleanPrompt.length && promptCleaned.length >= 3) {
+                      queryStr = promptCleaned;
+                    }
+                  }
+
+                  const isLyrics = isLyricsSearchQuery(cleanPrompt) || isLyricsSearchQuery(queryStr);
+                  const intent = args.intent || (isLyrics ? "play" : "search");
+                  const searchService = require("./search.service");
+
+                  // Search using Hybrid Search Engine
+                  const searchRes = await searchService.searchSongs({ query: queryStr, limit: 10 });
+                  let songsList = searchRes?.songs || [];
+
+                  if (songsList.length === 0) {
+                    const matchedArtistsList = await findMatchedArtists(queryStr);
+                    if (matchedArtistsList.length > 0) {
+                      songsList = await findSongsByArtists(matchedArtistsList, 20);
+                    }
                   }
 
                   if (songsList.length > 0) {
-                    if (intent === "play") {
+                    if (isLyrics) {
+                      const { extractCleanLyrics } = require("../utils/string.util");
+                      const lyricSnippet = extractLyricsSnippet(cleanPrompt) || queryStr;
+                      const normSnippet = normalizeText(lyricSnippet);
+                      
+                      // Strictly verify if candidate song actually matches the lyric snippet
+                      const matchedSong = songsList.find((s) => {
+                        const normLyrics = normalizeText(extractCleanLyrics(s.lyrics || ""));
+                        const normTitle = normalizeText(s.title || "");
+                        if (!normLyrics && !normTitle) return false;
+                        if (normLyrics.includes(normSnippet) || normTitle.includes(normSnippet)) return true;
+                        const snippetWords = normSnippet.split(" ").filter(w => w.length >= 2);
+                        if (snippetWords.length >= 3) {
+                          const overlap = snippetWords.filter(w => normLyrics.includes(w)).length;
+                          if (overlap / snippetWords.length >= 0.7) return true;
+                        }
+                        return false;
+                      });
+
+                      if (matchedSong) {
+                        const artistStr = (matchedSong.artists || []).map((a) => typeof a === "object" ? a.name : a).filter(Boolean).join(", ");
+                        assistantText = `Đoạn lời "${lyricSnippet}" thuộc bài hát "${matchedSong.title}"${artistStr ? ` của ${artistStr}` : ""}. Mình đang phát bài hát này cho bạn thưởng thức nhé! 🎵`;
+                        clientActions.push({
+                          type: "PLAY_SONG",
+                          payload: { songId: matchedSong._id, song: matchedSong, songs: [matchedSong] },
+                        });
+                        songs = [matchedSong];
+                        metadata = { type: "play_song_by_lyrics", songId: matchedSong._id, query: lyricSnippet, songs: [matchedSong] };
+                      } else {
+                        assistantText = `Hiện tại trong thư viện MusicFlow chưa có bài hát nào chứa đoạn lời "${lyricSnippet}". Bạn có thể thử một đoạn lời khác hoặc chia sẻ thêm tên ca sĩ để mình tìm giúp bạn nhé! 🎵`;
+                        metadata = { type: "search_lyrics_failed", query: lyricSnippet };
+                      }
+                    } else if (intent === "play") {
                       const firstSong = songsList[0];
-                      const artistStr = (firstSong.artists || []).map((a) => a.name || a).join(", ");
+                      const artistStr = (firstSong.artists || []).map((a) => typeof a === "object" ? a.name : a).filter(Boolean).join(", ");
                       assistantText = `Mình đã tìm thấy bài hát phù hợp và đang phát bài "${firstSong.title}"${artistStr ? ` của ${artistStr}` : ""} cho bạn nhé!`;
                       clientActions.push({
                         type: "PLAY_SONG",
@@ -989,9 +1093,8 @@ class AssistantService {
                       songs = [firstSong];
                       metadata = { type: "play_song_natural", songId: firstSong._id, query: queryStr, songs: songsList };
                     } else {
-                      const artistNamesHeader = matchedArtistsList.length > 0 ? ` ca sĩ ${matchedArtistsList.map(a => a.name).join(", ")} cùng` : "";
-                      const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title} - ${(s.artists || []).map(a => a.name || a).join(", ")}`).join("\n");
-                      assistantText = `Trong thư viện MusicFlow hiện có ${artistNameHeader} một số bài hát phù hợp với yêu cầu "${queryStr}" của bạn:\n${songTitles}`;
+                      const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title} - ${(s.artists || []).map(a => typeof a === "object" ? a.name : a).filter(Boolean).join(", ")}`).join("\n");
+                      assistantText = `Mình có thể giúp bạn tìm chính xác bài hát bạn đang cần! Dưới đây là một số ca khúc nổi bật theo yêu cầu "${queryStr}":\n\n${songTitles}\n\n💡 Để mình tìm đúng bài hát bạn đang nghĩ tới, bạn có thể chia sẻ thêm cho mình:\n• Một đoạn lời bài hát (lyrics) bạn còn nhớ\n• Giai điệu hoặc cảm xúc (buồn, vui, ballad nhẹ nhàng, sôi động...)\n• Hoặc bất kỳ từ khóa nào trong tựa đề nhé! 🎵`;
                       clientActions.push({
                         type: "SHOW_SEARCH_RESULTS",
                         payload: { query: queryStr, songs: songsList },
@@ -1000,9 +1103,13 @@ class AssistantService {
                       metadata = { type: "search_music", query: queryStr, songs: songsList, count: songsList.length };
                     }
                   } else {
-                    assistantText = `Hệ thống đã tìm kiếm theo yêu cầu "${queryStr}" của bạn nhưng hiện chưa thấy bài hát hay ca sĩ nào phù hợp trong thư viện MusicFlow. Bạn thử từ khóa khác nhé!`;
+                    assistantText = `Hiện tại trong thư viện MusicFlow chưa tìm thấy bài hát nào phù hợp với yêu cầu "${queryStr}". Bạn có thể thử kiểm tra lại tên ca sĩ hoặc gửi một đoạn lời bài hát (lyrics) để mình tìm giúp bạn nhé! 🎵`;
                     metadata = { type: "search_music_failed", query: queryStr };
                   }
+
+
+
+
                 } else if (name === "open_route") {
                   let allowed = true;
                   if (args.route.startsWith("/artist") && actorRole !== "artist") allowed = false;
@@ -1193,25 +1300,84 @@ class AssistantService {
             if (resMeaning.song) {
               songs = [resMeaning.song];
             }
-          } else if (isSpecificSongIntent(targetPrompt) || /\b(phat|bat|mo)\b/.test(normalizedTarget)) {
-            const titleQuery = extractSongTitleFromPrompt(cleanPrompt) || cleanPrompt.replace(/\b(phat|bat|mo|nghe|play|bai)\b/gi, "").trim();
-            const song = await findSongByTitle(titleQuery);
-            if (song) {
-              const artistList = artistNames(song).join(", ");
-              assistantText = `Được rồi, mình đang bật bài "${song.title}"${
-                artistList ? ` của ${artistList}` : ""
-              } cho bạn nghe nhé!`;
+          } else if (isLyricsSearchQuery(targetPrompt)) {
+            const snippet = extractLyricsSnippet(targetPrompt);
+            const searchService = require("./search.service");
+            const searchRes = await searchService.searchSongs({ query: snippet, limit: 5 });
+            const candidateSongs = searchRes?.songs || [];
+
+            const { extractCleanLyrics } = require("../utils/string.util");
+            const normSnippet = normalizeText(snippet);
+            const foundSong = candidateSongs.find((s) => {
+              const normLyrics = normalizeText(extractCleanLyrics(s.lyrics || ""));
+              const normTitle = normalizeText(s.title || "");
+              if (!normLyrics && !normTitle) return false;
+              if (normLyrics.includes(normSnippet) || normTitle.includes(normSnippet)) return true;
+              const snippetWords = normSnippet.split(" ").filter(w => w.length >= 2);
+              if (snippetWords.length >= 3) {
+                const overlap = snippetWords.filter(w => normLyrics.includes(w)).length;
+                if (overlap / snippetWords.length >= 0.7) return true;
+              }
+              return false;
+            });
+
+            if (foundSong) {
+              const artistStr = (foundSong.artists || []).map((a) => typeof a === "object" ? a.name : a).filter(Boolean).join(", ");
+              assistantText = `Đoạn lời "${snippet}" thuộc bài hát "${foundSong.title}"${artistStr ? ` của ${artistStr}` : ""}. Mình đang phát bài hát này cho bạn thưởng thức nhé! 🎵`;
               clientActions.push({
                 type: "PLAY_SONG",
-                payload: { songId: song._id, song, songs: [song] },
+                payload: { songId: foundSong._id, song: foundSong, songs: [foundSong] },
               });
-              songs = [song];
-              metadata = { type: "play_song", songId: song._id, song };
+              songs = [foundSong];
+              metadata = { type: "play_song_by_lyrics", songId: foundSong._id, song: foundSong, query: snippet };
             } else {
-              assistantText = `Mình chưa tìm thấy bài hát "${titleQuery}" trong hệ thống MusicFlow. Bạn thử tìm kiếm bài hát khác xem sao nhé!`;
-              metadata = { type: "play_song_failed", query: titleQuery };
+              assistantText = `Hiện tại trong thư viện MusicFlow chưa có bài hát nào chứa đoạn lời "${snippet}". Bạn có thể thử một đoạn lời khác hoặc chia sẻ thêm tên ca sĩ để mình tìm giúp bạn nhé! 🎵`;
+              metadata = { type: "search_lyrics_failed", query: snippet };
+            }
+
+          } else if (
+            isSpecificSongIntent(targetPrompt) ||
+            /\b(phat|bat|mo|tim|kiem|nghe)\s+(bai|ca khuc|nhac)\b/i.test(normalizedTarget) ||
+            /\b(co chu|co tu|ten la|co ten)\b/i.test(normalizedTarget) ||
+            /\b(bai cua|nhac cua|bai hat cua)\b/i.test(normalizedTarget)
+          ) {
+            const searchService = require("./search.service");
+            const cleanedQuery = cleanSearchQuery(cleanPrompt);
+            const searchRes = await searchService.searchSongs({ query: cleanedQuery, limit: 5 });
+            const foundSong = searchRes?.songs?.[0];
+
+            if (foundSong) {
+              const artistList = artistNames(foundSong).join(", ");
+              assistantText = `Mình đã tìm thấy bài hát "${foundSong.title}"${
+                artistList ? ` của ${artistList}` : ""
+              }. Mình đang phát bài này cho bạn thưởng thức nhé! 🎵`;
+              clientActions.push({
+                type: "PLAY_SONG",
+                payload: { songId: foundSong._id, song: foundSong, songs: [foundSong] },
+              });
+              songs = [foundSong];
+              metadata = { type: "play_song", songId: foundSong._id, song: foundSong, query: cleanedQuery };
+            } else {
+              const titleQuery = extractSongTitleFromPrompt(cleanPrompt) || cleanedQuery;
+              const song = await findSongByTitle(titleQuery);
+              if (song) {
+                const artistList = artistNames(song).join(", ");
+                assistantText = `Được rồi, mình đang bật bài "${song.title}"${
+                  artistList ? ` của ${artistList}` : ""
+                } cho bạn nghe nhé!`;
+                clientActions.push({
+                  type: "PLAY_SONG",
+                  payload: { songId: song._id, song, songs: [song] },
+                });
+                songs = [song];
+                metadata = { type: "play_song", songId: song._id, song };
+              } else {
+                assistantText = `Mình chưa tìm thấy bài hát "${cleanedQuery}" trong hệ thống MusicFlow. Bạn thử tìm kiếm bài hát khác xem sao nhé!`;
+                metadata = { type: "play_song_failed", query: cleanedQuery };
+              }
             }
           } else if (isPlaylistIntent(targetPrompt) || analyzeMood(targetPrompt).score > 0) {
+
             const analysis = analyzeMood(cleanPrompt);
             const resObj = await this.generatePlaylistInternal({
               prompt: cleanPrompt,
@@ -1463,6 +1629,12 @@ class AssistantService {
         ? "topic_match"
         : "fallback";
 
+    const generatedTitle = primaryArtist
+      ? `Tuyển tập ${primaryArtist.name}`
+      : analysis.mood
+        ? `Playlist Cảm Xúc: ${analysis.mood.charAt(0).toUpperCase() + analysis.mood.slice(1)}`
+        : `Playlist MusicFlow - ${new Date().toLocaleDateString("vi-VN")}`;
+
     let playlist = await MoodPlaylist.create({
       conversationId,
       userId,
@@ -1473,6 +1645,7 @@ class AssistantService {
       mood: analysis.mood,
       energy: analysis.energy,
       inputKeywords: analysis.keywords,
+
       matchedTopicIds,
       matchedArtistIds,
       matchStatus,

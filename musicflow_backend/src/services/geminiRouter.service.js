@@ -28,8 +28,10 @@ const TIER_MODEL_POOLS = {
   premium: ["gemini-3.5-flash-lite", "gemini-3.7-flash"],
   plus: ["gemini-3.5-flash", "gemini-3.1-flash-lite"],
   go: ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-3-flash-preview"],
-  basic: ["gemini-2.5-flash-lite"],
+  basic: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
 };
+
+
 
 // Safe fallback pool for offline/emergency fallback
 const SAFE_FALLBACK_POOL = [
@@ -362,14 +364,15 @@ async function getCandidateModels({ requiresTools = false, preferredModel = null
 
   let candidates = validCandidates.map((c) => c.cleanName);
 
-  // If preferredModel is supplied and belongs to current tier pool, force it to front
+  // If preferredModel is supplied and not pruned, force it to front
   if (preferredModel) {
     const cleanPref = preferredModel.replace(/^models\//, "");
-    if (poolNames.some((n) => n.replace(/^models\//, "") === cleanPref)) {
+    if (!prunedModels.has(cleanPref) && !isModelExhausted(cleanPref)) {
       candidates = candidates.filter((c) => c !== cleanPref);
       candidates.unshift(cleanPref);
     }
   }
+
 
   return candidates;
 }

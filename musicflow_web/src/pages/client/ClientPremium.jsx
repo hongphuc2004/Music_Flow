@@ -134,7 +134,8 @@ function ClientPremium() {
         
         setCheckoutOpen(false);
         // Chuyển hướng về trang cá nhân để cập nhật trạng thái mới
-        navigate('/client/profile');
+        navigate('/profile');
+
       }
     } catch (err) {
       console.error('Checkout error:', err);

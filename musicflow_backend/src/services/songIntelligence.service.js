@@ -1,6 +1,7 @@
 const Song = require("../models/song.model");
 const aiDataLoader = require("../ai/aiDataLoader.service");
 const geminiRouter = require("./geminiRouter.service");
+const aiAutoTaggingService = require("./aiAutoTagging.service");
 
 /**
  * Validates structured JSON returned by Gemini against required schema.
@@ -13,7 +14,7 @@ function validateAnalysisResult(raw) {
   }
 
   const moodTags = Array.isArray(raw.moodTags)
-    ? raw.moodTags.map(s => String(s).trim().toLowerCase()).filter(Boolean)
+    ? raw.moodTags.map((s) => String(s).trim().toLowerCase()).filter(Boolean)
     : [];
 
   const validEnergy = ["low", "medium", "high"].includes(String(raw.energyLevel).toLowerCase())
@@ -21,7 +22,7 @@ function validateAnalysisResult(raw) {
     : "medium";
 
   const themes = Array.isArray(raw.themes)
-    ? raw.themes.map(s => String(s).trim()).filter(Boolean)
+    ? raw.themes.map((s) => String(s).trim()).filter(Boolean)
     : [];
 
   const storySummary = typeof raw.storySummary === "string" ? raw.storySummary.trim() : "";
@@ -30,15 +31,21 @@ function validateAnalysisResult(raw) {
   }
 
   const healingQuotes = Array.isArray(raw.healingQuotes)
-    ? raw.healingQuotes.map(s => String(s).trim()).filter(Boolean)
+    ? raw.healingQuotes.map((s) => String(s).trim()).filter(Boolean)
     : [];
 
+  const genre = typeof raw.genre === "string" && raw.genre.trim() ? raw.genre.trim() : "V-Pop";
+  const tags = Array.isArray(raw.tags) ? raw.tags.map((s) => String(s).trim()).filter(Boolean) : [genre, ...moodTags];
+
   return {
+    genre,
     moodTags,
     energyLevel: validEnergy,
     themes,
+    tags,
     storySummary,
     healingQuotes,
+    confidence: "high",
   };
 }
 
@@ -52,17 +59,26 @@ async function analyzeSongLyrics(title, lyrics) {
   const systemPrompt = aiDataLoader.getPrompt("song-intelligence");
   const fullPrompt = `${systemPrompt}\n\nTHÔNG TIN BÀI HÁT:\nTiêu đề: "${title}"\nLời bài hát:\n${lyrics.slice(0, 3000)}`;
 
-  const responseText = await geminiRouter.executeGeminiRequest(fullPrompt, {
+  const responseText = await geminiRouter.executeWithModelRouter({
     userTier: "basic",
-    systemInstruction: "You are a professional music analyst. Always output 100% valid JSON matching the exact schema requested.",
-    callerService: "SongIntelligence",
+    requiresTools: false,
+    task: async (modelName) => {
+      const { GoogleGenerativeAI } = require("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: "You are a professional music analyst. Always output 100% valid JSON matching the exact schema requested.",
+      });
+
+      const result = await model.generateContent(fullPrompt);
+      return result?.response?.text?.() || "";
+    },
   });
 
   if (!responseText) {
     throw new Error("Empty response from Gemini Router");
   }
 
-  // Sanitize Markdown JSON code blocks if present
   let cleanJsonStr = responseText.trim();
   if (cleanJsonStr.startsWith("```")) {
     cleanJsonStr = cleanJsonStr.replace(/^```(json)?/i, "").replace(/```$/, "").trim();
@@ -88,11 +104,15 @@ async function processSongAnalysis(songId) {
   if (lyricsText.length < 40) {
     song.aiAnalysis = {
       status: "completed",
+      genre: "Hòa tấu",
+      suggestedGenres: ["Hòa tấu", "Instrumental"],
       moodTags: ["chill"],
       energyLevel: "medium",
       themes: ["âm nhạc"],
+      tags: ["hòa tấu", "instrumental", "chill"],
       storySummary: `Bài hát "${song.title}" không có lời thoại chi tiết hoặc là bản nhạc hòa tấu.`,
       healingQuotes: [],
+      confidence: "medium",
       retryCount: 0,
       lastAttemptAt: new Date(),
       analyzedAt: new Date(),
@@ -107,11 +127,15 @@ async function processSongAnalysis(songId) {
 
     song.aiAnalysis = {
       status: "completed",
+      genre: analysisResult.genre || "V-Pop",
+      suggestedGenres: [analysisResult.genre || "V-Pop"],
       moodTags: analysisResult.moodTags,
       energyLevel: analysisResult.energyLevel,
       themes: analysisResult.themes,
+      tags: analysisResult.tags || [analysisResult.genre || "V-Pop", ...analysisResult.moodTags],
       storySummary: analysisResult.storySummary,
       healingQuotes: analysisResult.healingQuotes,
+      confidence: "high",
       retryCount: currentRetry,
       lastAttemptAt: new Date(),
       analyzedAt: new Date(),
@@ -121,11 +145,26 @@ async function processSongAnalysis(songId) {
   } catch (error) {
     console.warn(`[SongIntelligence] Analysis failed for song "${song.title}" (${song._id}):`, error.message);
 
+    // If live API fails, use heuristic fallback from aiAutoTaggingService
+    const fallback = aiAutoTaggingService.heuristicAutoTaggingFallback({
+      title: song.title,
+      hasLyrics: lyricsText.length >= 40,
+    });
+
     song.aiAnalysis = {
-      ...(song.aiAnalysis || {}),
-      status: "failed",
+      status: "completed",
+      genre: fallback.genre,
+      suggestedGenres: fallback.suggestedGenres,
+      moodTags: fallback.moodTags,
+      energyLevel: fallback.energyLevel,
+      themes: fallback.themes,
+      tags: fallback.tags,
+      storySummary: fallback.storySummary,
+      healingQuotes: fallback.healingQuotes,
+      confidence: fallback.confidence,
       retryCount: currentRetry + 1,
       lastAttemptAt: new Date(),
+      analyzedAt: new Date(),
     };
 
     return await song.save();

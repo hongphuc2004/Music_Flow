@@ -630,7 +630,8 @@ export default function ClientRankings() {
                     <Paper
                       key={artist._id}
                       elevation={0}
-                      onClick={() => navigate(`/client/artists/${artist._id}`)}
+                      onClick={() => navigate(`/artists/${artist._id}`)}
+
                       sx={{
                         p: 1.5,
                         borderRadius: 3.5,

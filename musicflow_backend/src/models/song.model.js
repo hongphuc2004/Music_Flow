@@ -7,6 +7,11 @@ const songSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    slug: {
+      type: String,
+      index: true,
+    },
+
 
 
     // Danh sách ca sĩ thể hiện (có thể nhiều ca sĩ)
@@ -127,12 +132,20 @@ const songSchema = new mongoose.Schema(
       default: null
     },
 
-    // 🧠 AI SONG INTELLIGENCE (PHASE 5A)
+    // 🧠 AI SONG INTELLIGENCE & AUTO-TAGGING (PHASE 5A / PHASE 8)
     aiAnalysis: {
       status: {
         type: String,
         enum: ["none", "pending", "completed", "failed"],
         default: "none",
+      },
+      genre: {
+        type: String,
+        default: "",
+      },
+      suggestedGenres: {
+        type: [String],
+        default: [],
       },
       moodTags: {
         type: [String],
@@ -147,6 +160,10 @@ const songSchema = new mongoose.Schema(
         type: [String],
         default: [],
       },
+      tags: {
+        type: [String],
+        default: [],
+      },
       storySummary: {
         type: String,
         default: "",
@@ -154,6 +171,11 @@ const songSchema = new mongoose.Schema(
       healingQuotes: {
         type: [String],
         default: [],
+      },
+      confidence: {
+        type: String,
+        enum: ["low", "medium", "high"],
+        default: "medium",
       },
       retryCount: {
         type: Number,
@@ -168,6 +190,69 @@ const songSchema = new mongoose.Schema(
         default: null,
       },
     },
+
+    // 🛡️ AI CONTENT MODERATION (PHASE 7)
+    moderation: {
+      status: {
+        type: String,
+        enum: ["PENDING", "SAFE", "REVIEW", "BLOCK", "pending", "safe", "review", "block"],
+        default: "SAFE",
+      },
+      riskLevel: {
+        type: String,
+        enum: ["none", "low", "medium", "high"],
+        default: "none",
+      },
+      flags: {
+        type: [String],
+        default: [],
+      },
+      reason: {
+        type: String,
+        default: "",
+      },
+      confidence: {
+        type: Number,
+        default: 1.0,
+      },
+      source: {
+        type: String,
+        enum: ["lyrics", "audio", "metadata", "manual", "none"],
+        default: "none",
+      },
+      audioTrackType: {
+        type: String,
+        enum: ["vocal", "instrumental", "unclear", "none"],
+        default: "none",
+      },
+      audioAnalyzed: {
+        type: Boolean,
+        default: false,
+      },
+      moderatedAt: {
+        type: Date,
+        default: null,
+      },
+
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      reviewedAt: {
+        type: Date,
+        default: null,
+      },
+      reviewDecision: {
+        type: String,
+        enum: ["none", "approved", "flagged", "rejected"],
+        default: "none",
+      },
+      reviewNote: {
+        type: String,
+        default: "",
+      },
+    },
   },
   {
     timestamps: true,
@@ -179,7 +264,9 @@ songSchema.index({ artists: 1, createdAt: -1 });
 songSchema.index({ topicIds: 1, createdAt: -1 });
 songSchema.index({ uploadedBy: 1, createdAt: -1 });
 songSchema.index({ "aiAnalysis.status": 1 });
+songSchema.index({ "moderation.status": 1 });
 songSchema.index({ title: "text", lyrics: "text" }, { weights: { title: 10, lyrics: 2 } });
 
 
 module.exports = mongoose.model("Song", songSchema);
+

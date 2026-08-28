@@ -127,7 +127,7 @@ function ArtistAuthDialog() {
 
   const closeDialog = useCallback(() => {
     if (!localStorage.getItem('role')) {
-      navigate('/client/home', { replace: true });
+      navigate('/', { replace: true });
       setError('');
       return;
     }

@@ -27,13 +27,9 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
   String? _error;
 
   List<Song> _flowSongs = <Song>[];
-  List<Song> _risingSongs = <Song>[];
-  Map<String, FlowchartSongMetrics> _risingMetrics =
-      <String, FlowchartSongMetrics>{};
-
   int _flowDisplayLimit = 10;
-  int _risingDisplayLimit = 10;
   Timer? _realtimeRefreshTimer;
+
 
   @override
   void initState() {
@@ -71,24 +67,14 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
     }
 
     try {
-      final results = await Future.wait([
-        SongApiService.fetchFlowchartData(hours: 12, limit: 50, mode: 'flow'),
-        SongApiService.fetchFlowchartData(hours: 12, limit: 50, mode: 'rising'),
-      ]);
+      final flowResult = await SongApiService.fetchFlowchartData(hours: 12, limit: 50, mode: 'flow');
 
       if (!mounted) {
         return;
       }
 
-      final flowResult = results[0];
-      final risingResult = results[1];
-
       setState(() {
         _flowSongs = List<Song>.from(flowResult.topSongs);
-        _risingSongs = List<Song>.from(risingResult.topSongs);
-        _risingMetrics = Map<String, FlowchartSongMetrics>.from(
-          risingResult.songMetricsBySongId,
-        );
         _isLoading = false;
       });
     } catch (e) {
@@ -198,12 +184,8 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
     }
 
     final flowTop50 = _flowSongs.take(50).toList();
-    final risingTop50 = _risingSongs.take(50).toList();
     final flowVisible = flowTop50
         .take(math.min(_flowDisplayLimit, flowTop50.length))
-        .toList();
-    final risingVisible = risingTop50
-        .take(math.min(_risingDisplayLimit, risingTop50.length))
         .toList();
 
     return CustomScrollView(
@@ -256,13 +238,14 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                 child: _FeedTile(
                   rank: index + 1,
                   song: song,
-                  subtitle: '${_formatCount(song.playCount)}',
+                  subtitle: _formatCount(song.playCount),
                   onTap: () => _playFromQueue(flowTop50, index),
                 ),
               );
             }, childCount: flowVisible.length),
           ),
         ),
+
         if (flowTop50.length > 10)
           SliverToBoxAdapter(
             child: Padding(
@@ -630,16 +613,15 @@ class _FeedTile extends StatelessWidget {
   final int rank;
   final Song song;
   final String subtitle;
-  final Color subtitleColor;
   final VoidCallback onTap;
 
   const _FeedTile({
     required this.rank,
     required this.song,
     required this.subtitle,
-    this.subtitleColor = const Color(0xFFB9B6C9),
     required this.onTap,
   });
+
 
   String _formatDuration(double? durationInSeconds) {
     if (durationInSeconds == null) return "0:00";

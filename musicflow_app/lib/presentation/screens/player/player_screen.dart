@@ -15,6 +15,8 @@ import 'package:musicflow_app/presentation/widgets/player_bottom_action_bar.dart
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
 import 'package:musicflow_app/presentation/widgets/synced_lyrics_view.dart';
+import 'package:musicflow_app/presentation/widgets/song_share_sheet.dart';
+
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -353,8 +355,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void _shareSong() {
-    _showActionMessage('Link bài hát đã được sao chép vào bộ nhớ tạm.');
+    SongShareSheet.show(context, _currentSong);
   }
+
 
   void _showMoreOptions() {
     showModalBottomSheet(

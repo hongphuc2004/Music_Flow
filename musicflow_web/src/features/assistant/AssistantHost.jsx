@@ -733,7 +733,7 @@ export default function AssistantHost() {
               onClick={() => {
                 setUpgradeDialogOpen(false);
                 setIsOpen(false);
-                navigate('/client/premium');
+                navigate('/premium');
               }}
               sx={{
                 bgcolor: '#6c63ff',

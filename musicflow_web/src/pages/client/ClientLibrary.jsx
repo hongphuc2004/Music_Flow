@@ -1084,7 +1084,7 @@ function ClientLibrary() {
                     Playlist nổi bật gần đây
                   </Typography>
                   <Paper
-                    onClick={() => navigate(`/client/playlists/${featuredPlaylist._id}`)}
+                    onClick={() => navigate(`/playlists/${featuredPlaylist._id}`)}
                     sx={{
                       p: 3,
                       borderRadius: '24px',
@@ -1259,7 +1259,7 @@ function ClientLibrary() {
                     <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={playlist._id} sx={{ display: 'flex', flexDirection: 'column' }}>
                       <ClientPlaylistCard
                         playlist={playlist}
-                        onClick={() => navigate(`/client/playlists/${playlist._id}`)}
+                        onClick={() => navigate(`/playlists/${playlist._id}`)}
                         onPlay={(e) => handlePlaySinglePlaylist(e, playlist)}
                         onEdit={() => handleOpenPlaylistDialog(playlist)}
                         onDelete={() => handleDeletePlaylistClick(playlist)}

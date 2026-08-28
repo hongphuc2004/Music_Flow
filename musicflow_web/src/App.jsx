@@ -1,5 +1,4 @@
 import { Suspense, useState, useMemo, useEffect } from 'react';
-
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import AppToastProvider from './components/common/AppToastProvider';
@@ -11,16 +10,17 @@ import { AssistantProvider } from './features/assistant/AssistantProvider';
 import AssistantHost from './features/assistant/AssistantHost';
 import ClientPlayerBoundary from './components/Layout/client/ClientPlayerBoundary';
 
-
-const Dashboard = createLazyRoute('/');
-const Accounts = createLazyRoute('/accounts');
-const Songs = createLazyRoute('/songs');
-const Topics = createLazyRoute('/topics');
-const Playlists = createLazyRoute('/playlists');
-const Settings = createLazyRoute('/settings');
-const AdminPremium = createLazyRoute('/premium');
+// Admin Pages
+const Dashboard = createLazyRoute('/admin/dashboard');
+const Accounts = createLazyRoute('/admin/accounts');
+const Songs = createLazyRoute('/admin/songs');
+const Topics = createLazyRoute('/admin/topics');
+const Playlists = createLazyRoute('/admin/playlists');
+const Settings = createLazyRoute('/admin/settings');
+const AdminPremium = createLazyRoute('/admin/premium');
 const AdminLogin = createLazyRoute('/adminlogin');
 
+// Artist Pages
 const ArtistAnalytics = createLazyRoute('/artist/analytics');
 const ArtistDashboard = createLazyRoute('/artist/dashboard');
 const ArtistLogin = createLazyRoute('/artistlogin');
@@ -28,41 +28,45 @@ const ArtistProfile = createLazyRoute('/artist/profile');
 const ArtistSong = createLazyRoute('/artist/songs');
 const ArtistRegister = createLazyRoute('/artist/register');
 
-const ClientHome = createLazyRoute('/client/home');
-const ClientDiscover = createLazyRoute('/client/discover');
-const ClientLibrary = createLazyRoute('/client/library');
-const ClientFavorites = createLazyRoute('/client/favorites');
-const ClientProfile = createLazyRoute('/client/profile');
-const ClientArtist = createLazyRoute('/client/artists/:artistId');
-const ClientCollection = createLazyRoute('/client/collections/:collectionId');
-const ClientPlaylist = createLazyRoute('/client/playlists/:playlistId');
-const ClientGenres = createLazyRoute('/client/genres');
-const ClientRankings = createLazyRoute('/client/rankings');
-const ClientAiMood = createLazyRoute('/client/ai-mood');
-const ClientPremium = createLazyRoute('/client/premium');
-const ClientPaymentReturn = createLazyRoute('/client/premium/vnpay-return');
-
+// Public / User Pages
+const ClientHome = createLazyRoute('/');
+const ClientDiscover = createLazyRoute('/discover');
+const ClientLibrary = createLazyRoute('/library');
+const ClientFavorites = createLazyRoute('/favorites');
+const ClientProfile = createLazyRoute('/profile');
+const ClientArtist = createLazyRoute('/artists/:artistId');
+const ClientCollection = createLazyRoute('/collections/:collectionId');
+const ClientPlaylist = createLazyRoute('/playlists/:playlistId');
+const ClientSongDetail = createLazyRoute('/songs/:songId');
+const ClientGenres = createLazyRoute('/genres');
+const ClientRankings = createLazyRoute('/rankings');
+const ClientAiMood = createLazyRoute('/ai-mood');
+const ClientPremium = createLazyRoute('/premium');
+const ClientPaymentReturn = createLazyRoute('/premium/vnpay-return');
 
 const ProtectedRoute = ({ children, role }) => {
   const userRole = localStorage.getItem('role');
   const location = useLocation();
   const authMode = new URLSearchParams(location.search).get('auth');
   const roleDefaultRoute = {
-    admin: '/',
+    admin: '/admin/dashboard',
     artist: '/artist/dashboard',
-    user: '/client/home',
+    user: '/',
   };
 
   if (!userRole) {
+    if (role === 'admin') {
+      return <Navigate to="/adminlogin" replace />;
+    }
     if (role === 'artist') {
       if (location.pathname === '/artist/dashboard' && (authMode === 'login' || authMode === 'register')) return children;
       return <Navigate to="/artist/dashboard?auth=login" replace />;
     }
-    return <Navigate to="/accountlogin" replace />;
+    return <Navigate to="/?auth=login" replace />;
   }
 
   if (role && userRole !== role) {
-    return <Navigate to={roleDefaultRoute[userRole] || '/accountlogin'} replace />;
+    return <Navigate to={roleDefaultRoute[userRole] || '/?auth=login'} replace />;
   }
 
   return children;
@@ -72,7 +76,7 @@ const ClientRoute = ({ children, requireAuth = false }) => {
   const userRole = localStorage.getItem('role');
 
   if (requireAuth && !userRole) {
-    return <Navigate to="/client/home?auth=login" replace />;
+    return <Navigate to="/?auth=login" replace />;
   }
 
   return children;
@@ -80,29 +84,43 @@ const ClientRoute = ({ children, requireAuth = false }) => {
 
 const PublicRoute = ({ children }) => {
   const userRole = localStorage.getItem('role');
-  if (userRole === 'admin') return <Navigate to="/" replace />;
+  if (userRole === 'admin') return <Navigate to="/admin/dashboard" replace />;
   if (userRole === 'artist') return <Navigate to="/artist/dashboard" replace />;
-  if (userRole === 'user') return <Navigate to="/client/home" replace />;
+  if (userRole === 'user') return <Navigate to="/" replace />;
   return children;
 };
 
 const HomeRedirect = () => {
-  const userRole = localStorage.getItem('role');
-
-  if (!userRole) return <Navigate to="/client/home" replace />;
-  if (userRole === 'artist') return <Navigate to="/artist/dashboard" replace />;
-  if (userRole === 'user') return <Navigate to="/client/home" replace />;
   return <Navigate to="/" replace />;
 };
 
-const RootRoute = () => {
+const AdminRedirect = () => {
   const userRole = localStorage.getItem('role');
+  if (userRole === 'admin') return <Navigate to="/admin/dashboard" replace />;
+  return <Navigate to="/adminlogin" replace />;
+};
 
-  if (!userRole) return <Navigate to="/client/home" replace />;
+const ArtistRedirect = () => {
+  const userRole = localStorage.getItem('role');
   if (userRole === 'artist') return <Navigate to="/artist/dashboard" replace />;
-  if (userRole === 'user') return <Navigate to="/client/home" replace />;
+  return <Navigate to="/artist/dashboard?auth=login" replace />;
+};
 
-  return <Dashboard />;
+/**
+ * Backward compatibility redirect that preserves query strings
+ */
+const ClientRedirect = ({ to }) => {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}`} replace />;
+};
+
+/**
+ * Backward compatibility param redirect: /client/artists/123 -> /artists/123
+ */
+const ClientParamRedirect = () => {
+  const location = useLocation();
+  const newPath = location.pathname.replace(/^\/client/, '');
+  return <Navigate to={`${newPath}${location.search}`} replace />;
 };
 
 const RouteFallback = () => (
@@ -118,7 +136,13 @@ function RouteProviders({ children }) {
     preloadRoute(location.pathname);
   }, [location.pathname]);
 
-  if (location.pathname.startsWith('/client')) {
+  const isAdminOrArtist =
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/artist') ||
+    location.pathname === '/adminlogin' ||
+    location.pathname === '/artistlogin';
+
+  if (!isAdminOrArtist) {
     return (
       <Suspense fallback={<RouteFallback />}>
         <ClientPlayerBoundary>{children}</ClientPlayerBoundary>
@@ -167,10 +191,10 @@ function App() {
   useEffect(() => {
     const role = localStorage.getItem('role');
     const routes = role === 'admin'
-      ? ['/', '/accounts', '/songs', '/topics', '/playlists']
+      ? ['/admin/dashboard', '/admin/accounts', '/admin/songs', '/admin/topics', '/admin/playlists', '/admin/premium']
       : role === 'artist'
         ? ['/artist/dashboard', '/artist/songs', '/artist/analytics', '/artist/profile']
-        : ['/client/home', '/client/discover', '/client/genres', '/client/rankings'];
+        : ['/', '/discover', '/genres', '/rankings'];
 
     preloadRoutesWhenIdle(routes);
   }, []);
@@ -248,169 +272,278 @@ function App() {
             <AssistantProvider>
               <RouteProviders>
                 <Suspense fallback={<RouteFallback />}>
-                <Routes>
-          <Route path="/accountlogin" element={<Navigate to="/client/home?auth=login" replace />} />
-          <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
-          <Route path="/artist/register" element={<Navigate to="/artist/dashboard?auth=register" replace />} />
-          <Route path="/user/register" element={<Navigate to="/client/home?auth=register" replace />} />
-          <Route path="/artistlogin" element={<Navigate to="/artist/dashboard?auth=login" replace />} />
-          <Route
-            path="/artist/dashboard"
-            element={
-              <ProtectedRoute role="artist">
-                <ArtistDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/artist/songs"
-            element={
-              <ProtectedRoute role="artist">
-                <ArtistSong />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/artist/analytics"
-            element={
-              <ProtectedRoute role="artist">
-                <ArtistAnalytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/artist/profile"
-            element={
-              <ProtectedRoute role="artist">
-                <ArtistProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/"
-            element={<RootRoute />}
-          />
-          <Route
-            path="/client/home"
-            element={
-              <ClientRoute>
-                <ClientHome />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/discover"
-            element={
-              <ClientRoute>
-                <ClientDiscover />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/library"
-            element={
-              <ClientRoute requireAuth>
-                <ClientLibrary />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/favorites"
-            element={
-              <ClientRoute requireAuth>
-                <ClientFavorites />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/profile"
-            element={
-              <ClientRoute requireAuth>
-                <ClientProfile />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/genres"
-            element={
-              <ClientRoute>
-                <ClientGenres />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/rankings"
-            element={
-              <ClientRoute>
-                <ClientRankings />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/ai-mood"
-            element={
-              <ClientRoute requireAuth>
-                <ClientAiMood />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/artists/:artistId"
-            element={
-              <ClientRoute>
-                <ClientArtist />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/collections/:collectionId"
-            element={
-              <ClientRoute>
-                <ClientCollection />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/playlists/:playlistId"
-            element={
-              <ClientRoute>
-                <ClientPlaylist />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/premium"
-            element={
-              <ClientRoute requireAuth>
-                <ClientPremium />
-              </ClientRoute>
-            }
-          />
-          <Route
-            path="/client/premium/vnpay-return"
-            element={
-              <ClientRoute requireAuth>
-                <ClientPaymentReturn />
-              </ClientRoute>
-            }
-          />
-          <Route path="/client" element={<Navigate to="/client/home" replace />} />
-          <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
-          <Route path="/songs" element={<ProtectedRoute><Songs /></ProtectedRoute>} />
-          <Route path="/topics" element={<ProtectedRoute><Topics /></ProtectedRoute>} />
-          <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
-          <Route path="/premium" element={<ProtectedRoute role="admin"><AdminPremium /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="*" element={<HomeRedirect />} />
-              </Routes>
-              </Suspense>
+                  <Routes>
+                    {/* Auth & Redirects */}
+                    <Route path="/accountlogin" element={<ClientRedirect to="/?auth=login" />} />
+                    <Route path="/adminlogin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+                    <Route path="/artist/register" element={<ClientRedirect to="/artist/dashboard?auth=register" />} />
+                    <Route path="/user/register" element={<ClientRedirect to="/?auth=register" />} />
+                    <Route path="/artistlogin" element={<ClientRedirect to="/artist/dashboard?auth=login" />} />
+
+                    {/* Admin Portal Routes */}
+                    <Route path="/admin" element={<AdminRedirect />} />
+                    <Route
+                      path="/admin/dashboard"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Dashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/accounts"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Accounts />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/songs"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Songs />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/topics"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Topics />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/playlists"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Playlists />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/premium"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <AdminPremium />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/settings"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Settings />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Legacy Admin compatibility redirects */}
+                    <Route path="/accounts" element={<ClientRedirect to="/admin/accounts" />} />
+                    <Route path="/songs" element={<ClientRedirect to="/admin/songs" />} />
+                    <Route path="/topics" element={<ClientRedirect to="/admin/topics" />} />
+                    <Route path="/playlists" element={<ClientRedirect to="/admin/playlists" />} />
+                    <Route path="/settings" element={<ClientRedirect to="/admin/settings" />} />
+
+                    {/* Artist Portal Routes */}
+                    <Route path="/artist" element={<ArtistRedirect />} />
+                    <Route
+                      path="/artist/dashboard"
+                      element={
+                        <ProtectedRoute role="artist">
+                          <ArtistDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/artist/songs"
+                      element={
+                        <ProtectedRoute role="artist">
+                          <ArtistSong />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/artist/analytics"
+                      element={
+                        <ProtectedRoute role="artist">
+                          <ArtistAnalytics />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/artist/profile"
+                      element={
+                        <ProtectedRoute role="artist">
+                          <ArtistProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Public & Client User Routes */}
+                    <Route
+                      path="/"
+                      element={
+                        <ClientRoute>
+                          <ClientHome />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/home"
+                      element={<ClientRedirect to="/" />}
+                    />
+                    <Route
+                      path="/discover"
+                      element={
+                        <ClientRoute>
+                          <ClientDiscover />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/genres"
+                      element={
+                        <ClientRoute>
+                          <ClientGenres />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/rankings"
+                      element={
+                        <ClientRoute>
+                          <ClientRankings />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/ai-mood"
+                      element={
+                        <ClientRoute requireAuth>
+                          <ClientAiMood />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/library"
+                      element={
+                        <ClientRoute requireAuth>
+                          <ClientLibrary />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/favorites"
+                      element={
+                        <ClientRoute requireAuth>
+                          <ClientFavorites />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile"
+                      element={
+                        <ClientRoute requireAuth>
+                          <ClientProfile />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/premium"
+                      element={
+                        <ClientRoute requireAuth>
+                          <ClientPremium />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/premium/vnpay-return"
+                      element={
+                        <ClientRoute requireAuth>
+                          <ClientPaymentReturn />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/artists/:artistId"
+                      element={
+                        <ClientRoute>
+                          <ClientArtist />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/collections/:collectionId"
+                      element={
+                        <ClientRoute>
+                          <ClientCollection />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/playlists/:playlistId"
+                      element={
+                        <ClientRoute>
+                          <ClientPlaylist />
+                        </ClientRoute>
+                      }
+                    />
+                    <Route
+                      path="/songs/:songId"
+                      element={
+                        <ClientRoute>
+                          <ClientSongDetail />
+                        </ClientRoute>
+                      }
+                    />
+
+                    {/* Backward-compatible /client/* redirects */}
+                    <Route path="/client" element={<ClientRedirect to="/" />} />
+                    <Route path="/client/home" element={<ClientRedirect to="/" />} />
+                    <Route path="/client/discover" element={<ClientRedirect to="/discover" />} />
+                    <Route path="/client/genres" element={<ClientRedirect to="/genres" />} />
+                    <Route path="/client/rankings" element={<ClientRedirect to="/rankings" />} />
+                    <Route path="/client/ai-mood" element={<ClientRedirect to="/ai-mood" />} />
+                    <Route path="/client/library" element={<ClientRedirect to="/library" />} />
+                    <Route path="/client/favorites" element={<ClientRedirect to="/favorites" />} />
+                    <Route path="/client/profile" element={<ClientRedirect to="/profile" />} />
+                    <Route path="/client/premium" element={<ClientRedirect to="/premium" />} />
+                    <Route path="/client/premium/vnpay-return" element={<ClientRedirect to="/premium/vnpay-return" />} />
+                    <Route path="/client/artists/:artistId" element={<ClientParamRedirect />} />
+                    <Route path="/client/collections/:collectionId" element={<ClientParamRedirect />} />
+                    <Route path="/client/playlists/:playlistId" element={<ClientParamRedirect />} />
+                    <Route
+                      path="/client/songs/:songId"
+                      element={
+                        <ClientRoute>
+                          <ClientSongDetail />
+                        </ClientRoute>
+                      }
+                    />
+
+                    {/* SoundCloud-Style Song Sharing Canonical Route */}
+                    <Route
+                      path="/:artistSlug/:songSlug"
+                      element={
+                        <ClientRoute>
+                          <ClientSongDetail />
+                        </ClientRoute>
+                      }
+                    />
+
+                    {/* 404 Fallback */}
+                    <Route path="*" element={<HomeRedirect />} />
+                  </Routes>
+                </Suspense>
               </RouteProviders>
               <AssistantHost />
             </AssistantProvider>
           </Router>
         </AppToastProvider>
-    </ThemeProvider>
-  </ColorModeContext.Provider>
+      </ThemeProvider>
+    </ColorModeContext.Provider>
   );
 }
 

@@ -62,8 +62,15 @@ router.delete("/download-history/:songId", authMiddleware, songController.remove
 // 🔄 SYNC MY DOWNLOAD HISTORY FROM CLIENT (AUTH REQUIRED)
 router.post("/download-history/sync", authMiddleware, songController.syncDownloadHistory);
 
+// 🔗 GET SONG BY SLUG (PUBLIC - SoundCloud-Style)
+router.get("/by-slug/:artistSlug/:songSlug", songController.getSongBySlug);
+
+// 📊 RECORD SHARE EVENT
+router.post("/:id/share-event", songController.recordShareEvent);
+
 // 🎵 GET SONG BY ID (PUBLIC)
 router.get("/:id", songController.getSongById);
+
 
 // 🎵 UPLOAD SONG (AUTH REQUIRED)
 router.post(
@@ -87,6 +94,12 @@ router.put(
   songController.updateSong
 );
 
+// 🏷️ PREVIEW / SUGGEST TAGS (AUTH REQUIRED)
+router.post("/suggest-tags", authMiddleware, songController.suggestSongTags);
+
+// 🏷️ AUTO-TAG SONG BY ID (AUTH REQUIRED)
+router.post("/:id/auto-tag", authMiddleware, songController.autoTagSong);
+
 // 🔄 TOGGLE PUBLIC/PRIVATE (AUTH REQUIRED - OWNER OR ARTIST)
 router.patch("/:id/toggle-public", authMiddleware, songController.togglePublic);
 
@@ -94,3 +107,4 @@ router.patch("/:id/toggle-public", authMiddleware, songController.togglePublic);
 router.delete("/:id", authMiddleware, songController.deleteSong);
 
 module.exports = router;
+

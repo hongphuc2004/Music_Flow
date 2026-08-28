@@ -45,12 +45,13 @@ const QUICK_PROMPTS = [
   { emoji: '🎉', label: 'Nhạc party', prompt: 'Nhạc sàn EDM party bùng nổ' },
 ];
 
-function formatSongDuration(seconds) {
+function _formatSongDuration(seconds) {
   if (!seconds) return '--:--';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
 
 function PlaylistCard({ playlist, onPlaySong, onPlayAll }) {
   if (!playlist) return null;
@@ -485,6 +486,8 @@ export default function ClientAiMood() {
 
   const { isLoggedIn, userId } = useClientSession();
 
+  const hasInitializedRef = useRef(false);
+
   // Load history on mount or when session changes
   useEffect(() => {
     let isSubscribed = true;
@@ -498,7 +501,14 @@ export default function ClientAiMood() {
     setScope('mood');
     loadConversations('mood')
       .then((convs) => {
-        if (isSubscribed && Array.isArray(convs) && convs.length > 0 && !activeConversationId) {
+        if (
+          isSubscribed &&
+          Array.isArray(convs) &&
+          convs.length > 0 &&
+          !hasInitializedRef.current &&
+          !activeConversationId
+        ) {
+          hasInitializedRef.current = true;
           loadConversationDetail(convs[0]._id);
         }
       })
@@ -511,7 +521,11 @@ export default function ClientAiMood() {
     return () => {
       isSubscribed = false;
     };
-  }, [isLoggedIn, userId, setScope, loadConversations, loadConversationDetail, activeConversationId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, userId, setScope, loadConversations, loadConversationDetail]);
+
+
+
 
 
 

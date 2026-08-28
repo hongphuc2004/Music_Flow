@@ -84,6 +84,46 @@ class SongApiService {
     }
   }
 
+  /// Lấy chi tiết bài hát theo ID (hỗ trợ Public & Deep Link)
+  static Future<Song?> fetchSongById(String songId) async {
+    if (songId.isEmpty) return null;
+    try {
+      final uri = Uri.parse("$baseUrl/$songId");
+      final response = await ApiClient.get(uri);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true && data['song'] != null) {
+          return Song.fromJson(data['song'] as Map<String, dynamic>);
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Lấy chi tiết bài hát theo artistSlug và songSlug (SoundCloud-style)
+  static Future<Song?> fetchSongBySlug(String artistSlug, String songSlug) async {
+    if (artistSlug.isEmpty || songSlug.isEmpty) return null;
+    try {
+      final uri = Uri.parse("$baseUrl/by-slug/$artistSlug/$songSlug");
+      final response = await ApiClient.get(uri);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true && data['song'] != null) {
+          return Song.fromJson(data['song'] as Map<String, dynamic>);
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+
+
   /// Lấy danh sách bài hát gợi ý (random)
   static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
     final uri = Uri.parse("$baseUrl/recommended?limit=$limit");

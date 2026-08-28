@@ -15,10 +15,13 @@ import MusicIcon from '@mui/icons-material/MusicNoteRounded';
 import CommentIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import AutoplayIcon from '@mui/icons-material/AllInclusiveRounded';
 import PremiumIcon from '@mui/icons-material/WorkspacePremiumRounded';
+import ShareIcon from '@mui/icons-material/ShareRounded';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/client/client.service';
 import useAppToast from '../../../components/common/useAppToast';
 import { useNavigate } from 'react-router-dom';
+import ShareSongModal from '../../common/ShareSongModal';
+
 
 function formatDuration(seconds) {
   const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -36,7 +39,9 @@ function ClientNowPlayingBar({
 }) {
   const { showToast } = useAppToast();
   const [favorite, setFavorite] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [scrubTime, setScrubTime] = useState(null);
+
   const {
     currentSong,
     isPlaying,
@@ -312,7 +317,13 @@ function ClientNowPlayingBar({
           <IconButton size="small" onClick={handleDownload} sx={{ color: 'rgba(255,255,255,0.78)' }}>
             <DownloadIcon sx={{ fontSize: 25 }} />
           </IconButton>
+          <Tooltip title="Chia sẻ bài hát">
+            <IconButton size="small" onClick={() => setShareOpen(true)} sx={{ color: 'rgba(255,255,255,0.78)' }}>
+              <ShareIcon sx={{ fontSize: 23 }} />
+            </IconButton>
+          </Tooltip>
           <IconButton
+
             size="small"
             onClick={onToggleComments}
             sx={{
@@ -571,7 +582,7 @@ function ClientNowPlayingBar({
             variant="contained"
             onClick={() => {
               setPremiumDialogOpen(false);
-              navigate('/client/premium');
+              navigate('/premium');
             }}
             sx={{
               bgcolor: '#14b8a6',
@@ -593,7 +604,14 @@ function ClientNowPlayingBar({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ShareSongModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        song={currentSong}
+      />
     </Box>
+
   );
 }
 

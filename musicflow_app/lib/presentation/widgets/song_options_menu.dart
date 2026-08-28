@@ -7,6 +7,8 @@ import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
+import 'package:musicflow_app/presentation/widgets/song_share_sheet.dart';
+
 
 /// Widget hiển thị menu tùy chọn cho bài hát (3 chấm dọc)
 class SongOptionsMenu extends StatelessWidget {
@@ -257,9 +259,14 @@ class _SongOptionsSheetState extends State<SongOptionsSheet> {
             title: 'Chia sẻ',
             onTap: () {
               Navigator.pop(context);
-              widget.onShare?.call();
+              if (widget.onShare != null) {
+                widget.onShare!();
+              } else {
+                SongShareSheet.show(context, widget.song);
+              }
             },
           ),
+
           _buildOptionTile(
             icon: Icons.info_outline,
             title: 'Thông tin bài hát',

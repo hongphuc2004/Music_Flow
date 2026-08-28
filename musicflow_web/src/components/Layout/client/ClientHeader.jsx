@@ -184,17 +184,17 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
       title: 'Thành công!',
       message: 'Bạn đã đăng xuất khỏi tài khoản.',
     });
-    navigate('/client/home');
+    navigate('/');
   };
 
   const goToLogin = () => {
     handleClose();
-    navigate('/client/home?auth=login');
+    navigate('/?auth=login');
   };
 
   const goToRegister = () => {
     handleClose();
-    navigate('/client/home?auth=register');
+    navigate('/?auth=register');
   };
 
   const goToArtistLogin = () => {
@@ -207,7 +207,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
       playSong(searchResults.songs[0], { queue: searchResults.songs });
       setShowResults(false);
     } else if (searchResults.playlists.length > 0) {
-      navigate(`/client/playlists/${searchResults.playlists[0]._id}`);
+      navigate(`/playlists/${searchResults.playlists[0]._id}`);
       setShowResults(false);
     }
   };
@@ -379,7 +379,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                               <ListItemButton
                                 key={playlist._id || playlist.id}
                                 onClick={() => {
-                                  navigate(`/client/playlists/${playlist._id || playlist.id}`);
+                                  navigate(`/playlists/${playlist._id || playlist.id}`);
                                   setShowResults(false);
                                 }}
                                 sx={{
@@ -576,7 +576,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
         <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
           {isLoggedIn ? (
             [
-              <MenuItem key="profile" onClick={() => { handleClose(); navigate('/client/profile'); }}>Profile</MenuItem>,
+              <MenuItem key="profile" onClick={() => { handleClose(); navigate('/profile'); }}>Profile</MenuItem>,
               <MenuItem key="logout" onClick={handleLogout}>Đăng Xuất</MenuItem>,
             ]
           ) : (

@@ -160,7 +160,7 @@ api.interceptors.response.use(
       } else if (currentRole === 'admin') {
         window.location.href = '/adminlogin';
       } else {
-        window.location.href = '/client/home?auth=login';
+        window.location.href = '/?auth=login';
       }
     };
 

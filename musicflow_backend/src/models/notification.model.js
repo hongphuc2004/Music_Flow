@@ -26,9 +26,12 @@ const notificationSchema = new mongoose.Schema(
         "interaction",
         "artist_milestone",
         "ai_quota_reset",
+        "song_moderation_result",
+        "admin_moderation_alert",
       ],
       default: "general",
       index: true,
+
     },
     isRead: {
       type: Boolean,

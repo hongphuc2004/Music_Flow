@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:musicflow_app/core/config/api_config.dart';
 import '../../widgets/music_flow_backdrop.dart';
+
 import '../../../core/theme/app_theme.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/models/playlist_model.dart';
@@ -476,8 +479,16 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             title: const Text('Chia sẻ', style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
-              // TODO: Share playlist
+              final plUrl = '${ApiConfig.webBaseUrl}/client/playlists/${widget.playlist.id}';
+              Clipboard.setData(ClipboardData(text: plUrl));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã sao chép liên kết playlist vào bộ nhớ tạm!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
             },
+
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: Colors.redAccent),

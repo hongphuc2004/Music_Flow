@@ -34,10 +34,13 @@ import {
   AddRounded as AddIcon,
   CheckCircleRounded as CheckIcon,
   MusicNoteRounded as MusicIcon,
+  ShareRounded as ShareIcon,
 } from '@mui/icons-material';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../../services/client/client.service';
 import { useClientPlayerActions } from './ClientPlayerProvider';
 import useAppToast from '../../../components/common/useAppToast';
+import ShareSongModal from '../../common/ShareSongModal';
+
 
 function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
   const navigate = useNavigate();
@@ -46,6 +49,8 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [favorite, setFavorite] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+
 
   // Add to Playlist Dialog States
   const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
@@ -131,7 +136,7 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
   const handleViewArtist = (event) => {
     event.stopPropagation();
     if (primaryArtistId) {
-      navigate(`/client/artists/${primaryArtistId}`);
+      navigate(`/artists/${primaryArtistId}`);
     }
     handleClose(event);
   };
@@ -343,7 +348,20 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
           />
         </MenuItem>
 
+        <MenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            setAnchorEl(null);
+            setShareOpen(true);
+          }}
+          sx={{ borderRadius: 2, py: 1 }}
+        >
+          <ListItemIcon><ShareIcon fontSize="small" sx={{ color: '#6366f1' }} /></ListItemIcon>
+          <ListItemText primary="Chia sẻ bài hát" primaryTypographyProps={{ fontWeight: 600, fontSize: 13.5 }} />
+        </MenuItem>
+
         <MenuItem onClick={handleDownload} sx={{ borderRadius: 2, py: 1 }}>
+
           <ListItemIcon><DownloadIcon fontSize="small" sx={{ color: '#10b981' }} /></ListItemIcon>
           <ListItemText primary="Tải bài hát" primaryTypographyProps={{ fontWeight: 600, fontSize: 13.5 }} />
         </MenuItem>
@@ -545,7 +563,14 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ShareSongModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        song={song}
+      />
     </>
+
   );
 }
 

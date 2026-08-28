@@ -77,20 +77,24 @@ export function createSongShareUrl(songOrId, options = {}) {
     const song = songOrId;
     const songSlug = song.slug || slugify(song.title || 'track');
 
-    let artistSlug = 'artist';
+    let artistSlug = 'u';
     if (song.artistSlug) {
       artistSlug = song.artistSlug;
     } else if (Array.isArray(song.artists) && song.artists.length > 0) {
       const firstArtist = song.artists[0];
       artistSlug = typeof firstArtist === 'object'
-        ? (firstArtist.slug || slugify(firstArtist.name || 'artist'))
+        ? (firstArtist.slug || slugify(firstArtist.name || 'u'))
         : slugify(firstArtist);
     } else if (song.artist) {
       artistSlug = slugify(song.artist);
     }
 
     // SoundCloud-style path: /:artistSlug/:songSlug
-    path = `/${artistSlug || 'artist'}/${songSlug || 'track'}`;
+    // IMPORTANT: artistSlug must NOT be 'artist' or 'admin' to avoid route prefix collisions
+    if (artistSlug === 'artist' || artistSlug === 'admin') {
+      artistSlug = 'u';
+    }
+    path = `/${artistSlug || 'u'}/${songSlug || 'track'}`;
   }
 
   const url = new URL(path, origin);
@@ -139,9 +143,9 @@ export function getSocialShareUrl(platform, { url, text, title }) {
 
   switch (platform) {
     case 'facebook':
-      return `https://www.facebook.com/sharer/sharer.php?u=${encUrl}`;
+      return `https://www.facebook.com/sharer/sharer.php?u=${encUrl}&quote=${encText}`;
     case 'zalo':
-      return `https://zalo.me/share?url=${encUrl}&title=${encText}`;
+      return `https://sp.zalo.me/share?url=${encUrl}`;
     case 'twitter':
     case 'x':
       return `https://twitter.com/intent/tweet?url=${encUrl}&text=${encText}`;

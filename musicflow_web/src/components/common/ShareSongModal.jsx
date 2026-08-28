@@ -146,7 +146,10 @@ export default function ShareSongModal({ open, onClose, song }) {
       text: shareText,
       title: song.title,
     });
-    window.open(intentUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+
+    if (intentUrl) {
+      window.open(intentUrl, '_blank', 'noopener,noreferrer,width=600,height=560');
+    }
   };
 
   const handleNativeShare = async () => {

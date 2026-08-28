@@ -136,11 +136,24 @@ function RouteProviders({ children }) {
     preloadRoute(location.pathname);
   }, [location.pathname]);
 
-  const isAdminOrArtist =
-    location.pathname.startsWith('/admin') ||
-    location.pathname.startsWith('/artist') ||
-    location.pathname === '/adminlogin' ||
-    location.pathname === '/artistlogin';
+  // Only skip ClientPlayerProvider for actual admin/artist portal routes.
+  // Known artist portal paths: /artist/dashboard, /artist/songs, /artist/analytics, /artist/profile
+  // This avoids accidentally matching share URLs like /:artistSlug/:songSlug
+  const adminArtistPortalPrefixes = [
+    '/admin/',
+    '/admin',
+    '/artist/dashboard',
+    '/artist/songs',
+    '/artist/analytics',
+    '/artist/profile',
+    '/artist/register',
+    '/adminlogin',
+    '/artistlogin',
+  ];
+  const isAdminOrArtist = adminArtistPortalPrefixes.some(
+    (prefix) => location.pathname === prefix || location.pathname.startsWith(prefix + '/')
+      || location.pathname.startsWith(prefix)
+  );
 
   if (!isAdminOrArtist) {
     return (

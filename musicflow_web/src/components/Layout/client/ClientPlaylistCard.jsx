@@ -24,8 +24,8 @@ const ClientPlaylistCard = ({
     <Box
       onClick={onClick}
       sx={{
-        p: 2.25,
-        borderRadius: '24px',
+        p: 1.35,
+        borderRadius: '20px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -33,17 +33,18 @@ const ClientPlaylistCard = ({
         position: 'relative',
         overflow: 'hidden',
         border: '1px solid',
-        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)',
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
         background: (theme) => theme.palette.mode === 'dark'
-          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.005) 100%)'
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.008) 100%)'
           : 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(245,247,250,0.7) 100%)',
+        backdropFilter: 'blur(16px)',
         boxShadow: '0 8px 24px rgba(0,0,0,0.02)',
-        transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         '&:hover': {
-          transform: 'translateY(-6px)',
+          transform: 'translateY(-4px)',
           boxShadow: (theme) => theme.palette.mode === 'dark'
-            ? '0 16px 35px rgba(0, 0, 0, 0.4)'
-            : '0 16px 35px rgba(108, 99, 255, 0.08)',
+            ? '0 16px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(108, 99, 255, 0.25)'
+            : '0 16px 35px rgba(108, 99, 255, 0.12)',
           borderColor: '#6c63ff',
           '& .playlist-cover': { transform: 'scale(1.06)' },
           '& .play-action-overlay': {
@@ -55,7 +56,7 @@ const ClientPlaylistCard = ({
       }}
     >
       {/* Cover Image Area */}
-      <Box sx={{ width: '100%', aspectRatio: '1/1', borderRadius: '18px', overflow: 'hidden', position: 'relative', mb: 2, flexShrink: 0 }}>
+      <Box sx={{ width: '100%', aspectRatio: '1/1', borderRadius: '15px', overflow: 'hidden', position: 'relative', mb: 1.25, flexShrink: 0 }}>
         <Avatar
           variant="rounded"
           src={hasCover ? playlist.coverImage : undefined}
@@ -195,8 +196,19 @@ const ClientPlaylistCard = ({
         )}
       </Box>
 
-      <Box sx={{ px: 0.5, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        <Typography variant="body1" sx={{ fontWeight: 800 }} noWrap>
+      <Box sx={{ px: 0.5, display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, width: '100%', overflow: 'hidden' }}>
+        <Typography
+          variant="body1"
+          sx={{
+            fontWeight: 800,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            width: '100%',
+            display: 'block',
+          }}
+          noWrap
+        >
           {playlist.name || 'Không tên'}
         </Typography>
         <Typography
@@ -207,9 +219,11 @@ const ClientPlaylistCard = ({
             WebkitLineClamp: 1,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
+            textOverflow: 'ellipsis',
             minHeight: '18px',
             fontWeight: 555,
             mt: 0.25,
+            width: '100%',
           }}
         >
           {playlist.description || 'Không có mô tả.'}

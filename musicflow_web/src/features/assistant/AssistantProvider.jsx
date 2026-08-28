@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clientAssistantApi } from '../../services/api';
@@ -50,7 +50,7 @@ export const AssistantProvider = ({ children }) => {
   }, []);
 
   // Update current path in context automatically
-  const currentContext = {
+  const currentContext = useMemo(() => ({
     surface: location.pathname.startsWith('/admin')
       ? 'admin'
       : location.pathname.startsWith('/artist')
@@ -58,7 +58,7 @@ export const AssistantProvider = ({ children }) => {
       : 'client',
     route: location.pathname,
     currentSong: currentSongRef.current,
-  };
+  }), [location.pathname]);
 
   // Check current user quota and reset modal state if quota restored
   const checkUserQuota = useCallback(async () => {

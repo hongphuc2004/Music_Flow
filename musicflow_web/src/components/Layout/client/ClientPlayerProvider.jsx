@@ -449,6 +449,7 @@ export function ClientPlayerProvider({ children }) {
     isPrefetchingAutoplayRef,
     prefetchedSongIdRef,
     fetchStreamUrl,
+    finishSessionAndReportFeedback,
   ]);
 
   // ---------------------------------------------------------------------------

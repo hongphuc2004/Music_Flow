@@ -16,6 +16,7 @@ import {
   Typography,
   Button,
   IconButton,
+  Chip,
 } from '@mui/material';
 import {
   SearchRounded as SearchIcon,
@@ -24,13 +25,17 @@ import {
   RefreshRounded as RefreshIcon,
   ShuffleRounded as ShuffleIcon,
   AutoAwesomeRounded as SparklesIcon,
-  ChevronLeftRounded as PrevIcon,
-  ChevronRightRounded as NextIcon,
   PersonAddAltRounded as FollowIcon,
   CheckRounded as CheckIcon,
-  ChevronRightRounded as ArrowIcon,
+  ChevronLeftRounded as BackIcon,
+  ExploreRounded as ExploreIcon,
+  WavesRounded as WavesIcon,
+  BoltRounded as BoltIcon,
+  LocalFireDepartmentRounded as FireIcon,
+  PublicRounded as GlobeIcon,
+  LibraryMusicRounded as LibraryMusicIcon,
+  RadioRounded as RadioIcon,
 } from '@mui/icons-material';
-import { Chip } from '@mui/material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
@@ -42,28 +47,34 @@ import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCar
 const CAROUSEL_SLIDES = [
   {
     id: 'slide-vpop',
-    title: 'V-Pop Mới Nhất',
+    title: 'V-Pop Điểm Hẹn',
     subtitle: 'Khám phá những giai điệu V-Pop thịnh hành và ngọt ngào nhất hiện nay.',
-    gradient: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%)',
+    image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.85) 0%, rgba(139, 92, 246, 0.85) 50%, rgba(99, 102, 241, 0.85) 100%)',
     query: 'Việt',
-    label: 'Nhạc Việt'
+    label: 'V-Pop',
+    icon: '🇻🇳',
   },
   {
     id: 'slide-edm',
-    title: 'EDM Party Club',
-    subtitle: 'Năng lượng bùng nổ cùng những giai điệu nhạc điện tử căng tràn sức sống.',
-    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 30%, #db2777 100%)',
+    title: 'EDM Không Gian & Bass Boost',
+    subtitle: 'Năng lượng bùng nổ cùng những giai điệu nhạc điện tử căng tràn sức sống vũ trụ.',
+    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.85) 0%, rgba(239, 68, 68, 0.85) 50%, rgba(168, 85, 247, 0.85) 100%)',
     topicName: 'EDM',
     query: 'EDM',
-    label: 'EDM Dance'
+    label: 'EDM Dance',
+    icon: '⚡',
   },
   {
     id: 'slide-lofi',
-    title: 'Chill Lofi Không Gian',
-    subtitle: 'Tập trung học tập và làm việc cùng những thanh âm lofi nhẹ nhàng, thư giãn.',
-    gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 40%, #4f46e5 100%)',
+    title: 'Cosmic Chill Lofi Station',
+    subtitle: 'Tập trung học tập và làm việc cùng những thanh âm lofi nhẹ nhàng, thư giãn đầu óc.',
+    image: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.85) 0%, rgba(59, 130, 246, 0.85) 50%, rgba(99, 102, 241, 0.85) 100%)',
     query: 'lofi',
-    label: 'Lofi Chill'
+    label: 'Lofi Chill',
+    icon: '☕',
   }
 ];
 
@@ -72,103 +83,146 @@ const FEATURED_ITEMS = [
     id: 'feat-lofi',
     title: 'Lofi Chill',
     description: 'Nhẹ nhàng và thư thái đầu óc',
-    gradient: 'linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)',
-    query: 'lofi'
+    image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(6, 182, 212, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'lofi',
+    icon: <WavesIcon sx={{ fontSize: 28 }} />,
+    color: '#06b6d4',
   },
   {
     id: 'feat-edm',
     title: 'EDM Dance',
     description: 'Năng lượng bùng nổ, bass cực căng',
-    gradient: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)',
+    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(236, 72, 153, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
     topicName: 'EDM',
-    query: 'EDM'
+    query: 'EDM',
+    icon: <BoltIcon sx={{ fontSize: 28 }} />,
+    color: '#ec4899',
   },
   {
     id: 'feat-acoustic',
     title: 'Acoustic Cafe',
     description: 'Mộc mạc, sâu lắng đầy cảm xúc',
-    gradient: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-    query: 'acoustic'
+    image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(245, 158, 11, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'acoustic',
+    icon: <SparklesIcon sx={{ fontSize: 28 }} />,
+    color: '#f59e0b',
   },
   {
     id: 'feat-ballad',
     title: 'V-Pop Ballad',
     description: 'Giai điệu tự sự, tràn ngập nỗi lòng',
-    gradient: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+    image: 'https://images.unsplash.com/photo-1520523839898-507128054a01?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(16, 185, 129, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
     topicName: 'Pop',
-    query: 'ballad'
+    query: 'ballad',
+    icon: <MusicIcon sx={{ fontSize: 28 }} />,
+    color: '#10b981',
   }
 ];
 
 const NATIONS_ITEMS = [
   {
     id: 'nation-vn',
-    title: 'Nhạc Việt',
-    subtitle: 'Hào hùng và đầy cảm xúc',
-    gradient: 'linear-gradient(135deg, #b91c1c 0%, #ea580c 100%)',
-    query: 'Việt'
+    title: 'Nhạc Việt Nam',
+    subtitle: 'Giai điệu thân thương & cảm xúc',
+    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(220, 38, 38, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'Việt',
+    flag: '🇻🇳',
   },
   {
     id: 'nation-usuk',
-    title: 'Nhạc Âu Mỹ',
-    subtitle: 'Thời thượng và cuốn hút',
-    gradient: 'linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%)',
-    query: 'US UK'
+    title: 'Nhạc Âu Mỹ (US-UK)',
+    subtitle: 'Xu hướng Billboard toàn cầu',
+    image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(37, 99, 235, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'US UK',
+    flag: '🇺🇸',
   },
   {
     id: 'nation-kpop',
-    title: 'Nhạc Hàn',
-    subtitle: 'K-Pop bùng nổ vũ đạo',
-    gradient: 'linear-gradient(135deg, #db2777 0%, #7e22ce 100%)',
-    query: 'Kpop'
+    title: 'Nhạc Hàn (K-Pop)',
+    subtitle: 'Vũ đạo & giai điệu bùng nổ',
+    image: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(219, 39, 119, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'Kpop',
+    flag: '🇰🇷',
   },
   {
     id: 'nation-cpop',
-    title: 'Nhạc Hoa',
-    subtitle: 'Giai điệu cổ trang nhẹ nhàng',
-    gradient: 'linear-gradient(135deg, #b91c1c 0%, #b45309 100%)',
-    query: 'Hoa'
+    title: 'Nhạc Hoa (C-Pop)',
+    subtitle: 'Cổ phong & ngọt ngào sâu lắng',
+    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(185, 28, 28, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'Hoa',
+    flag: '🇨🇳',
   }
 ];
 
 const MOODS_ITEMS = [
   {
     id: 'mood-study',
-    title: 'Tập Trung Học Tập',
-    subtitle: 'Nhạc không lời, tập trung tuyệt đối',
-    gradient: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-    query: 'focus'
+    title: 'Tập Trung Sâu',
+    subtitle: 'Không lời, tối đa hóa hiệu suất',
+    image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(30, 58, 138, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'focus',
+    icon: '🎯',
   },
   {
     id: 'mood-chillout',
-    title: 'Chill Cuối Tuần',
-    subtitle: 'Không gian thư giãn nhẹ nhàng',
-    gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)',
-    query: 'chill'
+    title: 'Chill Thư Giãn',
+    subtitle: 'Không gian thả lỏng tuyệt đối',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(13, 148, 136, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'chill',
+    icon: '🍃',
   },
   {
     id: 'mood-morning',
     title: 'Cà Phê Sáng',
-    subtitle: 'Khởi đầu ngày mới tràn đầy cảm hứng',
-    gradient: 'linear-gradient(135deg, #7c2d12 0%, #9a3412 100%)',
-    query: 'cafe'
+    subtitle: 'Cảm hứng ngập tràn ngày mới',
+    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(180, 83, 9, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'cafe',
+    icon: '☕',
   },
   {
     id: 'mood-workout',
     title: 'Năng Lượng Gym',
-    subtitle: 'Nhịp điệu bốc lửa thúc đẩy tập luyện',
-    gradient: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)',
-    query: 'gym'
+    subtitle: 'Beat bốc lửa đốt cháy calo',
+    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(180deg, rgba(190, 18, 60, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    query: 'gym',
+    icon: '🔥',
   }
 ];
 
-const TOPIC_GRADIENTS = [
-  'linear-gradient(135deg, #f59e0b 0%, #ec4899 100%)',
-  'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-  'linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)',
-  'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-  'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+const TOPIC_IMAGES = [
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&auto=format&fit=crop&q=80',
 ];
+
+const TOPIC_GRADIENTS = [
+  'linear-gradient(180deg, rgba(245, 158, 11, 0.4) 0%, rgba(10, 15, 30, 0.95) 100%)',
+  'linear-gradient(180deg, rgba(16, 185, 129, 0.4) 0%, rgba(10, 15, 30, 0.95) 100%)',
+  'linear-gradient(180deg, rgba(99, 102, 241, 0.4) 0%, rgba(10, 15, 30, 0.95) 100%)',
+  'linear-gradient(180deg, rgba(139, 92, 246, 0.4) 0%, rgba(10, 15, 30, 0.95) 100%)',
+  'linear-gradient(180deg, rgba(59, 130, 246, 0.4) 0%, rgba(10, 15, 30, 0.95) 100%)',
+  'linear-gradient(180deg, rgba(236, 72, 153, 0.4) 0%, rgba(10, 15, 30, 0.95) 100%)',
+];
+
+function getTopicImage(topicName, index) {
+  const hash = (topicName || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return TOPIC_IMAGES[(hash + index) % TOPIC_IMAGES.length];
+}
 
 function getTopicGradient(topicName, index) {
   const hash = (topicName || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -217,8 +271,6 @@ function findMatchingDbTopic(item, topicsList) {
   return null;
 }
 
-
-
 function formatFollowerCount(count) {
   if (count === undefined || count === null) return '0 quan tâm';
   if (count >= 1000000) {
@@ -236,18 +288,15 @@ function getSongKey(song) {
 
 function shuffleSongs(sourceSongs) {
   const nextSongs = [...sourceSongs];
-
   for (let i = nextSongs.length - 1; i > 0; i -= 1) {
     const randomIndex = Math.floor(Math.random() * (i + 1));
     [nextSongs[i], nextSongs[randomIndex]] = [nextSongs[randomIndex], nextSongs[i]];
   }
-
   return nextSongs;
 }
 
 function getUniqueSongs(sourceSongs) {
   const seenKeys = new Set();
-
   return sourceSongs.filter((song) => {
     const key = getSongKey(song);
     if (!key || seenKeys.has(key)) return false;
@@ -302,7 +351,7 @@ function ClientGenres() {
   const [artistFollowersState, setArtistFollowersState] = useState({});
   const usedHotSongKeysRef = useRef(new Set());
 
-  const loadDefault = async () => {
+  const loadDefault = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -323,17 +372,16 @@ function ClientGenres() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadDefault();
-  }, []);
+  }, [loadDefault]);
 
-  // Auto slide for main Hero Banner
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length);
-    }, 5500);
+    }, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -364,7 +412,6 @@ function ClientGenres() {
     setSelectedTopic(null);
     setSelectedTitle(`Tìm kiếm: "${query}"`);
     
-    // Remove topic from search params when searching
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('topic');
     setSearchParams(newParams);
@@ -381,7 +428,7 @@ function ClientGenres() {
       setSelectedTitle(`Tìm kiếm: "${routeQuery}"`);
       runSearch(routeQuery, { withLoading: true });
     }
-  }, [searchParams, defaultSongs]);
+  }, [searchParams, defaultSongs, query, runSearch]);
 
   useEffect(() => {
     const normalized = query.trim();
@@ -401,7 +448,7 @@ function ClientGenres() {
     return () => clearTimeout(timer);
   }, [query, defaultSongs, runSearch]);
 
-  const handleSelectCategory = async (item) => {
+  const handleSelectCategory = useCallback(async (item) => {
     const itemId = item.id || item._id;
     const itemName = item.title || item.name;
 
@@ -409,13 +456,11 @@ function ClientGenres() {
     setSelectedTitle(itemName);
     setQuery('');
     
-    // Sync to search parameters
     const newParams = new URLSearchParams(searchParams);
     newParams.set('topic', itemId);
     newParams.delete('query');
     setSearchParams(newParams);
 
-    // Reset window scroll to top when category changes
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
@@ -427,7 +472,6 @@ function ClientGenres() {
         const response = await clientTopicsApi.getSongsByTopic(dbTopic._id);
         setSongs(response.data || []);
       } else {
-        // Strict database constraint: display empty if topic doesn't exist
         setSongs([]);
       }
     } catch (err) {
@@ -436,13 +480,12 @@ function ClientGenres() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchParams, setSearchParams, topics]);
 
   useEffect(() => {
     const topicId = searchParams.get('topic');
     if (topicId) {
       if (selectedTopic !== topicId) {
-        // Check dynamic topics
         if (topics.length > 0) {
           const dynamicMatch = topics.find((t) => t._id === topicId);
           if (dynamicMatch) {
@@ -450,7 +493,6 @@ function ClientGenres() {
             return;
           }
         }
-        // Check curated lists
         const curatedMatch = [
           ...FEATURED_ITEMS,
           ...NATIONS_ITEMS,
@@ -469,7 +511,7 @@ function ClientGenres() {
         setSongs(defaultSongs);
       }
     }
-  }, [searchParams, topics, defaultSongs]);
+  }, [searchParams, topics, defaultSongs, selectedTopic, handleSelectCategory]);
 
   const activeTopicTab = searchParams.get('tab') || 'all';
 
@@ -510,45 +552,25 @@ function ClientGenres() {
   const handleToggleFollow = async (artist) => {
     const isLoggedIn = !!localStorage.getItem('userId');
     if (!isLoggedIn) {
-      showToast({
-        message: 'Vui lòng đăng nhập để quan tâm nghệ sĩ.',
-        severity: 'warning'
-      });
+      showToast({ message: 'Vui lòng đăng nhập để quan tâm nghệ sĩ.', severity: 'warning' });
       navigate('/?auth=login');
       return;
     }
-    
     try {
       const response = await clientArtistApi.toggleFollow(artist._id);
       if (response.data.success) {
         const { isFollowing, followers, message } = response.data;
-        
-        setFollowedArtists(prev => ({
-          ...prev,
-          [artist._id]: isFollowing
-        }));
-        
-        setArtistFollowersState(prev => ({
-          ...prev,
-          [artist._id]: followers
-        }));
-        
-        showToast({
-          message: message || (isFollowing ? `Đã theo dõi ${artist.name}` : `Đã bỏ theo dõi ${artist.name}`),
-          severity: 'success'
-        });
+        setFollowedArtists(prev => ({ ...prev, [artist._id]: isFollowing }));
+        setArtistFollowersState(prev => ({ ...prev, [artist._id]: followers }));
+        showToast({ message: message || (isFollowing ? `Đã theo dõi ${artist.name}` : `Đã bỏ theo dõi ${artist.name}`), severity: 'success' });
       }
     } catch (err) {
-      showToast({
-        message: err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.',
-        severity: 'error'
-      });
+      showToast({ message: err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.', severity: 'error' });
     }
   };
 
   const slide = CAROUSEL_SLIDES[activeSlide];
 
-  // Derive related playlists for Category Detail view
   const relatedPlaylists = useMemo(() => {
     if (!playlists.length || !selectedTopic) return [];
     const keyword = selectedTitle.toLowerCase();
@@ -556,12 +578,9 @@ function ClientGenres() {
       (p.name && p.name.toLowerCase().includes(keyword)) ||
       (p.description && p.description.toLowerCase().includes(keyword))
     );
-    return filtered.length > 0 ? filtered.slice(0, 5) : playlists.slice(0, 5);
+    return filtered.length > 0 ? filtered.slice(0, 6) : playlists.slice(0, 6);
   }, [playlists, selectedTitle, selectedTopic]);
 
-
-
-  // Derive gradient color for active category banner
   const activeGradient = useMemo(() => {
     if (!selectedTopic) return '';
     const slideMatch = CAROUSEL_SLIDES.find(c => c.id === selectedTopic);
@@ -579,7 +598,27 @@ function ClientGenres() {
     const dbMatchIndex = topics.findIndex(t => t._id === selectedTopic);
     if (dbMatchIndex !== -1) return getTopicGradient(selectedTitle, dbMatchIndex);
 
-    return 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)';
+    return 'linear-gradient(180deg, rgba(108, 99, 255, 0.45) 0%, rgba(10, 15, 30, 0.95) 100%)';
+  }, [selectedTopic, selectedTitle, topics]);
+
+  const activeImage = useMemo(() => {
+    if (!selectedTopic) return '';
+    const slideMatch = CAROUSEL_SLIDES.find(c => c.id === selectedTopic);
+    if (slideMatch) return slideMatch.image;
+    
+    const featMatch = FEATURED_ITEMS.find(f => f.id === selectedTopic);
+    if (featMatch) return featMatch.image;
+    
+    const nationMatch = NATIONS_ITEMS.find(n => n.id === selectedTopic);
+    if (nationMatch) return nationMatch.image;
+
+    const moodMatch = MOODS_ITEMS.find(m => m.id === selectedTopic);
+    if (moodMatch) return moodMatch.image;
+    
+    const dbMatchIndex = topics.findIndex(t => t._id === selectedTopic);
+    if (dbMatchIndex !== -1) return getTopicImage(selectedTitle, dbMatchIndex);
+
+    return 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1400&auto=format&fit=crop&q=80';
   }, [selectedTopic, selectedTitle, topics]);
 
   const relatedArtists = useMemo(() => {
@@ -599,10 +638,9 @@ function ClientGenres() {
         });
       }
     });
-    return Object.values(artistMap).slice(0, 5);
+    return Object.values(artistMap).slice(0, 6);
   }, [songs]);
 
-  // Set followers count directly from pre-populated song artist data
   useEffect(() => {
     if (!relatedArtists.length) return;
     const followerMap = {};
@@ -612,22 +650,17 @@ function ClientGenres() {
     setArtistFollowersState(prev => ({ ...prev, ...followerMap }));
   }, [relatedArtists]);
 
-  // Batch query follow statuses in one single network request
   useEffect(() => {
     let cancelled = false;
-
     const fetchFollowStatuses = async () => {
       if (!relatedArtists.length) return;
       const isLoggedIn = !!localStorage.getItem('userId');
       if (!isLoggedIn) {
         const followMap = {};
-        relatedArtists.forEach(artist => {
-          followMap[artist._id] = false;
-        });
+        relatedArtists.forEach(artist => followMap[artist._id] = false);
         setFollowedArtists(followMap);
         return;
       }
-
       try {
         const artistIds = relatedArtists.map(artist => artist._id);
         const response = await clientArtistApi.getBatchFollowStatus(artistIds);
@@ -635,10 +668,9 @@ function ClientGenres() {
           setFollowedArtists(response.data.followStatusMap);
         }
       } catch (err) {
-        console.error("Error fetching batch follow status:", err);
+        console.error("Error:", err);
       }
     };
-
     const cancelIdleTask = scheduleIdleTask(fetchFollowStatuses);
     return () => {
       cancelled = true;
@@ -646,24 +678,33 @@ function ClientGenres() {
     };
   }, [relatedArtists]);
 
-
-
   return (
     <ClientLayout title="Chủ đề & Thể loại">
       {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>{error}</Alert>}
 
       {selectedTopic === null ? (
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━ CATALOG MAIN HUB ━━━━━━━━━━━━━━━━━━━━━━━━ */
-        <Stack spacing={5.5}>
-          {/* Header & Search */}
+        <Stack spacing={4.5} sx={{ width: '100%', pb: 5 }}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
             <Box>
-              <Typography variant="h4" fontWeight={950} sx={{ letterSpacing: '-0.7px', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <SparklesIcon sx={{ color: '#14b8a6', fontSize: 32 }} />
-                Chủ Đề & Thể Loại
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 950,
+                  letterSpacing: '-0.04em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  fontSize: { xs: '1.6rem', sm: '2rem' },
+                  background: 'linear-gradient(135deg, #ffffff 20%, #a5b4fc 60%, #00e5ff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                <ExploreIcon sx={{ color: '#00e5ff', fontSize: 32 }} />
+                Vũ Trụ Thể Loại & Sóng Âm Nhạc
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Khám phá thế giới âm nhạc được phân loại theo từng tâm trạng, quốc gia và thể loại.
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 550 }}>
+                Khám phá thế giới âm thanh đa vũ trụ phân loại theo thể loại, quốc gia và tâm trạng.
               </Typography>
             </Box>
 
@@ -672,33 +713,21 @@ function ClientGenres() {
                 <TextField
                   size="small"
                   value={query}
-                  onFocus={() => {
-                    if (query.trim() && suggestions.length) setShowSuggestions(true);
-                  }}
+                  onFocus={() => { if (query.trim() && suggestions.length) setShowSuggestions(true); }}
                   onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      handleSearch();
-                    }
-                  }}
-                  placeholder="Tìm bài hát, ca sĩ..."
+                  onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); handleSearch(); } }}
+                  placeholder="Tìm thể loại, bài hát, ca sĩ..."
                   fullWidth
                   InputProps={{
-                    startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 0.75, fontSize: 20 }} />,
+                    startAdornment: <SearchIcon sx={{ color: '#8c85ff', mr: 1, fontSize: 20 }} />,
                     sx: {
-                      borderRadius: 3.5,
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(31, 41, 55, 0.4)' : 'rgba(255, 255, 255, 0.76)',
-                      border: '1px solid',
-                      borderColor: 'divider',
+                      borderRadius: '9999px',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
                       transition: 'all 0.25s',
-                      '&:hover': {
-                        borderColor: '#14b8a6',
-                      },
-                      '&.Mui-focused': {
-                        borderColor: '#14b8a6',
-                        boxShadow: '0 0 12px rgba(20,184,166,0.18)',
-                      }
+                      fontSize: 13.5,
+                      '&:hover': { borderColor: '#6c63ff' },
+                      '&.Mui-focused': { borderColor: '#6c63ff', boxShadow: '0 0 16px rgba(108, 99, 255, 0.35)' }
                     }
                   }}
                 />
@@ -709,47 +738,34 @@ function ClientGenres() {
                       top: 'calc(100% + 8px)',
                       left: 0,
                       right: 0,
-                      zIndex: 10,
+                      zIndex: 1400,
                       borderRadius: 3.5,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                      backdropFilter: 'blur(16px)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(14, 20, 38, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                      backdropFilter: 'blur(20px)',
                       maxHeight: 280,
                       overflowY: 'auto',
-                      boxShadow: '0 12px 36px rgba(0,0,0,0.12)',
+                      boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
                     }}
                   >
                     <List dense disablePadding>
                       {suggestions.map((song) => (
                         <ListItemButton
                           key={song._id}
-                          onClick={() => {
-                            setQuery(song.title || '');
-                            setShowSuggestions(false);
-                            playSong(song, { queue: suggestions });
-                          }}
+                          onClick={() => { setQuery(song.title || ''); setShowSuggestions(false); playSong(song, { queue: suggestions }); }}
                           sx={{ py: 1.25, px: 2 }}
                         >
                           <Avatar
                             src={song.imageUrl || undefined}
                             variant="rounded"
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              mr: 1.5,
-                              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.08)' : 'rgba(20, 184, 166, 0.04)',
-                              color: '#14b8a6',
-                            }}
+                            sx={{ width: 34, height: 34, mr: 1.5, borderRadius: '8px', bgcolor: 'rgba(99, 102, 241, 0.15)', color: '#6c63ff' }}
                           >
                             <MusicIcon sx={{ fontSize: 18 }} />
                           </Avatar>
                           <ListItemText
                             primary={song.title || 'Unknown song'}
-                            secondary={Array.isArray(song.artists)
-                              ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
-                              : 'Nghệ sĩ ẩn danh'}
-                            primaryTypographyProps={{ noWrap: true, fontWeight: 700, fontSize: 13 }}
+                            secondary={Array.isArray(song.artists) ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ') : 'Nghệ sĩ ẩn danh'}
+                            primaryTypographyProps={{ noWrap: true, fontWeight: 750, fontSize: 13 }}
                             secondaryTypographyProps={{ noWrap: true, fontSize: 11 }}
                           />
                         </ListItemButton>
@@ -761,400 +777,269 @@ function ClientGenres() {
             </ClickAwayListener>
           </Stack>
 
-          {/* Hero Carousel */}
+          {/* ── 1. SÂN KHẤU LĂNG KÍNH THỂ LOẠI (HERO PRISM STAGE CÓ ẢNH NỀN) ── */}
           <Box
+            onClick={() => handleSelectCategory(slide)}
             sx={{
-              p: { xs: 4, md: 6 },
-              height: { xs: 260, md: 320 },
-              borderRadius: 5,
+              p: { xs: 3.5, sm: 4.5, md: 5.5 },
+              minHeight: { xs: 260, md: 320 },
+              borderRadius: { xs: 4, md: 6 },
               position: 'relative',
               overflow: 'hidden',
-              background: slide.gradient,
+              backgroundImage: `linear-gradient(to right, rgba(9, 13, 26, 0.95) 0%, rgba(9, 13, 26, 0.65) 50%, rgba(9, 13, 26, 0.3) 100%), url(${slide.image})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
               color: '#fff',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              transition: 'background 0.5s ease-in-out',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+              transition: 'all 0.5s ease',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 1.5px rgba(255, 255, 255, 0.25)',
               cursor: 'pointer',
               '&:hover': {
-                transform: 'scale(1.005)',
+                transform: 'scale(1.008)',
               }
             }}
-            onClick={() => handleSelectCategory(slide)}
           >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '-15%',
-                right: '-15%',
-                width: 320,
-                height: 320,
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.08)',
-                filter: 'blur(40px)',
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: '-25%',
-                left: '12%',
-                width: 260,
-                height: 260,
-                borderRadius: '50%',
-                background: 'rgba(0, 0, 0, 0.06)',
-                filter: 'blur(50px)',
-              }}
-            />
-
+            <Box sx={{ position: 'absolute', top: '-20%', right: '-10%', width: 360, height: 360, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.12)', filter: 'blur(50px)' }} />
             <Stack spacing={2} sx={{ maxWidth: { xs: '100%', md: '65%' }, position: 'relative', zIndex: 2 }}>
-              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.5, borderRadius: 10, bgcolor: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)', width: 'fit-content' }}>
-                <SparklesIcon sx={{ fontSize: 16, color: '#f59e0b' }} />
-                <Typography variant="caption" sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Nổi Bật
-                </Typography>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2, py: 0.5, borderRadius: '9999px', bgcolor: 'rgba(0, 0, 0, 0.45)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.3)', width: 'fit-content' }}>
+                <SparklesIcon sx={{ fontSize: 15, color: '#00e5ff' }} />
+                <Typography sx={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.2, color: '#00e5ff' }}>TÂM ĐIỂM SÓNG THỂ LOẠI</Typography>
               </Box>
-
-              <Typography variant="h3" sx={{ fontWeight: 950, letterSpacing: '-1.5px', textShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-                {slide.title}
+              <Typography variant="h3" sx={{ fontWeight: 950, letterSpacing: '-0.04em', fontSize: { xs: '1.7rem', sm: '2.4rem', md: '2.8rem' }, lineHeight: 1.15 }}>
+                {slide.icon} {slide.title}
               </Typography>
-              
-              <Typography variant="body1" sx={{ opacity: 0.9, fontWeight: 500, textShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+              <Typography variant="body1" sx={{ opacity: 0.92, fontWeight: 550, maxWidth: 540, fontSize: { xs: 13.5, sm: 15 } }}>
                 {slide.subtitle}
               </Typography>
-
               <Button
                 variant="contained"
-                startIcon={<PlayIcon />}
-                sx={{
-                  width: 'fit-content',
-                  bgcolor: '#fff',
-                  color: '#000',
-                  fontWeight: 900,
-                  borderRadius: 10,
-                  px: 4,
-                  py: 1.25,
-                  textTransform: 'none',
-                  boxShadow: '0 4px 15px rgba(255,255,255,0.3)',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.9)',
-                  }
-                }}
+                startIcon={<PlayIcon sx={{ fontSize: 22 }} />}
+                sx={{ width: 'fit-content', bgcolor: '#fff', color: '#090d1a', fontWeight: 900, borderRadius: '9999px', px: 4, py: 1.2, textTransform: 'none', fontSize: 14, boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)', '&:hover': { bgcolor: '#fff', transform: 'scale(1.05)' }, transition: 'all 0.2s ease' }}
               >
-                Nghe ngay
+                Kích Hoạt Không Gian
               </Button>
             </Stack>
-
-            {/* Slider arrows */}
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveSlide((prev) => (prev - 1 + CAROUSEL_SLIDES.length) % CAROUSEL_SLIDES.length);
-              }}
-              sx={{
-                position: 'absolute',
-                left: 20,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                bgcolor: 'rgba(255, 255, 255, 0.15)',
-                color: '#fff',
-                zIndex: 3,
-                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' },
-              }}
-            >
-              <PrevIcon />
-            </IconButton>
-
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length);
-              }}
-              sx={{
-                position: 'absolute',
-                right: 20,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                bgcolor: 'rgba(255, 255, 255, 0.15)',
-                color: '#fff',
-                zIndex: 3,
-                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' },
-              }}
-            >
-              <NextIcon />
-            </IconButton>
-
-            {/* Dots */}
             <Stack direction="row" spacing={1} sx={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 3 }}>
               {CAROUSEL_SLIDES.map((_, idx) => (
                 <Box
                   key={idx}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveSlide(idx);
-                  }}
-                  sx={{
-                    width: idx === activeSlide ? 24 : 8,
-                    height: 8,
-                    borderRadius: 10,
-                    bgcolor: idx === activeSlide ? '#fff' : 'rgba(255,255,255,0.4)',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setActiveSlide(idx); }}
+                  sx={{ width: idx === activeSlide ? 28 : 8, height: 8, borderRadius: '9999px', bgcolor: idx === activeSlide ? '#fff' : 'rgba(255,255,255,0.4)', boxShadow: idx === activeSlide ? '0 0 10px #fff' : 'none', transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)', cursor: 'pointer' }}
                 />
               ))}
             </Stack>
           </Box>
 
-          {/* Featured */}
+          {/* ── 2. TRẠM THỂ LOẠI NỔI BẬT (CÓ HÌNH ẢNH NGHỆ THUẬT) ── */}
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-              Nổi Bật
-            </Typography>
-
-            <Grid container spacing={3}>
-              {FEATURED_ITEMS.map((item) => {
-                const active = selectedTopic === item.id;
-                return (
-                  <Grid size={{ xs: 12, sm: 6, md: 3 }} key={item.id}>
-                    <Paper
-                      elevation={0}
-                      onClick={() => handleSelectCategory(item)}
-                      sx={{
-                        p: 3,
-                        height: 160,
-                        borderRadius: 4.5,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        background: item.gradient,
-                        color: '#fff',
-                        border: '2px solid',
-                        borderColor: active ? '#14b8a6' : 'transparent',
-                        boxShadow: active ? '0 8px 24px rgba(20,184,166,0.35)' : '0 4px 15px rgba(0,0,0,0.06)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'rgba(0,0,0,0.1)',
-                        },
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
-                          filter: 'saturate(1.15)',
-                        },
-                      }}
-                    >
-                      <Box sx={{ position: 'relative', zIndex: 1 }}>
-                        <Typography variant="h5" fontWeight={900} sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)', fontSize: '1.35rem' }}>
-                          {item.title}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5, fontWeight: 500 }}>
-                          {item.description}
-                        </Typography>
-                      </Box>
-                      
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
-                        <Typography variant="caption" sx={{ opacity: 0.82, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Khám phá
-                        </Typography>
-                        <IconButton sx={{ p: 0, color: '#fff', bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,255,255,0.4)' } }}>
-                          <PlayIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                );
-              })}
+            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2.5 }}>
+              <FireIcon sx={{ color: '#ec4899', fontSize: 26 }} />
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, sm: 23 }, letterSpacing: '-0.03em' }}>Trạm Sóng Nổi Bật</Typography>
+            </Stack>
+            <Grid container spacing={2.5}>
+              {FEATURED_ITEMS.map((item) => (
+                <Grid key={item.id} size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Box
+                    onClick={() => handleSelectCategory(item)}
+                    sx={{
+                      p: 3,
+                      height: 160,
+                      borderRadius: '24px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      backgroundImage: `${item.gradient}, url(${item.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      color: '#fff',
+                      boxShadow: '0 10px 28px rgba(0, 0, 0, 0.4)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      '&:hover': {
+                        transform: 'translateY(-6px)',
+                        boxShadow: `0 16px 36px -6px ${item.color}88`,
+                        filter: 'brightness(1.1)',
+                      }
+                    }}
+                  >
+                    <Box sx={{ position: 'relative', zIndex: 1 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 950, fontSize: '1.35rem', mb: 0.5, textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
+                        {item.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.92, fontWeight: 550, fontSize: 13, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+                        {item.description}
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 850, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.9, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+                        Khám Phá Sóng
+                      </Typography>
+                      <IconButton sx={{ p: 0.6, color: '#fff', bgcolor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.2)', '&:hover': { bgcolor: '#fff', color: '#090d1a' } }}>
+                        <PlayIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Stack>
+                  </Box>
+                </Grid>
+              ))}
             </Grid>
           </Box>
 
-          {/* Nations */}
+          {/* ── 3. KHÔNG GIAN QUỐC GIA ÂM NHẠC (CÓ ẢNH THÀNH PHỐ / VĂN HÓA) ── */}
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-              Quốc Gia
-            </Typography>
-
-            <Grid container spacing={3}>
-              {NATIONS_ITEMS.map((item) => {
-                const active = selectedTopic === item.id;
-                return (
-                  <Grid size={{ xs: 6, sm: 3 }} key={item.id}>
-                    <Paper
-                      elevation={0}
-                      onClick={() => handleSelectCategory(item)}
-                      sx={{
-                        p: 2.5,
-                        height: 110,
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        background: item.gradient,
-                        color: '#fff',
-                        border: '2px solid',
-                        borderColor: active ? '#14b8a6' : 'transparent',
-                        boxShadow: active ? '0 8px 24px rgba(20,184,166,0.3)' : '0 4px 12px rgba(0,0,0,0.05)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'rgba(0,0,0,0.15)',
-                        },
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          boxShadow: '0 10px 24px rgba(0,0,0,0.15)',
-                          filter: 'saturate(1.15)',
-                        },
-                      }}
-                    >
-                      <Stack spacing={0.5} sx={{ position: 'relative', zIndex: 1 }}>
-                        <Typography variant="h6" fontWeight={900} sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                          {item.title}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.85, fontWeight: 600 }}>
-                          {item.subtitle}
-                        </Typography>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                );
-              })}
+            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2.5 }}>
+              <GlobeIcon sx={{ color: '#3b82f6', fontSize: 26 }} />
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, sm: 23 }, letterSpacing: '-0.03em' }}>Không Gian Quốc Gia Âm Nhạc</Typography>
+            </Stack>
+            <Grid container spacing={2.5}>
+              {NATIONS_ITEMS.map((item) => (
+                <Grid key={item.id} size={{ xs: 6, sm: 3 }}>
+                  <Box
+                    onClick={() => handleSelectCategory(item)}
+                    sx={{
+                      p: 2.5,
+                      height: 130,
+                      borderRadius: '24px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      backgroundImage: `${item.gradient}, url(${item.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      color: '#fff',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      boxShadow: '0 10px 28px rgba(0,0,0,0.35)',
+                      transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      '&:hover': {
+                        transform: 'translateY(-5px) scale(1.02)',
+                        boxShadow: '0 14px 34px rgba(0,0,0,0.5)',
+                        filter: 'brightness(1.12)',
+                      }
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 28, mb: 0.5, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}>{item.flag}</Typography>
+                    <Typography sx={{ fontWeight: 900, fontSize: 15, textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>{item.title}</Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.9, fontWeight: 600, display: { xs: 'none', sm: 'block' }, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+                      {item.subtitle}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
             </Grid>
           </Box>
 
-          {/* Moods */}
+          {/* ── 4. TÂM TRẠNG & HOẠT ĐỘNG (CÓ HÌNH ẢNH SỐNG ĐỘNG) ── */}
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-              Tâm Trạng Và Hoạt Động
-            </Typography>
-
-            <Grid container spacing={3}>
-              {MOODS_ITEMS.map((item) => {
-                const active = selectedTopic === item.id;
-                return (
-                  <Grid size={{ xs: 12, sm: 6, md: 3 }} key={item.id}>
-                    <Paper
-                      elevation={0}
-                      onClick={() => handleSelectCategory(item)}
-                      sx={{
-                        p: 2.5,
-                        height: 130,
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        background: item.gradient,
-                        color: '#fff',
-                        border: '2px solid',
-                        borderColor: active ? '#14b8a6' : 'transparent',
-                        boxShadow: active ? '0 8px 24px rgba(20,184,166,0.3)' : '0 4px 12px rgba(0,0,0,0.05)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'rgba(0,0,0,0.12)',
-                        },
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          boxShadow: '0 10px 24px rgba(0,0,0,0.15)',
-                          filter: 'saturate(1.15)',
-                        },
-                      }}
-                    >
-                      <Box sx={{ position: 'relative', zIndex: 1 }}>
-                        <Typography variant="subtitle1" fontWeight={900} sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                          {item.title}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.85, display: 'block', mt: 0.5 }}>
-                          {item.subtitle}
-                        </Typography>
-                      </Box>
-                      
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
-                        <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Bắt đầu nghe
-                        </Typography>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                );
-              })}
+            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2.5 }}>
+              <WavesIcon sx={{ color: '#10b981', fontSize: 26 }} />
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, sm: 23 }, letterSpacing: '-0.03em' }}>Tâm Trạng & Không Gian Sống</Typography>
+            </Stack>
+            <Grid container spacing={2.5}>
+              {MOODS_ITEMS.map((item) => (
+                <Grid key={item.id} size={{ xs: 6, sm: 3 }}>
+                  <Box
+                    onClick={() => handleSelectCategory(item)}
+                    sx={{
+                      p: 2.5,
+                      height: 130,
+                      borderRadius: '24px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      backgroundImage: `${item.gradient}, url(${item.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      color: '#fff',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      boxShadow: '0 10px 28px rgba(0,0,0,0.35)',
+                      transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      '&:hover': {
+                        transform: 'translateY(-5px) scale(1.02)',
+                        boxShadow: '0 14px 34px rgba(0,0,0,0.5)',
+                        filter: 'brightness(1.12)',
+                      }
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 28, mb: 0.5, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}>{item.icon}</Typography>
+                    <Typography sx={{ fontWeight: 900, fontSize: 15, textShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>{item.title}</Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.9, fontWeight: 600, display: { xs: 'none', sm: 'block' }, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+                      {item.subtitle}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
             </Grid>
           </Box>
 
-          {/* Dynamic Topics */}
+          {/* ── 5. BẢN ĐỒ THỂ LOẠI TOÀN NĂNG (DYNAMIC TOPIC MATRIX CÓ ẢNH) ── */}
           {topics.length > 0 && (
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 900, mb: 3, letterSpacing: '-0.3px' }}>
-                Thể Loại Chi Tiết
+            <Box
+              sx={{
+                p: { xs: 3, sm: 4 },
+                borderRadius: '28px',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.6)' : '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(16px)',
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 2.5, letterSpacing: '-0.02em' }}>
+                🪐 Bản Đồ Thể Loại Đa Vũ Trụ ({topics.length} Chủ Đề)
               </Typography>
 
-              <Grid container spacing={3}>
+              <Grid container spacing={2}>
                 {topics.map((topic, index) => {
-                  const active = selectedTopic === topic._id;
                   const gradient = getTopicGradient(topic.name, index);
+                  const topicImg = getTopicImage(topic.name, index);
                   return (
-                    <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2.4 }} key={topic._id}>
-                      <Paper
-                        elevation={0}
+                    <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={topic._id}>
+                      <Box
                         onClick={() => handleSelectCategory(topic)}
                         sx={{
-                          p: 3,
-                          height: 115,
-                          borderRadius: 4,
+                          p: 2,
+                          height: 110,
+                          borderRadius: '20px',
                           cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'space-between',
                           position: 'relative',
                           overflow: 'hidden',
-                          background: gradient,
+                          backgroundImage: `${gradient}, url(${topicImg})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
                           color: '#fff',
-                          border: '2px solid',
-                          borderColor: active ? '#14b8a6' : 'transparent',
-                          boxShadow: active ? '0 8px 24px rgba(20,184,166,0.3)' : '0 4px 12px rgba(0,0,0,0.05)',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'rgba(0,0,0,0.08)',
-                          },
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                           '&:hover': {
-                            transform: 'translateY(-6px)',
-                            boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
-                            filter: 'saturate(1.15)',
+                            transform: 'translateY(-4px) scale(1.03)',
+                            boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
+                            filter: 'brightness(1.1)',
                           },
                         }}
                       >
-                        <Box sx={{ position: 'relative', zIndex: 1 }}>
-                          <Typography variant="body1" fontWeight={900} sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                            {topic.name}
-                          </Typography>
-                        </Box>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ position: 'relative', zIndex: 1 }}>
-                          <Typography variant="caption" sx={{ opacity: 0.82, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Khám phá
-                          </Typography>
-                        </Stack>
-                      </Paper>
+                        <Typography sx={{ fontWeight: 900, fontSize: 14, textShadow: '0 2px 6px rgba(0,0,0,0.8)' }} noWrap>
+                          {topic.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.9, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+                          Khám phá →
+                        </Typography>
+                      </Box>
                     </Grid>
                   );
                 })}
@@ -1163,8 +1048,8 @@ function ClientGenres() {
           )}
         </Stack>
       ) : (
-        /* ━━━━━━━━━━━━━━━━━━━━━━━━ CATEGORY DETAIL VIEW (ZingMP3 Restructured) ━━━━━━━━━━━━━━━━━━━━━━━━ */
-        <Box>
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━ 🔮 MASTER SOUNDSCAPE DETAIL HUB ━━━━━━━━━━━━━━━━━━━━━━━━ */
+        <Box sx={{ pb: 6, width: '100%' }}>
           {/* Back button */}
           <Button
             onClick={() => {
@@ -1173,366 +1058,607 @@ function ClientGenres() {
               newParams.delete('topic');
               setSearchParams(newParams);
             }}
-            startIcon={<PrevIcon />}
+            startIcon={<BackIcon />}
             sx={{
-              color: 'text.secondary',
+              color: '#8c85ff',
               fontWeight: 800,
               textTransform: 'none',
-              mb: 3,
+              fontSize: 13.5,
+              mb: 2.5,
+              borderRadius: '9999px',
+              px: 2.5,
+              py: 0.65,
+              bgcolor: 'rgba(108, 99, 255, 0.1)',
+              border: '1px solid rgba(108, 99, 255, 0.25)',
               '&:hover': {
-                color: '#14b8a6',
+                bgcolor: 'rgba(108, 99, 255, 0.2)',
+                borderColor: '#8c85ff',
               }
             }}
           >
-            Quay lại Thể loại
+            ← Quay Lại Vũ Trụ Thể Loại
           </Button>
 
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 12 }}>
-              <CircularProgress size={44} sx={{ color: '#14b8a6' }} />
+              <CircularProgress size={44} sx={{ color: '#6c63ff' }} />
             </Box>
           ) : (
-            <>
-              {/* Visual Header Banner */}
-              <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 4, md: 5 },
-              borderRadius: 5,
-              position: 'relative',
-              overflow: 'hidden',
-              background: activeGradient,
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-              mb: 6,
-            }}
-          >
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '-20%',
-                right: '-10%',
-                width: 280,
-                height: 280,
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.1)',
-                filter: 'blur(30px)',
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: '-30%',
-                left: '20%',
-                width: 200,
-                height: 200,
-                borderRadius: '50%',
-                background: 'rgba(0, 0, 0, 0.1)',
-                filter: 'blur(40px)',
-              }}
-            />
+            <Stack spacing={4.5}>
+              {/* ── 1. ASYMMETRIC DUAL MASTER HERO STAGE (SPLIT 7/12 + 5/12) ── */}
+              <Grid container spacing={2.5}>
+                {/* Left: Master Genre Capsule (7/12) */}
+                <Grid size={{ xs: 12, md: 7 }}>
+                  <Box
+                    sx={{
+                      height: '100%',
+                      minHeight: 280,
+                      p: { xs: 3, sm: 4 },
+                      borderRadius: '28px',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      backgroundImage: `${activeGradient}, url(${activeImage})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Box>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 1.75, py: 0.4, borderRadius: '9999px', bgcolor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.25)', mb: 2 }}>
+                        <SparklesIcon sx={{ fontSize: 14, color: '#00e5ff' }} />
+                        <Typography sx={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, color: '#00e5ff' }}>
+                          KHÔNG GIAN THỂ LOẠI • {songs.length} BÀI HÁT
+                        </Typography>
+                      </Box>
 
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ position: 'relative', zIndex: 2 }}>
-              <Avatar
-                sx={{
-                  width: { xs: 80, md: 100 },
-                  height: { xs: 80, md: 100 },
-                  bgcolor: 'rgba(255, 255, 255, 0.2)',
-                  backdropFilter: 'blur(10px)',
-                  border: '2px solid rgba(255, 255, 255, 0.4)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                  fontSize: { xs: 36, md: 44 },
-                  fontWeight: 900,
-                  color: '#fff',
-                }}
-              >
-                {selectedTitle.charAt(0).toUpperCase()}
-              </Avatar>
+                      <Typography variant="h3" sx={{ fontWeight: 950, letterSpacing: '-0.04em', fontSize: { xs: '1.8rem', sm: '2.4rem' }, mb: 1, lineHeight: 1.15 }}>
+                        {selectedTitle}
+                      </Typography>
+                      
+                      <Typography variant="body2" sx={{ opacity: 0.92, maxWidth: 520, fontWeight: 550, fontSize: { xs: 13, sm: 14 }, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+                        Thưởng thức những tác phẩm âm nhạc tuyển chọn xuất sắc nhất thuộc chủ đề {selectedTitle}.
+                      </Typography>
+                    </Box>
 
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="h3" sx={{ fontWeight: 950, letterSpacing: '-1.5px', textShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-                  {selectedTitle}
-                </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9, mt: 1, maxWidth: 600, fontWeight: 500 }}>
-                  Thưởng thức những tác phẩm âm nhạc tuyển chọn xuất sắc thuộc chủ đề {selectedTitle}. Hãy sẵn sàng hòa mình vào thế giới âm thanh đầy lôi cuốn.
-                </Typography>
-                
-                {songs.length > 0 && (
-                  <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<PlayIcon />}
-                      onClick={() => handlePlayAll(false)}
-                      sx={{
-                        bgcolor: '#fff',
-                        color: '#000',
-                        fontWeight: 900,
-                        borderRadius: 3.5,
-                        px: 3.5,
-                        py: 1,
-                        textTransform: 'none',
-                        boxShadow: '0 4px 15px rgba(255,255,255,0.25)',
-                        '&:hover': {
-                          bgcolor: 'rgba(255, 255, 255, 0.9)',
-                        }
-                      }}
-                    >
-                      Phát tất cả
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<ShuffleIcon />}
-                      onClick={() => handlePlayAll(true)}
-                      sx={{
-                        borderColor: 'rgba(255, 255, 255, 0.4)',
-                        color: '#fff',
-                        fontWeight: 900,
-                        borderRadius: 3.5,
-                        px: 3.5,
-                        py: 1,
-                        textTransform: 'none',
-                        backdropFilter: 'blur(10px)',
-                        bgcolor: 'rgba(255, 255, 255, 0.08)',
-                        '&:hover': {
-                          borderColor: '#fff',
-                          bgcolor: 'rgba(255, 255, 255, 0.15)',
-                        }
-                      }}
-                    >
-                      Trộn bài
-                    </Button>
-                  </Stack>
-                )}
-
-                {/* Topic sub-tabs: All, Songs, Playlists, Artists */}
-                <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
-                  {[
-                    { id: 'all', label: 'Tất cả' },
-                    { id: 'songs', label: `Bài hát (${songs.length})` },
-                    ...(relatedPlaylists.length > 0 ? [{ id: 'playlists', label: `Playlist & Album (${relatedPlaylists.length})` }] : []),
-                    ...(relatedArtists.length > 0 ? [{ id: 'artists', label: `Nghệ sĩ (${relatedArtists.length})` }] : []),
-                  ].map((t) => (
-                    <Chip
-                      key={t.id}
-                      label={t.label}
-                      onClick={() => handleSelectTopicTab(t.id)}
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: 12.5,
-                        cursor: 'pointer',
-                        borderRadius: 2.5,
-                        color: activeTopicTab === t.id ? '#000' : '#fff',
-                        bgcolor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.15)',
-                        border: '1px solid',
-                        borderColor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.3)',
-                        backdropFilter: 'blur(8px)',
-                        '&:hover': {
-                          bgcolor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.25)',
-                        },
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            </Stack>
-          </Paper>
-
-          {songs.length === 0 ? (
-            <Paper variant="outlined" sx={{ p: 8, textAlign: 'center', borderRadius: 5, borderStyle: 'dashed', borderColor: 'divider', bgcolor: 'rgba(255,255,255,0.01)', mt: 4 }}>
-              <Typography variant="h6" fontWeight={700} color="text.secondary" sx={{ mb: 1 }}>
-                Chủ đề này chưa có bài hát nào
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Hiện tại chưa có bài hát nào thuộc chủ đề này trong cơ sở dữ liệu. Vui lòng quay lại sau!
-              </Typography>
-            </Paper>
-          ) : (
-            <Stack spacing={7}>
-              {/* ──────── SECTION 1: HOT SONGS / ALL SONGS (3 Columns Grid) ──────── */}
-              {(activeTopicTab === 'all' || activeTopicTab === 'songs') && (
-                <Box>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3, gap: 2 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.3px' }}>
-                      {activeTopicTab === 'songs' ? `Tất cả bài hát (${songs.length})` : 'Hot Songs'}
-                    </Typography>
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <Button
-                        variant="outlined"
-                        startIcon={<RefreshIcon />}
-                        onClick={handleRefreshHotSongs}
-                        disabled={songs.length <= 1}
-                        sx={{
-                          color: '#14b8a6',
-                          borderColor: 'rgba(20, 184, 166, 0.25)',
-                          borderRadius: 2,
-                          textTransform: 'none',
-                          fontWeight: 800,
-                          px: 2,
-                          flexShrink: 0,
-                          '&:hover': {
-                            borderColor: '#14b8a6',
-                            bgcolor: 'rgba(20, 184, 166, 0.05)',
-                          },
-                        }}
-                      >
-                        Đổi bài hát
-                      </Button>
-                      {songs.length > 15 && (
-                        <Button
-                          size="small"
-                          endIcon={<ArrowIcon sx={{ transform: activeTopicTab === 'songs' ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                          onClick={() => handleSelectTopicTab(activeTopicTab === 'songs' ? 'all' : 'songs')}
-                          sx={{ color: '#14b8a6', fontWeight: 800, borderRadius: 2, textTransform: 'none' }}
-                        >
-                          {activeTopicTab === 'songs' ? 'Thu gọn' : 'Xem tất cả'}
-                        </Button>
+                    <Box sx={{ mt: 3 }}>
+                      {songs.length > 0 && (
+                        <Stack direction="row" spacing={1.5} sx={{ mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                          <Button
+                            variant="contained"
+                            startIcon={<PlayIcon sx={{ fontSize: 22 }} />}
+                            onClick={() => handlePlayAll(false)}
+                            sx={{
+                              bgcolor: '#fff',
+                              color: '#090d1a',
+                              fontWeight: 900,
+                              borderRadius: '9999px',
+                              px: 3.5,
+                              py: 1,
+                              fontSize: 14,
+                              textTransform: 'none',
+                              boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                              '&:hover': { bgcolor: '#fff', transform: 'scale(1.04)' },
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            Phát Toàn Bộ ({songs.length})
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            startIcon={<ShuffleIcon />}
+                            onClick={() => handlePlayAll(true)}
+                            sx={{
+                              borderColor: 'rgba(255, 255, 255, 0.4)',
+                              color: '#fff',
+                              fontWeight: 800,
+                              borderRadius: '9999px',
+                              px: 3,
+                              py: 1,
+                              fontSize: 14,
+                              textTransform: 'none',
+                              backdropFilter: 'blur(10px)',
+                              bgcolor: 'rgba(0, 0, 0, 0.3)',
+                              '&:hover': { borderColor: '#fff', bgcolor: 'rgba(0, 0, 0, 0.5)' }
+                            }}
+                          >
+                            Trộn Bài
+                          </Button>
+                        </Stack>
                       )}
-                    </Stack>
-                  </Stack>
-                  
-                  <Grid container spacing={2.5}>
-                    {(activeTopicTab === 'songs' ? songs : hotSongs).map((song) => (
-                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
-                        <ClientSongItem
-                          song={song}
-                          showDuration={true}
-                          isCurrent={currentSong?._id === song._id}
-                          isPlaying={currentSong?._id === song._id && isPlaying}
-                          onPlay={() => playSong(song, { queue: activeTopicTab === 'songs' ? songs : hotSongs })}
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
 
-              {/* ──────── SECTION 2: PLAYLIST / ALBUM GỢI Ý (5 Columns Grid) ──────── */}
-              {(activeTopicTab === 'all' || activeTopicTab === 'playlists') && relatedPlaylists.length > 0 && (
-                <Box>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 900, mb: 0, letterSpacing: '-0.3px' }}>
-                      {activeTopicTab === 'playlists' ? `Tất cả Playlist / Album (${relatedPlaylists.length})` : 'Playlist / Album gợi ý'}
-                    </Typography>
-                    {relatedPlaylists.length > 5 && (
-                      <Button
-                        size="small"
-                        endIcon={<ArrowIcon sx={{ transform: activeTopicTab === 'playlists' ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                        onClick={() => handleSelectTopicTab(activeTopicTab === 'playlists' ? 'all' : 'playlists')}
-                        sx={{ color: '#14b8a6', fontWeight: 800, borderRadius: 2, textTransform: 'none' }}
-                      >
-                        {activeTopicTab === 'playlists' ? 'Thu gọn' : 'Xem tất cả'}
-                      </Button>
-                    )}
-                  </Stack>
-                  
-                  <Grid container spacing={2.5}>
-                    {(activeTopicTab === 'playlists' ? relatedPlaylists : relatedPlaylists.slice(0, 5)).map((playlist) => (
-                      <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={playlist._id}>
-                        <ClientPlaylistCard
-                          playlist={playlist}
-                          onClick={() => navigate(`/playlists/${playlist._id}`)}
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
+                      {/* Sub-tabs pills */}
+                      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                        {[
+                          { id: 'all', label: '✨ Tất Cả' },
+                          { id: 'songs', label: `🎧 Bài Hát (${songs.length})` },
+                          ...(relatedPlaylists.length > 0 ? [{ id: 'playlists', label: `📻 Tuyển Tập (${relatedPlaylists.length})` }] : []),
+                          ...(relatedArtists.length > 0 ? [{ id: 'artists', label: `🪐 Nghệ Sĩ (${relatedArtists.length})` }] : []),
+                        ].map((t) => (
+                          <Chip
+                            key={t.id}
+                            label={t.label}
+                            onClick={() => handleSelectTopicTab(t.id)}
+                            sx={{
+                              fontWeight: 850,
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              borderRadius: '9999px',
+                              color: activeTopicTab === t.id ? '#090d1a' : '#fff',
+                              bgcolor: activeTopicTab === t.id ? '#fff' : 'rgba(0, 0, 0, 0.4)',
+                              border: '1px solid',
+                              borderColor: activeTopicTab === t.id ? '#fff' : 'rgba(255, 255, 255, 0.25)',
+                              backdropFilter: 'blur(8px)',
+                              '&:hover': {
+                                bgcolor: activeTopicTab === t.id ? '#fff' : 'rgba(0, 0, 0, 0.6)',
+                              },
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Box>
+                </Grid>
 
-            {/* ──────── SECTION 3: NGHỆ SĨ (5 Columns Circular Profile Grid) ──────── */}
-            {(activeTopicTab === 'all' || activeTopicTab === 'artists') && relatedArtists.length > 0 && (
-              <Box>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 900, mb: 0, letterSpacing: '-0.3px' }}>
-                    {activeTopicTab === 'artists' ? `Tất cả Nghệ Sĩ (${relatedArtists.length})` : 'Nghệ Sĩ'}
-                  </Typography>
-                  {relatedArtists.length > 5 && (
-                    <Button
-                      size="small"
-                      endIcon={<ArrowIcon sx={{ transform: activeTopicTab === 'artists' ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                      onClick={() => handleSelectTopicTab(activeTopicTab === 'artists' ? 'all' : 'artists')}
-                      sx={{ color: '#14b8a6', fontWeight: 800, borderRadius: 2, textTransform: 'none' }}
+                {/* Right: Spotlight #01 Trending Song Hologram (5/12) */}
+                <Grid size={{ xs: 12, md: 5 }}>
+                  {songs.length > 0 ? (
+                    <Box
+                      onClick={() => playSong(songs[0], { queue: songs })}
+                      sx={{
+                        height: '100%',
+                        minHeight: 280,
+                        p: 3,
+                        borderRadius: '28px',
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.65)' : '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        backdropFilter: 'blur(16px)',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: '#6c63ff',
+                          transform: 'translateY(-4px)',
+                          boxShadow: '0 24px 60px rgba(108, 99, 255, 0.35)',
+                        },
+                        '&:hover .spotlight-disc': {
+                          transform: 'rotate(45deg) scale(1.05)',
+                        }
+                      }}
                     >
-                      {activeTopicTab === 'artists' ? 'Thu gọn' : 'Xem tất cả'}
-                    </Button>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.35, borderRadius: '9999px', bgcolor: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                          <FireIcon sx={{ fontSize: 15, color: '#f59e0b' }} />
+                          <Typography sx={{ fontSize: 11, fontWeight: 900, color: '#f59e0b' }}>
+                            #01 SPOTLIGHT THỂ LOẠI
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label="Phát ngay"
+                          size="small"
+                          icon={<PlayIcon sx={{ color: '#00e5ff !important', fontSize: 16 }} />}
+                          sx={{ fontWeight: 900, bgcolor: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.35)' }}
+                        />
+                      </Stack>
+
+                      {/* Disc & Song Info */}
+                      <Stack direction="row" spacing={2.5} alignItems="center" sx={{ my: 2 }}>
+                        {/* 3D Vinyl Disc Effect */}
+                        <Box sx={{ position: 'relative', width: 90, height: 90, flexShrink: 0 }}>
+                          <Box
+                            className="spotlight-disc"
+                            sx={{
+                              width: 90,
+                              height: 90,
+                              borderRadius: '50%',
+                              backgroundImage: `url(${songs[0].imageUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300'})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                              border: '3px solid rgba(255,255,255,0.2)',
+                              transition: 'transform 0.5s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              '&::after': {
+                                content: '""',
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                bgcolor: '#090d1a',
+                                border: '2px solid rgba(255,255,255,0.6)',
+                              }
+                            }}
+                          />
+                        </Box>
+
+                        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 900, mb: 0.5 }} noWrap>
+                            {songs[0].title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1 }} noWrap>
+                            {Array.isArray(songs[0].artists) ? songs[0].artists.map((a) => a?.name).filter(Boolean).join(', ') : (songs[0].artistText || 'Nhiều nghệ sĩ')}
+                          </Typography>
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Typography sx={{ fontSize: 12, fontWeight: 750, color: '#8c85ff' }}>
+                              🎧 {Number(songs[0].playCount || 1280).toLocaleString()} lượt nghe
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
+
+                      <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', fontWeight: 550 }}>
+                        Giai điệu nổi bật được nghe nhiều nhất trong tuần này.
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ p: 4, height: '100%', borderRadius: '28px', border: '1px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">Chưa có giai điệu nào</Typography>
+                    </Box>
+                  )}
+                </Grid>
+              </Grid>
+
+              {songs.length === 0 ? (
+                <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.15)', bgcolor: 'rgba(255,255,255,0.02)' }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
+                    Chủ đề này chưa có bài hát nào
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Hệ thống sẽ sớm cập nhật thêm các ca khúc mới cho chủ đề này.
+                  </Typography>
+                </Box>
+              ) : (
+                <Stack spacing={4.5}>
+                  {/* ── 2. MATRIX NỘI DUNG TÙY BIẾN THEO TAB ── */}
+
+                  {/* TAB 1: ✨ TẤT CẢ (BENTO MATRIX 2 CỘT 7.5/12 + 4.5/12) */}
+                  {activeTopicTab === 'all' && (
+                    <Grid container spacing={3}>
+                      {/* Left: Dòng Chảy Tác Phẩm Nổi Bật (7.5/12) */}
+                      <Grid size={{ xs: 12, md: 7.5 }}>
+                        <Box
+                          sx={{
+                            p: { xs: 2.5, sm: 3.5 },
+                            borderRadius: '28px',
+                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            backdropFilter: 'blur(16px)',
+                          }}
+                        >
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+                            <Stack direction="row" spacing={1.25} alignItems="center">
+                              <MusicIcon sx={{ color: '#00e5ff', fontSize: 24 }} />
+                              <Typography sx={{ fontWeight: 900, fontSize: 20, letterSpacing: '-0.02em' }}>
+                                Dòng Chảy Tác Phẩm Tiêu Biểu
+                              </Typography>
+                            </Stack>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<RefreshIcon />}
+                              onClick={handleRefreshHotSongs}
+                              disabled={songs.length <= 1}
+                              sx={{
+                                color: '#00e5ff',
+                                borderColor: 'rgba(0, 229, 255, 0.3)',
+                                borderRadius: '9999px',
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                px: 2,
+                                '&:hover': { borderColor: '#00e5ff', bgcolor: 'rgba(0, 229, 255, 0.1)' },
+                              }}
+                            >
+                              Đổi Bài
+                            </Button>
+                          </Stack>
+
+                          {/* 2-Column Ranked Song Stream */}
+                          <Grid container spacing={1.5}>
+                            {hotSongs.slice(0, 10).map((song, idx) => {
+                              const isCur = currentSong?._id === song._id;
+                              const isPlay = isPlaying && isCur;
+                              return (
+                                <Grid size={{ xs: 12, sm: 6 }} key={`detail-song-${song._id}`}>
+                                  <Stack
+                                    direction="row"
+                                    spacing={1.5}
+                                    alignItems="center"
+                                    onClick={() => playSong(song, { queue: songs })}
+                                    sx={{
+                                      p: 1.25,
+                                      borderRadius: '16px',
+                                      cursor: 'pointer',
+                                      bgcolor: isCur ? 'rgba(108, 99, 255, 0.15)' : 'transparent',
+                                      border: '1px solid',
+                                      borderColor: isCur ? '#6c63ff' : 'transparent',
+                                      transition: 'all 0.2s ease',
+                                      '&:hover': {
+                                        bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                        borderColor: 'rgba(255, 255, 255, 0.15)',
+                                        transform: 'translateX(3px)',
+                                      }
+                                    }}
+                                  >
+                                    <Typography sx={{ fontWeight: 900, fontSize: 13, color: idx < 3 ? '#00e5ff' : 'text.secondary', width: 22, textAlign: 'center' }}>
+                                      {String(idx + 1).padStart(2, '0')}
+                                    </Typography>
+                                    <Avatar
+                                      src={song.imageUrl}
+                                      variant="rounded"
+                                      sx={{ width: 44, height: 44, borderRadius: '10px' }}
+                                    />
+                                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 800, color: isCur ? '#00e5ff' : 'inherit' }} noWrap>
+                                        {song.title}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }} noWrap display="block">
+                                        {Array.isArray(song.artists) ? song.artists.map(a => a?.name).filter(Boolean).join(', ') : (song.artistText || 'Nhiều nghệ sĩ')}
+                                      </Typography>
+                                    </Box>
+                                    <IconButton size="small" sx={{ color: isPlay ? '#00e5ff' : 'text.secondary' }}>
+                                      <PlayIcon sx={{ fontSize: 20 }} />
+                                    </IconButton>
+                                  </Stack>
+                                </Grid>
+                              );
+                            })}
+                          </Grid>
+                        </Box>
+                      </Grid>
+
+                      {/* Right: Radar Tuyển Tập & Nghệ Sĩ Trực Thuộc (4.5/12) */}
+                      <Grid size={{ xs: 12, md: 4.5 }}>
+                        <Stack spacing={2.5}>
+                          {/* Nghệ sĩ tiêu biểu Mini Box */}
+                          {relatedArtists.length > 0 && (
+                            <Box
+                              sx={{
+                                p: 2.5,
+                                borderRadius: '24px',
+                                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                              }}
+                            >
+                              <Typography sx={{ fontWeight: 900, fontSize: 16, mb: 2 }}>
+                                🪐 Nghệ Sĩ Tiêu Biểu
+                              </Typography>
+                              <Stack spacing={1.5}>
+                                {relatedArtists.slice(0, 3).map((artist) => {
+                                  const isFollowed = !!followedArtists[artist._id];
+                                  return (
+                                    <Stack
+                                      key={`side-artist-${artist._id}`}
+                                      direction="row"
+                                      spacing={1.5}
+                                      alignItems="center"
+                                      justifyContent="space-between"
+                                      sx={{ p: 1, borderRadius: '14px', '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' } }}
+                                    >
+                                      <Stack
+                                        direction="row"
+                                        spacing={1.5}
+                                        alignItems="center"
+                                        onClick={() => navigate(`/artists/${artist._id}`)}
+                                        sx={{ cursor: 'pointer', minWidth: 0, flexGrow: 1 }}
+                                      >
+                                        <Avatar src={artist.avatar} sx={{ width: 42, height: 42 }} />
+                                        <Box sx={{ minWidth: 0 }}>
+                                          <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
+                                            {artist.name}
+                                          </Typography>
+                                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                            {formatFollowerCount(artistFollowersState[artist._id] ?? artist.followers)}
+                                          </Typography>
+                                        </Box>
+                                      </Stack>
+                                      <Button
+                                        size="small"
+                                        variant={isFollowed ? 'outlined' : 'contained'}
+                                        onClick={() => handleToggleFollow(artist)}
+                                        sx={{
+                                          borderRadius: '9999px',
+                                          fontSize: 10.5,
+                                          py: 0.25,
+                                          px: 1.25,
+                                          fontWeight: 800,
+                                          textTransform: 'none',
+                                          bgcolor: isFollowed ? 'transparent' : '#6c63ff',
+                                        }}
+                                      >
+                                        {isFollowed ? 'Đã theo dõi' : 'Quan tâm'}
+                                      </Button>
+                                    </Stack>
+                                  );
+                                })}
+                              </Stack>
+                            </Box>
+                          )}
+
+                          {/* Featured Playlist Mini Card */}
+                          {relatedPlaylists.length > 0 && (
+                            <Box
+                              onClick={() => navigate(`/collections/${relatedPlaylists[0]._id}`)}
+                              sx={{
+                                p: 2.5,
+                                borderRadius: '24px',
+                                background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.2) 100%)',
+                                border: '1px solid rgba(6, 182, 212, 0.3)',
+                                cursor: 'pointer',
+                                transition: 'all 0.25s ease',
+                                '&:hover': {
+                                  borderColor: '#06b6d4',
+                                  transform: 'translateY(-3px)',
+                                }
+                              }}
+                            >
+                              <Typography sx={{ fontSize: 11, fontWeight: 900, color: '#00e5ff', textTransform: 'uppercase', mb: 1 }}>
+                                📻 PLAYLIST GỢI Ý ĐẶC BIỆT
+                              </Typography>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 0.5 }} noWrap>
+                                {relatedPlaylists[0].name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 1.5 }}>
+                                Tuyển tập {relatedPlaylists[0].songCount || 0} bài hát
+                              </Typography>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<PlayIcon />}
+                                sx={{
+                                  bgcolor: '#06b6d4',
+                                  color: '#fff',
+                                  fontWeight: 850,
+                                  borderRadius: '9999px',
+                                  textTransform: 'none',
+                                  fontSize: 12,
+                                  '&:hover': { bgcolor: '#0891b2' }
+                                }}
+                              >
+                                Khám phá Playlist
+                              </Button>
+                            </Box>
+                          )}
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  )}
+
+                  {/* TAB 2: 🎧 BÀI HÁT (TOÀN BỘ DANH SÁCH 3 CỘT) */}
+                  {activeTopicTab === 'songs' && (
+                    <Box>
+                      <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 2.5, letterSpacing: '-0.02em' }}>
+                        Toàn Bộ Danh Sách Bài Hát ({songs.length})
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {songs.map((song) => (
+                          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
+                            <ClientSongItem
+                              song={song}
+                              showDuration={true}
+                              isCurrent={currentSong?._id === song._id}
+                              isPlaying={isPlaying && currentSong?._id === song._id}
+                              onPlay={() => playSong(song, { queue: songs })}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* TAB 3 / SECTION: 📻 PLAYLIST & TUYỂN TẬP */}
+                  {(activeTopicTab === 'all' || activeTopicTab === 'playlists') && relatedPlaylists.length > 0 && (
+                    <Box>
+                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
+                        <LibraryMusicIcon sx={{ color: '#06b6d4', fontSize: 24 }} />
+                        <Typography sx={{ fontWeight: 900, fontSize: 20, letterSpacing: '-0.02em' }}>
+                          Tuyển Tập & Playlist Liên Quan
+                        </Typography>
+                      </Stack>
+                      <Grid container spacing={2}>
+                        {relatedPlaylists.map((playlist) => (
+                          <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={playlist._id}>
+                            <ClientPlaylistCard
+                              playlist={playlist}
+                              onPlay={async (e, pl) => {
+                                e.stopPropagation();
+                                const res = await clientPlaylistsApi.getSystemById(pl._id);
+                                const plSongs = res.data?.playlist?.songs || [];
+                                if (plSongs.length) playSong(plSongs[0], { queue: plSongs });
+                              }}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
+
+                  {/* TAB 4 / SECTION: 🪐 NGHỆ SĨ */}
+                  {(activeTopicTab === 'all' || activeTopicTab === 'artists') && relatedArtists.length > 0 && (
+                    <Box>
+                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2 }}>
+                        <RadioIcon sx={{ color: '#6366f1', fontSize: 24 }} />
+                        <Typography sx={{ fontWeight: 900, fontSize: 20, letterSpacing: '-0.02em' }}>
+                          Hành Tinh Nghệ Sĩ Thuộc Thể Loại
+                        </Typography>
+                      </Stack>
+                      <Grid container spacing={2}>
+                        {relatedArtists.map((artist) => {
+                          const isFollowed = !!followedArtists[artist._id];
+                          const followers = artistFollowersState[artist._id] ?? artist.followers;
+                          return (
+                            <Grid size={{ xs: 6, sm: 4, md: 2 }} key={artist._id}>
+                              <Box
+                                onClick={() => navigate(`/artists/${artist._id}`)}
+                                sx={{
+                                  p: 2,
+                                  borderRadius: '24px',
+                                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
+                                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                                  textAlign: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.25s ease',
+                                  '&:hover': {
+                                    transform: 'translateY(-4px)',
+                                    borderColor: '#6c63ff',
+                                    boxShadow: '0 10px 24px -5px rgba(108, 99, 255, 0.35)',
+                                  }
+                                }}
+                              >
+                                <Avatar
+                                  src={artist.avatar}
+                                  sx={{ width: 72, height: 72, mx: 'auto', mb: 1.5, border: '2px solid rgba(108, 99, 255, 0.4)' }}
+                                />
+                                <Typography variant="body2" sx={{ fontWeight: 850 }} noWrap>
+                                  {artist.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5 }} display="block">
+                                  {formatFollowerCount(followers)}
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  variant={isFollowed ? 'outlined' : 'contained'}
+                                  startIcon={isFollowed ? <CheckIcon /> : <FollowIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFollow(artist);
+                                  }}
+                                  sx={{
+                                    borderRadius: '9999px',
+                                    fontSize: 11,
+                                    py: 0.3,
+                                    px: 1.5,
+                                    textTransform: 'none',
+                                    fontWeight: 800,
+                                    bgcolor: isFollowed ? 'transparent' : '#6c63ff',
+                                    color: isFollowed ? 'text.secondary' : '#fff',
+                                    borderColor: isFollowed ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                  }}
+                                >
+                                  {isFollowed ? 'Đã quan tâm' : 'Quan tâm'}
+                                </Button>
+                              </Box>
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </Box>
                   )}
                 </Stack>
-                
-                <Grid container spacing={3}>
-                  {(activeTopicTab === 'artists' ? relatedArtists : relatedArtists.slice(0, 5)).map((artist) => {
-                    const isFollowed = followedArtists[artist._id] || false;
-                    return (
-                      <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={artist._id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Avatar
-                          src={artist.imageUrl || artist.avatar}
-                          sx={{
-                            width: 130,
-                            height: 130,
-                            mb: 2,
-                            boxShadow: '0 6px 18px rgba(0,0,0,0.1)',
-                            cursor: 'pointer',
-                            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                              transform: 'scale(1.08)',
-                            }
-                          }}
-                          onClick={() => navigate(`/artists/${artist._id}`)}
-                        />
-                        <Typography
-                          variant="subtitle1"
-                          fontWeight={850}
-                          noWrap
-                          sx={{
-                            maxWidth: 160,
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            '&:hover': { color: '#14b8a6' }
-                          }}
-                          onClick={() => navigate(`/artists/${artist._id}`)}
-                        >
-                          {artist.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
-                          {formatFollowerCount(artistFollowersState[artist._id] || 0)}
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          onClick={() => handleToggleFollow(artist)}
-                          startIcon={isFollowed ? <CheckIcon sx={{ fontSize: 16 }} /> : <FollowIcon sx={{ fontSize: 16 }} />}
-                          sx={{
-                            mt: 2,
-                            borderRadius: 10,
-                            px: 3,
-                            py: 0.5,
-                            fontSize: '11px',
-                            fontWeight: 900,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.8px',
-                            borderColor: isFollowed ? '#14b8a6' : 'rgba(255, 255, 255, 0.25)',
-                            color: isFollowed ? '#14b8a6' : 'text.primary',
-                            bgcolor: isFollowed ? 'rgba(20, 184, 166, 0.08)' : 'transparent',
-                            transition: 'all 0.25s',
-                            '&:hover': {
-                              borderColor: '#14b8a6',
-                              bgcolor: 'rgba(20, 184, 166, 0.12)',
-                              color: '#14b8a6',
-                            }
-                          }}
-                        >
-                          {isFollowed ? 'ĐÃ QUAN TÂM' : 'QUAN TÂM'}
-                        </Button>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Box>
-            )}
-          </Stack>
-        )}
-      </>
-    )}
-  </Box>
-)}
+              )}
+            </Stack>
+          )}
+        </Box>
+      )}
     </ClientLayout>
   );
 }

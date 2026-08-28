@@ -27,6 +27,14 @@ import {
   Check as CheckIcon,
   PersonAdd as FollowIcon,
   QueueMusic as QueueMusicIcon,
+  BoltRounded as BoltIcon,
+  WavesRounded as WavesIcon,
+  NightlightRounded as MoonIcon,
+  LocalFireDepartmentRounded as FireIcon,
+  WaterDropRounded as WaterIcon,
+  EmojiEventsRounded as TrophyIcon,
+  MicRounded as MicIcon,
+  RadioRounded as RadioIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientArtistApi, clientPlaylistsApi, clientSongsApi } from '../../services/client/client.service';
@@ -40,16 +48,7 @@ import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 import PlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
 
-const getPersonalizedGreeting = (userName) => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) {
-    return { text: `Chào buổi sáng, ${userName} ☀️`, subtitle: 'Khởi đầu ngày mới tràn đầy cảm hứng!' };
-  } else if (hour >= 12 && hour < 18) {
-    return { text: `Chào buổi chiều, ${userName} 🌤️`, subtitle: 'Nạp thêm năng lượng cùng giai điệu tuyệt vời!' };
-  } else {
-    return { text: `Chào buổi tối, ${userName} 🌙`, subtitle: 'Thư giãn và khép lại ngày dài cùng âm nhạc nhé!' };
-  }
-};
+
 
 function formatFollowerCount(count) {
   if (count === undefined || count === null) return '0 quan tâm';
@@ -64,7 +63,7 @@ function formatFollowerCount(count) {
 
 
 function ClientHome() {
-  const { userName, isLoggedIn } = useClientSession();
+  const { isLoggedIn } = useClientSession();
   const navigate = useNavigate();
   const {
     playSong,
@@ -77,16 +76,14 @@ function ClientHome() {
     lyricsLines,
     activeLyricIndex,
     hasSyncedLyrics,
+    lyricsLoading,
+    handleNext,
+    handlePrevious,
   } = useClientPlayer();
-  const displayDuration = (Number.isFinite(duration) && duration > 0) ? duration : (currentSong?.duration || 0);
   const [songs, setSongs] = useState([]);
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const lyricItemRefs = useRef([]);
-  const lyricsContainerRef = useRef(null);
-  const [nowPlayingColors, setNowPlayingColors] = useState(null);
-  const [scrubTime, setScrubTime] = useState(null);
   const [queueOpen, setQueueOpen] = useState(false);
   const { showToast } = useAppToast();
   const [followedArtists, setFollowedArtists] = useState({});
@@ -95,8 +92,18 @@ function ClientHome() {
   const [isPlaylistsExpanded, setIsPlaylistsExpanded] = useState(false);
   const [displayedSongCount, setDisplayedSongCount] = useState(8);
   const [loadingMoreSongs, setLoadingMoreSongs] = useState(false);
+  const [scrubTime, setScrubTime] = useState(null);
+  const lyricItemRefs = useRef([]);
+  const lyricsContainerRef = useRef(null);
 
-  const greeting = useMemo(() => getPersonalizedGreeting(userName), [userName]);
+  const displayDuration = (Number.isFinite(duration) && duration > 0) ? duration : (currentSong?.duration || 0);
+
+  const formatDuration = (seconds) => {
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,127 +128,12 @@ function ClientHome() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const extractColors = async () => {
-      const imageUrl = currentSong?.imageUrl;
-      if (!imageUrl) {
-        setNowPlayingColors(null);
-        return;
-      }
-
-      const songId = currentSong?._id || currentSong?.id;
-      const cacheKey = songId ? `mf_color_${songId}` : null;
-      if (cacheKey) {
-        try {
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            setNowPlayingColors(JSON.parse(cached));
-            return;
-          }
-        } catch {
-          // ignore cache read error
-        }
-      }
-
-      try {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-
-        await new Promise((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error('load_failed'));
-          img.src = imageUrl;
-        });
-
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) throw new Error('no_canvas');
-
-        const size = 12;
-        canvas.width = size;
-        canvas.height = size;
-        ctx.drawImage(img, 0, 0, size, size);
-
-        const { data } = ctx.getImageData(0, 0, size, size);
-        const buckets = {
-          dark: { r: 0, g: 0, b: 0, n: 0 },
-          mid: { r: 0, g: 0, b: 0, n: 0 },
-          bright: { r: 0, g: 0, b: 0, n: 0 },
-          all: { r: 0, g: 0, b: 0, n: 0 },
-        };
-
-        for (let i = 0; i < data.length; i += 4) {
-          const a = data[i + 3];
-          if (a < 40) continue;
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-          const key = lum < 85 ? 'dark' : lum > 170 ? 'bright' : 'mid';
-
-          buckets[key].r += r;
-          buckets[key].g += g;
-          buckets[key].b += b;
-          buckets[key].n += 1;
-
-          buckets.all.r += r;
-          buckets.all.g += g;
-          buckets.all.b += b;
-          buckets.all.n += 1;
-        }
-
-        const avg = (bucket) => {
-          const n = bucket.n || 1;
-          return {
-            r: Math.round(bucket.r / n),
-            g: Math.round(bucket.g / n),
-            b: Math.round(bucket.b / n),
-          };
-        };
-
-        const fallback = avg(buckets.all);
-        const dark = buckets.dark.n ? avg(buckets.dark) : fallback;
-        const mid = buckets.mid.n ? avg(buckets.mid) : fallback;
-        const bright = buckets.bright.n ? avg(buckets.bright) : fallback;
-
-        const colors = { dark, mid, bright };
-        if (cacheKey) {
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify(colors));
-          } catch {
-            // ignore cache write error
-          }
-        }
-
-        if (!cancelled) {
-          setNowPlayingColors(colors);
-        }
-      } catch {
-        if (!cancelled) setNowPlayingColors(null);
-      }
-    };
-
-    const scheduleIdle = window.requestIdleCallback
-      ? window.requestIdleCallback(() => extractColors(), { timeout: 800 })
-      : window.setTimeout(extractColors, 120);
-
-    return () => {
-      cancelled = true;
-      if (window.cancelIdleCallback && typeof scheduleIdle === 'number') {
-        window.cancelIdleCallback(scheduleIdle);
-      } else {
-        window.clearTimeout(scheduleIdle);
-      }
-    };
-  }, [currentSong?._id, currentSong?.imageUrl]);
-
   const topSongs = useMemo(
     () => [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 6),
     [songs],
   );
+  const spotlightSong = useMemo(() => songs[0] || null, [songs]);
+  const quickListenSongs = useMemo(() => songs.slice(0, 6), [songs]);
   const recommendedSongs = useMemo(() => songs.slice(0, displayedSongCount), [songs, displayedSongCount]);
 
   const handleLoadMoreSongs = async () => {
@@ -261,13 +153,6 @@ function ClientHome() {
     } finally {
       setLoadingMoreSongs(false);
     }
-  };
-
-  const formatDuration = (seconds) => {
-    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
-    const mins = Math.floor(safeSeconds / 60);
-    const secs = safeSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const topArtists = useMemo(() => {
@@ -379,6 +264,7 @@ function ClientHome() {
     }
   };
 
+  // Synced Lyrics Autoscroll Effect
   useEffect(() => {
     if (!hasSyncedLyrics || activeLyricIndex < 0) return;
     const container = lyricsContainerRef.current;
@@ -390,12 +276,12 @@ function ClientHome() {
     const lineTopInContainer = lineRect.top - containerRect.top + container.scrollTop;
     const lineBottomInContainer = lineTopInContainer + lineRect.height;
 
-    const padding = 18;
+    const padding = 24;
     const viewTop = container.scrollTop;
     const viewBottom = viewTop + container.clientHeight;
 
     if (lineTopInContainer < viewTop + padding || lineBottomInContainer > viewBottom - padding) {
-      const targetScrollTop = lineTopInContainer - (container.clientHeight * 0.35);
+      const targetScrollTop = lineTopInContainer - (container.clientHeight * 0.38);
       container.scrollTo({
         top: Math.max(0, targetScrollTop),
         behavior: 'smooth',
@@ -403,752 +289,991 @@ function ClientHome() {
     }
   }, [activeLyricIndex, hasSyncedLyrics, lyricsLines]);
 
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [activeTabFilter, setActiveTabFilter] = useState('all');
+
+  const moodOrbs = useMemo(() => [
+    { id: 'hyper', label: 'Hyper Flow', desc: 'Bùng nổ năng lượng', icon: <BoltIcon />, color: '#ec4899', gradient: 'linear-gradient(135deg, #ec4899, #f43f5e)' },
+    { id: 'abyss', label: 'Deep Abyss', desc: 'Tập trung sâu & Lofi', icon: <WavesIcon />, color: '#06b6d4', gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)' },
+    { id: 'cosmic', label: 'Cosmic Chill', desc: 'Thư giãn vũ trụ', icon: <MoonIcon />, color: '#6366f1', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)' },
+    { id: 'party', label: 'Neon Party', desc: 'EDM & Sôi động', icon: <FireIcon />, color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
+    { id: 'rain', label: 'Rainy Lo-Fi', desc: 'Lắng đọng cảm xúc', icon: <WaterIcon />, color: '#38bdf8', gradient: 'linear-gradient(135deg, #38bdf8, #818cf8)' },
+  ], []);
+
+  const genreCapsules = useMemo(() => [
+    { id: 'vpop', name: 'V-Pop Điểm Hẹn', color: '#ec4899', icon: '🇻🇳', desc: 'Bản hit Việt mới nhất' },
+    { id: 'usuk', name: 'US-UK Billboard', color: '#6366f1', icon: '🇺🇸', desc: 'Top hits toàn cầu' },
+    { id: 'kpop', name: 'K-Pop Hallyu', color: '#06b6d4', icon: '🇰🇷', desc: 'Giai điệu xu hướng' },
+    { id: 'indie', name: 'Indie & Acoustic', color: '#10b981', icon: '🎸', desc: 'Mộc mạc & Thư thái' },
+    { id: 'rap', name: 'Rap & Hip-Hop', color: '#f59e0b', icon: '🎤', desc: 'Bùng nổ nhịp beat' },
+    { id: 'edm', name: 'EDM Không Gian', color: '#a855f7', icon: '🌌', desc: 'Năng lượng vũ trụ' },
+  ], []);
+
+  const handleMoodSelect = (mood) => {
+    setSelectedMood(mood.id);
+    navigate(`/ai-mood?mood=${mood.id}`);
+  };
+
+  const top3Podium = useMemo(() => topSongs.slice(0, 3), [topSongs]);
+  const restTopSongs = useMemo(() => topSongs.slice(3, 10), [topSongs]);
+
   return (
     <ClientLayout title="Trang chủ">
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <Stack spacing={3}>
-            <Box
-              sx={{
-                p: { xs: 3, sm: 4 },
-                borderRadius: 5,
-                position: 'relative',
-                overflow: 'hidden',
-                background: (theme) => theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, #0b0f19 0%, #111827 100%)'
-                  : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                border: '1px solid',
-                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 10px 30px rgba(0,0,0,0.3)' : '0 10px 30px rgba(0,0,0,0.02)',
-              }}
-            >
-              {/* Decorative blobs */}
+      {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: 3 }}>{error}</Alert>}
+
+      <Stack spacing={4} sx={{ width: '100%', pb: 4 }}>
+        {/* ── 0. TOP CATEGORY PILLS BAR ── */}
+        <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 0.5, scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+          {[
+            { id: 'all', label: '✨ Tất Cả Dòng Chảy' },
+            { id: 'lyrics', label: '🎙️ Live Lyrics Karaoke' },
+            { id: 'tracks', label: '🎧 Âm Nhạc Hot' },
+            { id: 'mood', label: '⚡ Trạm Cảm Xúc' },
+            { id: 'podium', label: '🏆 Bục Vinh Quang' },
+            { id: 'genres', label: '📻 Sóng Thể Loại' },
+            { id: 'artists', label: '🪐 Hành Tinh Nghệ Sĩ' },
+            { id: 'playlists', label: '📻 Tuyển Tập Đặc Tuyển' },
+          ].map((tab) => {
+            const isTabActive = activeTabFilter === tab.id;
+            return (
               <Box
+                key={tab.id}
+                onClick={() => setActiveTabFilter(tab.id)}
                 sx={{
-                  position: 'absolute',
-                  top: '-40px',
-                  right: '-40px',
-                  width: 200,
-                  height: 200,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(20, 184, 166, 0.25) 0%, transparent 70%)',
-                  filter: 'blur(30px)',
-                  zIndex: 0,
-                  pointerEvents: 'none',
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: '-50px',
-                  left: '30%',
-                  width: 160,
-                  height: 160,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%)',
-                  filter: 'blur(25px)',
-                  zIndex: 0,
-                  pointerEvents: 'none',
-                }}
-              />
-
-              <Stack spacing={2} sx={{ position: 'relative', zIndex: 1 }} alignItems="flex-start">
-                <Box
-                  sx={{
-                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.15)' : 'rgba(20, 184, 166, 0.08)',
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: 2,
-                    border: '1px solid rgba(20, 184, 166, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.75,
-                  }}
-                >
-                  <SparklesIcon sx={{ fontSize: 13, color: '#14b8a6' }} />
-                  <Typography sx={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2, color: '#14b8a6' }}>
-                    Chào mừng trở lại
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: -1, mb: 0.75, background: 'linear-gradient(90deg, #14b8a6, #6c63ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.2 }}>
-                    {greeting.text}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, maxWidth: 500 }}>
-                    {greeting.subtitle}
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={1.5} sx={{ pt: 0.5 }}>
-                  <Button
-                    variant="contained"
-                    onClick={() => navigate('/discover')}
-                    startIcon={<SparklesIcon sx={{ fontSize: 16 }} />}
-                    sx={{
-                      background: 'linear-gradient(90deg, #14b8a6, #6c63ff)',
-                      color: '#fff',
-                      fontWeight: 800,
-                      borderRadius: 2.5,
-                      px: 3,
-                      py: 1,
-                      textTransform: 'none',
-                      boxShadow: '0 4px 14px rgba(20, 184, 166, 0.25)',
-                      '&:hover': {
-                        background: 'linear-gradient(90deg, #0d9488, #5b54e0)',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 18px rgba(20, 184, 166, 0.35)',
-                      },
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                  >
-                    Khám phá ngay
-                  </Button>
-                  {currentSong && !isPlaying && (
-                    <Button
-                      variant="outlined"
-                      onClick={togglePlay}
-                      startIcon={<PlayIcon sx={{ fontSize: 16 }} />}
-                      sx={{
-                        borderColor: '#14b8a6',
-                        color: '#14b8a6',
-                        fontWeight: 700,
-                        borderRadius: 2.5,
-                        px: 3,
-                        py: 1,
-                        textTransform: 'none',
-                        '&:hover': {
-                          borderColor: '#0d9488',
-                          bgcolor: 'rgba(20, 184, 166, 0.04)',
-                          transform: 'translateY(-2px)',
-                        },
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      }}
-                    >
-                      Tiếp tục phát
-                    </Button>
-                  )}
-                </Stack>
-              </Stack>
-            </Box>
-
-            <Paper
-              sx={{
-                p: 2.5,
-                borderRadius: 4,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
-                border: '1px solid',
-                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
-              }}
-            >
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-                  Nghệ Sĩ
-                </Typography>
-                {topArtists.length > 5 && (
-                  <Button
-                    size="small"
-                    endIcon={<ArrowIcon sx={{ transform: isArtistsExpanded ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                    onClick={() => setIsArtistsExpanded((prev) => !prev)}
-                    sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
-                  >
-                    {isArtistsExpanded ? 'Thu gọn' : 'Xem tất cả'}
-                  </Button>
-                )}
-              </Stack>
-              <Grid container spacing={3}>
-                {(isArtistsExpanded ? topArtists.slice(0, 20) : topArtists.slice(0, 5)).map((artist) => {
-                  const isFollowed = followedArtists[artist._id] || false;
-                  return (
-                    <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={artist._id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Avatar
-                        src={artist.avatar}
-                        sx={{
-                          width: { xs: 90, sm: 110, md: 120 },
-                          height: { xs: 90, sm: 110, md: 120 },
-                          mb: 2,
-                          boxShadow: '0 6px 18px rgba(0,0,0,0.1)',
-                          cursor: 'pointer',
-                          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          '&:hover': {
-                            transform: 'scale(1.08)',
-                          }
-                        }}
-                        onClick={() => navigate(`/artists/${artist._id}`)}
-                      >
-                        {artist.name.charAt(0)}
-                      </Avatar>
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight={850}
-                        noWrap
-                        sx={{
-                          maxWidth: '100%',
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          fontSize: { xs: '13px', sm: '15px' },
-                          '&:hover': { color: '#14b8a6' }
-                        }}
-                        onClick={() => navigate(`/artists/${artist._id}`)}
-                      >
-                        {artist.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
-                        {formatFollowerCount(artistFollowersState[artist._id] || 0)}
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        onClick={() => handleToggleFollow(artist)}
-                        startIcon={isFollowed ? <CheckIcon sx={{ fontSize: 16 }} /> : <FollowIcon sx={{ fontSize: 16 }} />}
-                        sx={{
-                          mt: 2,
-                          borderRadius: 10,
-                          px: { xs: 2, sm: 3 },
-                          py: 0.5,
-                          fontSize: '11px',
-                          fontWeight: 900,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.8px',
-                          borderColor: isFollowed ? '#14b8a6' : 'rgba(255, 255, 255, 0.25)',
-                          color: isFollowed ? '#14b8a6' : 'text.primary',
-                          bgcolor: isFollowed ? 'rgba(20, 184, 166, 0.08)' : 'transparent',
-                          transition: 'all 0.25s',
-                          '&:hover': {
-                            borderColor: '#14b8a6',
-                            bgcolor: 'rgba(20, 184, 166, 0.12)',
-                            color: '#14b8a6',
-                          }
-                        }}
-                      >
-                        {isFollowed ? 'ĐÃ QUAN TÂM' : 'QUAN TÂM'}
-                      </Button>
-                    </Grid>
-                  );
-                })}
-                {!topArtists.length && (
-                  <Grid size={{ xs: 12 }}>
-                    <Typography color="text.secondary" sx={{ py: 1 }}>Chưa có dữ liệu nghệ sĩ.</Typography>
-                  </Grid>
-                )}
-              </Grid>
-            </Paper>
-
-            <Paper
-              sx={{
-                p: 2.5,
-                borderRadius: 4,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
-                border: '1px solid',
-                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
-              }}
-            >
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-                  Đề xuất cho bạn
-                </Typography>
-                {playlists.length > 4 && (
-                  <Button
-                    size="small"
-                    endIcon={<ArrowIcon sx={{ transform: isPlaylistsExpanded ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                    onClick={() => setIsPlaylistsExpanded((prev) => !prev)}
-                    sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
-                  >
-                    {isPlaylistsExpanded ? 'Thu gọn' : 'Xem tất cả'}
-                  </Button>
-                )}
-              </Stack>
-              <Grid container spacing={2}>
-                {(isPlaylistsExpanded ? playlists.slice(0, 16) : playlists.slice(0, 4)).map((playlist) => (
-                  <Grid size={{ xs: 6, sm: 3 }} key={playlist._id}>
-                    <ClientPlaylistCard
-                      playlist={playlist}
-                      onClick={() => navigate(`/collections/${playlist._id}`)}
-                    />
-                  </Grid>
-                ))}
-                {!playlists.length && (
-                  <Grid size={{ xs: 12 }}>
-                    <Typography color="text.secondary" sx={{ py: 1 }}>Chưa có collection hệ thống.</Typography>
-                  </Grid>
-                )}
-              </Grid>
-            </Paper>
-
-            <Paper
-              sx={{
-                p: 2.5,
-                borderRadius: 4,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
-                border: '1px solid',
-                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
-              }}
-            >
-              <Typography variant="h6" sx={{ fontWeight: 800, mb: 2.5, letterSpacing: -0.5 }}>
-                Gợi ý dành cho bạn
-              </Typography>
-              {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress size={28} sx={{ color: '#14b8a6' }} />
-                </Box>
-              ) : (
-                <Grid container spacing={2}>
-                  {recommendedSongs.map((song) => (
-                    <Grid size={{ xs: 12, md: 6 }} key={song._id}>
-                      <ClientSongItem
-                        song={song}
-                        isCurrent={currentSong?._id === song._id}
-                        isPlaying={isPlaying}
-                        onPlay={() => playSong(song, { queue: recommendedSongs })}
-                      />
-                    </Grid>
-                  ))}
-                  {!recommendedSongs.length && (
-                    <Grid size={{ xs: 12 }}>
-                      <Typography color="text.secondary" sx={{ py: 1 }}>Chưa có bài hát để đề xuất.</Typography>
-                    </Grid>
-                  )}
-                </Grid>
-              )}
-              {songs.length > displayedSongCount && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                  <Button
-                    variant="outlined"
-                    size="medium"
-                    onClick={handleLoadMoreSongs}
-                    disabled={loadingMoreSongs}
-                    startIcon={loadingMoreSongs ? <CircularProgress size={16} sx={{ color: '#14b8a6' }} /> : null}
-                    sx={{
-                      color: '#14b8a6',
-                      borderColor: 'rgba(20, 184, 166, 0.3)',
-                      fontWeight: 800,
-                      borderRadius: 3,
-                      px: 3,
-                      py: 0.8,
-                      textTransform: 'none',
-                      '&:hover': {
-                        borderColor: '#14b8a6',
-                        bgcolor: 'rgba(20, 184, 166, 0.06)',
-                      },
-                    }}
-                  >
-                    {loadingMoreSongs ? 'Đang tải...' : 'Xem thêm bài hát'}
-                  </Button>
-                </Box>
-              )}
-            </Paper>
-          </Stack>
-        </Grid>
-
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <Stack spacing={2.5}>
-            {currentSong && (
-              <Paper
-                sx={{
-                  p: 2.25,
-                  borderRadius: 4,
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
+                  px: 2.25,
+                  py: 0.85,
+                  borderRadius: '9999px',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: isTabActive ? 850 : 600,
+                  whiteSpace: 'nowrap',
+                  bgcolor: isTabActive ? '#6c63ff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  color: isTabActive ? '#fff' : 'text.secondary',
                   border: '1px solid',
-                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                  boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
+                  borderColor: isTabActive ? '#8c85ff' : 'rgba(255,255,255,0.08)',
+                  boxShadow: isTabActive ? '0 4px 16px rgba(108, 99, 255, 0.45)' : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  '&:hover': {
+                    bgcolor: isTabActive ? '#5246e2' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)',
+                    transform: 'translateY(-1.5px)',
+                  },
                 }}
               >
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-                    Đang phát
-                  </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<QueueMusicIcon />}
-                    onClick={() => setQueueOpen(true)}
-                    sx={{
-                      color: '#14b8a6',
-                      fontWeight: 700,
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      '&:hover': {
-                        bgcolor: 'rgba(20, 184, 166, 0.08)',
-                      }
-                    }}
-                  >
-                    Danh sách phát
-                  </Button>
-                </Stack>
-                <Stack
-                  spacing={2.5}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 3.5,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    backgroundColor: '#0b0f19',
-                    color: '#fff',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundImage: `url(${currentSong.imageUrl || ''})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      filter: 'blur(36px) saturate(1.2)',
-                      transform: 'scale(1.15)',
-                      opacity: 0.6,
-                      zIndex: 0,
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundImage: nowPlayingColors
-                        ? `linear-gradient(155deg, rgba(${nowPlayingColors.bright.r},${nowPlayingColors.bright.g},${nowPlayingColors.bright.b},0.22), rgba(${nowPlayingColors.mid.r},${nowPlayingColors.mid.g},${nowPlayingColors.mid.b},0.35), rgba(${nowPlayingColors.dark.r},${nowPlayingColors.dark.g},${nowPlayingColors.dark.b},0.88))`
-                        : 'linear-gradient(155deg, rgba(8,47,73,0.8), rgba(15,23,42,0.85), rgba(16,42,67,0.9))',
-                      zIndex: 1,
-                    },
-                    '& > *': { position: 'relative', zIndex: 2 },
-                  }}
-                >
-                  <Stack alignItems="center" spacing={2.25} sx={{ py: 1 }}>
-                    {/* Rotating album artwork */}
+                {tab.label}
+              </Box>
+            );
+          })}
+        </Stack>
+
+        {/* ── 1. 🔮 SÂN KHẤU TÂM ĐIỂM DÒNG CHẢY & LIVE LYRICS (UNIFIED MASTER HERO STAGE) ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'tracks' || activeTabFilter === 'lyrics') && (
+          <Box
+            sx={{
+              position: 'relative',
+              borderRadius: { xs: 4, md: 6 },
+              overflow: 'hidden',
+              p: { xs: 2.5, sm: 3, md: 3.5 },
+              minHeight: { xs: 'auto', md: 260 },
+              background: (theme) => theme.palette.mode === 'dark'
+                ? 'linear-gradient(135deg, rgba(14, 20, 38, 0.94) 0%, rgba(7, 10, 22, 0.98) 100%)'
+                : 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
+              border: '1px solid rgba(165, 180, 252, 0.18)',
+              boxShadow: '0 24px 60px -15px rgba(0, 0, 0, 0.75), 0 0 35px rgba(99, 102, 241, 0.2), inset 0 1px 1.5px rgba(255, 255, 255, 0.25)',
+            }}
+          >
+            {/* Dynamic Aurora Ambient Backlight */}
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                backgroundImage: (currentSong?.imageUrl || spotlightSong?.imageUrl) ? `url(${currentSong?.imageUrl || spotlightSong?.imageUrl})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(80px) saturate(2.4)',
+                opacity: 0.38,
+                transform: 'scale(1.3)',
+                zIndex: 0,
+                pointerEvents: 'none',
+              }}
+            />
+
+            <Grid container spacing={{ xs: 2.5, md: 3.5 }} alignItems="center" sx={{ position: 'relative', zIndex: 2, width: '100%' }}>
+              {/* Left Column (5/12): Song Info + Full Vinyl Artwork Disc + Playback Controls */}
+              <Grid size={{ xs: 12, md: 5 }}>
+                <Stack spacing={2} alignItems="flex-start">
+                  {/* Song Title & Vinyl Row */}
+                  <Stack direction="row" spacing={2.5} alignItems="center" sx={{ width: '100%' }}>
+                    {/* 3D Vinyl Disc With Full Artwork */}
                     <Box
                       sx={{
                         position: 'relative',
-                        width: 180,
-                        height: 180,
-                        borderRadius: '50%',
-                        overflow: 'hidden',
-                        display: 'grid',
-                        placeItems: 'center',
-                        animation: 'spinCover 15s linear infinite',
-                        animationPlayState: isPlaying ? 'running' : 'paused',
-                        '@keyframes spinCover': {
-                          from: { transform: 'rotate(0deg)' },
-                          to: { transform: 'rotate(360deg)' },
-                        },
-                        border: '3px solid rgba(255,255,255,0.18)',
-                        boxShadow: () => {
-                          const glowColor = nowPlayingColors
-                            ? `rgba(${nowPlayingColors.bright.r}, ${nowPlayingColors.bright.g}, ${nowPlayingColors.bright.b}, 0.5)`
-                            : 'rgba(20, 184, 166, 0.4)';
-                          return `0 18px 38px -12px ${glowColor}, 0 10px 24px rgba(0,0,0,0.35)`;
-                        },
+                        width: { xs: 92, sm: 104 },
+                        height: { xs: 92, sm: 104 },
+                        flexShrink: 0,
                       }}
                     >
-                      <Avatar
-                        key={currentSong._id}
-                        src={currentSong.imageUrl || undefined}
-                        variant="rounded"
+                      <Box
+                        className={isPlaying ? 'animate-vinyl-spin' : 'animate-vinyl-spin-paused'}
                         sx={{
                           width: '100%',
                           height: '100%',
-                          borderRadius: 0,
-                          bgcolor: 'rgba(255,255,255,0.08)',
-                          '& img': {
-                            objectFit: 'cover',
-                          },
+                          borderRadius: '50%',
+                          backgroundImage: `url(${(currentSong || spotlightSong)?.imageUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400'})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          border: '3px solid rgba(255, 255, 255, 0.45)',
+                          boxShadow: '0 10px 28px rgba(0, 0, 0, 0.65), 0 0 24px rgba(108, 99, 255, 0.45)',
+                        }}
+                      />
+                    </Box>
+
+                    <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
+                      <Typography
+                        variant="h3"
+                        sx={{
+                          fontWeight: 950,
+                          letterSpacing: '-0.035em',
+                          mb: 0.5,
+                          background: 'linear-gradient(135deg, #ffffff 15%, #a5b4fc 50%, #00e5ff 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          lineHeight: 1.15,
+                          fontSize: { xs: '1.45rem', sm: '1.8rem', md: '2rem' },
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        <MusicIcon sx={{ fontSize: 70 }} />
-                      </Avatar>
-                    </Box>
-
-                    <Box sx={{ width: '100%', textAlign: 'center' }}>
-                      <Typography variant="h6" fontWeight={900} textAlign="center" noWrap sx={{ maxWidth: '100%', fontSize: 16, letterSpacing: -0.3, mb: 0.25 }}>
-                        {currentSong.title}
+                        {(currentSong || spotlightSong)?.title || 'Khám Phá MusicFlow'}
                       </Typography>
                       <Typography
-                        variant="caption"
-                        textAlign="center"
-                        noWrap
-                        sx={{ maxWidth: '100%', color: 'rgba(255,255,255,0.7)', display: 'block', fontWeight: 600 }}
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          fontWeight: 650,
+                          fontSize: { xs: 13, sm: 14.5 },
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
                       >
-                        {currentSong.artistText || 'Unknown artist'}
+                        {Array.isArray((currentSong || spotlightSong)?.artists)
+                          ? (currentSong || spotlightSong).artists.map(a => a?.name).filter(Boolean).join(', ')
+                          : ((currentSong || spotlightSong)?.artistText || 'Nhiều nghệ sĩ')}
                       </Typography>
                     </Box>
                   </Stack>
 
-                  {/* Playback Slider */}
-                  <Box sx={{ px: 0.5 }}>
-                    <Slider
-                      size="small"
-                      min={0}
-                      max={displayDuration || 1}
-                      value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
-                      onChange={(_, value) => setScrubTime(Number(value))}
-                      onChangeCommitted={(_, value) => {
-                        seekTo(value);
-                        setScrubTime(null);
-                      }}
-                      sx={{
-                        color: '#14b8a6',
-                        height: 4,
-                        '& .MuiSlider-thumb': {
-                          width: 8,
-                          height: 8,
-                          transition: 'all 0.15s ease',
-                          '&:hover, &.Mui-focusVisible': {
-                            boxShadow: '0 0 0 8px rgba(20, 184, 166, 0.16)',
-                            width: 12,
-                            height: 12,
+                  {/* Progress Bar (if song is loaded) */}
+                  {currentSong && (
+                    <Box sx={{ width: '100%', pr: { md: 2 } }}>
+                      <Slider
+                        size="small"
+                        min={0}
+                        max={displayDuration || 1}
+                        value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
+                        onChange={(_, val) => setScrubTime(Number(val))}
+                        onChangeCommitted={(_, val) => {
+                          seekTo(val);
+                          setScrubTime(null);
+                        }}
+                        sx={{
+                          color: '#6c63ff',
+                          height: 4,
+                          py: 1,
+                          '& .MuiSlider-thumb': {
+                            width: 10,
+                            height: 10,
+                            '&:hover, &.Mui-focusVisible': {
+                              boxShadow: '0 0 0 8px rgba(108, 99, 255, 0.2)',
+                            },
                           },
-                        },
-                        '& .MuiSlider-rail': {
-                          opacity: 0.2,
-                          bgcolor: '#fff',
-                        },
-                        '& .MuiSlider-track': {
-                          border: 'none',
-                        }
-                      }}
-                    />
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                      <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
-                        {formatDuration(scrubTime ?? currentTime)}
-                      </Typography>
-                      <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
-                        {formatDuration(displayDuration)}
-                      </Typography>
-                    </Stack>
-                  </Box>
+                          '& .MuiSlider-rail': { opacity: 0.25, bgcolor: '#fff' },
+                        }}
+                      />
+                      <Stack direction="row" justifyContent="space-between" sx={{ mt: -0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>
+                          {formatDuration(scrubTime ?? currentTime)}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>
+                          {formatDuration(displayDuration)}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  )}
 
-                  {/* Player Controls */}
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 1 }}>
-                    <IconButton sx={{ color: 'rgba(255,255,255,0.65)', '&:hover': { color: '#14b8a6', transform: 'scale(1.08)' }, transition: 'all 0.2s' }}>
-                      <RepeatIcon sx={{ fontSize: 20 }} />
-                    </IconButton>
-                    <IconButton sx={{ color: 'rgba(255,255,255,0.8)', '&:hover': { color: '#fff', transform: 'scale(1.08)' }, transition: 'all 0.2s' }} onClick={() => seekTo(0)}>
-                      <PrevIcon sx={{ fontSize: 28 }} />
-                    </IconButton>
-                    <IconButton
-                      onClick={togglePlay}
+                  {/* Control Buttons Group */}
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ pt: 0.5, flexWrap: 'wrap', gap: 1 }}>
+                    {currentSong ? (
+                      <Button
+                        variant="contained"
+                        onClick={togglePlay}
+                        startIcon={isPlaying ? <PauseIcon sx={{ fontSize: 22 }} /> : <PlayIcon sx={{ fontSize: 22 }} />}
+                        sx={{
+                          background: 'linear-gradient(135deg, #8c85ff 0%, #6366f1 45%, #00e5ff 100%)',
+                          color: '#fff',
+                          fontWeight: 900,
+                          borderRadius: '9999px',
+                          px: 3.5,
+                          py: 1,
+                          fontSize: 14,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          boxShadow: '0 8px 24px rgba(99, 102, 241, 0.55)',
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            boxShadow: '0 12px 30px rgba(99, 102, 241, 0.75)',
+                          },
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        }}
+                      >
+                        {isPlaying ? 'Tạm Dừng' : 'Tiếp Tục'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        onClick={() => spotlightSong && playSong(spotlightSong, { queue: songs })}
+                        startIcon={<PlayIcon sx={{ fontSize: 22 }} />}
+                        sx={{
+                          background: 'linear-gradient(135deg, #8c85ff 0%, #6366f1 45%, #00e5ff 100%)',
+                          color: '#fff',
+                          fontWeight: 900,
+                          borderRadius: '9999px',
+                          px: 3.5,
+                          py: 1,
+                          fontSize: 14,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          boxShadow: '0 8px 24px rgba(99, 102, 241, 0.55)',
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            boxShadow: '0 12px 30px rgba(99, 102, 241, 0.75)',
+                          },
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                        }}
+                      >
+                        Kích Hoạt Dòng Chảy
+                      </Button>
+                    )}
+
+                    {currentSong && (
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <IconButton size="small" onClick={handlePrevious} sx={{ color: '#fff', '&:hover': { transform: 'scale(1.15)' } }}>
+                          <PrevIcon sx={{ fontSize: 22 }} />
+                        </IconButton>
+                        <IconButton size="small" onClick={handleNext} sx={{ color: '#fff', '&:hover': { transform: 'scale(1.15)' } }}>
+                          <NextIcon sx={{ fontSize: 22 }} />
+                        </IconButton>
+                      </Stack>
+                    )}
+
+                    <Button
+                      variant="outlined"
+                      onClick={() => navigate('/ai-mood')}
+                      startIcon={<SparklesIcon sx={{ fontSize: 16 }} />}
                       sx={{
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        bgcolor: 'rgba(255, 255, 255, 0.06)',
+                        backdropFilter: 'blur(16px)',
                         color: '#fff',
-                        background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
-                        width: 54,
-                        height: 54,
-                        boxShadow: '0 4px 14px rgba(20, 184, 166, 0.4)',
+                        fontWeight: 750,
+                        borderRadius: '9999px',
+                        px: 2.75,
+                        py: 0.95,
+                        fontSize: 13,
+                        textTransform: 'none',
                         '&:hover': {
-                          background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
-                          transform: 'scale(1.06)',
-                          boxShadow: '0 6px 18px rgba(20, 184, 166, 0.55)',
+                          borderColor: '#00e5ff',
+                          bgcolor: 'rgba(0, 229, 255, 0.12)',
+                          transform: 'scale(1.04)',
                         },
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                       }}
                     >
-                      {isPlaying ? <PauseIcon sx={{ fontSize: 32 }} /> : <PlayIcon sx={{ fontSize: 32 }} />}
-                    </IconButton>
-                    <IconButton sx={{ color: 'rgba(255,255,255,0.8)', '&:hover': { color: '#fff', transform: 'scale(1.08)' }, transition: 'all 0.2s' }} onClick={() => playSong(currentSong)}>
-                      <NextIcon sx={{ fontSize: 28 }} />
-                    </IconButton>
-                    <IconButton sx={{ color: 'rgba(255,255,255,0.65)', '&:hover': { color: '#14b8a6', transform: 'scale(1.08)' }, transition: 'all 0.2s' }}>
-                      <ShuffleIcon sx={{ fontSize: 20 }} />
-                    </IconButton>
+                      AI DJ
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Grid>
+
+              {/* Right Column (7/12): Apple Music Sing Live Synced Lyrics HUD */}
+              <Grid size={{ xs: 12, md: 7 }}>
+                <Box
+                  sx={{
+                    p: { xs: 2, sm: 2.5 },
+                    borderRadius: '24px',
+                    bgcolor: 'rgba(6, 9, 18, 0.55)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backdropFilter: 'blur(20px)',
+                    position: 'relative',
+                    minHeight: { xs: 190, sm: 220 },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {/* Lyrics Header Tag */}
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, px: 1 }}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <MicIcon sx={{ fontSize: 18, color: '#00e5ff' }} />
+                      <Typography sx={{ fontSize: 11.5, fontWeight: 850, textTransform: 'uppercase', letterSpacing: 1, color: '#00e5ff' }}>
+                        {hasSyncedLyrics ? 'Live Karaoke Lyrics' : 'Lời Bài Hát'}
+                      </Typography>
+                    </Stack>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600 }}>
+                      Chạm câu hát để tua nhanh
+                    </Typography>
                   </Stack>
 
-                  {/* Glassmorphic Lyrics scroll panel */}
-                  {lyricsLines.length > 0 && (
+                  {lyricsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress size={28} sx={{ color: '#6c63ff' }} />
+                    </Box>
+                  ) : lyricsLines.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                        {currentSong ? (currentSong.lyrics ? 'Lời bài hát chưa hỗ trợ chế độ chạy từng giây.' : 'Bài hát hiện chưa có lời.') : 'Phát một ca khúc để theo dõi lời bài hát trực tiếp.'}
+                      </Typography>
+                    </Box>
+                  ) : (
                     <Box
                       ref={lyricsContainerRef}
                       sx={{
-                        mt: 1,
-                        borderRadius: 3,
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                        px: 2,
-                        py: 1.5,
-                        maxHeight: 120,
+                        maxHeight: 220,
                         overflowY: 'auto',
+                        px: { xs: 1, sm: 2 },
+                        py: 1.5,
                         maskImage: 'linear-gradient(to bottom, transparent 0%, #fff 15%, #fff 85%, transparent 100%)',
                         WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #fff 15%, #fff 85%, transparent 100%)',
                         scrollbarWidth: 'none',
                         '&::-webkit-scrollbar': { display: 'none' },
                       }}
                     >
-                      <Stack spacing={1} sx={{ py: 1.5 }}>
-                        {lyricsLines.map((line, index) => (
-                          <Typography
-                            key={`${line.time}-${line.text}-${index}`}
-                            ref={(element) => {
-                              lyricItemRefs.current[index] = element;
-                            }}
-                            variant="body2"
-                            sx={{
-                              textAlign: 'center',
-                              color: hasSyncedLyrics && index === activeLyricIndex ? '#14b8a6' : 'rgba(255,255,255,0.5)',
-                              fontWeight: hasSyncedLyrics && index === activeLyricIndex ? 800 : 500,
-                              fontSize: hasSyncedLyrics && index === activeLyricIndex ? 13.5 : 12.5,
-                              opacity: hasSyncedLyrics && activeLyricIndex >= 0 && index < activeLyricIndex ? 0.4 : 1,
-                              transform: hasSyncedLyrics && index === activeLyricIndex ? 'scale(1.02)' : 'scale(1)',
-                              transition: 'all 0.25s ease',
-                              cursor: 'pointer',
-                              '&:hover': {
-                                color: '#14b8a6',
-                                opacity: 0.9,
-                              }
-                            }}
-                            onClick={() => seekTo(line.time / 1000)}
-                          >
-                            {line.text}
-                          </Typography>
-                        ))}
+                      <Stack spacing={1.75} sx={{ py: 1.5 }}>
+                        {lyricsLines.map((line, index) => {
+                          const isActive = hasSyncedLyrics && index === activeLyricIndex;
+                          const isPast = hasSyncedLyrics && activeLyricIndex >= 0 && index < activeLyricIndex;
+
+                          return (
+                            <Typography
+                              key={`${line.time}-${line.text}-${index}`}
+                              ref={(el) => {
+                                lyricItemRefs.current[index] = el;
+                              }}
+                              variant="h5"
+                              onClick={() => seekTo(line.time / 1000)}
+                              sx={{
+                                textAlign: { xs: 'center', md: 'left' },
+                                fontWeight: isActive ? 950 : 600,
+                                fontSize: isActive ? { xs: '1.18rem', sm: '1.4rem' } : { xs: '0.9rem', sm: '1.02rem' },
+                                color: isActive ? '#ffffff' : isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.58)',
+                                transform: isActive ? 'scale(1.04)' : 'scale(1)',
+                                transformOrigin: 'left center',
+                                textShadow: isActive ? '0 0 25px rgba(165, 180, 252, 0.95), 0 0 45px rgba(6, 182, 212, 0.6)' : 'none',
+                                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  color: '#a5b4fc',
+                                  opacity: 1,
+                                },
+                              }}
+                            >
+                              {line.text}
+                            </Typography>
+                          );
+                        })}
                       </Stack>
                     </Box>
                   )}
-                </Stack>
-              </Paper>
-            )}
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
 
-            <Paper
-              sx={{
-                p: 2.5,
-                borderRadius: 4,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
-                border: '1px solid',
-                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.01)',
-              }}
-            >
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-                  Bài hát phổ biến
+        {/* ── 3. ⚡ TRẠM NĂNG LƯỢNG CẢM XÚC: "THE MOOD REACTOR ORBS" ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'mood') && (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>
+                  Trạm Năng Lượng Cảm Xúc (Mood Reactor)
                 </Typography>
-                <Button
-                  size="small"
-                  endIcon={<ArrowIcon />}
-                  onClick={() => navigate('/rankings')}
-                  sx={{ color: '#14b8a6', fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
-                >
-                  Xem BXH đầy đủ
-                </Button>
-              </Stack>
-              <Stack spacing={1}>
-                {topSongs.map((song, index) => {
-                  const isCurrent = currentSong?._id === song._id;
-                  return (
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 550 }}>
+                  Chạm vào một viên ngọc năng lượng để kích hoạt bầu không khí âm nhạc tương ứng
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => navigate('/ai-mood')}
+                endIcon={<ArrowIcon />}
+                sx={{ color: '#8c85ff', fontWeight: 800, textTransform: 'none' }}
+              >
+                Mở AI DJ Studio
+              </Button>
+            </Stack>
+
+            <Grid container spacing={2}>
+              {moodOrbs.map((orb) => {
+                const isOrbActive = selectedMood === orb.id;
+                return (
+                  <Grid size={{ xs: 6, sm: 4, md: 2.4 }} key={orb.id}>
                     <Box
-                      key={song._id}
-                      onClick={() => playSong(song, { queue: topSongs })}
+                      onClick={() => handleMoodSelect(orb)}
+                      className="glass-card-interactive"
                       sx={{
-                        p: 1,
-                        borderRadius: 2.5,
+                        p: 2.25,
+                        borderRadius: '24px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
-                        bgcolor: (theme) => isCurrent
-                          ? theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.1)' : 'rgba(20, 184, 166, 0.04)'
-                          : 'transparent',
+                        textAlign: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(12, 16, 30, 0.65)' : 'rgba(255, 255, 255, 0.8)',
                         border: '1px solid',
-                        borderColor: isCurrent ? 'rgba(20, 184, 166, 0.3)' : 'transparent',
+                        borderColor: isOrbActive ? orb.color : 'rgba(255, 255, 255, 0.08)',
+                        boxShadow: isOrbActive ? `0 0 30px ${orb.color}66` : 'none',
                         '&:hover': {
-                          borderColor: '#14b8a6',
-                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.06)' : 'rgba(20, 184, 166, 0.02)',
-                          transform: 'translateY(-1px)',
-                        },
-                        '&:hover .song-row-play-btn': {
-                          opacity: 1,
-                          transform: 'scale(1)',
-                        },
-                        '&:hover .song-row-num': {
-                          display: 'none',
+                          borderColor: orb.color,
+                          boxShadow: `0 12px 30px -5px ${orb.color}55`,
                         },
                       }}
                     >
-                      {/* Left: Index / Play Icon / Equalizer */}
-                      <Box sx={{ width: 24, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        {isCurrent ? (
-                          <PlayingEqualizer isPlaying={isPlaying} />
-                        ) : (
-                          <Box sx={{ position: 'relative', width: 24, height: 24, display: 'grid', placeItems: 'center' }}>
-                            <Typography
-                              className="song-row-num"
-                              variant="caption"
-                              sx={{
-                                color: index < 3 ? '#14b8a6' : 'text.secondary',
-                                fontWeight: 800,
-                                fontSize: 13,
-                              }}
-                            >
-                              {(index + 1).toString().padStart(2, '0')}
-                            </Typography>
-                            <IconButton
-                              className="song-row-play-btn"
-                              size="small"
-                              sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                opacity: 0,
-                                transform: 'scale(0.8)',
-                                transition: 'all 0.2s ease',
-                                color: '#14b8a6',
-                                p: 0,
-                              }}
-                            >
-                              <PlayIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Box>
-                        )}
-                      </Box>
-
-                      {/* Song Image */}
-                      <Avatar
-                        src={song.imageUrl || undefined}
-                        variant="rounded"
+                      {/* Orb Icon Glow */}
+                      <Box
+                        className="animate-orb-pulse"
                         sx={{
-                          width: 40,
-                          height: 40,
-                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                          width: 54,
+                          height: 54,
+                          borderRadius: '50%',
+                          mx: 'auto',
+                          mb: 1.5,
+                          display: 'grid',
+                          placeItems: 'center',
+                          background: orb.gradient,
+                          color: '#fff',
+                          boxShadow: `0 8px 24px ${orb.color}66`,
                         }}
                       >
-                        <MusicIcon sx={{ fontSize: 20, color: '#14b8a6' }} />
-                      </Avatar>
-
-                      {/* Title & Artist */}
-                      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                        <Typography
-                          variant="body2"
-                          fontWeight={800}
-                          noWrap
-                          sx={{
-                            color: isCurrent ? '#14b8a6' : 'text.primary',
-                            transition: 'color 0.2s ease',
-                            fontSize: 13,
-                            mb: 0.25,
-                          }}
-                        >
-                          {song.title}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontWeight: 500 }}>
-                          {Array.isArray(song.artists)
-                            ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
-                            : 'Unknown artist'}
-                        </Typography>
+                        {orb.icon}
                       </Box>
+                      <Typography variant="subtitle2" fontWeight={850} noWrap sx={{ fontSize: 14 }}>
+                        {orb.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 11.5, fontWeight: 550, display: 'block', mt: 0.25 }}>
+                        {orb.desc}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
+        )}
 
-                      {/* Duration / More Options */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {/* ── 4. 🌊 DÒNG SÔNG ÂM THANH: "THE INFINITE FLOW RIBBON" (Quick Listen 6-Grid) ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'tracks') && quickListenSongs.length > 0 && (
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em', mb: 2 }}>
+              Dòng Chảy Đang Nghe (Quick Flow)
+            </Typography>
+            <Grid container spacing={2}>
+              {quickListenSongs.map((song, idx) => {
+                const isCurrent = currentSong?._id === song._id;
+                const flowScore = 98 - (idx * 2);
+                return (
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`quick-flow-${song._id}`}>
+                    <Box
+                      onClick={() => playSong(song, { queue: quickListenSongs })}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        p: 1.25,
+                        pr: 2,
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        bgcolor: (theme) => isCurrent
+                          ? (theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.12)')
+                          : (theme.palette.mode === 'dark' ? 'rgba(12, 16, 30, 0.6)' : 'rgba(255, 255, 255, 0.7)'),
+                        border: '1px solid',
+                        borderColor: isCurrent ? '#6c63ff' : 'rgba(255, 255, 255, 0.08)',
+                        backdropFilter: 'blur(20px)',
+                        boxShadow: isCurrent ? '0 0 25px rgba(108, 99, 255, 0.35)' : 'none',
+                        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        '&:hover': {
+                          borderColor: '#00e5ff',
+                          transform: 'translateY(-3px)',
+                          boxShadow: '0 12px 30px -8px rgba(0, 229, 255, 0.35)',
+                          '& .flow-play-btn': {
+                            opacity: 1,
+                            transform: 'scale(1)',
+                          },
+                        },
+                      }}
+                    >
+                      <Avatar
+                        src={song.imageUrl}
+                        variant="rounded"
+                        sx={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: '16px',
+                          flexShrink: 0,
+                          boxShadow: '0 6px 16px rgba(0,0,0,0.3)',
+                        }}
+                      />
+                      <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
+                        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.2 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={850}
+                            noWrap
+                            sx={{
+                              color: isCurrent ? '#00e5ff' : 'text.primary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                              width: '100%',
+                              fontSize: 14,
+                            }}
+                          >
+                            {song.title}
+                          </Typography>
+                        </Stack>
                         <Typography
                           variant="caption"
-                          className="song-row-duration"
-                          sx={{ color: 'text.secondary', minWidth: 38, textAlign: 'right', fontWeight: 600 }}
+                          color="text.secondary"
+                          noWrap
+                          sx={{
+                            display: 'block',
+                            fontWeight: 550,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            width: '100%',
+                          }}
                         >
-                          {song.duration ? `${Math.floor(song.duration / 60)}:${Math.floor(song.duration % 60).toString().padStart(2, '0')}` : '--:--'}
+                          {Array.isArray(song.artists) ? song.artists.map(a => a?.name).filter(Boolean).join(', ') : (song.artistText || 'Nghệ sĩ')}
                         </Typography>
-                        <Box onClick={(e) => e.stopPropagation()} sx={{ opacity: 0.6, '&:hover': { opacity: 1 } }}>
-                          <ClientSongMoreMenu song={song} />
-                        </Box>
+                        <Typography variant="caption" sx={{ fontSize: 10, fontWeight: 800, color: '#00e5ff', mt: 0.25, display: 'inline-block' }}>
+                          ⚡ Flow Index {flowScore}%
+                        </Typography>
                       </Box>
+                      <IconButton
+                        className="flow-play-btn"
+                        size="small"
+                        sx={{
+                          opacity: isCurrent ? 1 : 0,
+                          transform: isCurrent ? 'scale(1)' : 'scale(0.8)',
+                          background: 'linear-gradient(135deg, #8c85ff, #6366f1)',
+                          color: '#fff',
+                          boxShadow: '0 6px 16px rgba(99, 102, 241, 0.5)',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            transform: 'scale(1.15) !important',
+                          },
+                        }}
+                      >
+                        {isCurrent && isPlaying ? <PauseIcon sx={{ fontSize: 22 }} /> : <PlayIcon sx={{ fontSize: 22, ml: 0.2 }} />}
+                      </IconButton>
                     </Box>
-                  );
-                })}
-                {!topSongs.length && <Typography color="text.secondary" sx={{ py: 1 }}>Chưa có bài hát phổ biến.</Typography>}
-              </Stack>
-            </Paper>
-          </Stack>
-        </Grid>
-      </Grid>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
+        )}
+
+        {/* ── 5. 🏆 BỤC VINH QUANG: "THE SONIC PODIUM" (Top 3 3D Matrix + List) ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'podium') && top3Podium.length >= 3 && (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>
+                  Đấu Trường Bảng Xếp Hạng (Sonic Podium)
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 550 }}>
+                  3 Quán Quân chiếm lĩnh dòng chảy âm nhạc tuần này
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => navigate('/rankings')}
+                endIcon={<ArrowIcon />}
+                sx={{ color: '#8c85ff', fontWeight: 800, textTransform: 'none' }}
+              >
+                Xem Toàn Bộ BXH
+              </Button>
+            </Stack>
+
+            <Grid container spacing={2.5} alignItems="flex-end" sx={{ mb: 3 }}>
+              {/* Podium #02 (Silver Cyan - Left) */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box
+                  onClick={() => playSong(top3Podium[1], { queue: topSongs })}
+                  className="podium-silver"
+                  sx={{
+                    p: 3,
+                    borderRadius: '28px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    minHeight: 260,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    '&:hover': { transform: 'translateY(-6px)' },
+                  }}
+                >
+                  <Typography sx={{ fontSize: 24, fontWeight: 950, color: '#00e5ff', mb: 1, letterSpacing: 1 }}>
+                    #02
+                  </Typography>
+                  <Avatar
+                    src={top3Podium[1].imageUrl}
+                    sx={{ width: 80, height: 80, borderRadius: '20px', mb: 1.5, boxShadow: '0 8px 24px rgba(0, 229, 255, 0.35)' }}
+                  />
+                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%' }}>
+                    {top3Podium[1].title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%', fontWeight: 600 }}>
+                    {Array.isArray(top3Podium[1].artists) ? top3Podium[1].artists.map(a => a?.name).join(', ') : top3Podium[1].artistText}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Podium #01 (Gold Neon - Center Tallest) */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box
+                  onClick={() => playSong(top3Podium[0], { queue: topSongs })}
+                  className="podium-gold"
+                  sx={{
+                    p: 3.5,
+                    borderRadius: '32px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    minHeight: 300,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    '&:hover': { transform: 'translateY(-8px) scale(1.02)' },
+                  }}
+                >
+                  <Typography sx={{ fontSize: 32, fontWeight: 950, color: '#ffd700', mb: 1, letterSpacing: 1 }}>
+                    👑 #01 QUÁN QUÂN
+                  </Typography>
+                  <Avatar
+                    src={top3Podium[0].imageUrl}
+                    sx={{ width: 100, height: 100, borderRadius: '24px', mb: 1.5, boxShadow: '0 12px 30px rgba(255, 215, 0, 0.45)' }}
+                  />
+                  <Typography variant="h6" fontWeight={950} noWrap sx={{ maxWidth: '100%', fontSize: 18 }}>
+                    {top3Podium[0].title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%', fontWeight: 700 }}>
+                    {Array.isArray(top3Podium[0].artists) ? top3Podium[0].artists.map(a => a?.name).join(', ') : top3Podium[0].artistText}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Podium #03 (Bronze Purple - Right) */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box
+                  onClick={() => playSong(top3Podium[2], { queue: topSongs })}
+                  className="podium-bronze"
+                  sx={{
+                    p: 3,
+                    borderRadius: '28px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    minHeight: 240,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    '&:hover': { transform: 'translateY(-6px)' },
+                  }}
+                >
+                  <Typography sx={{ fontSize: 24, fontWeight: 950, color: '#c084fc', mb: 1, letterSpacing: 1 }}>
+                    #03
+                  </Typography>
+                  <Avatar
+                    src={top3Podium[2].imageUrl}
+                    sx={{ width: 76, height: 76, borderRadius: '18px', mb: 1.5, boxShadow: '0 8px 24px rgba(192, 132, 252, 0.35)' }}
+                  />
+                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%' }}>
+                    {top3Podium[2].title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%', fontWeight: 600 }}>
+                    {Array.isArray(top3Podium[2].artists) ? top3Podium[2].artists.map(a => a?.name).join(', ') : top3Podium[2].artistText}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+
+            {/* Rest of Top Songs List (Top 4 - 10) */}
+            <Grid container spacing={2}>
+              {restTopSongs.map((song, index) => (
+                <Grid size={{ xs: 12, sm: 6 }} key={`rest-top-${song._id}`}>
+                  <ClientSongItem
+                    song={song}
+                    index={index + 4}
+                    isCurrent={currentSong?._id === song._id}
+                    isPlaying={isPlaying}
+                    onPlay={() => playSong(song, { queue: topSongs })}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
+        {/* ── 6. 📻 SÓNG THỂ LOẠI ÂM NHẠC: "SONIC GENRE CAPSULES" ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'genres') && (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>
+                  Trạm Sóng Thể Loại (Sonic Genre Capsules)
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 550 }}>
+                  Khám phá những vùng không gian âm nhạc theo phong cách riêng
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => navigate('/genres')}
+                endIcon={<ArrowIcon />}
+                sx={{ color: '#8c85ff', fontWeight: 800, textTransform: 'none' }}
+              >
+                Tất Cả Thể Loại
+              </Button>
+            </Stack>
+
+            <Grid container spacing={2}>
+              {genreCapsules.map((genre) => (
+                <Grid size={{ xs: 6, sm: 4, md: 2 }} key={genre.id}>
+                  <Box
+                    onClick={() => navigate(`/genres?cat=${genre.id}`)}
+                    className="glass-card-interactive"
+                    sx={{
+                      p: 2,
+                      borderRadius: '22px',
+                      cursor: 'pointer',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(14, 18, 34, 0.65)' : 'rgba(255, 255, 255, 0.8)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      textAlign: 'center',
+                      '&:hover': {
+                        borderColor: genre.color,
+                        boxShadow: `0 10px 25px -4px ${genre.color}55`,
+                      },
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 28, mb: 1 }}>{genre.icon}</Typography>
+                    <Typography variant="subtitle2" fontWeight={850} noWrap sx={{ fontSize: 13.5 }}>
+                      {genre.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 11, fontWeight: 550, display: 'block', mt: 0.25 }}>
+                      {genre.desc}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
+        {/* ── 7. 🪐 HÀNH TINH NGHỆ SĨ: "ARTIST CONSTELLATION SPHERES" ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'artists') && (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>
+                  Hành Tinh Nghệ Sĩ (Artist Constellation)
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 550 }}>
+                  Những ngôi sao định hình dòng chảy âm nhạc
+                </Typography>
+              </Box>
+              {topArtists.length > 6 && (
+                <Button
+                  size="small"
+                  onClick={() => setIsArtistsExpanded((prev) => !prev)}
+                  sx={{ color: '#8c85ff', fontWeight: 800, textTransform: 'none' }}
+                >
+                  {isArtistsExpanded ? 'Thu gọn' : 'Xem tất cả'}
+                </Button>
+              )}
+            </Stack>
+
+            <Grid container spacing={3}>
+              {(isArtistsExpanded ? topArtists.slice(0, 18) : topArtists.slice(0, 6)).map((artist) => {
+                const isFollowed = followedArtists[artist._id] || false;
+                return (
+                  <Grid size={{ xs: 6, sm: 4, md: 2 }} key={artist._id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Box sx={{ position: 'relative', width: { xs: 96, md: 115 }, height: { xs: 96, md: 115 }, mb: 1.75 }}>
+                      {/* Glowing Saturn Orbit Ring */}
+                      <Box
+                        className="animate-saturn-orbit"
+                        sx={{
+                          position: 'absolute',
+                          inset: -6,
+                          borderRadius: '50%',
+                          border: '2px solid rgba(99, 102, 241, 0.3)',
+                          boxShadow: '0 0 16px rgba(99, 102, 241, 0.25)',
+                        }}
+                      />
+                      <Avatar
+                        src={artist.avatar}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          cursor: 'pointer',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                          transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                          '&:hover': { transform: 'scale(1.08)' },
+                        }}
+                        onClick={() => navigate(`/artists/${artist._id}`)}
+                      >
+                        {artist.name.charAt(0)}
+                      </Avatar>
+                    </Box>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={900}
+                      noWrap
+                      sx={{
+                        maxWidth: '100%',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        '&:hover': { color: '#00e5ff' },
+                      }}
+                      onClick={() => navigate(`/artists/${artist._id}`)}
+                    >
+                      {artist.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, fontWeight: 600, fontSize: 11.5 }}>
+                      {formatFollowerCount(artistFollowersState[artist._id] || 0)}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleToggleFollow(artist)}
+                      sx={{
+                        mt: 1.5,
+                        borderRadius: '9999px',
+                        px: 2.25,
+                        py: 0.35,
+                        fontSize: '11px',
+                        fontWeight: 850,
+                        textTransform: 'uppercase',
+                        borderColor: isFollowed ? '#6c63ff' : 'rgba(255, 255, 255, 0.15)',
+                        color: isFollowed ? '#8c85ff' : 'text.primary',
+                        bgcolor: isFollowed ? 'rgba(108, 99, 255, 0.12)' : 'transparent',
+                        '&:hover': {
+                          borderColor: '#6c63ff',
+                          bgcolor: 'rgba(108, 99, 255, 0.2)',
+                        },
+                      }}
+                    >
+                      {isFollowed ? 'Đang Theo' : 'Theo Dõi'}
+                    </Button>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
+        )}
+
+        {/* ── 8. 📻 TUYỂN TẬP PLAYLIST ĐẶC SẮC (Compact Sizing: 6 items / row) ── */}
+        {(activeTabFilter === 'all' || activeTabFilter === 'playlists') && (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em' }}>
+                  Tuyển Tập Playlist Đặc Sắc
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 550 }}>
+                  Bộ sưu tập được chọn lọc theo từng cung bậc cảm xúc
+                </Typography>
+              </Box>
+              {playlists.length > 6 && (
+                <Button
+                  size="small"
+                  onClick={() => setIsPlaylistsExpanded((prev) => !prev)}
+                  sx={{ color: '#8c85ff', fontWeight: 800, textTransform: 'none' }}
+                >
+                  {isPlaylistsExpanded ? 'Thu gọn' : 'Xem tất cả'}
+                </Button>
+              )}
+            </Stack>
+            <Grid container spacing={2}>
+              {(isPlaylistsExpanded ? playlists.slice(0, 18) : playlists.slice(0, 6)).map((playlist) => (
+                <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={playlist._id}>
+                  <ClientPlaylistCard
+                    playlist={playlist}
+                    onClick={() => navigate(`/collections/${playlist._id}`)}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
+        {/* ── 9. 🎧 ĐỀ XUẤT TOÀN DIỆN CHO BẠN (Infinite Stream Feed) ── */}
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.03em', mb: 2.5 }}>
+            Gợi Ý Dành Riêng Cho Bạn
+          </Typography>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={32} sx={{ color: '#6c63ff' }} />
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {recommendedSongs.map((song) => (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={song._id}>
+                  <ClientSongItem
+                    song={song}
+                    isCurrent={currentSong?._id === song._id}
+                    isPlaying={isPlaying}
+                    onPlay={() => playSong(song, { queue: recommendedSongs })}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+          {songs.length > displayedSongCount && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3.5 }}>
+              <Button
+                variant="outlined"
+                onClick={handleLoadMoreSongs}
+                disabled={loadingMoreSongs}
+                startIcon={loadingMoreSongs ? <CircularProgress size={16} sx={{ color: '#6c63ff' }} /> : null}
+                sx={{
+                  color: '#fff',
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  fontWeight: 800,
+                  borderRadius: '9999px',
+                  px: 4,
+                  py: 1,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#6c63ff',
+                    bgcolor: 'rgba(108, 99, 255, 0.12)',
+                  },
+                }}
+              >
+                {loadingMoreSongs ? 'Đang tải...' : 'Tải Thêm Bài Hát'}
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </Stack>
+
       <ClientQueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
     </ClientLayout>
   );

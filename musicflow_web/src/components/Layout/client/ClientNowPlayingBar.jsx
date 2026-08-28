@@ -257,11 +257,12 @@ function ClientNowPlayingBar({
         right: 16,
         bottom: 12,
         zIndex: 1150,
-        overflow: 'hidden',
-        borderRadius: 2.5,
-        border: '1px solid rgba(255,255,255,0.12)',
-        background: 'linear-gradient(110deg, #082f49 0%, #0f172a 55%, #102a43 100%)',
-        boxShadow: '0 16px 38px rgba(2, 6, 23, 0.35)',
+        overflow: 'visible',
+        borderRadius: '26px',
+        border: '1px solid rgba(255,255,255,0.14)',
+        background: 'linear-gradient(135deg, rgba(12, 18, 34, 0.82) 0%, rgba(6, 9, 18, 0.9) 100%)',
+        backdropFilter: 'blur(40px) saturate(220%)',
+        boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.22), inset 0 1px 1.5px rgba(255, 255, 255, 0.2)',
         color: '#fff',
         p: { xs: 1.2, md: 1.4 },
         minHeight: { xs: 78, md: 84 },
@@ -270,90 +271,215 @@ function ClientNowPlayingBar({
         }),
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 1.5 }}>
-        <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 0, width: { xs: 180, md: 260 } }}>
-          <Avatar
-            src={currentSong?.imageUrl}
-            variant="rounded"
-            sx={{
-              width: { xs: 48, md: 56 },
-              height: { xs: 48, md: 56 },
-              borderRadius: 1.25,
-              bgcolor: 'rgba(20, 184, 166, 0.12)',
-              color: '#14b8a6',
-            }}
-          >
-            <MusicIcon sx={{ fontSize: 28 }} />
-          </Avatar>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={700} noWrap>
-              {currentSong?.title}
-            </Typography>
-            <Typography variant="caption" sx={{ color: '#fff', opacity: 0.9 }} noWrap>
+      <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 2 }} sx={{ minWidth: 0, flexShrink: 0 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          sx={{
+            minWidth: 0,
+            width: { xs: 140, sm: 190, md: 250, lg: 280 },
+            maxWidth: { xs: 140, sm: 190, md: 250, lg: 280 },
+            flexShrink: 0,
+            overflow: 'visible',
+          }}
+        >
+          <Box sx={{ position: 'relative', width: { xs: 44, md: 54 }, height: { xs: 44, md: 54 }, flexShrink: 0 }}>
+            {/* Vinyl Record 3D that slides out when playing */}
+            <Box
+              className={isPlaying ? 'animate-vinyl-spin' : 'animate-vinyl-spin-paused'}
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: { xs: 44, md: 54 },
+                height: { xs: 44, md: 54 },
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, #05070e 22%, #1a2035 23%, #0c101d 42%, #1e2640 43%, #070912 68%, #252e4d 69%, #05070e 100%)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                boxShadow: isPlaying ? '0 0 16px rgba(108, 99, 255, 0.45)' : 'none',
+                transform: isPlaying ? 'translateX(14px)' : 'translateX(0)',
+                transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+                zIndex: 0,
+                display: { xs: 'none', sm: 'block' },
+              }}
+            >
+              {/* Vinyl center hole */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  bgcolor: '#6c63ff',
+                  border: '2px solid #05070e',
+                }}
+              />
+            </Box>
+
+            <Avatar
+              src={currentSong?.imageUrl}
+              variant="rounded"
+              sx={{
+                position: 'relative',
+                zIndex: 1,
+                width: '100%',
+                height: '100%',
+                borderRadius: 2.5,
+                bgcolor: 'rgba(108, 99, 255, 0.18)',
+                color: '#8c85ff',
+                boxShadow: isPlaying ? '0 8px 24px rgba(0,0,0,0.5), 0 0 14px rgba(108, 99, 255, 0.4)' : '0 4px 12px rgba(0,0,0,0.3)',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <MusicIcon sx={{ fontSize: 26 }} />
+            </Avatar>
+          </Box>
+          <Box sx={{ minWidth: 0, flexGrow: 1, width: '100%', overflow: 'hidden' }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                fontWeight={850}
+                noWrap
+                sx={{
+                  fontSize: { xs: 13, md: 14 },
+                  letterSpacing: '-0.01em',
+                  display: 'block',
+                  minWidth: 0,
+                  flexGrow: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {currentSong?.title}
+              </Typography>
+              {isPlaying && (
+                <Stack direction="row" spacing={0.3} alignItems="flex-end" sx={{ height: 12, flexShrink: 0, pb: 0.2 }}>
+                  <Box sx={{ width: 2, bgcolor: '#00e5ff', borderRadius: 1 }} className="spectrum-bar-1" />
+                  <Box sx={{ width: 2, bgcolor: '#8c85ff', borderRadius: 1 }} className="spectrum-bar-2" />
+                  <Box sx={{ width: 2, bgcolor: '#6c63ff', borderRadius: 1 }} className="spectrum-bar-3" />
+                  <Box sx={{ width: 2, bgcolor: '#00e5ff', borderRadius: 1 }} className="spectrum-bar-4" />
+                </Stack>
+              )}
+            </Stack>
+            <Typography
+              variant="caption"
+              noWrap
+              sx={{
+                color: 'rgba(255,255,255,0.7)',
+                display: 'block',
+                mt: 0.1,
+                width: '100%',
+                fontWeight: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {currentSong?.artistText || 'Unknown artist'}
             </Typography>
-            <Stack direction="row" spacing={0.25} sx={{ mt: 0.2 }}>
-              <Typography variant="caption" sx={{ opacity: 0.72 }}>
+            <Stack direction="row" spacing={0.3} sx={{ mt: 0.2 }}>
+              <Typography variant="caption" sx={{ opacity: 0.85, fontSize: 11, fontWeight: 700, color: '#00e5ff' }}>
                 {formatDuration(currentTime)}
               </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.52 }}>
+              <Typography variant="caption" sx={{ opacity: 0.4, fontSize: 11 }}>
                 /
               </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.72 }}>
+              <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
                 {formatDuration(displayDuration)}
               </Typography>
             </Stack>
           </Box>
         </Stack>
 
-        <Stack direction="row" alignItems="center" spacing={0.8} sx={{ display: { xs: 'none', md: 'flex' } }}>
+        <Stack direction="row" alignItems="center" spacing={0.6} sx={{ display: { xs: 'none', md: 'flex' } }}>
           <IconButton
             size="small"
             onClick={handleToggleFavorite}
-            sx={{ color: favorite ? '#fb7185' : 'rgba(255,255,255,0.78)' }}
+            sx={{
+              color: favorite ? '#f43f5e' : 'rgba(255,255,255,0.75)',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              '&:hover': { transform: 'scale(1.1)', color: '#f43f5e' },
+            }}
           >
-            {favorite ? <FavoriteIcon sx={{ fontSize: 25 }} /> : <FavoriteBorderIcon sx={{ fontSize: 25 }} />}
+            {favorite ? <FavoriteIcon sx={{ fontSize: 24 }} /> : <FavoriteBorderIcon sx={{ fontSize: 24 }} />}
           </IconButton>
-          <IconButton size="small" onClick={handleDownload} sx={{ color: 'rgba(255,255,255,0.78)' }}>
-            <DownloadIcon sx={{ fontSize: 25 }} />
+          <IconButton
+            size="small"
+            onClick={handleDownload}
+            sx={{
+              color: 'rgba(255,255,255,0.75)',
+              transition: 'all 0.2s ease',
+              '&:hover': { color: '#00e5ff', transform: 'scale(1.08)' },
+            }}
+          >
+            <DownloadIcon sx={{ fontSize: 24 }} />
           </IconButton>
           <Tooltip title="Chia sẻ bài hát">
-            <IconButton size="small" onClick={() => setShareOpen(true)} sx={{ color: 'rgba(255,255,255,0.78)' }}>
-              <ShareIcon sx={{ fontSize: 23 }} />
+            <IconButton
+              size="small"
+              onClick={() => setShareOpen(true)}
+              sx={{
+                color: 'rgba(255,255,255,0.75)',
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#8c85ff', transform: 'scale(1.08)' },
+              }}
+            >
+              <ShareIcon sx={{ fontSize: 22 }} />
             </IconButton>
           </Tooltip>
           <IconButton
-
             size="small"
             onClick={onToggleComments}
             sx={{
-              color: commentsOpen ? '#14b8a6' : 'rgba(255,255,255,0.78)',
+              color: commentsOpen ? '#6c63ff' : 'rgba(255,255,255,0.75)',
               mr: 0.5,
+              transition: 'all 0.2s ease',
+              '&:hover': { color: '#6c63ff', transform: 'scale(1.08)' },
             }}
           >
-            <Badge badgeContent={commentCount || 0} color="primary" max={99} sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16, bgcolor: '#14b8a6' } }}>
-              <CommentIcon sx={{ fontSize: 25 }} />
+            <Badge
+              badgeContent={commentCount || 0}
+              color="primary"
+              max={99}
+              sx={{
+                '& .MuiBadge-badge': {
+                  fontSize: 10,
+                  height: 16,
+                  minWidth: 16,
+                  bgcolor: '#6c63ff',
+                },
+              }}
+            >
+              <CommentIcon sx={{ fontSize: 24 }} />
             </Badge>
           </IconButton>
 
-
-          {/* Quality Selector */}
+          {/* Hi-Res Lossless Quality Selector */}
           <Button
             size="small"
             onClick={handleQualityMenuOpen}
             disabled={isQualityLoading}
             sx={{
               color: '#fff',
-              fontSize: '11px',
-              fontWeight: 700,
-              bgcolor: 'rgba(255,255,255,0.08)',
-              borderRadius: '12px',
-              px: 1.25,
+              fontSize: '10.5px',
+              fontWeight: 800,
+              bgcolor: 'rgba(255,255,255,0.06)',
+              borderRadius: '9999px',
+              px: 1.5,
               py: 0.4,
               textTransform: 'none',
+              letterSpacing: '0.4px',
               border: '1px solid rgba(255,255,255,0.15)',
+              transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: 'rgba(255,255,255,0.16)',
+                bgcolor: 'rgba(255,255,255,0.12)',
+                borderColor: '#00e5ff',
+                boxShadow: '0 0 10px rgba(0, 229, 255, 0.3)',
               },
               display: 'flex',
               alignItems: 'center',
@@ -363,17 +489,17 @@ function ClientNowPlayingBar({
           >
             {isQualityLoading ? (
               <>
-                <CircularProgress size={12} sx={{ color: '#14b8a6' }} />
+                <CircularProgress size={12} sx={{ color: '#6c63ff' }} />
                 <span>Đang chuyển...</span>
               </>
             ) : actualAudioQuality === 'hq' ? (
               <>
-                <span style={{ color: '#ffd700' }}>HQ 320k</span>
+                <span style={{ color: '#ffd700' }}>LOSSLESS 320k</span>
                 <PremiumIcon sx={{ fontSize: 13, color: '#ffd700' }} />
               </>
             ) : (
               <>
-                <span style={{ color: '#5eead4' }}>Standard</span>
+                <span style={{ color: '#00e5ff' }}>Hi-Fi 128k</span>
               </>
             )}
           </Button>
@@ -384,17 +510,30 @@ function ClientNowPlayingBar({
             direction="row"
             justifyContent="center"
             alignItems="center"
-            spacing={{ xs: 0.4, md: 0.8 }}
-            sx={{ mb: 1.2 }}
+            spacing={{ xs: 0.5, sm: 1, md: 1.2 }}
+            sx={{ mb: 0.8 }}
           >
             <IconButton
               size="small"
               onClick={handleToggleShuffle}
-              sx={{ color: shuffle ? '#5eead4' : 'rgba(255,255,255,0.68)', display: { xs: 'none', sm: 'inline-flex' } }}
+              sx={{
+                color: shuffle ? '#00e5ff' : 'rgba(255,255,255,0.65)',
+                display: { xs: 'none', sm: 'inline-flex' },
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
+              }}
             >
-              <ShuffleIcon sx={{ fontSize: 25 }} />
+              <ShuffleIcon sx={{ fontSize: 22 }} />
             </IconButton>
-            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }} onClick={handlePrevious}>
+            <IconButton
+              size="small"
+              sx={{
+                color: 'rgba(255,255,255,0.85)',
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#fff', transform: 'scale(1.1)' },
+              }}
+              onClick={handlePrevious}
+            >
               <PrevIcon sx={{ fontSize: 25 }} />
             </IconButton>
             <IconButton
@@ -402,32 +541,58 @@ function ClientNowPlayingBar({
               onClick={togglePlay}
               sx={{
                 color: '#fff',
-                bgcolor: '#14b8a6',
-                width: 38,
-                height: 38,
+                background: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 60%, #00e5ff 100%)',
+                width: 42,
+                height: 42,
+                boxShadow: isPlaying
+                  ? '0 0 20px rgba(108, 99, 255, 0.6), 0 0 40px rgba(0, 229, 255, 0.3)'
+                  : '0 4px 14px rgba(108, 99, 255, 0.4)',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 '&:hover': {
-                  bgcolor: '#0f766e',
+                  transform: 'scale(1.08)',
+                  boxShadow: '0 0 25px rgba(108, 99, 255, 0.8)',
+                },
+                '&:active': {
+                  transform: 'scale(0.96)',
                 },
               }}
             >
-              {isPlaying ? <PauseIcon sx={{ fontSize: 22 }} /> : <PlayIcon sx={{ fontSize: 22 }} />}
+              {isPlaying ? <PauseIcon sx={{ fontSize: 26 }} /> : <PlayIcon sx={{ fontSize: 26, ml: 0.2 }} />}
             </IconButton>
-            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.78)' }} onClick={handleNext}>
+            <IconButton
+              size="small"
+              sx={{
+                color: 'rgba(255,255,255,0.85)',
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#fff', transform: 'scale(1.1)' },
+              }}
+              onClick={handleNext}
+            >
               <NextIcon sx={{ fontSize: 25 }} />
             </IconButton>
             <IconButton
               size="small"
               onClick={handleCycleRepeat}
-              sx={{ color: repeatMode === 'off' ? 'rgba(255,255,255,0.68)' : '#5eead4', display: { xs: 'none', sm: 'inline-flex' } }}
+              sx={{
+                color: repeatMode !== 'off' ? '#00e5ff' : 'rgba(255,255,255,0.65)',
+                display: { xs: 'none', sm: 'inline-flex' },
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
+              }}
             >
-              {repeatMode === 'one' ? <RepeatOneIcon sx={{ fontSize: 25 }} /> : <RepeatIcon sx={{ fontSize: 25 }} />}
+              {repeatMode === 'one' ? <RepeatOneIcon sx={{ fontSize: 22 }} /> : <RepeatIcon sx={{ fontSize: 22 }} />}
             </IconButton>
             <IconButton
               size="small"
               onClick={handleToggleAutoplay}
-              sx={{ color: autoplay ? '#5eead4' : 'rgba(255,255,255,0.68)', display: { xs: 'none', sm: 'inline-flex' } }}
+              sx={{
+                color: autoplay ? '#00e5ff' : 'rgba(255,255,255,0.65)',
+                display: { xs: 'none', sm: 'inline-flex' },
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
+              }}
             >
-              <AutoplayIcon sx={{ fontSize: 25 }} />
+              <AutoplayIcon sx={{ fontSize: 22 }} />
             </IconButton>
           </Stack>
 
@@ -442,15 +607,27 @@ function ClientNowPlayingBar({
               setScrubTime(null);
             }}
             sx={{
-              color: '#14b8a6',
+              color: '#6c63ff',
               py: 0,
-              mt: 0.3,
+              mt: 0.2,
+              height: 4,
               '& .MuiSlider-thumb': {
-                width: 9,
-                height: 9,
+                width: 10,
+                height: 10,
+                transition: '0.2s ease',
+                '&:before': { boxShadow: '0 2px 6px rgba(0,0,0,0.4)' },
+                '&:hover, &.Mui-focusVisible, &.Mui-active': {
+                  boxShadow: '0 0 0 8px rgba(108, 99, 255, 0.2)',
+                  width: 12,
+                  height: 12,
+                },
               },
               '& .MuiSlider-rail': {
-                opacity: 0.26,
+                opacity: 0.2,
+                bgcolor: '#fff',
+              },
+              '& .MuiSlider-track': {
+                backgroundImage: 'linear-gradient(90deg, #6c63ff, #00bcd4)',
               },
             }}
           />
@@ -480,10 +657,10 @@ function ClientNowPlayingBar({
             fontSize: '13px',
             py: 1,
             '&.Mui-selected': {
-              bgcolor: 'rgba(20, 184, 166, 0.15)',
-              color: '#5eead4',
+              bgcolor: 'rgba(108, 99, 255, 0.18)',
+              color: '#8c85ff',
               '&:hover': {
-                bgcolor: 'rgba(20, 184, 166, 0.25)',
+                bgcolor: 'rgba(108, 99, 255, 0.28)',
               }
             },
             '&:hover': {
@@ -514,10 +691,10 @@ function ClientNowPlayingBar({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 '&.Mui-selected': {
-                  bgcolor: 'rgba(20, 184, 166, 0.15)',
-                  color: '#5eead4',
+                  bgcolor: 'rgba(108, 99, 255, 0.18)',
+                  color: '#8c85ff',
                   '&:hover': {
-                    bgcolor: 'rgba(20, 184, 166, 0.25)',
+                    bgcolor: 'rgba(108, 99, 255, 0.28)',
                   }
                 },
                 '&:hover': {
@@ -548,10 +725,10 @@ function ClientNowPlayingBar({
           sx: {
             bgcolor: '#0f172a',
             border: '1px solid rgba(255, 255, 255, 0.1)',
-            backgroundImage: 'linear-gradient(135deg, rgba(8, 47, 73, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%)',
+            backgroundImage: 'linear-gradient(135deg, rgba(108, 99, 255, 0.15) 0%, rgba(15, 23, 42, 0.95) 100%)',
             boxShadow: '0 20px 45px rgba(0, 0, 0, 0.65)',
             color: '#fff',
-            borderRadius: 3,
+            borderRadius: 3.5,
             maxWidth: 400,
             p: 1.5,
           }
@@ -585,18 +762,18 @@ function ClientNowPlayingBar({
               navigate('/premium');
             }}
             sx={{
-              bgcolor: '#14b8a6',
-              backgroundImage: 'linear-gradient(to right, #14b8a6, #0d9488)',
+              bgcolor: '#6c63ff',
+              backgroundImage: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 100%)',
               color: '#fff',
               fontWeight: 700,
               fontSize: '13px',
               px: 3,
               borderRadius: '20px',
               textTransform: 'none',
-              boxShadow: '0 4px 14px rgba(20, 184, 166, 0.4)',
+              boxShadow: '0 4px 14px rgba(108, 99, 255, 0.4)',
               '&:hover': {
-                bgcolor: '#0f766e',
-                boxShadow: '0 6px 20px rgba(20, 184, 166, 0.6)',
+                bgcolor: '#5246e2',
+                boxShadow: '0 6px 20px rgba(108, 99, 255, 0.6)',
               }
             }}
           >

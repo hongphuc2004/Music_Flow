@@ -152,63 +152,63 @@ function ClientSidebar({
             transition: 'all 0.2s ease',
           }}
         >
-          <Box
-            className="brand-icon-container"
-            sx={{
-              display: 'flex',
-              position: 'relative',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 38,
-              height: 38,
-              borderRadius: '50%',
-              bgcolor: isDark ? 'rgba(34, 211, 238, 0.15)' : 'rgba(20, 184, 166, 0.12)',
-              border: isDark ? '1px solid rgba(34, 211, 238, 0.3)' : '1px solid rgba(20, 184, 166, 0.25)',
-              boxShadow: isDark ? '0 0 12px rgba(34, 211, 238, 0.25)' : '0 0 8px rgba(20, 184, 166, 0.12)',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-          >
-            <HeadphonesIcon
-              className="brand-logo-icon"
+            <Box
+              className="brand-icon-container"
               sx={{
-                color: isDark ? '#22d3ee' : '#14b8a6',
-                fontSize: 22,
-                opacity: 1,
-                transition: 'opacity 0.16s ease',
+                display: 'flex',
+                position: 'relative',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                bgcolor: isDark ? 'rgba(108, 99, 255, 0.18)' : 'rgba(108, 99, 255, 0.12)',
+                border: isDark ? '1px solid rgba(108, 99, 255, 0.35)' : '1px solid rgba(108, 99, 255, 0.25)',
+                boxShadow: isDark ? '0 0 14px rgba(108, 99, 255, 0.3)' : '0 0 10px rgba(108, 99, 255, 0.15)',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
-            />
-            {collapsed && showDesktopToggle && (
-              <SidebarIcon
-                className="brand-open-icon"
+            >
+              <HeadphonesIcon
+                className="brand-logo-icon"
                 sx={{
-                  position: 'absolute',
-                  color: isDark ? '#22d3ee' : '#14b8a6',
+                  color: isDark ? '#8c85ff' : '#6c63ff',
                   fontSize: 22,
-                  opacity: 0,
+                  opacity: 1,
                   transition: 'opacity 0.16s ease',
                 }}
               />
-            )}
+              {collapsed && showDesktopToggle && (
+                <SidebarIcon
+                  className="brand-open-icon"
+                  sx={{
+                    position: 'absolute',
+                    color: isDark ? '#8c85ff' : '#6c63ff',
+                    fontSize: 22,
+                    opacity: 0,
+                    transition: 'opacity 0.16s ease',
+                  }}
+                />
+              )}
+            </Box>
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              className="brand-text"
+              sx={{
+                display: collapsed ? 'none' : 'block',
+                fontWeight: 900,
+                fontSize: 20,
+                letterSpacing: -0.6,
+                background: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 50%, #00bcd4 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                transition: 'opacity 0.2s ease',
+              }}
+            >
+              MusicFlow
+            </Typography>
           </Box>
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            className="brand-text"
-            sx={{
-              display: collapsed ? 'none' : 'block',
-              fontWeight: 900,
-              fontSize: 20,
-              letterSpacing: -0.6,
-              background: 'linear-gradient(90deg, #22d3ee, #10b981)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              transition: 'opacity 0.2s ease',
-            }}
-          >
-            MusicFlow
-          </Typography>
-        </Box>
         </Tooltip>
         {!collapsed && showDesktopToggle && (
           <Tooltip title="Thu gọn thanh bên" placement="right" arrow>
@@ -221,8 +221,8 @@ function ClientSidebar({
                 flexShrink: 0,
                 color: 'text.secondary',
                 '&:hover': {
-                  color: '#14b8a6',
-                  bgcolor: isDark ? 'rgba(20,184,166,0.12)' : 'rgba(20,184,166,0.08)',
+                  color: '#6c63ff',
+                  bgcolor: isDark ? 'rgba(108,99,255,0.12)' : 'rgba(108,99,255,0.08)',
                 },
               }}
             >
@@ -245,10 +245,10 @@ function ClientSidebar({
                 pb: 0.75,
                 pt: 1,
                 display: collapsed ? 'none' : 'block',
-                fontWeight: 900,
-                color: isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.65)',
-                letterSpacing: 1.6,
-                fontSize: 11,
+                fontWeight: 850,
+                color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.5)',
+                letterSpacing: 1.5,
+                fontSize: 10.5,
               }}
             >
               {group.title}
@@ -274,25 +274,24 @@ function ClientSidebar({
                         justifyContent: collapsed ? 'center' : 'flex-start',
                         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                         willChange: 'transform',
-                        // AI item has purple active accent; regular items use teal
                         borderLeft: active
-                          ? `4px solid ${isAi ? '#8b5cf6' : '#14b8a6'}`
+                          ? `4px solid ${isAi ? '#8b5cf6' : '#6c63ff'}`
                           : '0px solid transparent',
                         bgcolor: active
                           ? isAi
                             ? (isDark ? 'rgba(139, 92, 246, 0.14) !important' : 'rgba(139, 92, 246, 0.09) !important')
-                            : (isDark ? 'rgba(20, 184, 166, 0.12) !important' : 'rgba(20, 184, 166, 0.08) !important')
+                            : (isDark ? 'rgba(108, 99, 255, 0.14) !important' : 'rgba(108, 99, 255, 0.08) !important')
                           : isAi
                             ? (isDark ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.04)')
                             : 'transparent',
                         boxShadow: active
                           ? isAi
-                            ? (isDark ? 'inset 0 0 8px rgba(139, 92, 246, 0.2)' : 'inset 0 0 6px rgba(139, 92, 246, 0.12)')
-                            : (isDark ? 'inset 0 0 8px rgba(20, 184, 166, 0.2), 0 2px 6px rgba(0,0,0,0.1)' : 'inset 0 0 6px rgba(20, 184, 166, 0.15)')
+                            ? (isDark ? 'inset 0 0 10px rgba(139, 92, 246, 0.2)' : 'inset 0 0 6px rgba(139, 92, 246, 0.12)')
+                            : (isDark ? 'inset 0 0 10px rgba(108, 99, 255, 0.2), 0 2px 8px rgba(0,0,0,0.1)' : 'inset 0 0 6px rgba(108, 99, 255, 0.12)')
                           : 'none',
                         '&:hover': {
                           bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                          transform: collapsed ? 'none' : 'translateX(6px)',
+                          transform: collapsed ? 'none' : 'translateX(4px)',
                         },
                       }}
                     >
@@ -304,11 +303,10 @@ function ClientSidebar({
                           color: active
                             ? isAi
                               ? '#a78bfa'
-                              : (isDark ? '#22d3ee' : '#14b8a6')
+                              : (isDark ? '#8c85ff' : '#6c63ff')
                             : isAi
                               ? (isDark ? 'rgba(167, 139, 250, 0.75)' : 'rgba(139, 92, 246, 0.7)')
                               : (isDark ? 'rgba(255, 255, 255, 0.52)' : 'rgba(0, 0, 0, 0.45)'),
-                          // Sparkle animation for AI icon
                           ...(isAi && !active && {
                             animation: 'sparkle 3s ease-in-out infinite',
                             '@keyframes sparkle': {
@@ -329,8 +327,8 @@ function ClientSidebar({
                           color: active
                             ? isAi
                               ? (isDark ? '#c4b5fd' : '#7c3aed')
-                              : (isDark ? '#fff' : '#0f766e')
-                            : (isDark ? 'rgba(255, 255, 255, 0.68)' : 'rgba(0, 0, 0, 0.65)'),
+                              : (isDark ? '#fff' : '#6c63ff')
+                            : (isDark ? 'rgba(255, 255, 255, 0.72)' : 'rgba(0, 0, 0, 0.68)'),
                           transition: 'all 0.2s ease',
                         }}
                       />
@@ -374,26 +372,26 @@ function ClientSidebar({
             sx={{
               p: 1.5,
               borderRadius: 3,
-              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
               color: '#fff',
               cursor: 'pointer',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               boxShadow: '0 4px 14px rgba(99, 102, 241, 0.25)',
               '&:hover': {
                 transform: 'translateY(-2px)',
                 boxShadow: '0 8px 22px rgba(99, 102, 241, 0.4)',
-                borderColor: 'rgba(255,255,255,0.2)',
+                borderColor: 'rgba(255,255,255,0.25)',
               }
             }}
           >
             <Stack direction="row" spacing={1.25} alignItems="center">
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.15)', width: 34, height: 34 }}>
+              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 34, height: 34 }}>
                 <MicExternalOnOutlined sx={{ color: '#fff', fontSize: 18 }} />
               </Avatar>
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="body2" sx={{ fontWeight: 800, fontSize: 13 }}>Artist Studio</Typography>
-                <Typography variant="caption" sx={{ opacity: 0.82, display: 'block', fontSize: 9.5 }} noWrap>
+                <Typography variant="caption" sx={{ opacity: 0.85, display: 'block', fontSize: 9.5 }} noWrap>
                   Dành cho nghệ sĩ sáng tạo
                 </Typography>
               </Box>
@@ -406,7 +404,6 @@ function ClientSidebar({
           <Tooltip title={collapsed ? userName : ''} placement="right" arrow>
           <Box
             onClick={collapsed ? () => handleNavigate('/profile') : undefined}
-
             sx={{
               p: collapsed ? 0.75 : 1.25,
               borderRadius: 3.5,
@@ -419,7 +416,7 @@ function ClientSidebar({
               cursor: collapsed ? 'pointer' : 'default',
             }}
           >
-            <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ width: 36, height: 36, bgcolor: '#14b8a6', fontSize: 15, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
+            <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ width: 36, height: 36, bgcolor: '#6c63ff', fontSize: 15, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
               {userInitial}
             </Avatar>
             <Box sx={{ minWidth: 0, flexGrow: 1, display: collapsed ? 'none' : 'block' }}>
@@ -450,16 +447,16 @@ function ClientSidebar({
             sx={{
               borderRadius: 3,
               minHeight: 44,
-              bgcolor: isDark ? 'rgba(20, 184, 166, 0.12)' : 'rgba(20, 184, 166, 0.08)',
-              border: isDark ? '1px solid rgba(20, 184, 166, 0.25)' : '1px solid rgba(20, 184, 166, 0.3)',
-              color: isDark ? '#22d3ee' : '#0d9488',
+              bgcolor: isDark ? 'rgba(108, 99, 255, 0.15)' : 'rgba(108, 99, 255, 0.09)',
+              border: isDark ? '1px solid rgba(108, 99, 255, 0.3)' : '1px solid rgba(108, 99, 255, 0.25)',
+              color: isDark ? '#8c85ff' : '#6c63ff',
               display: 'flex',
               justifyContent: 'center',
               gap: 1,
               transition: 'all 0.3s ease',
               '&:hover': {
-                bgcolor: isDark ? 'rgba(20, 184, 166, 0.22)' : 'rgba(20, 184, 166, 0.15)',
-                boxShadow: isDark ? '0 4px 12px rgba(20, 184, 166, 0.2)' : '0 4px 12px rgba(20, 184, 166, 0.1)',
+                bgcolor: isDark ? 'rgba(108, 99, 255, 0.25)' : 'rgba(108, 99, 255, 0.16)',
+                boxShadow: isDark ? '0 4px 14px rgba(108, 99, 255, 0.25)' : '0 4px 12px rgba(108, 99, 255, 0.12)',
                 transform: 'translateY(-1.5px)',
               },
             }}
@@ -478,11 +475,11 @@ function ClientSidebar({
     boxSizing: 'border-box',
     color: isDark ? '#fff' : 'text.primary',
     background: isDark
-      ? 'radial-gradient(circle at top, rgba(20, 184, 166, 0.08) 0%, transparent 60%), linear-gradient(180deg, rgba(9, 13, 22, 0.82) 0%, rgba(17, 24, 39, 0.85) 60%, rgba(7, 21, 30, 0.9) 100%)'
-      : 'radial-gradient(circle at top, rgba(20, 184, 166, 0.06) 0%, transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(248, 250, 252, 0.8) 60%, rgba(241, 245, 249, 0.85) 100%)',
-    backdropFilter: 'blur(20px) saturate(150%)',
+      ? 'linear-gradient(180deg, rgba(8, 12, 22, 0.78) 0%, rgba(5, 7, 14, 0.85) 100%)'
+      : 'linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(248, 250, 252, 0.88) 100%)',
+    backdropFilter: 'blur(36px) saturate(200%)',
     overflowX: 'hidden',
-    borderRight: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
+    borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
     transition: 'width 0.22s ease, background 0.3s ease, border-color 0.3s ease',
   };
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, useContext, useEffect, useCallback } from 'react';
+import { useMemo, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -212,6 +212,20 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
     }
   };
 
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setShowResults(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <AppBar
       position="fixed"
@@ -226,16 +240,16 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
           md: `${desktopSidebarOpen ? drawerWidth : collapsedDrawerWidth}px`,
         },
         color: 'text.primary',
-        background: (theme) => theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.88)' : 'rgba(248, 250, 252, 0.88)',
-        backdropFilter: 'blur(16px)',
+        background: (theme) => theme.palette.mode === 'dark' ? 'rgba(8, 12, 22, 0.72)' : 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(36px) saturate(200%)',
         borderBottom: '1px solid',
-        borderColor: 'divider',
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
         transition: (theme) => theme.transitions.create(['width', 'margin-left'], {
           duration: theme.transitions.duration.shorter,
         }),
       }}
     >
-      <Toolbar>
+      <Toolbar sx={{ minHeight: { xs: 64, md: 70 } }}>
         <IconButton
           onClick={onToggleSidebar}
           color="inherit"
@@ -243,30 +257,35 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
         >
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 850, fontSize: { xs: '1.05rem', md: '1.25rem' }, letterSpacing: '-0.02em' }}>
           {title}
         </Typography>
-        <Box sx={{ flexGrow: 1, px: { xs: 1, md: 2 }, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+        <Box sx={{ flexGrow: 1, px: { xs: 1, md: 3 }, display: 'flex', justifyContent: 'center', position: 'relative' }}>
           <ClickAwayListener onClickAway={() => setShowResults(false)}>
-            <Box sx={{ width: '100%', maxWidth: 420, position: 'relative' }}>
+            <Box sx={{ width: '100%', maxWidth: 480, position: 'relative' }}>
               <Box
                 sx={{
                   width: '100%',
                   display: { xs: 'none', sm: 'flex' },
                   alignItems: 'center',
-                  borderRadius: 3,
-                  px: 1.25,
-                  py: 0.5,
-                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(31, 41, 55, 0.5)' : 'rgba(255,255,255,0.76)',
+                  borderRadius: '9999px',
+                  px: 2,
+                  py: 0.85,
+                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
                   border: '1px solid',
-                  borderColor: (theme) => showResults && searchValue.trim() ? theme.palette.primary.main : 'divider',
-                  boxShadow: showResults && searchValue.trim() ? '0 0 0 2px rgba(108, 99, 255, 0.2)' : 'none',
-                  transition: 'all 0.2s ease',
+                  borderColor: (theme) => showResults && searchValue.trim() ? '#6c63ff' : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'),
+                  boxShadow: showResults && searchValue.trim() ? '0 0 0 3px rgba(108, 99, 255, 0.25), 0 8px 24px rgba(0,0,0,0.3)' : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  '&:hover': {
+                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)',
+                    borderColor: 'rgba(108, 99, 255, 0.5)',
+                  }
                 }}
               >
-                <SearchIcon sx={{ color: 'text.secondary', mr: 0.75, fontSize: 18 }} />
+                <SearchIcon sx={{ color: '#8c85ff', mr: 1, fontSize: 20 }} />
                 <InputBase
-                  placeholder="Tìm kiếm bài hát, playlist, ca sĩ..."
+                  inputRef={searchInputRef}
+                  placeholder="Tìm kiếm bài hát, nghệ sĩ, album, playlist..."
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
                   onFocus={() => setShowResults(true)}
@@ -276,14 +295,14 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                       submitSearch();
                     }
                   }}
-                  sx={{ width: '100%', fontSize: 14 }}
+                  sx={{ width: '100%', fontSize: 13.5, fontWeight: 500 }}
                 />
               </Box>
 
               {/* Floating Autocomplete Dropdown */}
               {showResults && searchValue.trim() && (
                 <Paper
-                  elevation={8}
+                  elevation={12}
                   sx={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
@@ -568,7 +587,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
             </Box>
           )}
           <IconButton onClick={handleMenu} color="inherit" sx={{ p: 0.5 }}>
-            <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ bgcolor: '#14b8a6', color: '#fff' }}>
+            <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ bgcolor: '#6c63ff', color: '#fff', width: 36, height: 36, fontWeight: 700, boxShadow: '0 2px 8px rgba(108, 99, 255, 0.3)' }}>
               {isLoggedIn ? userInitial : <PersonIcon />}
             </Avatar>
           </IconButton>

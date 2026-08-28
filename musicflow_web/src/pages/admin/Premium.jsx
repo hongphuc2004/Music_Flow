@@ -101,7 +101,7 @@ function Premium() {
   const [loadingSubs, setLoadingSubs] = useState(false);
 
   // Fetch Statistics
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoadingStats(true);
       const res = await adminPremiumApi.getStats();
@@ -122,10 +122,10 @@ function Premium() {
     } finally {
       setLoadingStats(false);
     }
-  };
+  }, [showToast]);
 
   // Fetch Plans
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     try {
       setLoadingPlans(true);
       const res = await adminPremiumApi.getPlans();
@@ -139,7 +139,7 @@ function Premium() {
     } finally {
       setLoadingPlans(false);
     }
-  };
+  }, [showToast]);
 
   // Fetch Transactions
   const fetchTransactions = useCallback(async () => {
@@ -193,7 +193,7 @@ function Premium() {
   useEffect(() => {
     fetchStats();
     fetchPlans();
-  }, []);
+  }, [fetchStats, fetchPlans]);
 
   // Sync Tabs data
   useEffect(() => {

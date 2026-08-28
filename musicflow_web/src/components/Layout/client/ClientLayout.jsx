@@ -122,11 +122,45 @@ function ClientLayout({ children, title }) {
         display: 'flex',
         minHeight: '100vh',
         bgcolor: 'background.default',
-        backgroundImage: (theme) => theme.palette.mode === 'dark'
-          ? 'radial-gradient(circle at top right, rgba(56,189,248,0.05), transparent 30%), radial-gradient(circle at left 30%, rgba(13,148,136,0.06), transparent 25%)'
-          : 'radial-gradient(circle at top right, rgba(56,189,248,0.12), transparent 28%), radial-gradient(circle at left 30%, rgba(34,197,94,0.08), transparent 24%)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* ── Dynamic Liquid Ambient Aura Background Orbs (Apple Music Style) ── */}
+      <Box
+        className="animate-liquid-aura-1"
+        sx={{
+          position: 'fixed',
+          top: '-15%',
+          left: '10%',
+          width: { xs: '380px', md: '550px' },
+          height: { xs: '380px', md: '550px' },
+          borderRadius: '50%',
+          background: (theme) => theme.palette.mode === 'dark'
+            ? 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.1) 50%, transparent 75%)'
+            : 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 50%, transparent 75%)',
+          filter: 'blur(90px)',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <Box
+        className="animate-liquid-aura-2"
+        sx={{
+          position: 'fixed',
+          bottom: '-10%',
+          right: '5%',
+          width: { xs: '350px', md: '520px' },
+          height: { xs: '350px', md: '520px' },
+          borderRadius: '50%',
+          background: (theme) => theme.palette.mode === 'dark'
+            ? 'radial-gradient(circle, rgba(6, 182, 212, 0.16) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 75%)'
+            : 'radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.04) 50%, transparent 75%)',
+          filter: 'blur(95px)',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
       <ClientSidebar
         mobileOpen={mobileOpen}
         desktopOpen={desktopOpen}
@@ -145,11 +179,9 @@ function ClientLayout({ children, title }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, md: 3 },
+          p: { xs: 2, sm: 2.5, md: 3.5 },
           // Dynamic padding-bottom ensures no extra gap when player is hidden
-          pb: currentSong ? { xs: '100px', sm: '96px', md: '100px' } : { xs: 2, md: 3 },
-
-
+          pb: currentSong ? { xs: '110px', sm: '106px', md: '110px' } : { xs: 2, md: 3 },
           width: {
             xs: '100%',
             md: `calc(100% - ${desktopOpen ? drawerWidth : collapsedDrawerWidth}px)`,
@@ -158,7 +190,6 @@ function ClientLayout({ children, title }) {
           transition: theme.transitions.create('width', {
             duration: theme.transitions.duration.shorter,
           }),
-          // Hint browser to skip off-screen rendering → improves LCP and scroll performance
         }}
       >
         <Toolbar />

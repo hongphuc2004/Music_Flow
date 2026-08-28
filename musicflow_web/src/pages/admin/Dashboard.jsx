@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Grid,
   Paper,
@@ -100,11 +100,7 @@ function Dashboard() {
     regenAi: false
   });
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchCloudinaryStats = async () => {
+  const fetchCloudinaryStats = useCallback(async () => {
     try {
       setLoadingCloudinary(true);
       const response = await statsApi.getCloudinaryUsage();
@@ -114,9 +110,9 @@ function Dashboard() {
     } finally {
       setLoadingCloudinary(false);
     }
-  };
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch Cloudinary usage stats in parallel so it doesn't block the main stats dashboard API
@@ -141,7 +137,11 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchCloudinaryStats]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleCleanCache = async () => {
     setActionLoading(prev => ({ ...prev, cleanCache: true }));

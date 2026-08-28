@@ -63,7 +63,7 @@ function ClientPaymentReturn() {
     };
 
     verifyPayment();
-  }, [location.search]);
+  }, [location.search, showToast]);
 
   return (
     <ClientLayout title="Kết quả thanh toán">

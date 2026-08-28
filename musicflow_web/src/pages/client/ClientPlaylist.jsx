@@ -262,19 +262,20 @@ function ClientPlaylist() {
                   onClick={playAll}
                   startIcon={<PlayIcon sx={{ fontSize: 24 }} />}
                   sx={{
-                    bgcolor: 'primary.main',
+                    background: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 100%)',
                     color: '#fff',
                     px: 4.5,
-                    py: 1.75,
-                    borderRadius: 4,
+                    py: 1.5,
+                    borderRadius: '9999px',
                     fontSize: 15,
                     fontWeight: 800,
-                    boxShadow: '0 8px 24px rgba(108, 99, 255, 0.3)',
+                    textTransform: 'none',
+                    boxShadow: '0 8px 24px rgba(108, 99, 255, 0.35)',
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
-                      bgcolor: 'primary.dark',
+                      background: 'linear-gradient(135deg, #7b74f5 0%, #5246e2 100%)',
                       transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 28px rgba(108, 99, 255, 0.4)',
+                      boxShadow: '0 12px 28px rgba(108, 99, 255, 0.45)',
                     },
                     '&:active': {
                       transform: 'translateY(0)',
@@ -369,11 +370,35 @@ function ClientPlaylist() {
                     </Avatar>
 
                     {/* Info */}
-                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography variant="body1" fontWeight={750} noWrap sx={{ mb: 0.5 }}>
+                    <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
+                      <Typography
+                        variant="body1"
+                        fontWeight={750}
+                        noWrap
+                        sx={{
+                          mb: 0.5,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          display: 'block',
+                          width: '100%',
+                        }}
+                      >
                         {song.title}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" noWrap sx={{ fontWeight: 500 }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        noWrap
+                        sx={{
+                          fontWeight: 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          display: 'block',
+                          width: '100%',
+                        }}
+                      >
                         {(song.artists || []).map((artist) => artist?.name).filter(Boolean).join(', ') || 'Nghệ sĩ ẩn danh'}
                       </Typography>
                     </Box>

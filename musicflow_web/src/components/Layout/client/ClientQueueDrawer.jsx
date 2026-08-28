@@ -168,15 +168,20 @@ function ClientQueueDrawer({ open, onClose }) {
                 </Avatar>
 
                 {/* Title & Artist */}
-                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
                   <Typography
                     variant="body2"
                     fontWeight={800}
                     noWrap
                     sx={{
-                      color: isCurrent ? '#14b8a6' : 'rgba(255, 255, 255, 0.9)',
+                      color: isCurrent ? '#8c85ff' : 'rgba(255, 255, 255, 0.9)',
                       fontSize: 13,
                       mb: 0.25,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'block',
+                      width: '100%',
                     }}
                   >
                     {song.title}
@@ -186,8 +191,12 @@ function ClientQueueDrawer({ open, onClose }) {
                     noWrap
                     sx={{
                       display: 'block',
-                      color: isCurrent ? 'rgba(20, 184, 166, 0.7)' : 'rgba(255, 255, 255, 0.5)',
+                      color: isCurrent ? 'rgba(140, 133, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)',
                       fontWeight: 500,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      width: '100%',
                     }}
                   >
                     {Array.isArray(song.artists)

@@ -49,20 +49,20 @@ const ClientSongItem = ({
         cursor: 'pointer',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         bgcolor: (theme) => isCurrent
-          ? theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.12)' : 'rgba(20, 184, 166, 0.06)'
+          ? theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.14)' : 'rgba(108, 99, 255, 0.08)'
           : theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
         border: '1px solid',
         borderColor: (theme) => isCurrent
-          ? '#14b8a6'
+          ? '#6c63ff'
           : theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
         outline: 'none',
         '&:hover': {
-          borderColor: '#14b8a6',
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(20, 184, 166, 0.08)' : 'rgba(20, 184, 166, 0.04)',
+          borderColor: '#6c63ff',
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.09)' : 'rgba(108, 99, 255, 0.05)',
           transform: 'translateY(-2px)',
           boxShadow: (theme) => theme.palette.mode === 'dark'
-            ? '0 8px 20px -6px rgba(20, 184, 166, 0.3)'
-            : '0 8px 16px -6px rgba(20, 184, 166, 0.12)',
+            ? '0 8px 20px -6px rgba(108, 99, 255, 0.35)'
+            : '0 8px 16px -6px rgba(108, 99, 255, 0.15)',
         },
         '&:hover .song-img-overlay': {
           opacity: 1,
@@ -105,7 +105,7 @@ const ClientSongItem = ({
                   opacity: 0,
                   transform: 'scale(0.8)',
                   transition: 'all 0.2s ease',
-                  color: '#14b8a6',
+                  color: '#6c63ff',
                   fontSize: 22,
                   m: 'auto',
                 }}
@@ -124,8 +124,8 @@ const ClientSongItem = ({
           sx={{
             width: '100%',
             height: '100%',
-            bgcolor: 'rgba(20, 184, 166, 0.08)',
-            color: '#14b8a6',
+            bgcolor: 'rgba(108, 99, 255, 0.12)',
+            color: '#8c85ff',
             transition: 'transform 0.25s ease',
             '& .MuiAvatar-fallback': { display: 'none' }
           }}
@@ -159,23 +159,45 @@ const ClientSongItem = ({
       </Box>
 
       {/* Song details */}
-      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25 }}>
+      <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25, minWidth: 0, width: '100%', overflow: 'hidden' }}>
           <Typography
             variant="body2"
             noWrap
             sx={{
               fontWeight: 800,
-              color: isCurrent ? '#14b8a6' : 'text.primary',
+              color: isCurrent ? (theme) => theme.palette.mode === 'dark' ? '#8c85ff' : '#6c63ff' : 'text.primary',
               transition: 'color 0.2s ease',
               fontSize: 13.5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'block',
+              minWidth: 0,
+              flexGrow: 1,
             }}
           >
             {song.title}
           </Typography>
-          {isCurrent && index === null && <PlayingEqualizer isPlaying={isPlaying} />}
+          {isCurrent && index === null && (
+            <Box sx={{ flexShrink: 0 }}>
+              <PlayingEqualizer isPlaying={isPlaying} />
+            </Box>
+          )}
         </Stack>
-        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontWeight: 500 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          noWrap
+          sx={{
+            display: 'block',
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            width: '100%',
+          }}
+        >
           {Array.isArray(song.artists)
             ? song.artists.map((artist) => artist?.name || artist).filter(Boolean).join(', ')
             : song.artistText || 'Unknown artist'}

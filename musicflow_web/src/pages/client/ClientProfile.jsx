@@ -11,6 +11,8 @@ import {
   TextField,
   Typography,
   LinearProgress,
+  Chip,
+  Divider,
 } from '@mui/material';
 import {
   CameraAltRounded as CameraIcon,
@@ -18,16 +20,25 @@ import {
   PlayArrowRounded as PlayIcon,
   MusicNoteRounded as MusicIcon,
   FlashOnRounded as FlashIcon,
+  AutoAwesomeRounded as SparklesIcon,
+  CloudUploadRounded as UploadIcon,
+  DownloadRounded as DownloadIcon,
+  CheckCircleRounded as CheckIcon,
+  ArrowForwardRounded as ArrowIcon,
+  HeadphonesRounded as HeadphonesIcon,
+  BlockRounded as AdBlockIcon,
+  StarRounded as StarIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientUserApi, clientSongsApi } from '../../services/client/client.service';
+import { clientUserApi, clientSongsApi, clientPlansApi, clientSubscriptionApi } from '../../services/client/client.service';
 import useAppToast from '../../components/common/useAppToast';
-import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import { notifyClientSessionChanged } from '../../hooks/useClientSession';
 import { useNavigate } from 'react-router-dom';
 
 function ClientProfile() {
   const { showToast } = useAppToast();
+  const { currentSong, isPlaying } = useClientPlayer();
   const { playSong } = useClientPlayerActions();
   const navigate = useNavigate();
 
@@ -42,18 +53,23 @@ function ClientProfile() {
   const [uploadUsed, setUploadUsed] = useState(0);
   const [downloadUsed, setDownloadUsed] = useState(0);
   const [recentSongs, setRecentSongs] = useState([]);
+  
+  const [plans, setPlans] = useState([]);
+  const [activeSub, setActiveSub] = useState(null);
 
   const userName = useMemo(() => form.name || 'Người nghe', [form.name]);
 
   const isPremium = useMemo(() => {
-    return user?.isPremium && user?.premiumExpiry && new Date(user.premiumExpiry) > new Date();
-  }, [user]);
+    return (user?.isPremium && user?.premiumExpiry && new Date(user.premiumExpiry) > new Date()) || !!activeSub;
+  }, [user, activeSub]);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndPlans = async () => {
       try {
         setLoading(true);
         setError('');
+        
+        // 1. Fetch User info
         const response = await clientUserApi.getMe();
         const userObj = response.data?.user;
         setUser(userObj);
@@ -70,14 +86,26 @@ function ClientProfile() {
         localStorage.setItem('userAvatar', userObj?.avatar || '');
         notifyClientSessionChanged();
 
-        // Load recent songs
+        // 2. Fetch Subscription & Plans
+        try {
+          const [subRes, plansRes] = await Promise.all([
+            clientSubscriptionApi.getCurrent(),
+            clientPlansApi.getActive(),
+          ]);
+          setActiveSub(subRes.data?.data?.activeSubscription || null);
+          setPlans(plansRes.data?.data || []);
+        } catch {
+          // ignore if non-critical
+        }
+
+        // 3. Load recent songs
         const userId = userObj?._id || 'anonymous';
         const rawRecent = localStorage.getItem(`musicflow_recent_played_${userId}`);
         if (rawRecent) {
           try {
             const parsed = JSON.parse(rawRecent);
             if (Array.isArray(parsed)) {
-              setRecentSongs(parsed.slice(0, 5));
+              setRecentSongs(parsed.slice(0, 6));
             }
           } catch (e) {
             console.error('Failed to parse recent songs:', e);
@@ -112,7 +140,7 @@ function ClientProfile() {
       }
     };
 
-    fetchProfile();
+    fetchProfileAndPlans();
     fetchUploads();
     fetchDownloads();
   }, []);
@@ -156,174 +184,221 @@ function ClientProfile() {
   };
 
   return (
-    <ClientLayout title="Thông tin tài khoản">
+    <ClientLayout title="Hồ Sơ & Gói Dịch Vụ">
       {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 3 }}>{success}</Alert>}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 18 }}>
-          <CircularProgress size={38} color="secondary" />
+          <CircularProgress size={44} sx={{ color: '#6c63ff' }} />
         </Box>
       ) : (
-        <Stack spacing={4}>
-          {/* 1. HERO GRADIENT BANNER WITH PROFILE PICTURE */}
+        <Stack spacing={4} sx={{ pb: 6 }}>
+          {/* ── 1. MASTER PROFILE HERO STAGE ── */}
           <Box
             sx={{
-              height: { xs: 240, md: 200 },
-              borderRadius: 4.5,
-              background: (theme) => theme.palette.mode === 'dark'
-                ? 'linear-gradient(135deg, #0d9488 0%, #0b0f19 100%)'
-                : 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
+              minHeight: { xs: 260, md: 220 },
+              borderRadius: '28px',
               position: 'relative',
               overflow: 'hidden',
+              backgroundImage: isPremium
+                ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(108, 99, 255, 0.85) 60%, rgba(10, 15, 30, 0.95) 100%), url(https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1400)'
+                : 'linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(108, 99, 255, 0.75) 50%, rgba(9, 13, 26, 0.95) 100%), url(https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1400)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              color: '#fff',
               display: 'flex',
-              alignItems: 'flex-end',
-              p: 4,
+              alignItems: 'center',
+              p: { xs: 3, sm: 4.5 },
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.5)',
             }}
           >
-            {/* Soft decorative background glow */}
-            <Box sx={{
-              position: 'absolute',
-              top: -100,
-              right: -100,
-              width: 300,
-              height: 300,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%)',
-              pointerEvents: 'none',
-            }} />
+            {/* Ambient blur circle */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: -80,
+                right: -80,
+                width: 320,
+                height: 320,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.12)',
+                filter: 'blur(60px)',
+                pointerEvents: 'none',
+              }}
+            />
 
             <Stack
               direction={{ xs: 'column', md: 'row' }}
-              alignItems="center"
-              spacing={3}
-              sx={{
-                width: '100%',
-                zIndex: 2,
-                textAlign: { xs: 'center', md: 'left' }
-              }}
+              alignItems={{ xs: 'center', md: 'center' }}
+              justifyContent="space-between"
+              spacing={3.5}
+              sx={{ width: '100%', zIndex: 2 }}
             >
-              {/* Interactive Avatar Container */}
-              <Box
-                sx={{
-                  position: 'relative',
-                  width: 120,
-                  height: 120,
-                  borderRadius: '50%',
-                  border: '4px solid rgba(255, 255, 255, 0.8)',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 25px rgba(0,0,0,0.35)',
-                  flexShrink: 0,
-                  transition: 'transform 0.3s ease, border-color 0.3s ease',
-                  '&:hover': {
-                    transform: 'scale(1.03)',
-                    borderColor: '#fff',
-                  },
-                  '&:hover .avatar-hover-overlay': { opacity: 1 },
-                }}
-                component="label"
+              {/* User Avatar & Info */}
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                alignItems="center"
+                spacing={3}
+                sx={{ textAlign: { xs: 'center', sm: 'left' } }}
               >
-                <Avatar
-                  src={form.avatarUrl || undefined}
-                  sx={{ width: '100%', height: '100%', bgcolor: 'rgba(255,255,255,0.2)', fontSize: 52, color: '#fff' }}
-                >
-                  {userName.charAt(0).toUpperCase()}
-                </Avatar>
-                {/* Hover Overlay */}
                 <Box
-                  className="avatar-hover-overlay"
                   sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    bgcolor: 'rgba(0,0,0,0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: 0,
-                    transition: 'opacity 0.2s ease',
-                    color: '#fff',
+                    position: 'relative',
+                    width: 110,
+                    height: 110,
+                    borderRadius: '50%',
+                    border: isPremium ? '4px solid #f59e0b' : '4px solid rgba(255, 255, 255, 0.8)',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    boxShadow: isPremium ? '0 0 25px rgba(245, 158, 11, 0.6)' : '0 8px 25px rgba(0,0,0,0.35)',
+                    flexShrink: 0,
+                    transition: 'transform 0.3s ease',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                    },
+                    '&:hover .avatar-hover-overlay': { opacity: 1 },
+                  }}
+                  component="label"
+                >
+                  <Avatar
+                    src={form.avatarUrl || undefined}
+                    sx={{ width: '100%', height: '100%', bgcolor: 'rgba(255,255,255,0.2)', fontSize: 44, color: '#fff', fontWeight: 900 }}
+                  >
+                    {userName.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box
+                    className="avatar-hover-overlay"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      bgcolor: 'rgba(0,0,0,0.6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                      color: '#fff',
+                    }}
+                  >
+                    <CameraIcon sx={{ fontSize: 30 }} />
+                  </Box>
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        setAvatarFile(file);
+                        setForm((prev) => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
+                      }
+                    }}
+                  />
+                </Box>
+
+                <Box>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 0.5 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: '-0.03em', fontSize: { xs: '1.7rem', sm: '2.2rem' } }}>
+                      {userName}
+                    </Typography>
+                    {isPremium ? (
+                      <Chip
+                        icon={<StarIcon sx={{ color: '#090d1a !important', fontSize: 16 }} />}
+                        label="VIP PREMIUM"
+                        sx={{
+                          fontWeight: 900,
+                          fontSize: 11,
+                          bgcolor: '#f59e0b',
+                          color: '#090d1a',
+                          boxShadow: '0 4px 14px rgba(245, 158, 11, 0.4)',
+                        }}
+                      />
+                    ) : (
+                      <Chip
+                        label="BASIC"
+                        size="small"
+                        sx={{
+                          fontWeight: 850,
+                          fontSize: 11,
+                          bgcolor: 'rgba(255, 255, 255, 0.2)',
+                          color: '#fff',
+                          backdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                        }}
+                      />
+                    )}
+                  </Stack>
+
+                  <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 550, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+                    Gói tài khoản:{' '}
+                    <span style={{ color: isPremium ? '#ffd700' : '#00e5ff', fontWeight: 800 }}>
+                      {isPremium ? (activeSub?.planName || 'MusicFlow Premium Pro') : 'Basic Listener (Miễn Phí)'}
+                    </span>
+                  </Typography>
+
+                  {isPremium && (user?.premiumExpiry || activeSub?.endDate) && (
+                    <Typography variant="caption" sx={{ opacity: 0.85, fontWeight: 600, display: 'block', mt: 0.5 }}>
+                      ⏳ Hạn sử dụng:{' '}
+                      {new Date(user?.premiumExpiry || activeSub?.endDate).toLocaleDateString('vi-VN')}
+                    </Typography>
+                  )}
+                </Box>
+              </Stack>
+
+              {/* Quick Action Button */}
+              <Box>
+                <Button
+                  variant="contained"
+                  startIcon={<FlashIcon />}
+                  onClick={() => navigate('/premium')}
+                  sx={{
+                    bgcolor: isPremium ? '#fff' : '#00e5ff',
+                    color: '#090d1a',
+                    fontWeight: 900,
+                    borderRadius: '9999px',
+                    px: 3.5,
+                    py: 1.2,
+                    textTransform: 'none',
+                    fontSize: 14,
+                    boxShadow: isPremium ? '0 6px 20px rgba(0,0,0,0.3)' : '0 6px 20px rgba(0, 229, 255, 0.4)',
+                    '&:hover': {
+                      bgcolor: '#fff',
+                      transform: 'scale(1.05)',
+                    },
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  <CameraIcon sx={{ fontSize: 32 }} />
-                </Box>
-                <input
-                  hidden
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      setAvatarFile(file);
-                      setForm((prev) => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
-                    }
-                  }}
-                />
-              </Box>
-
-              <Box sx={{ mt: { xs: 1, md: 0 } }}>
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Typography variant="h4" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '-1px', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                    {userName}
-                  </Typography>
-                  {isPremium && (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: 2,
-                        bgcolor: 'rgba(255, 215, 0, 0.2)',
-                        border: '1px solid rgba(255, 215, 0, 0.4)',
-                        backdropFilter: 'blur(4px)',
-                      }}
-                    >
-                      <PremiumIcon sx={{ color: '#ffd700', fontSize: 16, mr: 0.5 }} />
-                      <Typography variant="caption" sx={{ color: '#ffd700', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Premium
-                      </Typography>
-                    </Box>
-                  )}
-                </Stack>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 500, mt: 0.5 }}>
-                  Loại tài khoản: <span style={{ color: isPremium ? '#ffd700' : '#ffffff', fontWeight: 700 }}>
-                    {isPremium ? 'Premium Listener' : 'Basic Listener'}
-                  </span>
-                  {isPremium && user?.premiumExpiry && (
-                    <span style={{ fontSize: '11px', display: 'block', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
-                      Hạn dùng: {new Date(user.premiumExpiry).toLocaleDateString('vi-VN')}
-                    </span>
-                  )}
-                </Typography>
+                  {isPremium ? 'Quản Lý Gói Dịch Vụ' : 'Nâng Cấp Gói Premium'}
+                </Button>
               </Box>
             </Stack>
           </Box>
 
-          {/* 2. MAIN GRID LAYOUT */}
+          {/* ── 2. BENTO BODY (PERSONAL INFO & GÓI DỊCH VỤ PREMIUM) ── */}
           <Grid container spacing={3.5}>
-            {/* Left Column: Personal Form & Quota Block */}
+            {/* Left Column: Personal Form & Gói Dịch Vụ Suite (7.5/12) */}
             <Grid size={{ xs: 12, md: 7.5 }}>
               <Stack spacing={3.5}>
-                {/* Form Card */}
+                {/* A. THÔNG TIN CÁ NHÂN */}
                 <Paper
                   elevation={0}
                   sx={{
                     p: 3.5,
-                    borderRadius: 4.5,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
+                    borderRadius: '24px',
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backdropFilter: 'blur(16px)',
                   }}
                 >
-                  <Typography variant="h6" fontWeight={800} mb={3}>
-                    Thông tin cá nhân
+                  <Typography variant="h6" sx={{ fontWeight: 900, mb: 2.5, letterSpacing: '-0.02em' }}>
+                    Thông Tin Cá Nhân
                   </Typography>
-                  <Stack spacing={3}>
+                  <Stack spacing={2.5}>
                     <TextField
                       label="Tên hiển thị"
                       value={form.name}
@@ -331,7 +406,7 @@ function ClientProfile() {
                       fullWidth
                     />
                     <TextField
-                      label="Email"
+                      label="Email tài khoản"
                       value={form.email}
                       onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
                       fullWidth
@@ -343,107 +418,110 @@ function ClientProfile() {
                       disabled={saving}
                       sx={{
                         width: 'fit-content',
-                        bgcolor: (theme) => theme.palette.mode === 'dark' ? '#14b8a6' : '#0f766e',
-                        backgroundImage: 'linear-gradient(135deg, #14b8a6, #0d9488)',
-                        borderRadius: 3,
-                        fontWeight: 800,
+                        backgroundImage: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)',
+                        borderRadius: '9999px',
+                        fontWeight: 850,
                         px: 4,
-                        py: 1.2,
+                        py: 1.1,
                         color: '#fff',
-                        boxShadow: '0 4px 14px rgba(20, 184, 166, 0.25)',
+                        textTransform: 'none',
+                        boxShadow: '0 4px 14px rgba(108, 99, 255, 0.3)',
                         transition: 'all 0.25s ease',
                         '&:hover': {
-                          transform: 'translateY(-1px)',
-                          boxShadow: '0 8px 22px rgba(20, 184, 166, 0.4)',
-                          bgcolor: '#0d9488',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 8px 22px rgba(108, 99, 255, 0.45)',
                         },
                       }}
                     >
-                      {saving ? <CircularProgress size={24} color="inherit" /> : 'Lưu thay đổi'}
+                      {saving ? <CircularProgress size={22} color="inherit" /> : 'Lưu Thay Đổi'}
                     </Button>
                   </Stack>
                 </Paper>
 
-                {/* Quota & Upgrade Premium */}
+                {/* B. QUẢN LÝ GÓI DỊCH VỤ & ĐẶC QUYỀN SOUND PASS */}
                 <Paper
                   elevation={0}
                   sx={{
                     p: 3.5,
-                    borderRadius: 4.5,
-                    border: '1px solid',
-                    borderColor: isPremium ? 'rgba(255, 215, 0, 0.3)' : 'rgba(20, 184, 166, 0.2)',
-                    background: (theme) => theme.palette.mode === 'dark'
-                      ? isPremium
-                        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(255, 215, 0, 0.03) 100%)'
-                        : 'linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(20, 184, 166, 0.05) 100%)'
-                      : 'linear-gradient(135deg, #fff 0%, rgba(20, 184, 166, 0.02) 100%)',
+                    borderRadius: '24px',
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.65)' : '#ffffff',
+                    border: isPremium ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(108, 99, 255, 0.3)',
                     position: 'relative',
                     overflow: 'hidden',
+                    boxShadow: isPremium ? '0 10px 30px rgba(245, 158, 11, 0.15)' : '0 10px 30px rgba(108, 99, 255, 0.1)',
                   }}
                 >
-                  {/* Decorative blur circle */}
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: -60,
-                      right: -60,
-                      width: 180,
-                      height: 180,
-                      borderRadius: '50%',
-                      background: isPremium
-                        ? 'radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0) 70%)'
-                        : 'radial-gradient(circle, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0) 70%)',
-                      zIndex: 1,
-                    }}
-                  />
-
-                  <Stack spacing={3} sx={{ position: 'relative', zIndex: 2 }}>
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <PremiumIcon sx={{ color: isPremium ? '#ffd700' : '#14b8a6', fontSize: 26 }} />
-                      <Typography variant="h6" fontWeight={850}>
-                        {isPremium ? 'Hạn mức cước Premium của bạn' : 'Giới hạn tải lên & Nâng cấp Premium'}
-                      </Typography>
+                  <Stack spacing={3}>
+                    {/* Header Gói Dịch Vụ */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <PremiumIcon sx={{ color: isPremium ? '#f59e0b' : '#6c63ff', fontSize: 28 }} />
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 950, letterSpacing: '-0.02em' }}>
+                            Gói Dịch Vụ & Hạn Mức Âm Nhạc
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            {isPremium ? 'Bạn đang sở hữu quyền lợi không giới hạn của gói Premium VIP' : 'Nâng cấp để mở khóa toàn bộ đặc quyền âm nhạc chất lượng cao'}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                      <Chip
+                        label={isPremium ? 'Đang Hoạt Động' : 'Gói Miễn Phí'}
+                        sx={{
+                          fontWeight: 900,
+                          bgcolor: isPremium ? 'rgba(245, 158, 11, 0.15)' : 'rgba(108, 99, 255, 0.15)',
+                          color: isPremium ? '#f59e0b' : '#6c63ff',
+                          border: isPremium ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(108, 99, 255, 0.3)',
+                        }}
+                      />
                     </Stack>
 
+                    {/* Progress 1: Upload Quota */}
                     <Box>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                          Dung lượng tải lên đã dùng:
-                        </Typography>
-                        <Typography variant="body2" fontWeight={800} color="#14b8a6">
-                          {isPremium ? `${uploadUsed} MB / Không giới hạn` : `${uploadUsed} MB / 50 MB`}
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <UploadIcon sx={{ color: '#00e5ff', fontSize: 18 }} />
+                          <Typography variant="body2" sx={{ fontWeight: 750 }}>
+                            Dung lượng tải lên hệ thống:
+                          </Typography>
+                        </Stack>
+                        <Typography variant="body2" sx={{ fontWeight: 900, color: '#00e5ff' }}>
+                          {isPremium ? `${uploadUsed} MB / Không Giới Hạn` : `${uploadUsed} MB / 100 MB`}
                         </Typography>
                       </Stack>
                       <LinearProgress
                         variant="determinate"
-                        value={isPremium ? 0 : Math.min((uploadUsed / 50) * 100, 100)}
+                        value={isPremium ? 0 : Math.min((uploadUsed / 100) * 100, 100)}
                         sx={{
                           height: 8,
                           borderRadius: 4,
-                          bgcolor: 'divider',
+                          bgcolor: 'rgba(255, 255, 255, 0.08)',
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 4,
-                            bgcolor: isPremium ? '#d97706' : '#14b8a6',
                             backgroundImage: isPremium 
-                              ? 'linear-gradient(90deg, #ffd700, #d97706)' 
-                              : 'linear-gradient(90deg, #14b8a6, #00bcd4)',
+                              ? 'linear-gradient(90deg, #f59e0b, #ec4899)' 
+                              : 'linear-gradient(90deg, #00e5ff, #6c63ff)',
                           },
                         }}
                       />
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontWeight: 550 }}>
                         {isPremium 
-                          ? 'Tài khoản Premium được phép tải lên bài hát không giới hạn dung lượng.' 
-                          : 'Bản miễn phí giới hạn tối đa 50MB tải bài hát lên hệ thống.'}
+                          ? '🌟 Tài khoản Premium Pro được tải lên bài hát dung lượng không giới hạn.' 
+                          : '⚡ Bản miễn phí giới hạn tối đa 100MB tải bài hát lên hệ thống.'}
                       </Typography>
                     </Box>
 
+                    {/* Progress 2: Download Quota */}
                     <Box>
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                          Dung lượng tải xuống đã dùng:
-                        </Typography>
-                        <Typography variant="body2" fontWeight={800} color="#7c3aed">
-                          {isPremium ? `${downloadUsed} MB / Không giới hạn` : `${downloadUsed} MB / 100 MB`}
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <DownloadIcon sx={{ color: '#a855f7', fontSize: 18 }} />
+                          <Typography variant="body2" sx={{ fontWeight: 750 }}>
+                            Dung lượng tải về ngoại tuyến:
+                          </Typography>
+                        </Stack>
+                        <Typography variant="body2" sx={{ fontWeight: 900, color: '#a855f7' }}>
+                          {isPremium ? `${downloadUsed} MB / Không Giới Hạn` : `${downloadUsed} MB / 100 MB`}
                         </Typography>
                       </Stack>
                       <LinearProgress
@@ -452,185 +530,229 @@ function ClientProfile() {
                         sx={{
                           height: 8,
                           borderRadius: 4,
-                          bgcolor: 'divider',
+                          bgcolor: 'rgba(255, 255, 255, 0.08)',
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 4,
-                            bgcolor: isPremium ? '#7c3aed' : '#7c3aed',
                             backgroundImage: isPremium
-                              ? 'linear-gradient(90deg, #a855f7, #7c3aed)'
-                              : 'linear-gradient(90deg, #7c3aed, #a855f7)',
+                              ? 'linear-gradient(90deg, #f59e0b, #ec4899)'
+                              : 'linear-gradient(90deg, #a855f7, #6c63ff)',
                           },
                         }}
                       />
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontWeight: 550 }}>
                         {isPremium 
-                          ? 'Tài khoản Premium được phép tải về ngoại tuyến không giới hạn dung lượng.' 
-                          : 'Bản miễn phí giới hạn tối đa 100MB tải bài hát về máy.'}
+                          ? '🌟 Tài khoản Premium Pro được phép tải bài hát về nghe offline không giới hạn.' 
+                          : '⚡ Bản miễn phí giới hạn tối đa 100MB tải bài hát về máy.'}
                       </Typography>
                     </Box>
 
-                    <Stack
-                      spacing={1.5}
+                    {/* Danh sách đặc quyền Premium Suite */}
+                    <Box
                       sx={{
-                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.4)' : '#f8fafc',
-                        p: 2,
-                        borderRadius: 3.5,
-                        border: '1px solid',
-                        borderColor: 'divider',
+                        p: 2.5,
+                        borderRadius: '20px',
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
                       }}
                     >
-                      <Typography variant="subtitle2" fontWeight={750} color="text.primary">
-                        Đặc quyền tài khoản Premium:
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1.5, color: isPremium ? '#f59e0b' : '#6c63ff' }}>
+                        💎 Đặc Quyền Gói Dịch Vụ Premium:
                       </Typography>
-                      <Stack spacing={1}>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          ● Tải lên không giới hạn dung lượng lưu trữ bài hát
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          ● Trò chuyện & Tạo Playlist AI (lên tới 20 yêu cầu / 24 giờ, Free giới hạn 5 yêu cầu / 24 giờ)
-                        </Typography>
-                        <Typography variant="caption" color="text.disabled" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontStyle: 'italic' }}>
-                          ● Chất lượng âm thanh chuẩn High Quality (Future Scope)
-                        </Typography>
-                      </Stack>
-                    </Stack>
+                      <Grid container spacing={1.5}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <SparklesIcon sx={{ color: '#00e5ff', fontSize: 18 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 650 }}>
+                              AI DJ & Trợ Lý Tạo Playlist (20 lượt/ngày)
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <HeadphonesIcon sx={{ color: '#ec4899', fontSize: 18 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 650 }}>
+                              Âm Thanh Lossless Hi-Fi 320kbps Đỉnh Cao
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <UploadIcon sx={{ color: '#10b981', fontSize: 18 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 650 }}>
+                              Lưu Trữ Nhạc Cá Nhân Không Giới Hạn
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <AdBlockIcon sx={{ color: '#f59e0b', fontSize: 18 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 650 }}>
+                              Trải Nghiệm 100% Không Bị Gián Đoạn
+                            </Typography>
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                    </Box>
 
+                    {/* Available Plans Quick Showcase (Nếu có) */}
+                    {plans.length > 0 && !isPremium && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1.5 }}>
+                          🔥 Các Gói Cước Đang Mở Bán:
+                        </Typography>
+                        <Grid container spacing={1.5}>
+                          {plans.slice(0, 3).map((plan) => (
+                            <Grid size={{ xs: 12, sm: 4 }} key={plan._id}>
+                              <Box
+                                onClick={() => navigate('/premium')}
+                                sx={{
+                                  p: 2,
+                                  borderRadius: '16px',
+                                  bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  textAlign: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.25s ease',
+                                  '&:hover': {
+                                    borderColor: '#00e5ff',
+                                    bgcolor: 'rgba(0, 229, 255, 0.06)',
+                                    transform: 'translateY(-2px)',
+                                  }
+                                }}
+                              >
+                                <Typography sx={{ fontWeight: 900, fontSize: 14 }}>
+                                  {plan.name}
+                                </Typography>
+                                <Typography sx={{ fontWeight: 950, color: '#f59e0b', fontSize: 16, my: 0.5 }}>
+                                  {Number(plan.price || 0).toLocaleString()}đ
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                  Thời hạn: {plan.durationDays} ngày
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </Box>
+                    )}
+
+                    {/* Action Button */}
                     <Button
                       variant="contained"
                       startIcon={<FlashIcon />}
-                      onClick={() => {
-                        navigate('/premium');
-
-                      }}
+                      endIcon={<ArrowIcon />}
+                      onClick={() => navigate('/premium')}
                       sx={{
                         width: '100%',
-                        bgcolor: isPremium ? '#ffd700' : '#14b8a6',
                         backgroundImage: isPremium
-                          ? 'linear-gradient(135deg, #ffd700, #d97706)'
-                          : 'linear-gradient(135deg, #14b8a6, #00bcd4)',
-                        borderRadius: 3,
-                        fontWeight: 800,
-                        py: 1.5,
-                        color: isPremium ? '#000' : '#fff',
+                          ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                          : 'linear-gradient(135deg, #6c63ff 0%, #00e5ff 100%)',
+                        borderRadius: '9999px',
+                        fontWeight: 900,
+                        py: 1.4,
+                        color: isPremium ? '#090d1a' : '#fff',
                         textTransform: 'none',
+                        fontSize: 14.5,
                         boxShadow: isPremium
-                          ? '0 4px 16px rgba(217, 119, 6, 0.2)'
-                          : '0 4px 16px rgba(20, 184, 166, 0.2)',
+                          ? '0 6px 20px rgba(245, 158, 11, 0.35)'
+                          : '0 6px 20px rgba(108, 99, 255, 0.35)',
                         '&:hover': {
-                          bgcolor: isPremium ? '#fbbf24' : '#0d9488',
-                          boxShadow: isPremium
-                            ? '0 8px 24px rgba(217, 119, 6, 0.35)'
-                            : '0 8px 24px rgba(20, 184, 166, 0.35)',
+                          transform: 'scale(1.015)',
                         },
+                        transition: 'all 0.2s ease',
                       }}
                     >
-                      {isPremium ? 'Gia hạn gói Premium' : 'Nâng cấp tài khoản Premium'}
+                      {isPremium ? 'Quản Lý / Gia Hạn Gói Cước Premium' : 'Xem Chi Tiết & Nâng Cấp Gói'}
                     </Button>
                   </Stack>
                 </Paper>
               </Stack>
             </Grid>
 
-            {/* Right Column: Recent Activity */}
+            {/* Right Column: Hoạt Động Nghe Gần Đây (4.5/12) */}
             <Grid size={{ xs: 12, md: 4.5 }}>
               <Paper
                 elevation={0}
                 sx={{
                   p: 3.5,
-                  borderRadius: 4.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: 'background.paper',
+                  borderRadius: '24px',
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(16px)',
                   height: '100%',
                   minHeight: 380,
                 }}
               >
-                <Typography variant="h6" fontWeight={800} mb={3} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <MusicIcon sx={{ color: '#7c3aed', fontSize: 22 }} />
-                  Hoạt động gần đây
-                </Typography>
+                <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 2.5 }}>
+                  <MusicIcon sx={{ color: '#6c63ff', fontSize: 24 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: '-0.02em' }}>
+                    Hoạt Động Gần Đây
+                  </Typography>
+                </Stack>
 
                 {recentSongs.length > 0 ? (
-                  <Stack spacing={2}>
-                    {recentSongs.map((song) => (
-                      <Paper
-                        key={song._id}
-                        elevation={0}
-                        onClick={() => playSong(song, { queue: recentSongs })}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 3.5,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.25)' : '#fff',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          '&:hover': {
-                            transform: 'translateY(-2px)',
-                            borderColor: '#7c3aed',
-                            boxShadow: '0 4px 18px rgba(124, 58, 237, 0.12)',
-                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.05)' : 'rgba(124, 58, 237, 0.01)',
-                          },
-                          '&:hover .play-overlay': { opacity: 1 },
-                        }}
-                      >
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Box sx={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
-                            <Avatar
-                              src={song.imageUrl && !song.imageUrl.includes('tgdfbp3zivuqoxq') ? song.imageUrl : undefined}
-                              variant="rounded"
-                              imgProps={{ loading: 'lazy' }}
-                              sx={{ width: '100%', height: '100%', bgcolor: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}
-                            >
-                              <MusicIcon sx={{ fontSize: 22 }} />
-                            </Avatar>
-                            <Box
-                              className="play-overlay"
-                              sx={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: '100%',
-                                bgcolor: 'rgba(0,0,0,0.4)',
-                                borderRadius: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                opacity: 0,
-                                transition: 'opacity 0.2s',
-                                color: '#fff',
-                              }}
-                            >
-                              <PlayIcon sx={{ fontSize: 22 }} />
-                            </Box>
-                          </Box>
+                  <Stack spacing={1.5}>
+                    {recentSongs.map((song, idx) => {
+                      const isCur = currentSong?._id === song._id;
+                      const isPlay = isPlaying && isCur;
+                      return (
+                        <Stack
+                          key={`recent-${song._id}-${idx}`}
+                          direction="row"
+                          spacing={1.5}
+                          alignItems="center"
+                          onClick={() => playSong(song, { queue: recentSongs })}
+                          sx={{
+                            p: 1.2,
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            bgcolor: isCur ? 'rgba(108, 99, 255, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                            border: '1px solid',
+                            borderColor: isCur ? '#6c63ff' : 'rgba(255, 255, 255, 0.05)',
+                            transition: 'all 0.25s ease',
+                            '&:hover': {
+                              transform: 'translateX(3px)',
+                              borderColor: '#6c63ff',
+                              bgcolor: 'rgba(108, 99, 255, 0.08)',
+                            }
+                          }}
+                        >
+                          <Avatar
+                            src={song.imageUrl}
+                            variant="rounded"
+                            sx={{ width: 44, height: 44, borderRadius: '10px' }}
+                          />
                           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                            <Typography variant="body2" fontWeight={800} noWrap>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: isCur ? '#00e5ff' : 'inherit' }} noWrap>
                               {song.title}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
-                              {Array.isArray(song.artists)
-                                ? song.artists.map((a) => a?.name).filter(Boolean).join(', ')
-                                : 'Nghệ sĩ ẩn danh'}
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }} noWrap display="block">
+                              {Array.isArray(song.artists) ? song.artists.map(a => a?.name).filter(Boolean).join(', ') : (song.artistText || 'Nhiều nghệ sĩ')}
                             </Typography>
                           </Box>
+                          <Button
+                            size="small"
+                            sx={{
+                              minWidth: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              p: 0,
+                              color: isPlay ? '#00e5ff' : 'text.secondary',
+                              bgcolor: 'rgba(255, 255, 255, 0.05)',
+                            }}
+                          >
+                            <PlayIcon sx={{ fontSize: 18 }} />
+                          </Button>
                         </Stack>
-                      </Paper>
-                    ))}
+                      );
+                    })}
                   </Stack>
                 ) : (
-                  <Stack
-                    spacing={2}
-                    alignItems="center"
-                    justifyContent="center"
-                    sx={{ height: '70%', py: 6, color: 'text.secondary', textAlign: 'center' }}
-                  >
-                    <MusicIcon sx={{ fontSize: 44, opacity: 0.2 }} />
-                    <Typography variant="body2">
-                      Bạn chưa phát bài hát nào gần đây.
+                  <Box sx={{ p: 4, textAlign: 'center', borderRadius: '18px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Chưa có lịch sử phát gần đây. Hãy bắt đầu nghe nhạc ngay!
                     </Typography>
-                  </Stack>
+                  </Box>
                 )}
               </Paper>
             </Grid>

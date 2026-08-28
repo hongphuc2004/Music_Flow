@@ -1,9 +1,225 @@
-/* Prevent browser autofill background color (light mode inputs) */
+/* Prevent browser autofill background color */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #f7f8fb inset !important;
-  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0 1000px #0a0e1a inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Global Smooth Rendering & Typography */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background-color: #05070e;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  background-color: #05070e;
+}
+
+/* Custom Ultra-thin Studio Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(108, 99, 255, 0.2);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 99, 255, 0.45);
+}
+
+/* Glassmorphism & Cupertino Liquid Glass Utilities */
+.glass-cupertino {
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.65), 0 0 40px rgba(99, 102, 241, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.16);
+}
+
+.glass-studio {
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.12);
+}
+
+.glass-island {
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.2), inset 0 1px 1.5px rgba(255, 255, 255, 0.22);
+}
+
+.glass-card-interactive {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-interactive:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 20px 45px -10px rgba(99, 102, 241, 0.35), 0 4px 20px rgba(0, 0, 0, 0.5);
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* Liquid Ambient Aura Keyframe Animations */
+@keyframes liquidAuraFloat1 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.15); }
+  66% { transform: translate(-25px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes liquidAuraFloat2 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(-35px, 30px) scale(1.1); }
+  66% { transform: translate(20px, -25px) scale(0.95); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-liquid-aura-1 {
+  animation: liquidAuraFloat1 18s ease-in-out infinite;
+}
+
+.animate-liquid-aura-2 {
+  animation: liquidAuraFloat2 22s ease-in-out infinite;
+}
+
+/* Apple Music Sing Active Line Glow */
+.sing-active-lyric {
+  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 30px rgba(165, 180, 252, 0.6);
+  filter: drop-shadow(0 0 12px rgba(103, 232, 249, 0.4));
+}
+
+/* Vinyl Record 3D Keyframe Animations */
+@keyframes spinVinyl {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes vinylPulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(108, 99, 255, 0.35); }
+  50% { box-shadow: 0 0 35px rgba(0, 229, 255, 0.5); }
+}
+
+.animate-vinyl-spin {
+  animation: spinVinyl 12s linear infinite;
+}
+
+.animate-vinyl-spin-paused {
+  animation: spinVinyl 12s linear infinite;
+  animation-play-state: paused;
+}
+
+/* Live Soundwave Spectrum Equalizer Animations */
+@keyframes soundwave1 {
+  0%, 100% { height: 4px; }
+  50% { height: 18px; }
+}
+
+@keyframes soundwave2 {
+  0%, 100% { height: 16px; }
+  50% { height: 6px; }
+}
+
+@keyframes soundwave3 {
+  0%, 100% { height: 8px; }
+  50% { height: 22px; }
+}
+
+@keyframes soundwave4 {
+  0%, 100% { height: 19px; }
+  50% { height: 5px; }
+}
+
+.spectrum-bar-1 { animation: soundwave1 0.75s ease-in-out infinite; }
+.spectrum-bar-2 { animation: soundwave2 0.65s ease-in-out infinite 0.12s; }
+.spectrum-bar-3 { animation: soundwave3 0.85s ease-in-out infinite 0.24s; }
+.spectrum-bar-4 { animation: soundwave4 0.7s ease-in-out infinite 0.36s; }
+
+/* Shimmer & Neon Pulse Keyframes */
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(108, 99, 255, 0.4), 0 0 30px rgba(108, 99, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(108, 99, 255, 0.7), 0 0 50px rgba(0, 229, 255, 0.4);
+  }
+}
+
+.animate-neon-pulse {
+  animation: neonPulse 3s ease-in-out infinite;
+}
+
+/* 🪐 Saturn Orbit Ring Animation for Artist Spheres */
+@keyframes saturnOrbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-saturn-orbit {
+  animation: saturnOrbit 8s linear infinite;
+}
+
+/* 🔮 Sonic Ring Stage 3D Floating */
+@keyframes sonicStageFloat {
+  0%, 100% { transform: perspective(1000px) rotateX(8deg) rotateY(-6deg) translateY(0px); }
+  50% { transform: perspective(1000px) rotateX(12deg) rotateY(-4deg) translateY(-8px); }
+}
+
+.animate-sonic-stage {
+  animation: sonicStageFloat 6s ease-in-out infinite;
+}
+
+/* ⚡ Mood Reactor Orbs Pulse */
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.2); }
+}
+
+.animate-orb-pulse {
+  animation: orbPulse 4s ease-in-out infinite;
+}
+
+/* 🏆 Sonic Podium 3D Elevations */
+.podium-gold {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.18) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 12px 30px rgba(255, 215, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.podium-silver {
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.14) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  box-shadow: 0 10px 24px rgba(0, 229, 255, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.podium-bronze {
+  background: linear-gradient(180deg, rgba(192, 132, 252, 0.14) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  box-shadow: 0 10px 24px rgba(192, 132, 252, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+

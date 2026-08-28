@@ -829,7 +829,7 @@ export default function ClientAiMood() {
                   </Typography>
 
                   {/* Quick prompts */}
-                  <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="center" sx={{ maxWidth: 480 }}>
+                  <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="center" sx={{ maxWidth: 520 }}>
                     {QUICK_PROMPTS.map((qp) => (
                       <Chip
                         key={qp.label}
@@ -837,16 +837,21 @@ export default function ClientAiMood() {
                         onClick={() => handleSend(qp.prompt)}
                         clickable
                         sx={{
-                          fontWeight: 600,
+                          fontWeight: 650,
                           fontSize: 13,
-                          borderRadius: 3,
+                          py: 2,
+                          px: 1,
+                          borderRadius: '9999px',
                           border: '1px solid',
-                          borderColor: 'rgba(139,92,246,0.3)',
-                          bgcolor: 'rgba(139,92,246,0.06)',
+                          borderColor: 'rgba(108, 99, 255, 0.3)',
+                          bgcolor: 'rgba(108, 99, 255, 0.08)',
                           color: 'text.primary',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                           '&:hover': {
-                            bgcolor: 'rgba(139,92,246,0.14)',
-                            borderColor: '#8b5cf6',
+                            bgcolor: 'rgba(108, 99, 255, 0.18)',
+                            borderColor: '#6c63ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(108, 99, 255, 0.25)',
                           },
                         }}
                       />
@@ -905,11 +910,11 @@ export default function ClientAiMood() {
                       disabled={isLoading}
                       sx={{
                         fontSize: 11,
-                        fontWeight: 600,
-                        borderRadius: 2,
+                        fontWeight: 650,
+                        borderRadius: '9999px',
                         border: '1px solid',
                         borderColor: 'divider',
-                        '&:hover': { borderColor: '#8b5cf6', bgcolor: 'rgba(139,92,246,0.08)' },
+                        '&:hover': { borderColor: '#6c63ff', bgcolor: 'rgba(108, 99, 255, 0.08)' },
                       }}
                     />
                   ))}
@@ -940,8 +945,8 @@ export default function ClientAiMood() {
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': { borderColor: '#8b5cf6' },
-                      '&.Mui-focused fieldset': { borderColor: '#8b5cf6' },
+                      '&:hover fieldset': { borderColor: '#6c63ff' },
+                      '&.Mui-focused fieldset': { borderColor: '#6c63ff' },
                     },
                   }}
                 />
@@ -951,14 +956,16 @@ export default function ClientAiMood() {
                   sx={{
                     width: 46,
                     height: 46,
-                    bgcolor: prompt.trim() && !isLoading ? '#7c3aed' : 'action.disabledBackground',
+                    background: prompt.trim() && !isLoading ? 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 100%)' : 'action.disabledBackground',
                     color: '#fff',
                     borderRadius: 2.5,
                     flexShrink: 0,
                     transition: 'all 0.2s ease',
+                    boxShadow: prompt.trim() && !isLoading ? '0 4px 14px rgba(108, 99, 255, 0.4)' : 'none',
                     '&:hover': {
-                      bgcolor: '#6d28d9',
+                      background: 'linear-gradient(135deg, #7b74f5 0%, #5246e2 100%)',
                       transform: 'scale(1.05)',
+                      boxShadow: '0 6px 18px rgba(108, 99, 255, 0.55)',
                     },
                     '&.Mui-disabled': { color: 'action.disabled' },
                   }}

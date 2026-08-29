@@ -385,9 +385,9 @@ function Premium() {
           <Grid container spacing={3}>
             {/* Doanh thu */}
             <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4, background: 'linear-gradient(135deg, rgba(108, 99, 255, 0.05) 0%, transparent 100%)' }}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, background: 'linear-gradient(135deg, rgba(108, 99, 255, 0.05) 0%, transparent 100%)' }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(108, 99, 255, 0.1)', color: '#6c63ff' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.1)', color: '#6c63ff' }}>
                     <RevenueIcon sx={{ fontSize: 28 }} />
                   </Box>
                   <Box>
@@ -404,9 +404,9 @@ function Premium() {
 
             {/* Premium Users */}
             <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4, background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, transparent 100%)' }}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, transparent 100%)' }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
                     <PremiumIcon sx={{ fontSize: 28 }} />
                   </Box>
                   <Box>
@@ -423,9 +423,9 @@ function Premium() {
 
             {/* Giao dịch thành công */}
             <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4 }}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444' }}>
                     <SuccessIcon sx={{ fontSize: 28 }} />
                   </Box>
                   <Box>
@@ -442,9 +442,9 @@ function Premium() {
 
             {/* Đang chờ thanh toán */}
             <Grid item xs={12} sm={6} md={3}>
-              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4 }}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(245, 158, 11, 0.05)', color: '#f59e0b' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(245, 158, 11, 0.05)', color: '#f59e0b' }}>
                     <PendingIcon sx={{ fontSize: 28 }} />
                   </Box>
                   <Box>
@@ -462,7 +462,7 @@ function Premium() {
         )}
 
         {/* 2. TABS MANAGEMENT PANEL */}
-        <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4.5, overflow: 'hidden' }}>
+        <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
           <Tabs
             value={activeTab}
             onChange={handleTabChange}
@@ -495,7 +495,7 @@ function Premium() {
                     sx={{
                       bgcolor: '#6c63ff',
                       backgroundImage: 'linear-gradient(135deg, #6c63ff, #00bcd4)',
-                      borderRadius: 2.5,
+                      borderRadius: 1.5,
                       px: 3,
                     }}
                   >
@@ -508,11 +508,11 @@ function Premium() {
                     <CircularProgress size={34} color="secondary" />
                   </Box>
                 ) : plans.length === 0 ? (
-                  <Alert severity="info" sx={{ borderRadius: 3 }}>
+                  <Alert severity="info" sx={{ borderRadius: 1.5 }}>
                     Chưa cấu hình gói cước Premium nào trong hệ thống.
                   </Alert>
                 ) : (
-                  <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                  <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
                     <Table>
                       <TableHead sx={{ bgcolor: 'action.hover' }}>
                         <TableRow>
@@ -527,29 +527,29 @@ function Premium() {
                       <TableBody>
                         {plans.map((plan) => (
                           <TableRow key={plan._id} hover>
-                            <TableCell sx={{ fontWeight: 750 }}>{plan.name}</TableCell>
-                            <TableCell sx={{ fontWeight: 750, color: '#6c63ff' }}>{plan.price.toLocaleString('vi-VN')} đ</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>{plan.durationInDays} ngày</TableCell>
-                            <TableCell sx={{ maxWidth: 300, color: 'text.secondary', fontSize: '13px' }}>
-                              {plan.description.join(', ')}
+                            <TableCell sx={{ fontWeight: 700 }}>{plan.name}</TableCell>
+                            <TableCell sx={{ fontWeight: 800, color: '#6c63ff' }}>{plan.price.toLocaleString('vi-VN')} đ</TableCell>
+                            <TableCell>{plan.durationInDays} ngày</TableCell>
+                            <TableCell sx={{ maxWidth: 300 }}>
+                              <Typography variant="body2" noWrap>{plan.description}</Typography>
                             </TableCell>
                             <TableCell>
                               <Chip
-                                label={plan.isActive ? 'Active' : 'Inactive'}
+                                label={plan.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
                                 color={plan.isActive ? 'success' : 'default'}
                                 size="small"
-                                sx={{ fontWeight: 700 }}
+                                sx={{ fontWeight: 700, borderRadius: 1 }}
                               />
                             </TableCell>
                             <TableCell align="right">
                               <Tooltip title="Chỉnh sửa">
                                 <IconButton onClick={() => handleOpenEditPlan(plan)} color="primary" size="small" sx={{ mr: 0.5 }}>
-                                  <EditIcon size="small" />
+                                  <EditIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Xóa/Tắt kích hoạt">
                                 <IconButton onClick={() => handleOpenDeletePlan(plan)} color="error" size="small">
-                                  <DeleteIcon size="small" />
+                                  <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             </TableCell>
@@ -580,7 +580,7 @@ function Premium() {
                           </InputAdornment>
                         ),
                       }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={3} md={2.5}>
@@ -592,7 +592,7 @@ function Premium() {
                       onChange={(e) => handleTxStatusChange(e.target.value)}
                       SelectProps={{ native: true }}
                       InputLabelProps={{ shrink: true }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                     >
                       <option value="">Tất cả trạng thái</option>
                       <option value="success">Thành công</option>
@@ -607,7 +607,7 @@ function Premium() {
                       startIcon={<RefreshIcon />}
                       onClick={fetchTransactions}
                       fullWidth
-                      sx={{ borderRadius: 3, py: 1.5 }}
+                      sx={{ borderRadius: 1.5, py: 1.5 }}
                     >
                       Tải lại gd
                     </Button>
@@ -619,12 +619,12 @@ function Premium() {
                     <CircularProgress size={34} color="secondary" />
                   </Box>
                 ) : transactions.length === 0 ? (
-                  <Alert severity="info" sx={{ borderRadius: 3 }}>
+                  <Alert severity="info" sx={{ borderRadius: 1.5 }}>
                     Không tìm thấy giao dịch nào khớp với điều kiện tìm kiếm.
                   </Alert>
                 ) : (
                   <Stack spacing={2}>
-                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
                       <Table>
                         <TableHead sx={{ bgcolor: 'action.hover' }}>
                           <TableRow>
@@ -655,7 +655,7 @@ function Premium() {
                                   label={tx.paymentMethod === 'vnpay' ? 'VNPay' : 'Mock Pay'}
                                   size="small"
                                   variant="outlined"
-                                  sx={{ textTransform: 'uppercase', fontSize: '11px', fontWeight: 600 }}
+                                  sx={{ textTransform: 'uppercase', fontSize: '11px', fontWeight: 600, borderRadius: 1 }}
                                 />
                               </TableCell>
                               <TableCell>{getTxStatusChip(tx.status)}</TableCell>
@@ -703,7 +703,7 @@ function Premium() {
                           </InputAdornment>
                         ),
                       }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={3} md={2.5}>
@@ -715,7 +715,7 @@ function Premium() {
                       onChange={(e) => handleSubStatusChange(e.target.value)}
                       SelectProps={{ native: true }}
                       InputLabelProps={{ shrink: true }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                     >
                       <option value="">Tất cả trạng thái</option>
                       <option value="active">Đang hoạt động</option>
@@ -730,7 +730,7 @@ function Premium() {
                       startIcon={<RefreshIcon />}
                       onClick={fetchSubscriptions}
                       fullWidth
-                      sx={{ borderRadius: 3, py: 1.5 }}
+                      sx={{ borderRadius: 1.5, py: 1.5 }}
                     >
                       Tải lại subs
                     </Button>
@@ -742,12 +742,12 @@ function Premium() {
                     <CircularProgress size={34} color="secondary" />
                   </Box>
                 ) : subscriptions.length === 0 ? (
-                  <Alert severity="info" sx={{ borderRadius: 3 }}>
+                  <Alert severity="info" sx={{ borderRadius: 1.5 }}>
                     Không tìm thấy Subscription nào khớp với điều kiện tìm kiếm.
                   </Alert>
                 ) : (
                   <Stack spacing={2}>
-                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
                       <Table>
                         <TableHead sx={{ bgcolor: 'action.hover' }}>
                           <TableRow>
@@ -780,7 +780,7 @@ function Premium() {
                               <TableCell sx={{ fontSize: '13px', fontFamily: 'monospace' }}>
                                 {sub.transaction?.transactionRef ? (
                                   <Tooltip title={`Số tiền: ${(sub.transaction?.amount || 0).toLocaleString('vi-VN')} đ`}>
-                                    <Chip label={sub.transaction?.transactionRef} size="small" variant="outlined" />
+                                    <Chip label={sub.transaction?.transactionRef} size="small" variant="outlined" sx={{ borderRadius: 1 }} />
                                   </Tooltip>
                                 ) : (
                                   'N/A'
@@ -818,7 +818,7 @@ function Premium() {
         onClose={() => !submittingPlan && setPlanDialogOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 4 } }}
+        PaperProps={{ sx: { borderRadius: 2.5 } }}
       >
         <form onSubmit={handleSubmitPlan}>
           <DialogTitle sx={{ fontWeight: 850 }}>
@@ -833,6 +833,7 @@ function Premium() {
                 value={planForm.name}
                 onChange={(e) => setPlanForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Ví dụ: Premium 1 Tháng, VIP 6 Tháng..."
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
               <TextField
                 required
@@ -844,6 +845,7 @@ function Premium() {
                 InputProps={{
                   endAdornment: <InputAdornment position="end">đ</InputAdornment>,
                   inputProps: { min: 0 },
+                  sx: { borderRadius: 1.5 }
                 }}
               />
               <TextField
@@ -856,6 +858,7 @@ function Premium() {
                 InputProps={{
                   endAdornment: <InputAdornment position="end">ngày</InputAdornment>,
                   inputProps: { min: 1 },
+                  sx: { borderRadius: 1.5 }
                 }}
               />
               <TextField
@@ -867,6 +870,7 @@ function Premium() {
                 onChange={(e) => setPlanForm(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Ví dụ: Tải nhạc không giới hạn, Trò chuyện AI không giới hạn, Âm thanh chất lượng cao..."
                 helperText="Mỗi câu phân cách bằng dấu phẩy sẽ hiển thị như 1 gạch đầu dòng quyền lợi."
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
               <FormControlLabel
                 control={
@@ -891,7 +895,7 @@ function Premium() {
               sx={{
                 bgcolor: '#6c63ff',
                 backgroundImage: 'linear-gradient(135deg, #6c63ff, #00bcd4)',
-                borderRadius: 2,
+                borderRadius: 1.5,
                 px: 3,
               }}
             >
@@ -905,7 +909,7 @@ function Premium() {
       <Dialog
         open={deleteDialogOpen}
         onClose={() => !deletingPlan && setDeleteDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+        PaperProps={{ sx: { borderRadius: 2.5, p: 1 } }}
       >
         <DialogTitle sx={{ fontWeight: 850, display: 'flex', alignItems: 'center', gap: 1 }}>
           <ErrorIcon sx={{ color: 'error.main' }} />
@@ -915,7 +919,7 @@ function Premium() {
           <Typography variant="body2" color="text.secondary">
             Bạn có chắc chắn muốn xóa gói cước <strong>{selectedPlan?.name}</strong>?
           </Typography>
-          <Box sx={{ mt: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 2.5 }}>
+          <Box sx={{ mt: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5 }}>
             <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontStyle: 'italic' }}>
               💡 Lưu ý bảo vệ an toàn: Nếu gói cước đã có người đăng ký mua cước hoặc tạo giao dịch trong hệ thống, 
               hệ thống sẽ tự động ngưng hoạt động (deactivate) gói cước này thay vì xóa cứng khỏi cơ sở dữ liệu để bảo vệ tính toàn vẹn của lịch sử hoá đơn.
@@ -931,7 +935,7 @@ function Premium() {
             color="error"
             disabled={deletingPlan}
             onClick={handleDeletePlan}
-            sx={{ borderRadius: 2, px: 3 }}
+            sx={{ borderRadius: 1.5, px: 3 }}
           >
             {deletingPlan ? <CircularProgress size={20} color="inherit" /> : 'Đồng ý xóa'}
           </Button>

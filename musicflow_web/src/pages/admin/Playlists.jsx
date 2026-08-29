@@ -334,21 +334,21 @@ function Playlists() {
                 bgcolor: '#ff9800',
                 fontWeight: 800,
                 textTransform: 'none',
-                borderRadius: 3.5,
+                borderRadius: 2,
                 px: 3,
                 '&:hover': { bgcolor: '#e68a00' },
               }}
             >
               Tạo Playlist
             </Button>
-            <IconButton onClick={fetchPlaylists} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <IconButton onClick={fetchPlaylists} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
               <RefreshIcon />
             </IconButton>
           </Stack>
         </Box>
 
         {error && (
-          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 4 }}>
+          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 2 }}>
             {error}
           </Alert>
         )}
@@ -356,8 +356,8 @@ function Playlists() {
         {/* Stats Overview */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
                 <PlaylistIcon />
               </Box>
               <Box>
@@ -367,8 +367,8 @@ function Playlists() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(76, 175, 80, 0.08)', color: '#4caf50' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(76, 175, 80, 0.08)', color: '#4caf50' }}>
                 <PublicIcon />
               </Box>
               <Box>
@@ -378,8 +378,8 @@ function Playlists() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(158, 158, 158, 0.08)', color: '#9e9e9e' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(158, 158, 158, 0.08)', color: '#9e9e9e' }}>
                 <PrivateIcon />
               </Box>
               <Box>
@@ -389,8 +389,8 @@ function Playlists() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
                 <PlaylistIcon />
               </Box>
               <Box>
@@ -402,7 +402,7 @@ function Playlists() {
         </Grid>
 
         {/* Filter Input */}
-        <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 4 }}>
+        <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
           <TextField
             fullWidth
             size="small"
@@ -416,7 +416,7 @@ function Playlists() {
                 </InputAdornment>
               ),
               sx: {
-                borderRadius: 3.5,
+                borderRadius: 1.5,
                 bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
               }
             }}
@@ -424,7 +424,7 @@ function Playlists() {
         </Paper>
 
         {/* Table View */}
-        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
+        <Card elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
           <TableContainer>
             {loading ? (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 8, gap: 2 }}>
@@ -503,7 +503,7 @@ function Playlists() {
                                 size="small"
                                 color="primary"
                                 onClick={() => openEditDialog(playlist)}
-                                sx={{ bgcolor: 'rgba(255,152,0,0.06)', borderRadius: 3, border: '1px solid rgba(255,152,0,0.1)' }}
+                                sx={{ bgcolor: 'rgba(255,152,0,0.06)', borderRadius: 1.5, border: '1px solid rgba(255,152,0,0.1)' }}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
@@ -513,7 +513,7 @@ function Playlists() {
                                 size="small"
                                 color="error"
                                 onClick={() => setDeleteDialog({ open: true, playlist })}
-                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 3, border: '1px solid rgba(211,47,47,0.1)' }}
+                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 1.5, border: '1px solid rgba(211,47,47,0.1)' }}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -550,7 +550,7 @@ function Playlists() {
           Hành động này sẽ không thể hoàn tác. Các bài hát thuộc playlist sẽ không bị ảnh hưởng.
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, playlist: null })} disabled={deleteLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, playlist: null })} disabled={deleteLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy bỏ
           </Button>
           <Button 
@@ -558,7 +558,7 @@ function Playlists() {
             variant="contained" 
             onClick={handleDelete}
             disabled={deleteLoading}
-            sx={{ borderRadius: 3, fontWeight: 800 }}
+            sx={{ borderRadius: 1.5, fontWeight: 800 }}
           >
             {deleteLoading ? <CircularProgress size={20} color="inherit" /> : 'Xác nhận xóa'}
           </Button>
@@ -571,7 +571,7 @@ function Playlists() {
         onClose={saveLoading ? undefined : closeFormDialog}
         fullWidth
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+        PaperProps={{ sx: { borderRadius: 2.5, overflow: 'hidden' } }}
       >
         <Box sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #6c63ff 100%)', p: 3.5, color: '#fff' }}>
           <Typography variant="h5" fontWeight={900}>
@@ -590,7 +590,7 @@ function Playlists() {
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               required
               fullWidth
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
             <TextField
               label="Mô tả Playlist"
@@ -599,7 +599,7 @@ function Playlists() {
               multiline
               minRows={2}
               fullWidth
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
             
             {/* Custom Cover Image Zone */}
@@ -615,7 +615,7 @@ function Playlists() {
                     fullWidth
                     sx={{
                       py: coverImageFile ? 1.5 : 2,
-                      borderRadius: 4,
+                      borderRadius: 2,
                       borderColor: coverImageFile ? 'success.main' : 'divider',
                       borderStyle: 'dashed',
                       borderWidth: 2,
@@ -654,7 +654,7 @@ function Playlists() {
 
                 {(coverImageFile || formData.coverImage) && (
                   <Grid size={{ xs: 4 }}>
-                    <Box sx={{ width: '100%', height: 68, borderRadius: 3.5, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'action.hover' }}>
+                    <Box sx={{ width: '100%', height: 68, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', overflow: 'hidden', bgcolor: 'action.hover' }}>
                       <img 
                         src={coverImageFile ? URL.createObjectURL(coverImageFile) : formData.coverImage} 
                         alt="Cover preview" 
@@ -683,7 +683,7 @@ function Playlists() {
               onChange={(e) => setFormData((prev) => ({ ...prev, coverImage: e.target.value }))}
               placeholder="https://..."
               helperText="Hệ thống ưu tiên sử dụng ảnh tải lên từ thiết bị trước."
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
 
             <FormControl fullWidth>
@@ -695,7 +695,7 @@ function Playlists() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, isPublic: e.target.value === 'public' }))
                 }
-                sx={{ borderRadius: 3.5 }}
+                sx={{ borderRadius: 1.5 }}
               >
                 <MenuItem value="public">Công khai (Public)</MenuItem>
                 <MenuItem value="private">Riêng tư (Private)</MenuItem>
@@ -710,12 +710,12 @@ function Playlists() {
                   <Typography variant="subtitle2" fontWeight={850}>Bài hát trong playlist</Typography>
                   <Typography variant="caption" color="text.secondary">Liên kết tuyển tập bài nhạc vào danh sách phát.</Typography>
                 </Box>
-                <Chip label={`${formData.songs.length} selected`} size="small" color="primary" sx={{ fontWeight: 700 }} />
+                <Chip label={`${formData.songs.length} selected`} size="small" color="primary" sx={{ fontWeight: 700, borderRadius: 1 }} />
               </Stack>
               <Button 
                 variant="outlined" 
                 onClick={handleOpenSongPicker}
-                sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 700 }}
+                sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
               >
                 Lựa chọn bài hát
               </Button>
@@ -724,14 +724,14 @@ function Playlists() {
         </DialogContent>
 
         <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button onClick={closeFormDialog} disabled={saveLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={closeFormDialog} disabled={saveLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy bỏ
           </Button>
           <Button
             variant="contained"
             onClick={handleSavePlaylist}
             disabled={saveLoading}
-            sx={{ borderRadius: 3, fontWeight: 800, px: 4, bgcolor: '#ff9800', '&:hover': { bgcolor: '#e68a00' } }}
+            sx={{ borderRadius: 1.5, fontWeight: 800, px: 4, bgcolor: '#ff9800', '&:hover': { bgcolor: '#e68a00' } }}
           >
             {saveLoading ? <CircularProgress size={20} color="inherit" /> : 'Lưu'}
           </Button>
@@ -744,7 +744,7 @@ function Playlists() {
         onClose={() => setSongPickerOpen(false)}
         fullWidth
         maxWidth="md"
-        PaperProps={{ sx: { borderRadius: 5 } }}
+        PaperProps={{ sx: { borderRadius: 2.5 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Lựa chọn bài hát trong Playlist</DialogTitle>
         <DialogContent>
@@ -761,7 +761,7 @@ function Playlists() {
                   <SearchIcon color="primary" />
                 </InputAdornment>
               ),
-              sx: { borderRadius: 3.5 }
+              sx: { borderRadius: 1.5 }
             }}
           />
 
@@ -773,7 +773,7 @@ function Playlists() {
             </Box>
           ) : (
             <>
-              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3.5, overflow: 'hidden' }}>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'action.hover' }}>
@@ -823,7 +823,7 @@ function Playlists() {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setSongPickerOpen(false)} variant="contained" sx={{ borderRadius: 2.5, fontWeight: 700, px: 3 }}>
+          <Button onClick={() => setSongPickerOpen(false)} variant="contained" sx={{ borderRadius: 1.5, fontWeight: 700, px: 3 }}>
             Xong
           </Button>
         </DialogActions>

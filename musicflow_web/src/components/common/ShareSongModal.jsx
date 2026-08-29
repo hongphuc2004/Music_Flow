@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -92,15 +92,45 @@ export default function ShareSongModal({ open, onClose, song }) {
   const [currentTab, setCurrentTab] = useState(0);
   const [qrLoading, setQrLoading] = useState(true);
 
-  if (!song) return null;
+  const songId = song?._id || song?.id;
 
-  const songId = song._id || song.id;
-  const clipboardShareUrl = createSongShareUrl(song, { source: 'clipboard', medium: 'share' });
-  const qrShareUrl = createSongShareUrl(song, { source: 'qrcode', medium: 'offline' });
-  const shareText = createSongShareText(song);
-  const artistNames = Array.isArray(song.artists)
-    ? song.artists.map((a) => (typeof a === 'object' ? a.name : a)).filter(Boolean).join(', ')
-    : (song.artist || '');
+  useEffect(() => {
+    if (open) {
+      setQrLoading(true);
+      setCopied(false);
+    }
+  }, [open, songId]);
+
+  // Cố định link chia sẻ và mã QR bằng useMemo để không sinh ngẫu nhiên mã mới mỗi lần re-render
+  const clipboardShareUrl = useMemo(() => {
+    if (!song) return '';
+    return createSongShareUrl(song, { source: 'clipboard', medium: 'share' });
+  }, [song]);
+
+  const qrShareUrl = useMemo(() => {
+    if (!song) return '';
+    return createSongShareUrl(song, { source: 'qrcode', medium: 'offline' });
+  }, [song]);
+
+  const qrImageUrl = useMemo(() => {
+    if (!qrShareUrl) return '';
+    return getQrCodeImageUrl(qrShareUrl, 300);
+  }, [qrShareUrl]);
+
+  const shareText = useMemo(() => {
+    return createSongShareText(song);
+  }, [song]);
+
+  const artistNames = useMemo(() => {
+    if (!song) return '';
+    if (Array.isArray(song.artists) && song.artists.length > 0) {
+      const names = song.artists
+        .map((a) => (typeof a === 'object' && a !== null ? a.name : (typeof a === 'string' && !/^[0-9a-fA-F]{24}$/.test(a) ? a : '')))
+        .filter(Boolean);
+      if (names.length > 0) return names.join(', ');
+    }
+    return song.artistNames || song.artist || (typeof song.artists === 'string' ? song.artists : '');
+  }, [song]);
 
   const trackShare = (source, medium) => {
     if (songId && typeof clientSongsApi?.trackShareEvent === 'function') {
@@ -239,7 +269,7 @@ export default function ShareSongModal({ open, onClose, song }) {
     }
   };
 
-  const qrImageUrl = getQrCodeImageUrl(qrShareUrl, 240);
+  if (!song) return null;
 
   return (
     <Dialog
@@ -508,6 +538,7 @@ export default function ShareSongModal({ open, onClose, song }) {
                 src={qrImageUrl}
                 alt="QR Code"
                 onLoad={() => setQrLoading(false)}
+                onError={() => setQrLoading(false)}
                 sx={{
                   width: '100%',
                   height: '100%',

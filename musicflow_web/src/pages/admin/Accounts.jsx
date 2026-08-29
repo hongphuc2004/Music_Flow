@@ -411,27 +411,27 @@ function Accounts() {
                 bgcolor: '#6c63ff',
                 fontWeight: 800,
                 textTransform: 'none',
-                borderRadius: 3.5,
+                borderRadius: 2,
                 px: 3,
                 '&:hover': { bgcolor: '#534bae' },
               }}
             >
               Tạo tài khoản
             </Button>
-            <IconButton onClick={fetchAccounts} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <IconButton onClick={fetchAccounts} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
               <RefreshIcon />
             </IconButton>
           </Stack>
         </Box>
 
         {error && (
-          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 4 }}>
+          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 2 }}>
             {error}
           </Alert>
         )}
 
         {success && (
-          <Alert severity="success" variant="filled" onClose={() => setSuccess(null)} sx={{ borderRadius: 4 }}>
+          <Alert severity="success" variant="filled" onClose={() => setSuccess(null)} sx={{ borderRadius: 2 }}>
             {success}
           </Alert>
         )}
@@ -439,8 +439,8 @@ function Accounts() {
         {/* Dashboard Stats Overview */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
                 <PeopleIcon />
               </Box>
               <Box>
@@ -450,8 +450,8 @@ function Accounts() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(211, 47, 47, 0.08)', color: '#d32f2f' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(211, 47, 47, 0.08)', color: '#d32f2f' }}>
                 <AdminIcon />
               </Box>
               <Box>
@@ -461,8 +461,8 @@ function Accounts() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
                 <ArtistIcon />
               </Box>
               <Box>
@@ -472,8 +472,8 @@ function Accounts() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(25, 118, 210, 0.08)', color: '#1976d2' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(25, 118, 210, 0.08)', color: '#1976d2' }}>
                 <UserIcon />
               </Box>
               <Box>
@@ -485,7 +485,7 @@ function Accounts() {
         </Grid>
 
         {/* Filters and Table */}
-        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
+        <Card elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
           <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0,0,0,0.01)' }}>
             <TextField
               fullWidth
@@ -500,7 +500,7 @@ function Accounts() {
                   </InputAdornment>
                 ),
                 sx: {
-                  borderRadius: 4,
+                  borderRadius: 1.5,
                   bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
                 }
               }}
@@ -603,7 +603,7 @@ function Accounts() {
                                 sx={{
                                   color: '#8b5cf6',
                                   bgcolor: 'rgba(139,92,246,0.08)',
-                                  borderRadius: 3,
+                                  borderRadius: 1.5,
                                   border: '1px solid rgba(139,92,246,0.2)',
                                   '&:hover': { bgcolor: 'rgba(139,92,246,0.18)' },
                                 }}
@@ -616,7 +616,7 @@ function Accounts() {
                                 size="small"
                                 color="primary"
                                 onClick={() => handleOpenEdit(user)}
-                                sx={{ bgcolor: 'rgba(108,99,255,0.06)', borderRadius: 3, border: '1px solid rgba(108,99,255,0.1)' }}
+                                sx={{ bgcolor: 'rgba(108,99,255,0.06)', borderRadius: 1.5, border: '1px solid rgba(108,99,255,0.1)' }}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
@@ -626,7 +626,7 @@ function Accounts() {
                                 size="small"
                                 color="error"
                                 onClick={() => setDeleteDialog({ open: true, user })}
-                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 3, border: '1px solid rgba(211,47,47,0.1)' }}
+                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 1.5, border: '1px solid rgba(211,47,47,0.1)' }}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -662,7 +662,7 @@ function Accounts() {
         onClose={closeCreateDialog} 
         fullWidth 
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+        PaperProps={{ sx: { borderRadius: 2.5, overflow: 'hidden' } }}
       >
         <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3.5, color: '#fff' }}>
           <Typography variant="h5" fontWeight={900}>Tạo tài khoản mới</Typography>
@@ -675,7 +675,7 @@ function Accounts() {
               fullWidth
               value={createForm.name}
               onChange={handleCreateFieldChange('name')}
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
             <TextField
               label="Địa chỉ Email *"
@@ -683,7 +683,7 @@ function Accounts() {
               type="email"
               value={createForm.email}
               onChange={handleCreateFieldChange('email')}
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
             <TextField
               select
@@ -691,7 +691,7 @@ function Accounts() {
               fullWidth
               value={createForm.role}
               onChange={handleCreateFieldChange('role')}
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             >
               <MenuItem value="user">User (Thành viên nghe nhạc)</MenuItem>
               <MenuItem value="admin">Admin (Quản trị hệ thống)</MenuItem>
@@ -705,7 +705,7 @@ function Accounts() {
                 minRows={3}
                 value={createForm.bio}
                 onChange={handleCreateFieldChange('bio')}
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
             )}
             <TextField
@@ -715,19 +715,19 @@ function Accounts() {
               value={createForm.password}
               onChange={handleCreateFieldChange('password')}
               helperText="Mật khẩu tối thiểu cần có 6 ký tự."
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button onClick={closeCreateDialog} disabled={createLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={closeCreateDialog} disabled={createLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy bỏ
           </Button>
           <Button 
             variant="contained" 
             onClick={handleCreateAccount} 
             disabled={createLoading}
-            sx={{ borderRadius: 3, fontWeight: 800, px: 3, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
+            sx={{ borderRadius: 1.5, fontWeight: 800, px: 3, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
           >
             {createLoading ? <CircularProgress size={20} color="inherit" /> : 'Tạo tài khoản'}
           </Button>
@@ -740,7 +740,7 @@ function Accounts() {
         onClose={handleCloseEdit} 
         fullWidth 
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+        PaperProps={{ sx: { borderRadius: 2.5, overflow: 'hidden' } }}
       >
         <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3.5, color: '#fff' }}>
           <Typography variant="h5" fontWeight={900}>Hiệu chỉnh tài khoản</Typography>
@@ -753,7 +753,7 @@ function Accounts() {
               fullWidth
               value={editForm.name}
               onChange={handleEditFieldChange('name')}
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
             <TextField
               label="Địa chỉ Email *"
@@ -761,7 +761,7 @@ function Accounts() {
               type="email"
               value={editForm.email}
               onChange={handleEditFieldChange('email')}
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
             {editDialog.user?.role === 'artist' ? (
               <TextField
@@ -771,7 +771,7 @@ function Accounts() {
                 minRows={3}
                 value={editForm.bio}
                 onChange={handleEditFieldChange('bio')}
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
             ) : (
               <TextField
@@ -780,7 +780,7 @@ function Accounts() {
                 fullWidth
                 value={editForm.role}
                 onChange={handleEditFieldChange('role')}
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               >
                 <MenuItem value="user">User</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
@@ -793,19 +793,19 @@ function Accounts() {
               value={editForm.password}
               onChange={handleEditFieldChange('password')}
               helperText="Bỏ trống nếu bạn không có nhu cầu đổi mật khẩu cho tài khoản này."
-              InputProps={{ sx: { borderRadius: 3.5 } }}
+              InputProps={{ sx: { borderRadius: 1.5 } }}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button onClick={handleCloseEdit} disabled={editLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={handleCloseEdit} disabled={editLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy bỏ
           </Button>
           <Button 
             variant="contained" 
             onClick={handleSaveEdit} 
             disabled={editLoading}
-            sx={{ borderRadius: 3, fontWeight: 800, px: 3, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
+            sx={{ borderRadius: 1.5, fontWeight: 800, px: 3, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
           >
             {editLoading ? <CircularProgress size={20} color="inherit" /> : 'Lưu thay đổi'}
           </Button>
@@ -816,7 +816,7 @@ function Accounts() {
       <Dialog 
         open={deleteDialog.open} 
         onClose={() => setDeleteDialog({ open: false, user: null })}
-        PaperProps={{ sx: { borderRadius: 5 } }}
+        PaperProps={{ sx: { borderRadius: 2.5 } }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Xác nhận xóa tài khoản</DialogTitle>
         <DialogContent>
@@ -824,7 +824,7 @@ function Accounts() {
           Mọi dữ liệu cá nhân liên quan của tài khoản sẽ bị loại bỏ vĩnh viễn khỏi cơ sở dữ liệu.
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, user: null })} disabled={deleteLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, user: null })} disabled={deleteLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy
           </Button>
           <Button
@@ -832,7 +832,7 @@ function Accounts() {
             variant="contained"
             onClick={handleDelete}
             disabled={deleteLoading}
-            sx={{ borderRadius: 3, fontWeight: 800 }}
+            sx={{ borderRadius: 1.5, fontWeight: 800 }}
           >
             {deleteLoading ? <CircularProgress size={20} color="inherit" /> : 'Xác nhận xóa'}
           </Button>
@@ -847,7 +847,7 @@ function Accounts() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 6,
+            borderRadius: 2.5,
             overflow: 'hidden',
             bgcolor: (theme) => (theme.palette.mode === 'dark' ? '#121624' : '#ffffff'),
             backgroundImage: 'none',
@@ -915,7 +915,7 @@ function Accounts() {
                     bgcolor: 'rgba(139,92,246,0.15)',
                     color: '#a78bfa',
                     border: '1px solid rgba(139,92,246,0.3)',
-                    borderRadius: 1.5,
+                    borderRadius: 1,
                   }}
                 />
               </Stack>
@@ -944,7 +944,7 @@ function Accounts() {
                     sx={{
                       width: '100%',
                       p: 1.75,
-                      borderRadius: 3.5,
+                      borderRadius: 2,
                       border: '1px solid',
                       borderColor: 'rgba(139,92,246,0.2)',
                       bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.04)'),
@@ -977,7 +977,7 @@ function Accounts() {
                     sx={{
                       width: '100%',
                       p: 1.75,
-                      borderRadius: 3.5,
+                      borderRadius: 2,
                       border: '1px solid',
                       borderColor: 'rgba(59,130,246,0.2)',
                       bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.04)'),
@@ -1010,7 +1010,7 @@ function Accounts() {
                     sx={{
                       width: '100%',
                       p: 1.75,
-                      borderRadius: 3.5,
+                      borderRadius: 2,
                       border: '1px solid',
                       borderColor: 'rgba(16,185,129,0.2)',
                       bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(16,185,129,0.06)' : 'rgba(16,185,129,0.04)'),
@@ -1043,7 +1043,7 @@ function Accounts() {
                     sx={{
                       width: '100%',
                       p: 1.75,
-                      borderRadius: 3.5,
+                      borderRadius: 2,
                       border: '1px solid',
                       borderColor: 'rgba(245,158,11,0.3)',
                       bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.06)'),
@@ -1078,7 +1078,7 @@ function Accounts() {
                 elevation={0}
                 sx={{
                   p: 3,
-                  borderRadius: 4.5,
+                  borderRadius: 2,
                   border: '1px solid',
                   borderColor: 'divider',
                   bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc'),
@@ -1103,7 +1103,7 @@ function Accounts() {
                       InputProps={{
                         endAdornment: <InputAdornment position="end">lượt / 24h</InputAdornment>,
                         sx: {
-                          borderRadius: 3,
+                          borderRadius: 1.5,
                           fontWeight: 700,
                           fontSize: 14,
                           '& input[type=number]::-webkit-inner-spin-button': { display: 'none' },
@@ -1129,7 +1129,7 @@ function Accounts() {
                       InputProps={{
                         endAdornment: <InputAdornment position="end">lượt cộng thêm</InputAdornment>,
                         sx: {
-                          borderRadius: 3,
+                          borderRadius: 1.5,
                           fontWeight: 700,
                           fontSize: 14,
                           '& input[type=number]::-webkit-inner-spin-button': { display: 'none' },
@@ -1152,7 +1152,7 @@ function Accounts() {
                           sx={{
                             fontWeight: 800,
                             fontSize: 11,
-                            borderRadius: 2,
+                            borderRadius: 1,
                             bgcolor: 'rgba(139,92,246,0.1)',
                             color: '#8b5cf6',
                             border: '1px solid rgba(139,92,246,0.25)',
@@ -1168,7 +1168,7 @@ function Accounts() {
                         sx={{
                           fontWeight: 700,
                           fontSize: 11,
-                          borderRadius: 2,
+                          borderRadius: 1,
                           bgcolor: 'rgba(255,255,255,0.05)',
                           color: 'text.secondary',
                         }}
@@ -1182,7 +1182,7 @@ function Accounts() {
               <Box
                 sx={{
                   p: 2.25,
-                  borderRadius: 4,
+                  borderRadius: 2,
                   background: 'linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(99,102,241,0.08) 100%)',
                   border: '1px solid rgba(139,92,246,0.25)',
                   display: 'flex',
@@ -1224,7 +1224,7 @@ function Accounts() {
           <Button
             onClick={handleCloseAiQuota}
             disabled={aiQuotaDialog.saving}
-            sx={{ borderRadius: 3, fontWeight: 700, px: 2.5, color: 'text.secondary' }}
+            sx={{ borderRadius: 1.5, fontWeight: 700, px: 2.5, color: 'text.secondary' }}
           >
             Hủy Bỏ
           </Button>
@@ -1233,7 +1233,7 @@ function Accounts() {
             onClick={handleSaveAiQuota}
             disabled={aiQuotaDialog.saving || aiQuotaDialog.loading}
             sx={{
-              borderRadius: 3.5,
+              borderRadius: 1.5,
               fontWeight: 800,
               px: 3.5,
               py: 1.1,

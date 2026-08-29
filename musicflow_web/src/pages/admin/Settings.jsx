@@ -105,7 +105,7 @@ function Settings() {
         </Box>
 
         {saved && (
-          <Alert severity="success" variant="filled" sx={{ borderRadius: 4 }}>
+          <Alert severity="success" variant="filled" sx={{ borderRadius: 2 }}>
             Cấu hình tùy chỉnh đã được cập nhật thành công!
           </Alert>
         )}
@@ -113,7 +113,7 @@ function Settings() {
         <Grid container spacing={3}>
           {/* Grid Layout size replacement */}
           <Grid size={{ xs: 12, md: 6 }}>
-            <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Card elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', height: '100%' }}>
               <CardContent sx={{ p: 4 }}>
                 <Typography variant="h6" fontWeight={850} sx={{ mb: 1 }}>
                   General Configuration
@@ -128,7 +128,7 @@ function Settings() {
                     label="Site Name"
                     value={settings.siteName}
                     onChange={handleChange('siteName')}
-                    InputProps={{ sx: { borderRadius: 3.5 } }}
+                    InputProps={{ sx: { borderRadius: 1.5 } }}
                   />
                   <TextField
                     fullWidth
@@ -137,7 +137,7 @@ function Settings() {
                     onChange={handleChange('siteDescription')}
                     multiline
                     rows={2}
-                    InputProps={{ sx: { borderRadius: 3.5 } }}
+                    InputProps={{ sx: { borderRadius: 1.5 } }}
                   />
                   <TextField
                     fullWidth
@@ -145,7 +145,7 @@ function Settings() {
                     type="email"
                     value={settings.adminEmail}
                     onChange={handleChange('adminEmail')}
-                    InputProps={{ sx: { borderRadius: 3.5 } }}
+                    InputProps={{ sx: { borderRadius: 1.5 } }}
                   />
                   <TextField
                     fullWidth
@@ -153,7 +153,7 @@ function Settings() {
                     type="number"
                     value={settings.maxUploadSize}
                     onChange={handleChange('maxUploadSize')}
-                    InputProps={{ sx: { borderRadius: 3.5 } }}
+                    InputProps={{ sx: { borderRadius: 1.5 } }}
                   />
                 </Stack>
               </CardContent>
@@ -162,7 +162,7 @@ function Settings() {
 
           {/* Feature Toggles */}
           <Grid size={{ xs: 12, md: 6 }}>
-            <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Card elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', height: '100%' }}>
               <CardContent sx={{ p: 4 }}>
                 <Typography variant="h6" fontWeight={850} sx={{ mb: 1 }}>
                   Feature Controls
@@ -172,7 +172,7 @@ function Settings() {
                 </Typography>
                 
                 <Stack spacing={1.5}>
-                  <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Paper sx={{ p: 2, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={800}>User Registration</Typography>
                       <Typography variant="caption" color="text.secondary">Cho phép người dùng mới tạo tài khoản khách hàng.</Typography>
@@ -184,7 +184,7 @@ function Settings() {
                     />
                   </Paper>
 
-                  <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Paper sx={{ p: 2, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={800}>Comments section</Typography>
                       <Typography variant="caption" color="text.secondary">Mở khu vực bình luận tương tác dưới các bài hát.</Typography>
@@ -196,7 +196,7 @@ function Settings() {
                     />
                   </Paper>
 
-                  <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Paper sx={{ p: 2, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={800}>Visitor Analytics</Typography>
                       <Typography variant="caption" color="text.secondary">Thu thập hành vi phát nhạc của người dùng.</Typography>
@@ -208,7 +208,7 @@ function Settings() {
                     />
                   </Paper>
 
-                  <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Paper sx={{ p: 2, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={800} color="warning.main">Maintenance Mode</Typography>
                       <Typography variant="caption" color="text.secondary">Khóa tạm thời các cổng client và studio nghệ sĩ.</Typography>
@@ -226,7 +226,7 @@ function Settings() {
 
           {/* System Maintenance Actions Panel */}
           <Grid size={{ xs: 12 }}>
-            <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider' }}>
+            <Card elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
               <CardContent sx={{ p: 4 }}>
                 <Typography variant="h6" fontWeight={850} sx={{ mb: 1 }}>
                   System Maintenance
@@ -237,9 +237,9 @@ function Settings() {
 
                 <Grid container spacing={3.5}>
                   <Grid size={{ xs: 12, sm: 4 }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', height: '100%', display: 'flex', flexDirection: 'column' }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(25, 118, 210, 0.08)', color: 'primary.main' }}>
+                        <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: 'rgba(25, 118, 210, 0.08)', color: 'primary.main' }}>
                           <DbIcon />
                         </Box>
                         <Typography variant="subtitle1" fontWeight={800}>Database Backup</Typography>
@@ -252,7 +252,7 @@ function Settings() {
                         onClick={handleBackupDb}
                         disabled={dbLoading}
                         startIcon={dbLoading ? <CircularProgress size={16} /> : <DbIcon />}
-                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 700 }}
+                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
                       >
                         Sao lưu ngay
                       </Button>
@@ -260,9 +260,9 @@ function Settings() {
                   </Grid>
 
                   <Grid size={{ xs: 12, sm: 4 }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', height: '100%', display: 'flex', flexDirection: 'column' }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
+                        <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
                           <CacheIcon />
                         </Box>
                         <Typography variant="subtitle1" fontWeight={800}>Clean API Cache</Typography>
@@ -275,7 +275,7 @@ function Settings() {
                         onClick={handleCleanCache}
                         disabled={cacheLoading}
                         startIcon={cacheLoading ? <CircularProgress size={16} /> : <CacheIcon />}
-                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 700, borderColor: '#6c63ff', color: '#6c63ff' }}
+                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700, borderColor: '#6c63ff', color: '#6c63ff' }}
                       >
                         Giải phóng cache
                       </Button>
@@ -283,9 +283,9 @@ function Settings() {
                   </Grid>
 
                   <Grid size={{ xs: 12, sm: 4 }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', height: '100%', display: 'flex', flexDirection: 'column' }}>
                       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(0, 188, 212, 0.08)', color: '#00bcd4' }}>
+                        <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: 'rgba(0, 188, 212, 0.08)', color: '#00bcd4' }}>
                           <AiIcon />
                         </Box>
                         <Typography variant="subtitle1" fontWeight={800}>Regen AI DJ Index</Typography>
@@ -298,7 +298,7 @@ function Settings() {
                         onClick={handleRegenAi}
                         disabled={aiLoading}
                         startIcon={aiLoading ? <CircularProgress size={16} /> : <AiIcon />}
-                        sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 700, borderColor: '#00bcd4', color: '#00bcd4' }}
+                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700, borderColor: '#00bcd4', color: '#00bcd4' }}
                       >
                         Đồng bộ AI DJ
                       </Button>
@@ -320,7 +320,7 @@ function Settings() {
                   bgcolor: '#6c63ff',
                   fontWeight: 800,
                   textTransform: 'none',
-                  borderRadius: 3.5,
+                  borderRadius: 2,
                   px: 4.5,
                   py: 1.5,
                   boxShadow: '0 8px 24px rgba(108,99,255,0.2)',

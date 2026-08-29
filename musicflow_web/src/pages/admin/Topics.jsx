@@ -327,21 +327,21 @@ function Topics() {
                 bgcolor: '#6c63ff',
                 fontWeight: 800,
                 textTransform: 'none',
-                borderRadius: 3.5,
+                borderRadius: 2,
                 px: 3,
                 '&:hover': { bgcolor: '#534bae' },
               }}
             >
               Thêm chủ đề
             </Button>
-            <IconButton onClick={fetchTopics} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <IconButton onClick={fetchTopics} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
               <RefreshIcon />
             </IconButton>
           </Stack>
         </Box>
 
         {error && (
-          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 4 }}>
+          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 2 }}>
             {error}
           </Alert>
         )}
@@ -349,8 +349,8 @@ function Topics() {
         {/* Derived Stats widgets */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
                 <TopicIcon />
               </Box>
               <Box>
@@ -360,8 +360,8 @@ function Topics() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(0, 188, 212, 0.08)', color: '#00bcd4' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(0, 188, 212, 0.08)', color: '#00bcd4' }}>
                 <TracksIcon />
               </Box>
               <Box>
@@ -373,7 +373,7 @@ function Topics() {
         </Grid>
 
         {/* Filter Toolbar */}
-        <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 4 }}>
+        <Paper elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
           <TextField
             fullWidth
             size="small"
@@ -387,7 +387,7 @@ function Topics() {
                 </InputAdornment>
               ),
               sx: {
-                borderRadius: 3.5,
+                borderRadius: 1.5,
                 bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
               }
             }}
@@ -401,7 +401,7 @@ function Topics() {
             <Typography variant="body2" color="text.secondary" fontWeight={600}>Đang tải kho chủ đề...</Typography>
           </Box>
         ) : topics.length === 0 ? (
-          <Paper sx={{ p: 8, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 5 }}>
+          <Paper sx={{ p: 8, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
             <CategoryIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1.5 }} />
             <Typography variant="subtitle1" fontWeight={700} color="text.secondary">Không tìm thấy chủ đề nào</Typography>
             <Typography variant="body2" color="text.disabled">Tạo một chủ đề mới để bắt đầu phân loại bộ sưu tập âm nhạc của bạn.</Typography>
@@ -415,7 +415,7 @@ function Topics() {
                     elevation={0}
                     onClick={() => openEditDialog(topic)}
                     sx={{ 
-                      borderRadius: 5, 
+                      borderRadius: 2, 
                       border: '1px solid', 
                       borderColor: 'divider', 
                       height: 350,
@@ -587,7 +587,7 @@ function Topics() {
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 6, overflow: 'hidden' } }}
+        PaperProps={{ sx: { borderRadius: 2.5, overflow: 'hidden' } }}
       >
         <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3.5, color: '#fff' }}>
           <Typography variant="h5" fontWeight={900}>
@@ -605,7 +605,7 @@ function Topics() {
               <Stack direction="row" spacing={3} alignItems="center">
                 <Avatar
                   src={avatarPreview || formData.avatarUrl}
-                  sx={{ width: 90, height: 90, bgcolor: '#6c63ff', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  sx={{ width: 90, height: 90, bgcolor: '#6c63ff', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 >
                   <CategoryIcon sx={{ fontSize: 44 }} />
                 </Avatar>
@@ -621,7 +621,7 @@ function Topics() {
                     variant="outlined"
                     startIcon={<CloudUploadIcon />}
                     onClick={() => fileInputRef.current.click()}
-                    sx={{ borderColor: '#6c63ff', color: '#6c63ff', borderRadius: 3, textTransform: 'none', fontWeight: 700 }}
+                    sx={{ borderColor: '#6c63ff', color: '#6c63ff', borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
                   >
                     Chọn file ảnh bìa
                   </Button>
@@ -641,7 +641,7 @@ function Topics() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
             </Grid>
 
@@ -653,7 +653,7 @@ function Topics() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 multiline
                 rows={3}
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
             </Grid>
 
@@ -665,7 +665,7 @@ function Topics() {
                 onChange={(e) => setFormData((prev) => ({ ...prev, avatarUrl: e.target.value }))}
                 placeholder="https://..."
                 helperText="Chấp nhận mọi liên kết ảnh trực tuyến."
-                InputProps={{ sx: { borderRadius: 3.5 } }}
+                InputProps={{ sx: { borderRadius: 1.5 } }}
               />
             </Grid>
 
@@ -676,12 +676,12 @@ function Topics() {
                   <Typography variant="subtitle2" fontWeight={800}>Bài hát thuộc chủ đề</Typography>
                   <Typography variant="caption" color="text.secondary">Quản lý danh sách nhạc trực thuộc chủ đề này.</Typography>
                 </Box>
-                <Chip label={`${formData.songs.length} selected`} size="small" color="primary" sx={{ fontWeight: 700 }} />
+                <Chip label={`${formData.songs.length} selected`} size="small" color="primary" sx={{ fontWeight: 700, borderRadius: 1 }} />
               </Stack>
               <Button 
                 variant="outlined" 
                 onClick={handleOpenSongPicker} 
-                sx={{ mt: 1.5, borderRadius: 3, textTransform: 'none', fontWeight: 700 }}
+                sx={{ mt: 1.5, borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
               >
                 Lựa chọn bài hát
               </Button>
@@ -690,14 +690,14 @@ function Topics() {
         </DialogContent>
 
         <DialogActions sx={{ p: 4, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button onClick={handleCloseDialog} disabled={formLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={handleCloseDialog} disabled={formLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy bỏ
           </Button>
           <Button 
             variant="contained" 
             onClick={handleSave}
             disabled={formLoading || !formData.name}
-            sx={{ borderRadius: 3, fontWeight: 800, px: 4, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
+            sx={{ borderRadius: 1.5, fontWeight: 800, px: 4, bgcolor: '#6c63ff', '&:hover': { bgcolor: '#534bae' } }}
           >
             {formLoading ? <CircularProgress size={20} color="inherit" /> : 'Lưu'}
           </Button>
@@ -710,7 +710,7 @@ function Topics() {
         onClose={() => setSongPickerOpen(false)}
         fullWidth
         maxWidth="md"
-        PaperProps={{ sx: { borderRadius: 5 } }}
+        PaperProps={{ sx: { borderRadius: 2.5 } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>Lựa chọn bài hát trong Topic</DialogTitle>
         <DialogContent>
@@ -727,7 +727,7 @@ function Topics() {
                   <SearchIcon color="primary" />
                 </InputAdornment>
               ),
-              sx: { borderRadius: 3.5 }
+              sx: { borderRadius: 1.5 }
             }}
           />
           <Divider sx={{ mb: 2 }} />
@@ -738,7 +738,7 @@ function Topics() {
             </Box>
           ) : (
             <>
-              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3.5, overflow: 'hidden' }}>
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'action.hover' }}>
@@ -787,7 +787,7 @@ function Topics() {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setSongPickerOpen(false)} variant="contained" sx={{ borderRadius: 2.5, fontWeight: 700, px: 3 }}>
+          <Button onClick={() => setSongPickerOpen(false)} variant="contained" sx={{ borderRadius: 1.5, fontWeight: 700, px: 3 }}>
             Xong
           </Button>
         </DialogActions>
@@ -801,7 +801,7 @@ function Topics() {
           Các ca khúc thuộc chủ đề này sẽ tạm thời bị gỡ phân loại chủ đề (không bị xóa khỏi hệ thống).
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, topic: null })} disabled={deleteLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, topic: null })} disabled={deleteLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy
           </Button>
           <Button 
@@ -809,7 +809,7 @@ function Topics() {
             variant="contained" 
             onClick={handleDelete}
             disabled={deleteLoading}
-            sx={{ borderRadius: 3, fontWeight: 800 }}
+            sx={{ borderRadius: 1.5, fontWeight: 800 }}
           >
             {deleteLoading ? <CircularProgress size={20} color="inherit" /> : 'Xác nhận xóa'}
           </Button>

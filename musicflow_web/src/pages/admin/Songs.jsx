@@ -401,27 +401,27 @@ function Songs() {
                 bgcolor: '#00bcd4',
                 fontWeight: 800,
                 textTransform: 'none',
-                borderRadius: 3.5,
+                borderRadius: 2,
                 px: 3,
                 '&:hover': { bgcolor: '#0097a7' },
               }}
             >
               Thêm bài hát
             </Button>
-            <IconButton onClick={fetchSongs} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <IconButton onClick={fetchSongs} disabled={loading} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
               <RefreshIcon />
             </IconButton>
           </Stack>
         </Box>
 
         {error && (
-          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 4 }}>
+          <Alert severity="error" variant="filled" onClose={() => setError(null)} sx={{ borderRadius: 2 }}>
             {error}
           </Alert>
         )}
 
         {success && (
-          <Alert severity="success" variant="filled" onClose={() => setSuccess(null)} sx={{ borderRadius: 4 }}>
+          <Alert severity="success" variant="filled" onClose={() => setSuccess(null)} sx={{ borderRadius: 2 }}>
             {success}
           </Alert>
         )}
@@ -429,8 +429,8 @@ function Songs() {
         {/* Stats Overview */}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(0, 188, 212, 0.08)', color: '#00bcd4' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(0, 188, 212, 0.08)', color: '#00bcd4' }}>
                 <MusicNoteIcon />
               </Box>
               <Box>
@@ -440,8 +440,8 @@ function Songs() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: '#6c63ff' }}>
                 <AdminIcon />
               </Box>
               <Box>
@@ -451,8 +451,8 @@ function Songs() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(255, 152, 0, 0.08)', color: '#ff9800' }}>
                 <ArtistIcon />
               </Box>
               <Box>
@@ -462,8 +462,8 @@ function Songs() {
             </Paper>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 5, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
                 <UploadIcon />
               </Box>
               <Box>
@@ -475,7 +475,7 @@ function Songs() {
         </Grid>
 
         {/* Main Content Card Table */}
-        <Card elevation={0} sx={{ borderRadius: 6, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
+        <Card elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', overflow: 'hidden' }}>
           <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0,0,0,0.01)' }}>
             <TextField
               fullWidth
@@ -490,7 +490,7 @@ function Songs() {
                   </InputAdornment>
                 ),
                 sx: {
-                  borderRadius: 4,
+                  borderRadius: 1.5,
                   bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
                 }
               }}
@@ -622,7 +622,7 @@ function Songs() {
                                   color="warning"
                                   disabled={moderatingId === song._id}
                                   onClick={() => handleModerateSong(song)}
-                                  sx={{ bgcolor: 'rgba(255,152,0,0.06)', borderRadius: 3, border: '1px solid rgba(255,152,0,0.1)' }}
+                                  sx={{ bgcolor: 'rgba(255,152,0,0.06)', borderRadius: 1.5, border: '1px solid rgba(255,152,0,0.1)' }}
                                 >
                                   {moderatingId === song._id ? <CircularProgress size={16} color="inherit" /> : <SecurityIcon fontSize="small" />}
                                 </IconButton>
@@ -633,7 +633,7 @@ function Songs() {
                                 size="small"
                                 color="success"
                                 onClick={() => window.open(song.audioUrl, '_blank')}
-                                sx={{ bgcolor: 'rgba(76,175,80,0.06)', borderRadius: 3, border: '1px solid rgba(76,175,80,0.1)' }}
+                                sx={{ bgcolor: 'rgba(76,175,80,0.06)', borderRadius: 1.5, border: '1px solid rgba(76,175,80,0.1)' }}
                               >
                                 <PlayIcon fontSize="small" />
                               </IconButton>
@@ -643,7 +643,7 @@ function Songs() {
                                 size="small"
                                 color="primary"
                                 onClick={() => openEditDialog(song)}
-                                sx={{ bgcolor: 'rgba(0,188,212,0.06)', borderRadius: 3, border: '1px solid rgba(0,188,212,0.1)' }}
+                                sx={{ bgcolor: 'rgba(0,188,212,0.06)', borderRadius: 1.5, border: '1px solid rgba(0,188,212,0.1)' }}
                               >
                                 <EditIcon fontSize="small" />
                               </IconButton>
@@ -653,7 +653,7 @@ function Songs() {
                                 size="small"
                                 color="error"
                                 onClick={() => setDeleteDialog({ open: true, song })}
-                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 3, border: '1px solid rgba(211,47,47,0.1)' }}
+                                sx={{ bgcolor: 'rgba(211,47,47,0.06)', borderRadius: 1.5, border: '1px solid rgba(211,47,47,0.1)' }}
                               >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
@@ -683,7 +683,6 @@ function Songs() {
       </Stack>
 
       {/* Add/Edit Modal */}
-      {/* Add/Edit Modal */}
       <Dialog
         open={createDialogOpen}
         onClose={resetSongDialog}
@@ -692,7 +691,7 @@ function Songs() {
         fullWidth
         PaperProps={{ 
           sx: { 
-            borderRadius: 6, 
+            borderRadius: 2.5, 
             overflow: 'hidden',
             boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
           } 
@@ -701,7 +700,7 @@ function Songs() {
         <Box sx={{ background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', p: 3, color: '#fff', display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
           <Box sx={{
             p: 1.25,
-            borderRadius: 3,
+            borderRadius: 1.5,
             background: 'rgba(255, 255, 255, 0.2)',
             backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255, 255, 255, 0.3)',
@@ -810,7 +809,7 @@ function Songs() {
                       <MusicNoteIcon color="action" fontSize="small" />
                     </InputAdornment>
                   ),
-                  sx: { borderRadius: 3.5 }
+                  sx: { borderRadius: 1.5 }
                 }}
               />
 
@@ -846,7 +845,7 @@ function Songs() {
                         label={name}
                         size="small"
                         {...getTagProps({ index })}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ borderRadius: 1.5 }}
                       />
                     );
                   })
@@ -859,7 +858,7 @@ function Songs() {
                       <Avatar 
                         src={avatar} 
                         variant="rounded" 
-                        sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#00bcd4' }}
+                        sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#00bcd4', borderRadius: 1 }}
                       >
                         {name.charAt(0)}
                       </Avatar>
@@ -883,7 +882,7 @@ function Songs() {
                           {params.InputProps.startAdornment}
                         </>
                       ),
-                      sx: { borderRadius: 3.5 }
+                      sx: { borderRadius: 1.5 }
                     }}
                   />
                 )}
@@ -902,7 +901,7 @@ function Songs() {
                     <Avatar 
                       src={option.avatar} 
                       variant="rounded" 
-                      sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#6c63ff' }}
+                      sx={{ width: 32, height: 32, fontSize: 14, bgcolor: '#6c63ff', borderRadius: 1 }}
                     >
                       <CategoryIcon sx={{ fontSize: 18 }} />
                     </Avatar>
@@ -926,7 +925,7 @@ function Songs() {
                                   <Avatar 
                                     src={selectedTopic?.avatar} 
                                     variant="rounded" 
-                                    sx={{ width: 20, height: 20, mr: 0.5, fontSize: 11 }}
+                                    sx={{ width: 20, height: 20, mr: 0.5, fontSize: 11, borderRadius: 1 }}
                                   >
                                     {selectedTopic?.name?.charAt(0)}
                                   </Avatar>
@@ -939,7 +938,7 @@ function Songs() {
                           {params.InputProps.startAdornment}
                         </>
                       ),
-                      sx: { borderRadius: 3.5 }
+                      sx: { borderRadius: 1.5 }
                     }}
                   />
                 )}
@@ -957,7 +956,7 @@ function Songs() {
                   placeholder="Nhập lời bài hát hoặc cấu trúc LRC..."
                   InputProps={{
                     sx: { 
-                      borderRadius: 3.5,
+                      borderRadius: 1.5,
                       fontFamily: 'monospace',
                       fontSize: '0.875rem',
                       lineHeight: 1.6,
@@ -992,7 +991,6 @@ function Songs() {
 
           {dialogTab === 1 && (
             <Stack spacing={3} sx={{ mt: 1.5 }}>
-              {/* Audio Upload */}
               <Box>
                 <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
                   File âm thanh (Audio file) *
@@ -1003,7 +1001,7 @@ function Songs() {
                   fullWidth
                   sx={{
                     py: 4,
-                    borderRadius: 4.5,
+                    borderRadius: 2,
                     borderColor: audioFile ? 'success.main' : 'divider',
                     borderStyle: 'dashed',
                     borderWidth: 2,
@@ -1044,7 +1042,6 @@ function Songs() {
                 </Button>
               </Box>
 
-              {/* Cover Artwork */}
               <Box>
                 <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
                   Ảnh đại diện (Artwork image)
@@ -1057,7 +1054,7 @@ function Songs() {
                       fullWidth
                       sx={{
                         py: imageFile ? 2 : 2.5,
-                        borderRadius: 4.5,
+                        borderRadius: 2,
                         borderColor: imageFile ? 'success.main' : 'divider',
                         borderStyle: 'dashed',
                         borderWidth: 2,
@@ -1100,7 +1097,7 @@ function Songs() {
                       <Box sx={{ 
                         width: 72, 
                         height: 72, 
-                        borderRadius: 3.5, 
+                        borderRadius: 1.5, 
                         border: '1px solid', 
                         borderColor: 'divider', 
                         overflow: 'hidden', 
@@ -1134,7 +1131,7 @@ function Songs() {
                       <ImageIcon color="action" fontSize="small" />
                     </InputAdornment>
                   ),
-                  sx: { borderRadius: 3.5 }
+                  sx: { borderRadius: 1.5 }
                 }}
               />
             </Stack>
@@ -1155,7 +1152,7 @@ function Songs() {
             onClick={resetSongDialog} 
             disabled={createLoading} 
             sx={{ 
-              borderRadius: 3, 
+              borderRadius: 1.5, 
               fontWeight: 700,
               textTransform: 'none',
               px: 3,
@@ -1170,7 +1167,7 @@ function Songs() {
             onClick={handleCreateSong} 
             disabled={createLoading}
             sx={{ 
-              borderRadius: 3, 
+              borderRadius: 1.5, 
               fontWeight: 800, 
               px: 4.5, 
               textTransform: 'none',
@@ -1187,7 +1184,6 @@ function Songs() {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Dialog */}
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, song: null })}>
         <DialogTitle sx={{ fontWeight: 800, color: 'error.main' }}>Xác nhận xóa bài hát</DialogTitle>
         <DialogContent>
@@ -1195,7 +1191,7 @@ function Songs() {
           Hành động này sẽ loại bỏ vĩnh viễn tệp âm thanh khỏi máy chủ Cloudinary.
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, song: null })} disabled={deleteLoading} sx={{ borderRadius: 3, fontWeight: 700 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, song: null })} disabled={deleteLoading} sx={{ borderRadius: 1.5, fontWeight: 700 }}>
             Hủy
           </Button>
           <Button
@@ -1203,7 +1199,7 @@ function Songs() {
             variant="contained"
             onClick={handleDelete}
             disabled={deleteLoading}
-            sx={{ borderRadius: 3, fontWeight: 800 }}
+            sx={{ borderRadius: 1.5, fontWeight: 800 }}
           >
             {deleteLoading ? <CircularProgress size={20} color="inherit" /> : 'Xác nhận xóa'}
           </Button>

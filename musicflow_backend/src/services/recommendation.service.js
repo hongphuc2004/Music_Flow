@@ -313,6 +313,7 @@ const getRecommendedSongs = async (limit = 12) => {
     {
       $project: {
         title: 1,
+        slug: 1,
         artists: 1,
         topicIds: 1,
         uploadedBy: 1,
@@ -337,6 +338,7 @@ const getRecommendedSongs = async (limit = 12) => {
           {
             $project: {
               name: 1,
+              slug: 1,
               avatar: 1,
               isVerified: 1,
               followersCount: 1,

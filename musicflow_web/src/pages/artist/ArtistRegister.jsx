@@ -66,8 +66,11 @@ const ArtistRegister = () => {
       '& input': {
         color: '#0f172a',
       },
-      '& textarea': {
-        color: '#0f172a',
+      '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+        WebkitBoxShadow: '0 0 0 1000px #f7f8fb inset !important',
+        WebkitTextFillColor: '#0f172a !important',
+        caretColor: '#0f172a !important',
+        borderRadius: 'inherit',
       },
       '& .MuiOutlinedInput-notchedOutline': {
         borderColor: 'rgba(15, 23, 42, 0.15)',
@@ -76,13 +79,13 @@ const ArtistRegister = () => {
         borderColor: 'rgba(15, 23, 42, 0.3)',
       },
       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-        borderColor: '#6c63ff',
+        borderColor: '#00bcd4',
       },
     },
     '& .MuiInputLabel-root': {
       color: '#475569',
       '&.Mui-focused': {
-        color: '#6c63ff',
+        color: '#00bcd4',
       },
     },
   };

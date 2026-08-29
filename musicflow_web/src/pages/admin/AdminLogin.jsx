@@ -78,6 +78,12 @@ function AdminLogin() {
       '& input': {
         color: '#0f172a',
       },
+      '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+        WebkitBoxShadow: '0 0 0 1000px #f7f8fb inset !important',
+        WebkitTextFillColor: '#0f172a !important',
+        caretColor: '#0f172a !important',
+        borderRadius: 'inherit',
+      },
       '& .MuiOutlinedInput-notchedOutline': {
         borderColor: 'rgba(15, 23, 42, 0.15)',
       },
@@ -188,7 +194,7 @@ function AdminLogin() {
             width: '100%',
             maxWidth: 460,
             mx: 'auto',
-            borderRadius: 4,
+            borderRadius: 2.5,
             bgcolor: 'rgba(255,255,255,0.96)',
             border: '1px solid rgba(255,255,255,0.65)',
             boxShadow: '0 26px 80px rgba(0, 0, 0, 0.34)',
@@ -202,7 +208,7 @@ function AdminLogin() {
                 justifyContent: 'center',
                 width: 68,
                 height: 68,
-                borderRadius: 3,
+                borderRadius: 2,
                 background: 'linear-gradient(135deg, #35d0df 0%, #6c63ff 58%, #9b5cff 100%)',
                 boxShadow: '0 16px 34px rgba(108, 99, 255, 0.32)',
                 mb: 2.5,

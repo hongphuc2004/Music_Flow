@@ -335,7 +335,7 @@ function Dashboard() {
             elevation={0}
             sx={{
               p: 3.5,
-              borderRadius: 5,
+              borderRadius: 2,
               border: '1px solid',
               borderColor: 'divider',
               background: (theme) => theme.palette.mode === 'dark' 
@@ -504,7 +504,7 @@ function Dashboard() {
                 height: '100%', 
                 background: stat.gradient,
                 color: '#fff',
-                borderRadius: 5,
+                borderRadius: 2,
                 boxShadow: `0 10px 22px ${stat.shadow}`,
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 position: 'relative',
@@ -534,7 +534,7 @@ function Dashboard() {
                     sx={{ 
                       p: 1.25, 
                       backgroundColor: 'rgba(255,255,255,0.18)', 
-                      borderRadius: 3,
+                      borderRadius: 1.5,
                       backdropFilter: 'blur(10px)',
                       display: 'flex',
                       alignItems: 'center',
@@ -550,7 +550,7 @@ function Dashboard() {
                 </Typography>
                 
                 {/* Growth indicator badge */}
-                <Box sx={{ display: 'inline-flex', bgcolor: 'rgba(255,255,255,0.15)', px: 1.25, py: 0.25, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+                <Box sx={{ display: 'inline-flex', bgcolor: 'rgba(255,255,255,0.15)', px: 1.25, py: 0.25, borderRadius: 1.5, border: '1px solid rgba(255,255,255,0.1)' }}>
                   <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '10px' }}>
                     {stat.growth}
                   </Typography>
@@ -569,7 +569,7 @@ function Dashboard() {
             sx={{ 
               p: 3.5, 
               height: '100%', 
-              borderRadius: 5, 
+              borderRadius: 2, 
               boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
               border: '1px solid',
               borderColor: 'divider',
@@ -581,7 +581,7 @@ function Dashboard() {
               <Typography variant="h5" fontWeight={800} color="text.primary" sx={{ letterSpacing: -0.5 }}>
                 Recent Accounts
               </Typography>
-              <Chip label="System Log" size="small" sx={{ fontWeight: 700 }} />
+              <Chip label="System Log" size="small" sx={{ fontWeight: 700, borderRadius: 1 }} />
             </Box>
             
             {accountsList.length === 0 ? (
@@ -600,7 +600,7 @@ function Dashboard() {
                         px: 2, 
                         py: 1.5,
                         mb: 1.5,
-                        borderRadius: 4,
+                        borderRadius: 1.5,
                         border: '1px solid',
                         borderColor: 'divider',
                         bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
@@ -636,6 +636,7 @@ function Dashboard() {
                             bgcolor: theme.palette.primary.main, 
                             width: 46, 
                             height: 46,
+                            borderRadius: 1.5,
                             boxShadow: '0 4px 10px rgba(108, 99, 255, 0.15)'
                           }}
                         >
@@ -692,7 +693,7 @@ function Dashboard() {
             sx={{ 
               p: 3.5, 
               height: '100%', 
-              borderRadius: 5, 
+              borderRadius: 2, 
               boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
               border: '1px solid',
               borderColor: 'divider',
@@ -704,7 +705,7 @@ function Dashboard() {
               <Typography variant="h5" fontWeight={800} color="text.primary" sx={{ letterSpacing: -0.5 }}>
                 Recent Songs
               </Typography>
-              <Chip label="Catalog Log" size="small" sx={{ fontWeight: 700 }} />
+              <Chip label="Catalog Log" size="small" sx={{ fontWeight: 700, borderRadius: 1 }} />
             </Box>
 
             {songsList.length === 0 ? (
@@ -724,7 +725,7 @@ function Dashboard() {
                         px: 2, 
                         py: 1.5,
                         mb: 1.5,
-                        borderRadius: 4,
+                        borderRadius: 1.5,
                         border: '1px solid',
                         borderColor: 'divider',
                         bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',

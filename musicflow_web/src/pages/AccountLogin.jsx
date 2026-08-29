@@ -200,6 +200,30 @@ function AccountLogin() {
     '& .MuiOutlinedInput-root': {
       borderRadius: 2,
       bgcolor: '#f7f8fb',
+      '& input': {
+        color: '#0f172a',
+      },
+      '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+        WebkitBoxShadow: '0 0 0 1000px #f7f8fb inset !important',
+        WebkitTextFillColor: '#0f172a !important',
+        caretColor: '#0f172a !important',
+        borderRadius: 'inherit',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.15)',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'rgba(15, 23, 42, 0.3)',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#6c63ff',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: '#475569',
+      '&.Mui-focused': {
+        color: '#6c63ff',
+      },
     },
   };
 

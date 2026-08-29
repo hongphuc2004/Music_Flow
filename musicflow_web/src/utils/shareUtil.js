@@ -56,9 +56,15 @@ export function generateShareInstanceId() {
 export function createSongShareUrl(songOrId, options = {}) {
   if (!songOrId) return '';
 
-  const origin = typeof window !== 'undefined' && window.location?.origin
-    ? window.location.origin
-    : (import.meta.env.VITE_APP_URL || 'https://musicflow.vn');
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.hostname.startsWith('10.')
+  );
+
+  const origin = import.meta.env.VITE_APP_URL
+    || (!isLocalhost && typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://music-flow-bay.vercel.app');
 
   const {
     source = 'clipboard',
@@ -82,9 +88,13 @@ export function createSongShareUrl(songOrId, options = {}) {
       artistSlug = song.artistSlug;
     } else if (Array.isArray(song.artists) && song.artists.length > 0) {
       const firstArtist = song.artists[0];
-      artistSlug = typeof firstArtist === 'object'
-        ? (firstArtist.slug || slugify(firstArtist.name || 'u'))
-        : slugify(firstArtist);
+      if (typeof firstArtist === 'object' && firstArtist !== null) {
+        artistSlug = firstArtist.slug || slugify(firstArtist.name || 'u');
+      } else if (typeof firstArtist === 'string' && !/^[0-9a-fA-F]{24}$/.test(firstArtist)) {
+        artistSlug = slugify(firstArtist);
+      } else if (song.artist) {
+        artistSlug = slugify(song.artist);
+      }
     } else if (song.artist) {
       artistSlug = slugify(song.artist);
     }
@@ -118,9 +128,16 @@ export function createSongShareText(song) {
   if (!song) return 'Nghe nhạc chất lượng cao trên MusicFlow 🎵';
   
   const title = song.title || 'Bài hát';
-  const artists = Array.isArray(song.artists)
-    ? song.artists.map((a) => (typeof a === 'object' ? a.name : a)).filter(Boolean).join(', ')
-    : (song.artist || '');
+  let artists = '';
+  if (Array.isArray(song.artists) && song.artists.length > 0) {
+    artists = song.artists
+      .map((a) => (typeof a === 'object' && a !== null ? (a.name || a.stageName) : (typeof a === 'string' && !/^[0-9a-fA-F]{24}$/.test(a) ? a : '')))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (!artists) {
+    artists = song.artistNames || song.artist || (typeof song.artists === 'string' ? song.artists : '');
+  }
 
   if (artists) {
     return `Nghe "${title}" - ${artists} trên MusicFlow 🎵`;
@@ -196,8 +213,8 @@ export async function triggerNativeShare({ title, text, url }) {
  * @param {number} [size=240]
  * @returns {string}
  */
-export function getQrCodeImageUrl(text, size = 240) {
+export function getQrCodeImageUrl(text, size = 300) {
   if (!text) return '';
   const enc = encodeURIComponent(text);
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}&format=svg&qzone=2&margin=0`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}&qzone=2&color=000000&bgcolor=FFFFFF`;
 }

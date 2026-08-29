@@ -144,6 +144,8 @@ export function getSocialShareUrl(platform, { url, text, title }) {
   switch (platform) {
     case 'facebook':
       return `https://www.facebook.com/sharer/sharer.php?u=${encUrl}&quote=${encText}`;
+    case 'instagram':
+      return 'https://www.instagram.com/direct/inbox/';
     case 'zalo':
       return `https://sp.zalo.me/share?url=${encUrl}`;
     case 'twitter':
@@ -152,7 +154,9 @@ export function getSocialShareUrl(platform, { url, text, title }) {
     case 'telegram':
       return `https://t.me/share/url?url=${encUrl}&text=${encText}`;
     case 'messenger':
-      return `https://www.facebook.com/dialog/send?link=${encUrl}&app_id=291494419107518&redirect_uri=${encUrl}`;
+      return `https://www.facebook.com/sharer/sharer.php?u=${encUrl}&quote=${encText}`;
+    case 'whatsapp':
+      return `https://api.whatsapp.com/send?text=${encText}%0A${encUrl}`;
     default:
       return url;
   }

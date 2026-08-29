@@ -137,10 +137,25 @@ export default function ShareSongModal({ open, onClose, song }) {
     }
   };
 
-  const handleSocialClick = (platformId) => {
+  const handleSocialClick = async (platformId) => {
     const medium = 'social';
     trackShare(platformId, medium);
     const customUrl = createSongShareUrl(song, { source: platformId, medium });
+
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+
+    // Trên điện thoại di động: Nếu bấm Zalo và hỗ trợ Web Share API, mở thẳng hộp thoại chia sẻ ứng dụng của điện thoại (Zalo App)
+    if (platformId === 'zalo' && isMobile && typeof navigator.share === 'function') {
+      const shared = await triggerNativeShare({
+        title: song?.title || 'MusicFlow',
+        text: shareText,
+        url: customUrl,
+      });
+      if (shared) return;
+    }
+
     const intentUrl = getSocialShareUrl(platformId, {
       url: customUrl,
       text: shareText,

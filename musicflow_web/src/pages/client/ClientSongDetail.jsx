@@ -90,11 +90,32 @@ export default function ClientSongDetail() {
           setSong(songData);
           setRelatedSongs(res.data.relatedSongs || []);
 
-          // Set Page Document Title
+          // Set Page Document Title & Dynamic Open Graph Tags
           const artistNames = Array.isArray(songData.artists)
             ? songData.artists.map((a) => (typeof a === 'object' ? a.name : a)).filter(Boolean).join(', ')
             : (songData.artist || '');
-          document.title = `${songData.title} - ${artistNames || 'MusicFlow'} | MusicFlow`;
+          const pageTitle = `${songData.title} - ${artistNames || 'MusicFlow'} | MusicFlow`;
+          document.title = pageTitle;
+
+          const setMetaContent = (property, content) => {
+            if (!content) return;
+            let el = document.querySelector(`meta[property="${property}"]`) || document.querySelector(`meta[name="${property}"]`);
+            if (!el) {
+              el = document.createElement('meta');
+              el.setAttribute(property.startsWith('twitter:') ? 'name' : 'property', property);
+              document.head.appendChild(el);
+            }
+            el.setAttribute('content', content);
+          };
+
+          setMetaContent('og:title', pageTitle);
+          setMetaContent('twitter:title', pageTitle);
+          setMetaContent('og:description', `Nghe bài hát "${songData.title}" của ${artistNames || 'nghệ sĩ'} chất lượng cao trên MusicFlow.`);
+          setMetaContent('twitter:description', `Nghe bài hát "${songData.title}" của ${artistNames || 'nghệ sĩ'} chất lượng cao trên MusicFlow.`);
+          if (songData.imageUrl) {
+            setMetaContent('og:image', songData.imageUrl);
+            setMetaContent('twitter:image', songData.imageUrl);
+          }
         }
       } catch (err) {
         if (isSubscribed) {

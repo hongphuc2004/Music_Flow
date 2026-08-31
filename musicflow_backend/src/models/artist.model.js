@@ -85,4 +85,7 @@ artistSchema.methods.toJSON = function () {
   return artist;
 };
 
+artistSchema.index({ monthlyListeners: -1 });
+artistSchema.index({ followersCount: -1 });
+
 module.exports = mongoose.model("Artist", artistSchema);

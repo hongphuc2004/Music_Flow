@@ -21,6 +21,7 @@ import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../
 import useAppToast from '../../../components/common/useAppToast';
 import { useNavigate } from 'react-router-dom';
 import ShareSongModal from '../../common/ShareSongModal';
+import { getOptimizedImageUrl } from '../../../utils/imageUtil';
 
 
 function formatDuration(seconds) {
@@ -321,7 +322,7 @@ function ClientNowPlayingBar({
             </Box>
 
             <Avatar
-              src={currentSong?.imageUrl}
+              src={getOptimizedImageUrl(currentSong?.imageUrl, 'now_playing')}
               variant="rounded"
               sx={{
                 position: 'relative',

@@ -46,4 +46,6 @@ playlistSongSchema.virtual("songCount").get(function getSongCount() {
 playlistSongSchema.set("toJSON", { virtuals: true });
 playlistSongSchema.set("toObject", { virtuals: true });
 
+playlistSongSchema.index({ isPublic: 1, createdAt: -1 });
+
 module.exports = mongoose.model("PlaylistSong", playlistSongSchema);

@@ -51,6 +51,8 @@ async function triggerUnsplashDownload(photoId) {
   }
 }
 
+const { cache, CACHE_TTL } = require("../utils/cache.util");
+
 const PLAYLIST_SONG_SELECT =
   "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
 
@@ -61,36 +63,43 @@ exports.getSystemPlaylists = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
     const skip = (page - 1) * limit;
     const filter = { isPublic: true };
+    const cacheKey = `system_playlists:${page}:${limit}`;
 
-    const [playlists, total] = await Promise.all([
-      PlaylistSong.aggregate([
-        { $match: filter },
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            name: 1,
-            description: 1,
-            coverImage: 1,
-            isPublic: 1,
-            createdBy: 1,
-            createdAt: 1,
-            updatedAt: 1,
-            songCount: { $size: { $ifNull: ["$songs", []] } },
+    const data = await cache.wrap(cacheKey, CACHE_TTL.SYSTEM_PLAYLISTS, async () => {
+      const [playlists, total] = await Promise.all([
+        PlaylistSong.aggregate([
+          { $match: filter },
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              name: 1,
+              description: 1,
+              coverImage: 1,
+              isPublic: 1,
+              createdBy: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              songCount: { $size: { $ifNull: ["$songs", []] } },
+            },
           },
-        },
-      ]),
-      PlaylistSong.countDocuments(filter),
-    ]);
+        ]),
+        PlaylistSong.countDocuments(filter),
+      ]);
+
+      return {
+        playlists,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    });
 
     res.json({
       success: true,
-      playlists,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      ...data,
     });
   } catch (error) {
     console.error("Get system playlists error:", error);

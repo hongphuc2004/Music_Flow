@@ -16,6 +16,7 @@ const Topic = require("../models/topic.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
 const Artist = require("../models/artist.model");
+const { cache } = require("../utils/cache.util");
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -1275,6 +1276,8 @@ router.post("/playlists", authMiddleware, requireAdmin, upload.single("coverImag
       .populate("createdBy", "name email")
       .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
+    cache.invalidate("system_playlists");
+
     res.status(201).json(populatedPlaylist);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
@@ -1340,6 +1343,8 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
       return res.status(404).json({ message: "Playlist not found" });
     }
 
+    cache.invalidate("system_playlists");
+
     res.json(playlist);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
@@ -1355,6 +1360,8 @@ router.delete("/playlists/:id", authMiddleware, requireAdmin, async (req, res) =
     if (!playlist) {
       return res.status(404).json({ message: "Playlist not found" });
     }
+
+    cache.invalidate("system_playlists");
 
     res.json({ message: "Playlist deleted successfully" });
   } catch (error) {

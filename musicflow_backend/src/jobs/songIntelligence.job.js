@@ -62,10 +62,10 @@ async function runSongIntelligenceBatch() {
 }
 
 function startSongIntelligenceJob() {
-  // Execute small batch after server startup delay (10s delay to allow DB connection stabilization)
+  // Execute small batch after server startup delay (90s delay to allow DB & server boot stabilization)
   setTimeout(() => {
     runSongIntelligenceBatch().catch(() => {});
-  }, 10000);
+  }, 90000);
 
   // Interval execution every 15 minutes
   setInterval(() => {

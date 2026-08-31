@@ -75,16 +75,19 @@ async function updateAllArtistsMonthlyListeners() {
 }
 
 function startMonthlyListenersJob() {
-  // Chay ngay lap tuc khi khoi dong server
-  updateAllArtistsMonthlyListeners();
+  // Delay 60s cho lần chạy đầu tiên sau khi boot để ưu tiên tài nguyên phục vụ các request tải trang ban đầu
+  const INITIAL_DELAY_MS = 60 * 1000;
+  setTimeout(() => {
+    updateAllArtistsMonthlyListeners();
+  }, INITIAL_DELAY_MS);
 
-  // Dat lich chay dinh ky moi 24 gio (86400000 ms)
+  // Đặt lịch chạy định kỳ mỗi 24 giờ (86400000 ms)
   const INTERVAL_24H = 24 * 60 * 60 * 1000;
   setInterval(() => {
     updateAllArtistsMonthlyListeners();
   }, INTERVAL_24H);
 
-  console.log("[Job] Da lap lich chay Job Monthly Listeners (Chu ky 24 gio).");
+  console.log("[Job] Da lap lich chay Job Monthly Listeners (Khoi dong sau 60s, chu ky 24 gio).");
 }
 
 module.exports = {

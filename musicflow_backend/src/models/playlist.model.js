@@ -60,4 +60,7 @@ playlistSchema.virtual("songCount").get(function() {
 playlistSchema.set("toJSON", { virtuals: true });
 playlistSchema.set("toObject", { virtuals: true });
 
+playlistSchema.index({ userId: 1, createdAt: -1 });
+playlistSchema.index({ isPublic: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Playlist", playlistSchema);

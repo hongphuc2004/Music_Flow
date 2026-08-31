@@ -8,6 +8,7 @@ import {
   LockRounded as LockIcon,
   PublicRounded as PublicIcon,
 } from '@mui/icons-material';
+import { getOptimizedImageUrl } from '../../../utils/imageUtil';
 
 const ClientPlaylistCard = ({
   playlist,
@@ -59,7 +60,7 @@ const ClientPlaylistCard = ({
       <Box sx={{ width: '100%', aspectRatio: '1/1', borderRadius: '15px', overflow: 'hidden', position: 'relative', mb: 1.25, flexShrink: 0 }}>
         <Avatar
           variant="rounded"
-          src={hasCover ? playlist.coverImage : undefined}
+          src={hasCover ? getOptimizedImageUrl(playlist.coverImage, 'playlist_card') : undefined}
           className="playlist-cover"
           sx={{
             width: '100%',

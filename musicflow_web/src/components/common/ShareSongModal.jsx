@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -94,12 +94,13 @@ export default function ShareSongModal({ open, onClose, song }) {
 
   const songId = song?._id || song?.id;
 
-  useEffect(() => {
-    if (open) {
-      setQrLoading(true);
-      setCopied(false);
-    }
-  }, [open, songId]);
+  const [prevKey, setPrevKey] = useState(null);
+  const currentKey = open ? `${open}_${songId}` : null;
+  if (currentKey && currentKey !== prevKey) {
+    setPrevKey(currentKey);
+    setQrLoading(true);
+    setCopied(false);
+  }
 
   // Cố định link chia sẻ và mã QR bằng useMemo để không sinh ngẫu nhiên mã mới mỗi lần re-render
   const clipboardShareUrl = useMemo(() => {

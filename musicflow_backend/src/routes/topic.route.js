@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Topic = require("../models/topic.model");
 const Song = require("../models/song.model");
+const { cache, CACHE_TTL } = require("../utils/cache.util");
 
 const TOPIC_SONG_SELECT =
   "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
@@ -16,7 +17,9 @@ const parsePagination = (query) => {
 // 📌 GET ALL TOPICS
 router.get("/", async (req, res) => {
   try {
-    const topics = await Topic.find().sort({ name: 1 });
+    const topics = await cache.wrap("topics:all", CACHE_TTL.TOPICS, () =>
+      Topic.find().sort({ name: 1 }).lean()
+    );
     res.json(topics);
   } catch (error) {
     console.error("Get topics error:", error);
@@ -74,6 +77,8 @@ router.post("/", async (req, res) => {
       avatar,
     });
 
+    cache.invalidate("topics");
+
     res.status(201).json({
       message: "Topic created successfully",
       topic,
@@ -101,6 +106,8 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Topic not found" });
     }
 
+    cache.invalidate("topics");
+
     res.json({
       message: "Topic updated successfully",
       topic,
@@ -121,6 +128,8 @@ router.delete("/:id", async (req, res) => {
     if (!topic) {
       return res.status(404).json({ message: "Topic not found" });
     }
+
+    cache.invalidate("topics");
 
     res.json({ message: "Topic deleted successfully" });
   } catch (error) {

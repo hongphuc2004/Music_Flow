@@ -20,6 +20,7 @@ const { safeUnlink, uploadAudioToCloudinary, uploadImageFileToCloudinary, upload
 const { isObjectIdLike, isHttpUrl, parseArrayField, toSafeSongTitleFromFileName, slugify, escapeRegex } = require("../utils/string.util");
 
 const { ONE_HOUR_MS, getRankingPeriodRange, buildRankMap, buildHourlySlots } = require("../utils/ranking.util");
+const { cache, CACHE_TTL } = require("../utils/cache.util");
 const mm = require("music-metadata");
 
 const TRACK_PLAY_COOLDOWN_MS = 3 * 60 * 1000;
@@ -801,100 +802,104 @@ const getFlowchart = async ({ hours: rawHours, limit: rawLimit, mode: rawMode } 
     ? Math.min(Math.max(requestedLimit, 10), 50)
     : 50;
 
-  const publicSongs = await songRepo.findPublicForRanking();
-  const songIds = publicSongs.map((s) => s._id.toString());
+  const cacheKey = `flowchart:${hours}:${limit}:${rankingMode}`;
 
-  const now = new Date();
-  const day24Ms = 24 * ONE_HOUR_MS;
-  const startLast24h = new Date(now.getTime() - day24Ms);
-  const startPrev24h = new Date(now.getTime() - 2 * day24Ms);
+  return cache.wrap(cacheKey, CACHE_TTL.FLOWCHART, async () => {
+    const publicSongs = await songRepo.findPublicForRanking();
+    const songIds = publicSongs.map((s) => s._id.toString());
 
-  const defaultMetricsBySongId = new Map(
-    publicSongs.map((s) => [
-      s._id.toString(),
-      { last24h: 0, previous24h: 0, risingScore: 0 },
-    ])
-  );
+    const now = new Date();
+    const day24Ms = 24 * ONE_HOUR_MS;
+    const startLast24h = new Date(now.getTime() - day24Ms);
+    const startPrev24h = new Date(now.getTime() - 2 * day24Ms);
 
-  if (songIds.length > 0) {
-    const recentEvents = await playEventRepo.findPlayEventsInRange(songIds, startPrev24h);
+    const defaultMetricsBySongId = new Map(
+      publicSongs.map((s) => [
+        s._id.toString(),
+        { last24h: 0, previous24h: 0, risingScore: 0 },
+      ])
+    );
 
-    for (const event of recentEvents) {
+    if (songIds.length > 0) {
+      const recentEvents = await playEventRepo.findPlayEventsInRange(songIds, startPrev24h);
+
+      for (const event of recentEvents) {
+        const songId = event.songId?.toString();
+        if (!songId || !defaultMetricsBySongId.has(songId)) continue;
+
+        const metric = defaultMetricsBySongId.get(songId);
+        const playedAt = new Date(event.playedAt);
+        if (playedAt >= startLast24h) {
+          metric.last24h += 1;
+        } else {
+          metric.previous24h += 1;
+        }
+      }
+
+      for (const metric of defaultMetricsBySongId.values()) {
+        metric.risingScore = metric.last24h - metric.previous24h;
+      }
+    }
+
+    const rankedSongIds = [...publicSongs]
+      .sort((a, b) => {
+        const mA = defaultMetricsBySongId.get(a._id.toString()) || { last24h: 0, previous24h: 0, risingScore: 0 };
+        const mB = defaultMetricsBySongId.get(b._id.toString()) || { last24h: 0, previous24h: 0, risingScore: 0 };
+
+        if (rankingMode === "rising") {
+          if (mB.risingScore !== mA.risingScore) return mB.risingScore - mA.risingScore;
+          if (mB.last24h !== mA.last24h) return mB.last24h - mA.last24h;
+        }
+        if (b.playCount !== a.playCount) return b.playCount - a.playCount;
+        return (b.likeCount || 0) - (a.likeCount || 0);
+      })
+      .slice(0, limit)
+      .map((s) => s._id.toString());
+
+    const rankedSongs = await songRepo.findByIds(rankedSongIds);
+    const songById = new Map(rankedSongs.map((s) => [s._id.toString(), s]));
+    const topSongs = rankedSongIds.map((id) => songById.get(id)).filter(Boolean);
+
+    if (topSongs.length === 0) {
+      return { rankingMode, hours, limit, timeSlots: [], timeSlotTimestamps: [], topSongs: [], chartSeries: [], songMetrics: [], generatedAt: new Date().toISOString() };
+    }
+
+    const slots = buildHourlySlots(hours);
+    const startTime = slots[0];
+    const songIdSet = topSongs.map((s) => s._id.toString());
+
+    const events = await playEventRepo.findPlayEventsInRange(songIdSet, startTime);
+
+    const { truncateToHour } = require("../utils/ranking.util");
+    const seriesBySongId = new Map(songIdSet.map((id) => [id, Array(hours).fill(0)]));
+
+    for (const event of events) {
       const songId = event.songId?.toString();
-      if (!songId || !defaultMetricsBySongId.has(songId)) continue;
-
-      const metric = defaultMetricsBySongId.get(songId);
-      const playedAt = new Date(event.playedAt);
-      if (playedAt >= startLast24h) {
-        metric.last24h += 1;
-      } else {
-        metric.previous24h += 1;
-      }
+      if (!songId || !seriesBySongId.has(songId)) continue;
+      const eventHour = truncateToHour(event.playedAt).getTime();
+      const index = Math.floor((eventHour - startTime.getTime()) / ONE_HOUR_MS);
+      if (index < 0 || index >= hours) continue;
+      seriesBySongId.get(songId)[index] += 1;
     }
 
-    for (const metric of defaultMetricsBySongId.values()) {
-      metric.risingScore = metric.last24h - metric.previous24h;
-    }
-  }
+    const chartSeries = topSongs.map((song) => ({
+      songId: song._id.toString(),
+      points: seriesBySongId.get(song._id.toString()) || Array(hours).fill(0),
+    }));
 
-  const rankedSongIds = [...publicSongs]
-    .sort((a, b) => {
-      const mA = defaultMetricsBySongId.get(a._id.toString()) || { last24h: 0, previous24h: 0, risingScore: 0 };
-      const mB = defaultMetricsBySongId.get(b._id.toString()) || { last24h: 0, previous24h: 0, risingScore: 0 };
+    const songMetrics = topSongs.map((song) => {
+      const metric = defaultMetricsBySongId.get(song._id.toString()) || { last24h: 0, previous24h: 0, risingScore: 0 };
+      return { songId: song._id.toString(), ...metric };
+    });
 
-      if (rankingMode === "rising") {
-        if (mB.risingScore !== mA.risingScore) return mB.risingScore - mA.risingScore;
-        if (mB.last24h !== mA.last24h) return mB.last24h - mA.last24h;
-      }
-      if (b.playCount !== a.playCount) return b.playCount - a.playCount;
-      return (b.likeCount || 0) - (a.likeCount || 0);
-    })
-    .slice(0, limit)
-    .map((s) => s._id.toString());
-
-  const rankedSongs = await songRepo.findByIds(rankedSongIds);
-  const songById = new Map(rankedSongs.map((s) => [s._id.toString(), s]));
-  const topSongs = rankedSongIds.map((id) => songById.get(id)).filter(Boolean);
-
-  if (topSongs.length === 0) {
-    return { rankingMode, hours, limit, timeSlots: [], timeSlotTimestamps: [], topSongs: [], chartSeries: [], songMetrics: [], generatedAt: new Date().toISOString() };
-  }
-
-  const slots = buildHourlySlots(hours);
-  const startTime = slots[0];
-  const songIdSet = topSongs.map((s) => s._id.toString());
-
-  const events = await playEventRepo.findPlayEventsInRange(songIdSet, startTime);
-
-  const { truncateToHour } = require("../utils/ranking.util");
-  const seriesBySongId = new Map(songIdSet.map((id) => [id, Array(hours).fill(0)]));
-
-  for (const event of events) {
-    const songId = event.songId?.toString();
-    if (!songId || !seriesBySongId.has(songId)) continue;
-    const eventHour = truncateToHour(event.playedAt).getTime();
-    const index = Math.floor((eventHour - startTime.getTime()) / ONE_HOUR_MS);
-    if (index < 0 || index >= hours) continue;
-    seriesBySongId.get(songId)[index] += 1;
-  }
-
-  const chartSeries = topSongs.map((song) => ({
-    songId: song._id.toString(),
-    points: seriesBySongId.get(song._id.toString()) || Array(hours).fill(0),
-  }));
-
-  const songMetrics = topSongs.map((song) => {
-    const metric = defaultMetricsBySongId.get(song._id.toString()) || { last24h: 0, previous24h: 0, risingScore: 0 };
-    return { songId: song._id.toString(), ...metric };
+    return {
+      rankingMode, hours, limit,
+      timeSlots: slots.map((s) => s.getHours().toString().padStart(2, "0")),
+      timeSlotTimestamps: slots.map((s) => s.toISOString()),
+      topSongs, chartSeries, songMetrics,
+      generatedAt: new Date().toISOString(),
+    };
   });
-
-  return {
-    rankingMode, hours, limit,
-    timeSlots: slots.map((s) => s.getHours().toString().padStart(2, "0")),
-    timeSlotTimestamps: slots.map((s) => s.toISOString()),
-    topSongs, chartSeries, songMetrics,
-    generatedAt: new Date().toISOString(),
-  };
 };
 
 // ---------------------------------------------------------------------------
@@ -908,104 +913,108 @@ const getFlowchart = async ({ hours: rawHours, limit: rawLimit, mode: rawMode } 
  */
 const getRankings = async ({ period: rawPeriod } = {}) => {
   const period = ["today", "week", "month"].includes(rawPeriod) ? rawPeriod : "today";
-  const { currentStart, currentEnd, previousStart, previousEnd } = getRankingPeriodRange(period);
+  const cacheKey = `rankings:${period}`;
 
-  const eventCounts = await playEventRepo.aggregatePeriodCounts(previousStart, currentEnd, currentStart);
+  return cache.wrap(cacheKey, CACHE_TTL.RANKINGS, async () => {
+    const { currentStart, currentEnd, previousStart, previousEnd } = getRankingPeriodRange(period);
 
-  const countsBySongId = new Map();
-  for (const item of eventCounts) {
-    const songId = item._id.songId?.toString();
-    if (!songId) continue;
-    if (!countsBySongId.has(songId)) countsBySongId.set(songId, { current: 0, previous: 0 });
-    countsBySongId.get(songId)[item._id.bucket] = item.count;
-  }
+    const eventCounts = await playEventRepo.aggregatePeriodCounts(previousStart, currentEnd, currentStart);
 
-  const publicSongs = await songRepo.findPublicForRankingFull();
-
-  const toRankItem = (song, bucket) => ({
-    songId: song._id,
-    count: countsBySongId.get(song._id.toString())?.[bucket] || 0,
-    totalPlayCount: song.playCount || 0,
-    likeCount: song.likeCount || 0,
-  });
-  const sortRankItems = (a, b) =>
-    b.count - a.count || b.totalPlayCount - a.totalPlayCount || b.likeCount - a.likeCount;
-
-  const rankedCurrent = publicSongs.map((s) => toRankItem(s, "current")).sort(sortRankItems);
-  const rankedPrevious = publicSongs
-    .map((s) => toRankItem(s, "previous"))
-    .filter((i) => i.count > 0)
-    .sort(sortRankItems);
-
-  const previousRankMap = buildRankMap(rankedPrevious);
-  const songById = new Map(publicSongs.map((s) => [s._id.toString(), s]));
-
-  const rankings = rankedCurrent.slice(0, 30).map((item, index) => {
-    const songId = item.songId.toString();
-    const previousRank = previousRankMap.get(songId);
-    const rank = index + 1;
-    let trend = "stable";
-    let difference = 0;
-
-    if (item.count > 0 && previousRank === undefined) {
-      trend = "new";
-    } else if (previousRank !== undefined && rank < previousRank) {
-      trend = "rise";
-      difference = previousRank - rank;
-    } else if (previousRank !== undefined && rank > previousRank) {
-      trend = "drop";
-      difference = rank - previousRank;
+    const countsBySongId = new Map();
+    for (const item of eventCounts) {
+      const songId = item._id.songId?.toString();
+      if (!songId) continue;
+      if (!countsBySongId.has(songId)) countsBySongId.set(songId, { current: 0, previous: 0 });
+      countsBySongId.get(songId)[item._id.bucket] = item.count;
     }
+
+    const publicSongs = await songRepo.findPublicForRankingFull();
+
+    const toRankItem = (song, bucket) => ({
+      songId: song._id,
+      count: countsBySongId.get(song._id.toString())?.[bucket] || 0,
+      totalPlayCount: song.playCount || 0,
+      likeCount: song.likeCount || 0,
+    });
+    const sortRankItems = (a, b) =>
+      b.count - a.count || b.totalPlayCount - a.totalPlayCount || b.likeCount - a.likeCount;
+
+    const rankedCurrent = publicSongs.map((s) => toRankItem(s, "current")).sort(sortRankItems);
+    const rankedPrevious = publicSongs
+      .map((s) => toRankItem(s, "previous"))
+      .filter((i) => i.count > 0)
+      .sort(sortRankItems);
+
+    const previousRankMap = buildRankMap(rankedPrevious);
+    const songById = new Map(publicSongs.map((s) => [s._id.toString(), s]));
+
+    const rankings = rankedCurrent.slice(0, 30).map((item, index) => {
+      const songId = item.songId.toString();
+      const previousRank = previousRankMap.get(songId);
+      const rank = index + 1;
+      let trend = "stable";
+      let difference = 0;
+
+      if (item.count > 0 && previousRank === undefined) {
+        trend = "new";
+      } else if (previousRank !== undefined && rank < previousRank) {
+        trend = "rise";
+        difference = previousRank - rank;
+      } else if (previousRank !== undefined && rank > previousRank) {
+        trend = "drop";
+        difference = rank - previousRank;
+      }
+
+      return {
+        ...songById.get(songId),
+        rank,
+        periodPlayCount: item.count,
+        previousPeriodPlayCount: countsBySongId.get(songId)?.previous || 0,
+        trend,
+        difference,
+      };
+    });
+
+    const artistStats = new Map();
+    for (const item of rankedCurrent) {
+      const song = songById.get(item.songId.toString());
+      if (!song || !Array.isArray(song.artists)) continue;
+      for (const artist of song.artists) {
+        const artistId = artist?._id?.toString();
+        if (!artistId) continue;
+        if (!artistStats.has(artistId)) {
+          artistStats.set(artistId, {
+            _id: artist._id,
+            name: artist.name || "Nghệ sĩ ẩn danh",
+            avatar: artist.avatar || "",
+            periodPlayCount: 0,
+            songCount: 0,
+          });
+        }
+        const stat = artistStats.get(artistId);
+        stat.periodPlayCount += item.count;
+        stat.songCount += 1;
+      }
+    }
+
+    const trendingArtists = [...artistStats.values()]
+      .filter((a) => a.periodPlayCount > 0)
+      .sort((a, b) => b.periodPlayCount - a.periodPlayCount || b.songCount - a.songCount)
+      .slice(0, 5);
+
+    const newReleases = [...publicSongs]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .slice(0, 5);
 
     return {
-      ...songById.get(songId),
-      rank,
-      periodPlayCount: item.count,
-      previousPeriodPlayCount: countsBySongId.get(songId)?.previous || 0,
-      trend,
-      difference,
+      period,
+      range: { currentStart, currentEnd, previousStart, previousEnd },
+      rankings,
+      trendingArtists,
+      newReleases,
+      generatedAt: new Date().toISOString(),
     };
   });
-
-  const artistStats = new Map();
-  for (const item of rankedCurrent) {
-    const song = songById.get(item.songId.toString());
-    if (!song || !Array.isArray(song.artists)) continue;
-    for (const artist of song.artists) {
-      const artistId = artist?._id?.toString();
-      if (!artistId) continue;
-      if (!artistStats.has(artistId)) {
-        artistStats.set(artistId, {
-          _id: artist._id,
-          name: artist.name || "Nghệ sĩ ẩn danh",
-          avatar: artist.avatar || "",
-          periodPlayCount: 0,
-          songCount: 0,
-        });
-      }
-      const stat = artistStats.get(artistId);
-      stat.periodPlayCount += item.count;
-      stat.songCount += 1;
-    }
-  }
-
-  const trendingArtists = [...artistStats.values()]
-    .filter((a) => a.periodPlayCount > 0)
-    .sort((a, b) => b.periodPlayCount - a.periodPlayCount || b.songCount - a.songCount)
-    .slice(0, 5);
-
-  const newReleases = [...publicSongs]
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .slice(0, 5);
-
-  return {
-    period,
-    range: { currentStart, currentEnd, previousStart, previousEnd },
-    rankings,
-    trendingArtists,
-    newReleases,
-    generatedAt: new Date().toISOString(),
-  };
 };
 
 /**

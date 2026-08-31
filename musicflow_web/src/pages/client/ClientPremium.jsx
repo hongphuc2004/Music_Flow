@@ -305,7 +305,7 @@ function ClientPremium() {
                         width: '100%',
                         display: 'flex',
                         flexDirection: 'column',
-                        borderRadius: 5,
+                        borderRadius: '24px',
                         border: '2px solid',
                         borderColor: isCurrentPlan
                           ? '#22c55e'
@@ -336,21 +336,24 @@ function ClientPremium() {
                         <Box
                           sx={{
                             position: 'absolute',
-                            top: 15,
-                            right: 15,
+                            top: 18,
+                            right: 18,
                             bgcolor: isPopular ? '#6c63ff' : '#00bcd4',
                             backgroundImage: isPopular
                               ? 'linear-gradient(135deg, #6c63ff, #7c3aed)'
                               : 'linear-gradient(135deg, #00bcd4, #14b8a6)',
                             color: '#fff',
                             px: 1.5,
-                            py: 0.5,
-                            borderRadius: 2,
+                            py: 0.4,
+                            borderRadius: '10px',
                             zIndex: 2,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
-                          <Typography variant="caption" fontWeight={900}>
+                          <Typography variant="caption" sx={{ fontWeight: 900, fontSize: '11px', letterSpacing: '0.3px', lineHeight: 1.4 }}>
                             {highlightBadge}
                           </Typography>
                         </Box>
@@ -361,18 +364,21 @@ function ClientPremium() {
                         <Box
                           sx={{
                             position: 'absolute',
-                            top: 15,
-                            right: 15,
+                            top: 18,
+                            right: 18,
                             bgcolor: 'rgba(34, 197, 94, 0.15)',
                             color: '#22c55e',
                             border: '1px solid rgba(34, 197, 94, 0.3)',
                             px: 1.5,
-                            py: 0.5,
-                            borderRadius: 2,
+                            py: 0.4,
+                            borderRadius: '10px',
                             zIndex: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
-                          <Typography variant="caption" fontWeight={900}>
+                          <Typography variant="caption" sx={{ fontWeight: 900, fontSize: '11px', letterSpacing: '0.3px', lineHeight: 1.4 }}>
                             GÓI HIỆN TẠI
                           </Typography>
                         </Box>

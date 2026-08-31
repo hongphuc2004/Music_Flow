@@ -94,16 +94,19 @@ async function checkSubscriptionExpirations() {
 }
 
 function startSubscriptionExpiryJob() {
-  // Chay ngay khi bat dau
-  checkSubscriptionExpirations();
+  // Delay 30s cho lần chạy đầu tiên sau khi boot để ưu tiên tài nguyên phục vụ các request tải trang ban đầu
+  const INITIAL_DELAY_MS = 30 * 1000;
+  setTimeout(() => {
+    checkSubscriptionExpirations();
+  }, INITIAL_DELAY_MS);
 
-  // Chay dinh ky moi 24 gio
+  // Chạy định kỳ mỗi 24 giờ
   const INTERVAL_24H = 24 * 60 * 60 * 1000;
   setInterval(() => {
     checkSubscriptionExpirations();
   }, INTERVAL_24H);
 
-  console.log("[Job] Da khoi dong Job quet han thue bao Subscription (Chu ky 24H).");
+  console.log("[Job] Da khoi dong Job quet han thue bao Subscription (Khoi dong sau 30s, chu ky 24H).");
 }
 
 module.exports = {

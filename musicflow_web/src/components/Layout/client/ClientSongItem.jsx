@@ -7,6 +7,7 @@ import {
 } from '@mui/icons-material';
 import ClientSongMoreMenu from './ClientSongMoreMenu';
 import PlayingEqualizer from './ClientPlayingEqualizer';
+import { getOptimizedImageUrl } from '../../../utils/imageUtil';
 
 function formatDuration(secs) {
   if (isNaN(secs) || secs === undefined || secs === null) return '--:--';
@@ -119,7 +120,7 @@ const ClientSongItem = ({
       <Box sx={{ position: 'relative', overflow: 'hidden', borderRadius: 2, flexShrink: 0, width: 48, height: 48 }}>
         <Avatar
           variant="rounded"
-          src={hasImage ? song.imageUrl : undefined}
+          src={hasImage ? getOptimizedImageUrl(song.imageUrl, 'song_thumb') : undefined}
           className="song-img-avatar"
           sx={{
             width: '100%',

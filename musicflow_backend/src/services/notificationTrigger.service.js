@@ -301,8 +301,8 @@ class NotificationTriggerService {
       title = `⏳ Bài hát "${song.title}" đang chờ Admin xem xét`;
       content = `Bài hát "${song.title}" cần Admin xem xét thêm: "${moderationResult.reason || 'Nội dung cần duyệt'}" trước khi công khai.`;
     } else if (status === "BLOCK") {
-      title = `⛔ Bài hát "${song.title}" bị từ chối công khai`;
-      content = `Bài hát "${song.title}" vi phạm tiêu chuẩn cộng đồng: "${moderationResult.reason || 'Nội dung không phù hợp'}". Bài hát đã được chuyển về riêng tư.`;
+      title = `⛔ Bài hát "${song.title}" đã bị xóa do vi phạm`;
+      content = `Bài hát "${song.title}" vi phạm tiêu chuẩn cộng đồng: "${moderationResult.reason || 'Nội dung không phù hợp'}". Hệ thống đã xóa bài hát khỏi nền tảng.`;
     }
 
     try {
@@ -343,11 +343,11 @@ class NotificationTriggerService {
 
       const uploaderName = uploader?.name || (song.uploadedBy?.name) || "Thành viên";
       const title = status === "BLOCK"
-        ? `🚨 [CẢNH BÁO VI PHẠM] Bài hát "${song.title}" bị AI BLOCK`
+        ? `🚨 [CẢNH BÁO VI PHẠM] Bài hát "${song.title}" đã bị hệ thống xóa`
         : `🛡️ [CẦN DUYỆT] Bài hát "${song.title}" cần Admin xem xét`;
 
       const content = status === "BLOCK"
-        ? `${uploaderName} tải lên bài "${song.title}". AI phát hiện vi phạm: "${moderationResult.reason || 'Vi phạm nghiêm trọng'}" và đã tự động ẩn bài.`
+        ? `${uploaderName} tải lên bài "${song.title}". AI phát hiện vi phạm: "${moderationResult.reason || 'Vi phạm tiêu chuẩn cộng đồng'}" và hệ thống đã tự động xóa bài hát.`
         : `${uploaderName} tải lên bài "${song.title}". AI đánh giá REVIEW: "${moderationResult.reason || 'Cần xem xét ngữ cảnh'}" và chờ bạn phê duyệt.`;
 
       const notifications = admins.map((admin) => ({

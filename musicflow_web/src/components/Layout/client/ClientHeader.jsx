@@ -34,6 +34,11 @@ import {
   CampaignRounded as CampaignIcon,
   InfoRounded as InfoIcon,
   QueueMusicRounded as PlaylistIcon,
+  WarningAmberRounded as WarningIcon,
+  SecurityRounded as SecurityIcon,
+  HistoryRounded as HistoryIcon,
+  CloseRounded as CloseIcon,
+  ClearRounded as ClearIcon,
 } from '@mui/icons-material';
 import useAppToast from '../../../components/common/useAppToast';
 import { ColorModeContext } from '../../../context/ColorModeContext';
@@ -41,6 +46,21 @@ import useClientSession from '../../../hooks/useClientSession';
 import { logout } from '../../../services/api';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientSongsApi, clientNotificationsApi } from '../../../services/client/client.service';
+import { getOptimizedImageUrl } from '../../../utils/imageUtil';
+
+const SEARCH_HISTORY_STORAGE_KEY = 'musicflow_search_history';
+const MAX_SEARCH_HISTORY = 5;
+
+const readSearchHistory = () => {
+  try {
+    const raw = localStorage.getItem(SEARCH_HISTORY_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -54,12 +74,55 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
   const [searchResults, setSearchResults] = useState({ songs: [], playlists: [] });
   const [searchLoading, setSearchLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [searchHistory, setSearchHistory] = useState(() => readSearchHistory());
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notiAnchorEl, setNotiAnchorEl] = useState(null);
   const { playSong } = useClientPlayer();
   const { isLoggedIn, userName, userAvatar } = useClientSession();
   const userInitial = useMemo(() => (userName || 'U').charAt(0).toUpperCase(), [userName]);
+
+  const saveHistory = useCallback((query) => {
+    const trimmed = (query || '').trim();
+    if (!trimmed) return;
+    setSearchHistory((prev) => {
+      const filtered = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
+      const updated = [trimmed, ...filtered].slice(0, 20);
+      try {
+        localStorage.setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to save search history:', err);
+      }
+      return updated;
+    });
+  }, []);
+
+  const handleRemoveHistoryItem = (queryToRemove) => {
+    setSearchHistory((prev) => {
+      const updated = prev.filter((item) => item !== queryToRemove);
+      try {
+        localStorage.setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to update search history item:', err);
+      }
+      return updated;
+    });
+  };
+
+  const handleClearAllHistory = () => {
+    setSearchHistory([]);
+    try {
+      localStorage.removeItem(SEARCH_HISTORY_STORAGE_KEY);
+    } catch (err) {
+      console.warn('Failed to clear search history:', err);
+    }
+  };
+
+  const handleSelectHistoryItem = (queryText) => {
+    setSearchValue(queryText);
+    saveHistory(queryText);
+    setShowResults(true);
+  };
 
   const fetchNotifications = useCallback(async () => {
     if (!isLoggedIn) return;
@@ -203,6 +266,10 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
   };
 
   const submitSearch = () => {
+    const trimmed = searchValue.trim();
+    if (trimmed) {
+      saveHistory(trimmed);
+    }
     if (searchResults.songs.length > 0) {
       playSong(searchResults.songs[0], { queue: searchResults.songs });
       setShowResults(false);
@@ -273,8 +340,8 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                   py: 0.85,
                   backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
                   border: '1px solid',
-                  borderColor: (theme) => showResults && searchValue.trim() ? '#6c63ff' : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'),
-                  boxShadow: showResults && searchValue.trim() ? '0 0 0 3px rgba(108, 99, 255, 0.25), 0 8px 24px rgba(0,0,0,0.3)' : 'none',
+                  borderColor: (theme) => showResults ? '#6c63ff' : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'),
+                  boxShadow: showResults ? '0 0 0 3px rgba(108, 99, 255, 0.25), 0 8px 24px rgba(0,0,0,0.3)' : 'none',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   '&:hover': {
                     backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)',
@@ -297,10 +364,22 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                   }}
                   sx={{ width: '100%', fontSize: 13.5, fontWeight: 500 }}
                 />
+                {searchValue && (
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setSearchValue('');
+                      searchInputRef.current?.focus();
+                    }}
+                    sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                  >
+                    <ClearIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                )}
               </Box>
 
-              {/* Floating Autocomplete Dropdown */}
-              {showResults && searchValue.trim() && (
+              {/* Floating Autocomplete & Search History Dropdown */}
+              {showResults && (
                 <Paper
                   elevation={12}
                   sx={{
@@ -319,125 +398,191 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                     backdropFilter: 'blur(16px)',
                   }}
                 >
-                  {searchLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
-                      <CircularProgress size={24} sx={{ color: 'primary.main' }} />
-                    </Box>
-                  ) : (() => {
-                    const foundSongs = Array.isArray(searchResults?.songs) ? searchResults.songs : (Array.isArray(searchResults) ? searchResults : []);
-                    const foundPlaylists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
-                    const hasResults = foundSongs.length > 0 || foundPlaylists.length > 0;
-
-                    if (!hasResults) {
-                      return (
-                        <Box sx={{ py: 3, px: 2, textAlign: 'center' }}>
-                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                            Không tìm thấy bài hát hoặc playlist nào phù hợp.
-                          </Typography>
+                  {/* TRƯỜNG HỢP 1: Chưa nhập chữ -> Hiển thị Lịch sử tìm kiếm (Tối đa 5 mục gần nhất) */}
+                  {!searchValue.trim() ? (
+                    searchHistory.length > 0 ? (
+                      <Box sx={{ py: 1 }}>
+                        <Box sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider' }}>
+                          <Stack direction="row" spacing={0.8} alignItems="center">
+                            <HistoryIcon sx={{ fontSize: 16, color: '#8c85ff' }} />
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                              Tìm kiếm gần đây
+                            </Typography>
+                          </Stack>
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={handleClearAllHistory}
+                            sx={{ fontSize: 11, fontWeight: 700, p: 0, minWidth: 0, textTransform: 'none', color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                          >
+                            Xóa tất cả
+                          </Button>
                         </Box>
-                      );
-                    }
-
-                    return (
-                      <List disablePadding sx={{ py: 0.5 }}>
-                        {foundSongs.length > 0 && (
-                          <>
-                            <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                Bài hát ({foundSongs.length})
-                              </Typography>
-                            </Box>
-                            {foundSongs.map((song) => (
-                              <ListItemButton
-                                key={song._id || song.id}
-                                onClick={() => {
-                                  playSong(song, { queue: foundSongs });
-                                  setShowResults(false);
+                        <List disablePadding sx={{ py: 0.5 }}>
+                          {searchHistory.slice(0, MAX_SEARCH_HISTORY).map((queryText) => (
+                            <ListItemButton
+                              key={queryText}
+                              onClick={() => handleSelectHistoryItem(queryText)}
+                              sx={{
+                                py: 0.85,
+                                px: 2,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                '&:hover': {
+                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.08)' : 'rgba(108, 99, 255, 0.04)',
+                                },
+                              }}
+                            >
+                              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flexGrow: 1, mr: 1 }}>
+                                <HistoryIcon sx={{ fontSize: 18, color: 'text.disabled', flexShrink: 0 }} />
+                                <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600, color: 'text.primary' }} noWrap>
+                                  {queryText}
+                                </Typography>
+                              </Stack>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveHistoryItem(queryText);
                                 }}
                                 sx={{
-                                  py: 1,
-                                  px: 1.5,
-                                  '&:hover': {
-                                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                                  },
+                                  p: 0.5,
+                                  color: 'text.disabled',
+                                  '&:hover': { color: 'error.main', bgcolor: 'rgba(239, 68, 68, 0.1)' },
                                 }}
                               >
-                                <ListItemAvatar sx={{ minWidth: 44 }}>
-                                  <Avatar
-                                    variant="rounded"
-                                    src={song.imageUrl}
-                                    sx={{ width: 34, height: 34, borderRadius: 1.5 }}
+                                <CloseIcon sx={{ fontSize: 15 }} />
+                              </IconButton>
+                            </ListItemButton>
+                          ))}
+                        </List>
+                      </Box>
+                    ) : null
+                  ) : (
+                    /* TRƯỜNG HỢP 2: Đang nhập từ khóa tìm kiếm */
+                    searchLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                        <CircularProgress size={24} sx={{ color: 'primary.main' }} />
+                      </Box>
+                    ) : (() => {
+                      const foundSongs = Array.isArray(searchResults?.songs) ? searchResults.songs : (Array.isArray(searchResults) ? searchResults : []);
+                      const foundPlaylists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
+                      const hasResults = foundSongs.length > 0 || foundPlaylists.length > 0;
+
+                      if (!hasResults) {
+                        return (
+                          <Box sx={{ py: 3, px: 2, textAlign: 'center' }}>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                              Không tìm thấy bài hát hoặc playlist nào phù hợp.
+                            </Typography>
+                          </Box>
+                        );
+                      }
+
+                      return (
+                        <List disablePadding sx={{ py: 0.5 }}>
+                          {foundSongs.length > 0 && (
+                            <>
+                              <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                  Bài hát ({foundSongs.length})
+                                </Typography>
+                              </Box>
+                              {foundSongs.map((song) => (
+                                <ListItemButton
+                                  key={song._id || song.id}
+                                  onClick={() => {
+                                    saveHistory(searchValue.trim());
+                                    playSong(song, { queue: foundSongs });
+                                    setShowResults(false);
+                                  }}
+                                  sx={{
+                                    py: 1,
+                                    px: 1.5,
+                                    '&:hover': {
+                                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                                    },
+                                  }}
+                                >
+                                  <ListItemAvatar sx={{ minWidth: 44 }}>
+                                    <Avatar
+                                      variant="rounded"
+                                      src={getOptimizedImageUrl(song.imageUrl, 'song_thumb')}
+                                      sx={{ width: 34, height: 34, borderRadius: 1.5 }}
+                                    />
+                                  </ListItemAvatar>
+                                  <ListItemText
+                                    primary={song.title}
+                                    secondary={(song.artists || []).map(a => typeof a === 'string' ? a : a?.name).filter(Boolean).join(', ')}
+                                    primaryTypographyProps={{
+                                      fontSize: 13.5,
+                                      fontWeight: 700,
+                                      noWrap: true,
+                                    }}
+                                    secondaryTypographyProps={{
+                                      fontSize: 11,
+                                      noWrap: true,
+                                    }}
                                   />
-                                </ListItemAvatar>
-                                <ListItemText
-                                  primary={song.title}
-                                  secondary={(song.artists || []).map(a => typeof a === 'string' ? a : a?.name).filter(Boolean).join(', ')}
-                                  primaryTypographyProps={{
-                                    fontSize: 13.5,
-                                    fontWeight: 700,
-                                    noWrap: true,
-                                  }}
-                                  secondaryTypographyProps={{
-                                    fontSize: 11,
-                                    noWrap: true,
-                                  }}
-                                />
-                              </ListItemButton>
-                            ))}
-                          </>
-                        )}
+                                </ListItemButton>
+                              ))}
+                            </>
+                          )}
 
-                        {foundPlaylists.length > 0 && (
-                          <>
-                            <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                Danh sách phát ({foundPlaylists.length})
-                              </Typography>
-                            </Box>
-                            {foundPlaylists.map((playlist) => (
-                              <ListItemButton
-                                key={playlist._id || playlist.id}
-                                onClick={() => {
-                                  navigate(`/playlists/${playlist._id || playlist.id}`);
-                                  setShowResults(false);
-                                }}
-                                sx={{
-                                  py: 1,
-                                  px: 1.5,
-                                  '&:hover': {
-                                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.1)' : 'rgba(108, 99, 255, 0.05)',
-                                  },
-                                }}
-                              >
-                                <ListItemAvatar sx={{ minWidth: 44 }}>
-                                  <Avatar
-                                    variant="rounded"
-                                    src={playlist.coverImage || undefined}
-                                    sx={{ width: 34, height: 34, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.15)', color: 'primary.main' }}
-                                  >
-                                    <PlaylistIcon sx={{ fontSize: 18 }} />
-                                  </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText
-                                  primary={playlist.name}
-                                  secondary={`${playlist.ownerName || 'Playlist'} • ${playlist.songCount || 0} bài hát`}
-                                  primaryTypographyProps={{
-                                    fontSize: 13.5,
-                                    fontWeight: 700,
-                                    noWrap: true,
+                          {foundPlaylists.length > 0 && (
+                            <>
+                              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                  Danh sách phát ({foundPlaylists.length})
+                                </Typography>
+                              </Box>
+                              {foundPlaylists.map((playlist) => (
+                                <ListItemButton
+                                  key={playlist._id || playlist.id}
+                                  onClick={() => {
+                                    saveHistory(searchValue.trim());
+                                    navigate(`/playlists/${playlist._id || playlist.id}`);
+                                    setShowResults(false);
                                   }}
-                                  secondaryTypographyProps={{
-                                    fontSize: 11,
-                                    noWrap: true,
+                                  sx={{
+                                    py: 1,
+                                    px: 1.5,
+                                    '&:hover': {
+                                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.1)' : 'rgba(108, 99, 255, 0.05)',
+                                    },
                                   }}
-                                />
-                              </ListItemButton>
-                            ))}
-                          </>
-                        )}
-                      </List>
-                    );
-                  })()}
+                                >
+                                  <ListItemAvatar sx={{ minWidth: 44 }}>
+                                    <Avatar
+                                      variant="rounded"
+                                      src={getOptimizedImageUrl(playlist.coverImage, 'song_thumb')}
+                                      sx={{ width: 34, height: 34, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.15)', color: 'primary.main' }}
+                                    >
+                                      <PlaylistIcon sx={{ fontSize: 18 }} />
+                                    </Avatar>
+                                  </ListItemAvatar>
+                                  <ListItemText
+                                    primary={playlist.name}
+                                    secondary={`${playlist.ownerName || 'Playlist'} • ${playlist.songCount || 0} bài hát`}
+                                    primaryTypographyProps={{
+                                      fontSize: 13.5,
+                                      fontWeight: 700,
+                                      noWrap: true,
+                                    }}
+                                    secondaryTypographyProps={{
+                                      fontSize: 11,
+                                      noWrap: true,
+                                    }}
+                                  />
+                                </ListItemButton>
+                              ))}
+                            </>
+                          )}
+                        </List>
+                      );
+                    })()
+                  )}
                 </Paper>
               )}
             </Box>
@@ -503,6 +648,14 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                       IconComponent = CampaignIcon;
                       iconBgColor = 'rgba(244, 63, 94, 0.15)';
                       iconColor = '#f43f5e';
+                    } else if (noti.type === 'admin_moderation_alert') {
+                      IconComponent = WarningIcon;
+                      iconBgColor = 'rgba(239, 68, 68, 0.15)';
+                      iconColor = '#ef4444';
+                    } else if (noti.type === 'song_moderation_result') {
+                      IconComponent = SecurityIcon;
+                      iconBgColor = 'rgba(245, 158, 11, 0.15)';
+                      iconColor = '#f59e0b';
                     }
 
                     return (
@@ -519,14 +672,27 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                           const commentId = metadata.commentId || '';
                           const actionUrl = metadata.actionUrl || '';
 
-                          if (noti.type === 'interaction' || commentId || songId || (actionUrl && actionUrl.includes('comment='))) {
+                          // 1. Chỉ mở bình luận khi thực sự là thông báo về tương tác / bình luận
+                          if (noti.type === 'interaction' || commentId || (actionUrl && actionUrl.includes('comment='))) {
                             if (onOpenCommentsTarget) {
                               onOpenCommentsTarget({ songId, commentId, actionUrl });
                             }
-                          } else if (actionUrl) {
+                          }
+                          // 2. Cảnh báo kiểm duyệt AI cho Admin -> Chuyển đến trang Quản lý bài hát
+                          else if (noti.type === 'admin_moderation_alert') {
+                            navigate(actionUrl || '/admin/songs');
+                          }
+                          // 3. Kết quả kiểm duyệt cho Uploader -> Chuyển đến Thư viện tải lên
+                          else if (noti.type === 'song_moderation_result') {
+                            navigate(actionUrl || '/client/library');
+                          }
+                          // 4. Thông báo gói dịch vụ Subscription -> Chuyển đến trang Premium
+                          else if (noti.type === 'subscription') {
+                            navigate('/client/premium');
+                          }
+                          // 5. Các hành động điều hướng khác nếu có actionUrl
+                          else if (actionUrl) {
                             navigate(actionUrl);
-                          } else if (noti.type === 'subscription') {
-                            navigate('/client/subscription');
                           }
                         }}
                         sx={{

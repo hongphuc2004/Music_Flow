@@ -47,6 +47,7 @@ import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 import PlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
+import { getOptimizedImageUrl } from '../../utils/imageUtil';
 
 
 
@@ -812,7 +813,7 @@ function ClientHome() {
                       }}
                     >
                       <Avatar
-                        src={song.imageUrl}
+                        src={getOptimizedImageUrl(song.imageUrl, 'song_thumb')}
                         variant="rounded"
                         sx={{
                           width: 56,
@@ -931,7 +932,7 @@ function ClientHome() {
                     #02
                   </Typography>
                   <Avatar
-                    src={top3Podium[1].imageUrl}
+                    src={getOptimizedImageUrl(top3Podium[1].imageUrl, 'song_card')}
                     sx={{ width: 80, height: 80, borderRadius: '20px', mb: 1.5, boxShadow: '0 8px 24px rgba(0, 229, 255, 0.35)' }}
                   />
                   <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%' }}>
@@ -966,7 +967,7 @@ function ClientHome() {
                     👑 #01 QUÁN QUÂN
                   </Typography>
                   <Avatar
-                    src={top3Podium[0].imageUrl}
+                    src={getOptimizedImageUrl(top3Podium[0].imageUrl, 'song_card')}
                     sx={{ width: 100, height: 100, borderRadius: '24px', mb: 1.5, boxShadow: '0 12px 30px rgba(255, 215, 0, 0.45)' }}
                   />
                   <Typography variant="h6" fontWeight={950} noWrap sx={{ maxWidth: '100%', fontSize: 18 }}>
@@ -1001,7 +1002,7 @@ function ClientHome() {
                     #03
                   </Typography>
                   <Avatar
-                    src={top3Podium[2].imageUrl}
+                    src={getOptimizedImageUrl(top3Podium[2].imageUrl, 'song_card')}
                     sx={{ width: 76, height: 76, borderRadius: '18px', mb: 1.5, boxShadow: '0 8px 24px rgba(192, 132, 252, 0.35)' }}
                   />
                   <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%' }}>
@@ -1127,7 +1128,7 @@ function ClientHome() {
                         }}
                       />
                       <Avatar
-                        src={artist.avatar}
+                        src={getOptimizedImageUrl(artist.avatar, 'avatar')}
                         sx={{
                           width: '100%',
                           height: '100%',

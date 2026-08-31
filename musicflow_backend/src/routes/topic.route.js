@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const Topic = require("../models/topic.model");
 const Song = require("../models/song.model");
 const { cache, CACHE_TTL } = require("../utils/cache.util");
@@ -28,13 +29,34 @@ router.get("/", async (req, res) => {
 });
 
 // =================================================
-// 📌 GET SONGS BY TOPIC ID
+// 📌 GET SONGS BY TOPIC ID OR SLUG
 router.get("/:topicId/songs", async (req, res) => {
   try {
     const { topicId } = req.params;
+    let targetTopicId = topicId;
+
+    if (!mongoose.Types.ObjectId.isValid(topicId)) {
+      const decodedParam = decodeURIComponent(topicId).replace(/-/g, " ").trim();
+      const foundTopic = await Topic.findOne({
+        name: { $regex: new RegExp(`^${decodedParam}$`, "i") }
+      });
+      if (foundTopic) {
+        targetTopicId = foundTopic._id;
+      } else {
+        const looseTopic = await Topic.findOne({
+          name: { $regex: new RegExp(decodedParam, "i") }
+        });
+        if (looseTopic) {
+          targetTopicId = looseTopic._id;
+        } else {
+          return res.json([]);
+        }
+      }
+    }
+
     const { page, limit, skip } = parsePagination(req.query);
     const filter = {
-      topicIds: topicId,
+      topicIds: targetTopicId,
       isPublic: true,
     };
     const [songs, total] = await Promise.all([

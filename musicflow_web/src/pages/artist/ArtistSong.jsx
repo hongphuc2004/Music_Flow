@@ -1117,25 +1117,6 @@ function ArtistSong() {
                   )}
                 </Grid>
               </Box>
-
-              <Divider sx={{ my: 1 }} />
-
-              <TextField
-                fullWidth
-                label="Hoặc dán Link URL ảnh bìa"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://images.unsplash.com/..."
-                helperText="Sử dụng nếu bạn có sẵn link lưu trữ ảnh online."
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <ImageIcon color="action" fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  sx: { borderRadius: 3.5 }
-                }}
-              />
             </Stack>
           )}
         </DialogContent>

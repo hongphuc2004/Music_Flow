@@ -2024,15 +2024,6 @@ function ClientLibrary() {
                 Đã chọn ảnh: {uploadImageFile.name}
               </Typography>
             )}
-            <TextField
-              label="Hoặc dán URL hình ảnh bìa (tùy chọn)"
-              value={uploadImageUrl}
-              onChange={(event) => setUploadImageUrl(event.target.value)}
-              placeholder="https://..."
-              helperText="Có thể chọn file hoặc dán URL ảnh. Nếu có cả hai, file ảnh sẽ được ưu tiên."
-              fullWidth
-              InputProps={{ sx: { borderRadius: '14px' } }}
-            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>

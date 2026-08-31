@@ -29,6 +29,19 @@ import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../servi
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 
+const toSlug = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+};
+
 const getRecentPlayedStorageKey = () => {
   const userId = localStorage.getItem('userId') || 'anonymous';
   return `musicflow_recent_played_${userId}`;
@@ -1043,7 +1056,7 @@ function ClientDiscover() {
                 {topics.slice(0, 18).map((topic) => (
                   <Box
                     key={topic._id}
-                    onClick={() => navigate(`/genres?topic=${topic._id}`)}
+                    onClick={() => navigate(`/genres?topic=${toSlug(topic.name) || topic._id}`)}
                     sx={{
                       cursor: 'pointer',
                       px: 2,

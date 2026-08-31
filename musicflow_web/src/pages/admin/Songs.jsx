@@ -1115,25 +1115,6 @@ function Songs() {
                   )}
                 </Grid>
               </Box>
-
-              <Divider sx={{ my: 0.5 }} />
-
-              <TextField
-                fullWidth
-                label="Hoặc dán Link URL ảnh bìa"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://..."
-                helperText="Hệ thống ưu tiên sử dụng file tải lên từ thiết bị trước."
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <ImageIcon color="action" fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  sx: { borderRadius: 1.5 }
-                }}
-              />
             </Stack>
           )}
         </DialogContent>

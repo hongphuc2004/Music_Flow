@@ -230,36 +230,54 @@ function getTopicGradient(topicName, index) {
   return TOPIC_GRADIENTS[gradIndex];
 }
 
+function toSlug(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 function findMatchingDbTopic(item, topicsList) {
   if (!topicsList || topicsList.length === 0) return null;
   if (item._id) return item;
 
-  const searchName = (item.topicName || item.title || '').toLowerCase();
+  const rawName = item.topicName || item.name || item.title || '';
+  const searchName = rawName.toLowerCase();
+  const searchSlug = toSlug(rawName);
   
-  let match = topicsList.find(t => t.name.toLowerCase() === searchName);
+  // 1. Khớp chính xác name, _id, hoặc slug
+  let match = topicsList.find(t => t.name.toLowerCase() === searchName || toSlug(t.name) === searchSlug || t._id === item.id);
   if (match) return match;
   
+  // 2. Khớp includes
   match = topicsList.find(t => {
     const dbName = t.name.toLowerCase();
-    return dbName.includes(searchName) || searchName.includes(dbName);
+    const dbSlug = toSlug(t.name);
+    return dbName.includes(searchName) || searchName.includes(dbName) || (searchSlug && dbSlug.includes(searchSlug));
   });
   if (match) return match;
 
   const keywords = {
-    'việt': ['việt', 'vpop', 'v-pop'],
+    'viet': ['việt', 'vpop', 'v-pop', 'nhac viet'],
     'lofi': ['lofi', 'chill'],
     'ballad': ['pop', 'ballad'],
     'acoustic': ['acoustic', 'cafe', 'mộc'],
     'edm': ['edm', 'dance', 'electronic', 'remix'],
-    'us uk': ['us', 'uk', 'pop', 'âu mỹ'],
+    'us-uk': ['us', 'uk', 'pop', 'âu mỹ'],
     'kpop': ['kpop', 'k-pop', 'hàn'],
-    'hoa': ['hoa', 'cpop', 'c-pop'],
+    'cpop': ['hoa', 'cpop', 'c-pop'],
     'gym': ['gym', 'workout', 'remix', 'edm'],
     'focus': ['focus', 'lofi', 'không lời']
   };
 
   for (const [key, aliases] of Object.entries(keywords)) {
-    if (searchName.includes(key)) {
+    if (searchSlug.includes(key) || searchName.includes(key)) {
       const aliasMatch = topicsList.find(t => {
         const dbName = t.name.toLowerCase();
         return aliases.some(alias => dbName.includes(alias));
@@ -448,18 +466,13 @@ function ClientGenres() {
     return () => clearTimeout(timer);
   }, [query, defaultSongs, runSearch]);
 
-  const handleSelectCategory = useCallback(async (item) => {
+  const fetchTopicSongs = useCallback(async (item) => {
     const itemId = item.id || item._id;
     const itemName = item.title || item.name;
 
     setSelectedTopic(itemId);
     setSelectedTitle(itemName);
     setQuery('');
-    
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('topic', itemId);
-    newParams.delete('query');
-    setSearchParams(newParams);
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -480,28 +493,52 @@ function ClientGenres() {
     } finally {
       setLoading(false);
     }
-  }, [searchParams, setSearchParams, topics]);
+  }, [topics]);
+
+  const handleSelectCategory = useCallback((item) => {
+    const itemName = item.title || item.name || item.topicName;
+    const slug = toSlug(itemName) || item.id || item._id;
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('topic', slug);
+    newParams.delete('query');
+    newParams.delete('tab');
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    const topicId = searchParams.get('topic');
-    if (topicId) {
-      if (selectedTopic !== topicId) {
+    const topicParam = searchParams.get('topic');
+    if (topicParam) {
+      const normalizedParam = topicParam.trim();
+      if (selectedTopic !== normalizedParam) {
+        // 1. Tìm trong DB topics theo _id, name, hoặc slug
         if (topics.length > 0) {
-          const dynamicMatch = topics.find((t) => t._id === topicId);
+          const dynamicMatch = topics.find(
+            (t) => t._id === normalizedParam || toSlug(t.name) === normalizedParam || t.name.toLowerCase() === normalizedParam.toLowerCase()
+          );
           if (dynamicMatch) {
-            handleSelectCategory(dynamicMatch);
+            fetchTopicSongs(dynamicMatch);
             return;
           }
         }
-        const curatedMatch = [
+        
+        // 2. Tìm trong Curated items
+        const allCurated = [
           ...FEATURED_ITEMS,
           ...NATIONS_ITEMS,
           ...MOODS_ITEMS,
           ...CAROUSEL_SLIDES
-        ].find((item) => item.id === topicId);
+        ];
+        const curatedMatch = allCurated.find(
+          (item) => item.id === normalizedParam || toSlug(item.title) === normalizedParam || toSlug(item.label) === normalizedParam
+        );
         
         if (curatedMatch) {
-          handleSelectCategory(curatedMatch);
+          fetchTopicSongs(curatedMatch);
+        } else if (topics.length > 0) {
+          const fallbackMatch = topics.find((t) => toSlug(t.name).includes(toSlug(normalizedParam)));
+          if (fallbackMatch) {
+            fetchTopicSongs(fallbackMatch);
+          }
         }
       }
     } else {
@@ -511,9 +548,22 @@ function ClientGenres() {
         setSongs(defaultSongs);
       }
     }
-  }, [searchParams, topics, defaultSongs, selectedTopic, handleSelectCategory]);
+  }, [searchParams, topics, defaultSongs, selectedTopic, fetchTopicSongs]);
 
   const activeTopicTab = searchParams.get('tab') || 'all';
+
+  const handleBack = () => {
+    setSelectedTopic(null);
+    setSelectedTitle('Gợi ý cho bạn');
+    setSongs(defaultSongs);
+    setQuery('');
+    
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/genres', { replace: true });
+    }
+  };
 
   const handleSelectTopicTab = (tab) => {
     const newParams = new URLSearchParams(searchParams);
@@ -1054,12 +1104,7 @@ function ClientGenres() {
         <Box sx={{ pb: 6, width: '100%' }}>
           {/* Back button */}
           <Button
-            onClick={() => {
-              setSelectedTopic(null);
-              const newParams = new URLSearchParams(searchParams);
-              newParams.delete('topic');
-              setSearchParams(newParams);
-            }}
+            onClick={handleBack}
             startIcon={<BackIcon />}
             sx={{
               color: '#8c85ff',
@@ -1078,7 +1123,7 @@ function ClientGenres() {
               }
             }}
           >
-            ← Quay Lại Vũ Trụ Thể Loại
+            Quay Lại
           </Button>
 
           {loading ? (
@@ -1265,20 +1310,12 @@ function ClientGenres() {
                               backgroundImage: `url(${songs[0].imageUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300'})`,
                               backgroundSize: 'cover',
                               backgroundPosition: 'center',
-                              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                              border: '3px solid rgba(255,255,255,0.2)',
+                              boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 0 16px rgba(108, 99, 255, 0.3)',
+                              border: '3px solid rgba(255,255,255,0.4)',
                               transition: 'transform 0.5s ease',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              '&::after': {
-                                content: '""',
-                                width: 24,
-                                height: 24,
-                                borderRadius: '50%',
-                                bgcolor: '#090d1a',
-                                border: '2px solid rgba(255,255,255,0.6)',
-                              }
                             }}
                           />
                         </Box>

@@ -658,18 +658,6 @@ function Topics() {
             </Grid>
 
             <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                label="Hoặc dán Link URL ảnh bìa"
-                value={formData.avatarUrl}
-                onChange={(e) => setFormData((prev) => ({ ...prev, avatarUrl: e.target.value }))}
-                placeholder="https://..."
-                helperText="Chấp nhận mọi liên kết ảnh trực tuyến."
-                InputProps={{ sx: { borderRadius: 1.5 } }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
               <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
               <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
                 <Box>

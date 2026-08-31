@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -62,7 +63,7 @@ function ArtistProfileDialog({
             value={form.name} 
             onChange={onFieldChange('name')} 
             fullWidth 
-            InputProps={{ sx: { borderRadius: 3.5 } }}
+            InputProps={{ sx: { borderRadius: 2.5 } }}
           />
           
           <TextField 
@@ -71,13 +72,13 @@ function ArtistProfileDialog({
             value={form.email} 
             onChange={onFieldChange('email')} 
             fullWidth 
-            InputProps={{ sx: { borderRadius: 3.5 } }}
+            InputProps={{ sx: { borderRadius: 2.5 } }}
           />
 
           {/* Custom Avatar Upload Area */}
           <Box>
             <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
-              Hình đại diện (Avatar File)
+              Hình đại diện (Avatar)
             </Typography>
             <Button
               variant="outlined"
@@ -85,14 +86,14 @@ function ArtistProfileDialog({
               fullWidth
               sx={{
                 py: 2.5,
-                borderRadius: 4,
+                borderRadius: 2.5,
                 borderColor: avatarFile ? 'success.main' : 'divider',
                 borderStyle: 'dashed',
                 borderWidth: 2,
                 bgcolor: avatarFile ? 'rgba(46, 125, 50, 0.03)' : 'rgba(0,0,0,0.01)',
                 color: 'text.secondary',
                 flexDirection: 'column',
-                gap: 0.5,
+                gap: 1,
                 '&:hover': {
                   borderColor: 'primary.main',
                   bgcolor: 'rgba(108, 99, 255, 0.04)',
@@ -101,16 +102,38 @@ function ArtistProfileDialog({
             >
               {avatarFile ? (
                 <>
-                  <CheckCircleIcon color="success" sx={{ fontSize: 24 }} />
+                  <CheckCircleIcon color="success" sx={{ fontSize: 28 }} />
                   <Typography variant="body2" fontWeight={700} color="success.main" noWrap sx={{ maxWidth: '90%' }}>
                     {avatarFile.name}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Nhấn để chọn file ảnh khác
+                  </Typography>
                 </>
+              ) : form.avatarUrl ? (
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Avatar
+                    src={form.avatarUrl}
+                    alt={form.name}
+                    sx={{ width: 52, height: 52, border: '2px solid #6c63ff', boxShadow: '0 4px 12px rgba(108, 99, 255, 0.25)' }}
+                  />
+                  <Box sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" fontWeight={750} color="text.primary">
+                      Ảnh đại diện hiện tại
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Nhấn để tải lên file hình ảnh mới
+                    </Typography>
+                  </Box>
+                </Stack>
               ) : (
                 <>
-                  <CameraIcon sx={{ fontSize: 24, color: 'text.disabled' }} />
+                  <CameraIcon sx={{ fontSize: 28, color: 'text.disabled' }} />
                   <Typography variant="body2" fontWeight={700}>
                     Tải lên file hình ảnh mới
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Định dạng hỗ trợ: JPG, PNG, WEBP
                   </Typography>
                 </>
               )}
@@ -123,19 +146,6 @@ function ArtistProfileDialog({
             </Button>
           </Box>
 
-          <Divider sx={{ my: 0.5 }}>
-            <Typography variant="caption" color="text.disabled" fontWeight={700}>HOẶC</Typography>
-          </Divider>
-
-          <TextField
-            label="Link URL Ảnh đại diện trực tuyến"
-            value={form.avatarUrl}
-            onChange={onFieldChange('avatarUrl')}
-            fullWidth
-            helperText="Nếu bạn chọn cả tải file ảnh và dán URL, file ảnh được tải lên sẽ được sử dụng trước."
-            InputProps={{ sx: { borderRadius: 3.5 } }}
-          />
-
           <TextField
             label="Tiểu sử / Giới thiệu bản thân (Bio)"
             value={form.bio}
@@ -144,7 +154,7 @@ function ArtistProfileDialog({
             minRows={4}
             fullWidth
             helperText="Chia sẻ câu chuyện âm nhạc, phong cách chủ đạo hoặc gửi gắm lời chào tới người hâm mộ."
-            InputProps={{ sx: { borderRadius: 3.5 } }}
+            InputProps={{ sx: { borderRadius: 2.5 } }}
           />
         </Stack>
       </DialogContent>

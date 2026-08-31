@@ -188,10 +188,12 @@ function ClientFooter() {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Liên hệ Email: hongphucc0703@gmail.com" arrow placement="top">
+            <Tooltip title="Gửi Email trực tiếp: hongphucc0703@gmail.com" arrow placement="top">
               <IconButton
                 component="a"
-                href="mailto:hongphucc0703@gmail.com"
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=hongphucc0703@gmail.com&su=[MusicFlow]%20Liên%20hệ%20&%20Hỗ%20trợ"
+                target="_blank"
+                rel="noopener noreferrer"
                 size="medium"
                 aria-label="Email"
                 sx={{

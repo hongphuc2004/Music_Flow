@@ -677,15 +677,6 @@ function Playlists() {
               </Button>
             )}
 
-            <TextField
-              label="Hoặc dán Link URL ảnh bìa"
-              value={formData.coverImage}
-              onChange={(e) => setFormData((prev) => ({ ...prev, coverImage: e.target.value }))}
-              placeholder="https://..."
-              helperText="Hệ thống ưu tiên sử dụng ảnh tải lên từ thiết bị trước."
-              InputProps={{ sx: { borderRadius: 1.5 } }}
-            />
-
             <FormControl fullWidth>
               <InputLabel id="playlist-visibility-label">Chế độ hiển thị</InputLabel>
               <Select

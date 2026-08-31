@@ -63,6 +63,77 @@ function ClientProfile() {
     return (user?.isPremium && user?.premiumExpiry && new Date(user.premiumExpiry) > new Date()) || !!activeSub;
   }, [user, activeSub]);
 
+  const currentPlanTitle = useMemo(() => {
+    if (!isPremium) return 'Basic (Miễn phí)';
+    if (activeSub?.planName) return activeSub.planName;
+    return 'Premium';
+  }, [isPremium, activeSub]);
+
+  const currentPlanBadge = useMemo(() => {
+    if (!isPremium) return 'BASIC';
+    if (activeSub?.planName) {
+      const upper = activeSub.planName.toUpperCase();
+      if (upper.includes('GO')) return 'GO';
+      if (upper.includes('PLUS')) return 'PLUS';
+      if (upper.includes('PREMIUM')) return 'PREMIUM';
+      return activeSub.planName;
+    }
+    return 'PREMIUM';
+  }, [isPremium, activeSub]);
+
+  const planQuota = useMemo(() => {
+    switch (currentPlanBadge) {
+      case 'GO':
+        return {
+          uploadMax: 250,
+          uploadLabel: '250 MB',
+          downloadMax: 300,
+          downloadLabel: '300 MB',
+          aiRequests: '10 lượt/ngày',
+          soundQuality: 'Âm Thanh HQ 320kbps',
+          unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 250 MB',
+          descUpload: '🌟 Gói GO hỗ trợ tải lên bài hát tối đa 250 MB.',
+          descDownload: '🌟 Gói GO hỗ trợ tải bài hát về nghe offline tối đa 300 MB.',
+        };
+      case 'PLUS':
+        return {
+          uploadMax: 500,
+          uploadLabel: '500 MB',
+          downloadMax: 700,
+          downloadLabel: '700 MB',
+          aiRequests: '15 lượt/ngày',
+          soundQuality: 'Âm Thanh HQ 320kbps',
+          unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 500 MB',
+          descUpload: '🌟 Gói PLUS hỗ trợ tải lên bài hát tối đa 500 MB.',
+          descDownload: '🌟 Gói PLUS hỗ trợ tải bài hát về nghe offline tối đa 700 MB.',
+        };
+      case 'PREMIUM':
+        return {
+          uploadMax: 1024,
+          uploadLabel: '1 GB',
+          downloadMax: 1024,
+          downloadLabel: '1 GB',
+          aiRequests: '20 lượt/ngày',
+          soundQuality: 'Âm Thanh Lossless Hi-Fi 320kbps',
+          unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 1 GB',
+          descUpload: '🌟 Gói PREMIUM hỗ trợ tải lên bài hát tối đa 1 GB (1024 MB).',
+          descDownload: '🌟 Gói PREMIUM hỗ trợ tải bài hát về nghe offline tối đa 1 GB (1024 MB).',
+        };
+      default: // BASIC
+        return {
+          uploadMax: 100,
+          uploadLabel: '100 MB',
+          downloadMax: 100,
+          downloadLabel: '100 MB',
+          aiRequests: '5 lượt/ngày',
+          soundQuality: 'Âm Thanh Tiêu Chuẩn 128kbps',
+          unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 100 MB',
+          descUpload: '⚡ Bản miễn phí giới hạn tối đa 100 MB tải bài hát lên hệ thống.',
+          descDownload: '⚡ Bản miễn phí giới hạn tối đa 100 MB tải bài hát về máy.',
+        };
+    }
+  }, [currentPlanBadge]);
+
   useEffect(() => {
     const fetchProfileAndPlans = async () => {
       try {
@@ -308,14 +379,14 @@ function ClientProfile() {
                     </Typography>
                     {isPremium ? (
                       <Chip
-                        icon={<StarIcon sx={{ color: '#090d1a !important', fontSize: 16 }} />}
-                        label="VIP PREMIUM"
+                        icon={<StarIcon sx={{ color: currentPlanBadge === 'PREMIUM' ? '#090d1a !important' : '#fff !important', fontSize: 16 }} />}
+                        label={currentPlanBadge}
                         sx={{
                           fontWeight: 900,
                           fontSize: 11,
-                          bgcolor: '#f59e0b',
-                          color: '#090d1a',
-                          boxShadow: '0 4px 14px rgba(245, 158, 11, 0.4)',
+                          bgcolor: currentPlanBadge === 'GO' ? '#6c63ff' : currentPlanBadge === 'PLUS' ? '#7c3aed' : '#f59e0b',
+                          color: currentPlanBadge === 'PREMIUM' ? '#090d1a' : '#fff',
+                          boxShadow: currentPlanBadge === 'PREMIUM' ? '0 4px 14px rgba(245, 158, 11, 0.4)' : '0 4px 14px rgba(108, 99, 255, 0.4)',
                         }}
                       />
                     ) : (
@@ -337,7 +408,7 @@ function ClientProfile() {
                   <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 550, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
                     Gói tài khoản:{' '}
                     <span style={{ color: isPremium ? '#ffd700' : '#00e5ff', fontWeight: 800 }}>
-                      {isPremium ? (activeSub?.planName || 'MusicFlow Premium Pro') : 'Basic Listener (Miễn Phí)'}
+                      {currentPlanTitle}
                     </span>
                   </Typography>
 
@@ -461,12 +532,12 @@ function ClientProfile() {
                             Gói Dịch Vụ & Hạn Mức Âm Nhạc
                           </Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                            {isPremium ? 'Bạn đang sở hữu quyền lợi không giới hạn của gói Premium VIP' : 'Nâng cấp để mở khóa toàn bộ đặc quyền âm nhạc chất lượng cao'}
+                            {isPremium ? `Bạn đang sở hữu đặc quyền của gói ${currentPlanTitle}` : 'Nâng cấp để mở khóa toàn bộ đặc quyền âm nhạc chất lượng cao'}
                           </Typography>
                         </Box>
                       </Stack>
                       <Chip
-                        label={isPremium ? 'Đang Hoạt Động' : 'Gói Miễn Phí'}
+                        label={isPremium ? `Gói ${currentPlanBadge}` : 'Gói Miễn Phí'}
                         sx={{
                           fontWeight: 900,
                           bgcolor: isPremium ? 'rgba(245, 158, 11, 0.15)' : 'rgba(108, 99, 255, 0.15)',
@@ -486,12 +557,12 @@ function ClientProfile() {
                           </Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ fontWeight: 900, color: '#00e5ff' }}>
-                          {isPremium ? `${uploadUsed} MB / Không Giới Hạn` : `${uploadUsed} MB / 100 MB`}
+                          {`${uploadUsed} MB / ${planQuota.uploadLabel}`}
                         </Typography>
                       </Stack>
                       <LinearProgress
                         variant="determinate"
-                        value={isPremium ? 0 : Math.min((uploadUsed / 100) * 100, 100)}
+                        value={Math.min((uploadUsed / planQuota.uploadMax) * 100, 100)}
                         sx={{
                           height: 8,
                           borderRadius: 4,
@@ -505,9 +576,7 @@ function ClientProfile() {
                         }}
                       />
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontWeight: 550 }}>
-                        {isPremium 
-                          ? '🌟 Tài khoản Premium Pro được tải lên bài hát dung lượng không giới hạn.' 
-                          : '⚡ Bản miễn phí giới hạn tối đa 100MB tải bài hát lên hệ thống.'}
+                        {planQuota.descUpload}
                       </Typography>
                     </Box>
 
@@ -521,12 +590,12 @@ function ClientProfile() {
                           </Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ fontWeight: 900, color: '#a855f7' }}>
-                          {isPremium ? `${downloadUsed} MB / Không Giới Hạn` : `${downloadUsed} MB / 100 MB`}
+                          {`${downloadUsed} MB / ${planQuota.downloadLabel}`}
                         </Typography>
                       </Stack>
                       <LinearProgress
                         variant="determinate"
-                        value={isPremium ? 0 : Math.min((downloadUsed / 100) * 100, 100)}
+                        value={Math.min((downloadUsed / planQuota.downloadMax) * 100, 100)}
                         sx={{
                           height: 8,
                           borderRadius: 4,
@@ -540,13 +609,11 @@ function ClientProfile() {
                         }}
                       />
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontWeight: 550 }}>
-                        {isPremium 
-                          ? '🌟 Tài khoản Premium Pro được phép tải bài hát về nghe offline không giới hạn.' 
-                          : '⚡ Bản miễn phí giới hạn tối đa 100MB tải bài hát về máy.'}
+                        {planQuota.descDownload}
                       </Typography>
                     </Box>
 
-                    {/* Danh sách đặc quyền Premium Suite */}
+                    {/* Danh sách đặc quyền Gói */}
                     <Box
                       sx={{
                         p: 2.5,
@@ -556,14 +623,14 @@ function ClientProfile() {
                       }}
                     >
                       <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1.5, color: isPremium ? '#f59e0b' : '#6c63ff' }}>
-                        💎 Đặc Quyền Gói Dịch Vụ Premium:
+                        💎 Đặc Quyền Gói Dịch Vụ {currentPlanBadge}:
                       </Typography>
                       <Grid container spacing={1.5}>
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <Stack direction="row" spacing={1} alignItems="center">
                             <SparklesIcon sx={{ color: '#00e5ff', fontSize: 18 }} />
                             <Typography variant="caption" sx={{ fontWeight: 650 }}>
-                              AI DJ & Trợ Lý Tạo Playlist (20 lượt/ngày)
+                              AI DJ & Trợ Lý Tạo Playlist ({planQuota.aiRequests})
                             </Typography>
                           </Stack>
                         </Grid>
@@ -571,7 +638,7 @@ function ClientProfile() {
                           <Stack direction="row" spacing={1} alignItems="center">
                             <HeadphonesIcon sx={{ color: '#ec4899', fontSize: 18 }} />
                             <Typography variant="caption" sx={{ fontWeight: 650 }}>
-                              Âm Thanh Lossless Hi-Fi 320kbps Đỉnh Cao
+                              {planQuota.soundQuality}
                             </Typography>
                           </Stack>
                         </Grid>
@@ -579,7 +646,7 @@ function ClientProfile() {
                           <Stack direction="row" spacing={1} alignItems="center">
                             <UploadIcon sx={{ color: '#10b981', fontSize: 18 }} />
                             <Typography variant="caption" sx={{ fontWeight: 650 }}>
-                              Lưu Trữ Nhạc Cá Nhân Không Giới Hạn
+                              {planQuota.unlimitedStorageLabel}
                             </Typography>
                           </Stack>
                         </Grid>

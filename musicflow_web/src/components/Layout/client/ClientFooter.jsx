@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, Stack, Link, IconButton, Divider, Chip, useTheme } from '@mui/material';
+import { Box, Grid, Typography, Stack, Link, IconButton, Divider, Chip, Tooltip, useTheme } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {
   Headphones as HeadphonesIcon,
@@ -9,7 +9,7 @@ import {
   Facebook as FacebookIcon,
   YouTube as YouTubeIcon,
   GitHub as GitHubIcon,
-  Send as TelegramIcon,
+  Email as EmailIcon,
 } from '@mui/icons-material';
 
 function ClientFooter() {
@@ -69,17 +69,31 @@ function ClientFooter() {
           <Stack direction="row" spacing={1.75} alignItems="center" sx={{ mb: 2.25 }}>
             <Box
               sx={{
-                width: 46,
-                height: 46,
-                borderRadius: '14px',
-                background: 'linear-gradient(135deg, #14b8a6 0%, #6c63ff 100%)',
-                display: 'grid',
-                placeItems: 'center',
-                color: '#fff',
-                boxShadow: '0 6px 18px rgba(20, 184, 166, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 44,
+                height: 44,
+                borderRadius: '13px',
+                bgcolor: isDark ? 'rgba(0, 188, 212, 0.12)' : 'rgba(108, 99, 255, 0.1)',
+                border: isDark ? '1px solid rgba(0, 229, 255, 0.28)' : '1px solid rgba(108, 99, 255, 0.2)',
+                boxShadow: isDark ? '0 0 16px rgba(0, 188, 212, 0.25)' : '0 0 10px rgba(108, 99, 255, 0.15)',
+                overflow: 'hidden',
+                flexShrink: 0,
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              <HeadphonesIcon sx={{ fontSize: 26 }} />
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
+                sx={{
+                  width: 34,
+                  height: 34,
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 2px 6px rgba(0, 188, 212, 0.45))',
+                }}
+              />
             </Box>
             <Box>
               <Typography
@@ -117,54 +131,79 @@ function ClientFooter() {
           </Typography>
 
           <Stack direction="row" spacing={1.25} alignItems="center">
-            <IconButton
-              size="medium"
-              aria-label="Facebook"
-              sx={{
-                color: isDark ? '#9ca3af' : '#64748b',
-                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                '&:hover': { color: '#1877f2', bgcolor: isDark ? 'rgba(24,119,242,0.18)' : 'rgba(24,119,242,0.12)', transform: 'translateY(-2px)' },
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <FacebookIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-            <IconButton
-              size="medium"
-              aria-label="YouTube"
-              sx={{
-                color: isDark ? '#9ca3af' : '#64748b',
-                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                '&:hover': { color: '#ef4444', bgcolor: isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.12)', transform: 'translateY(-2px)' },
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <YouTubeIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-            <IconButton
-              size="medium"
-              aria-label="GitHub"
-              sx={{
-                color: isDark ? '#9ca3af' : '#64748b',
-                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                '&:hover': { color: isDark ? '#fff' : '#0f172a', bgcolor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', transform: 'translateY(-2px)' },
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <GitHubIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-            <IconButton
-              size="medium"
-              aria-label="Telegram"
-              sx={{
-                color: isDark ? '#9ca3af' : '#64748b',
-                bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                '&:hover': { color: '#229ed9', bgcolor: isDark ? 'rgba(34,158,217,0.18)' : 'rgba(34,158,217,0.12)', transform: 'translateY(-2px)' },
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <TelegramIcon sx={{ fontSize: 20 }} />
-            </IconButton>
+            <Tooltip title="Theo dõi trên Facebook" arrow placement="top">
+              <IconButton
+                component="a"
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="medium"
+                aria-label="Facebook"
+                sx={{
+                  color: isDark ? '#9ca3af' : '#64748b',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  '&:hover': { color: '#1877f2', bgcolor: isDark ? 'rgba(24,119,242,0.18)' : 'rgba(24,119,242,0.12)', transform: 'translateY(-2px)' },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <FacebookIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Xem kênh YouTube" arrow placement="top">
+              <IconButton
+                component="a"
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="medium"
+                aria-label="YouTube"
+                sx={{
+                  color: isDark ? '#9ca3af' : '#64748b',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  '&:hover': { color: '#ef4444', bgcolor: isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.12)', transform: 'translateY(-2px)' },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <YouTubeIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Mã nguồn trên GitHub" arrow placement="top">
+              <IconButton
+                component="a"
+                href="https://github.com/hongphuc2004/Music_Flow"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="medium"
+                aria-label="GitHub"
+                sx={{
+                  color: isDark ? '#9ca3af' : '#64748b',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  '&:hover': { color: isDark ? '#fff' : '#0f172a', bgcolor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', transform: 'translateY(-2px)' },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <GitHubIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Liên hệ Email: hongphucc0703@gmail.com" arrow placement="top">
+              <IconButton
+                component="a"
+                href="mailto:hongphucc0703@gmail.com"
+                size="medium"
+                aria-label="Email"
+                sx={{
+                  color: isDark ? '#9ca3af' : '#64748b',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                  '&:hover': { color: '#ea4335', bgcolor: isDark ? 'rgba(234,67,53,0.18)' : 'rgba(234,67,53,0.12)', transform: 'translateY(-2px)' },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <EmailIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
           </Stack>
         </Grid>
 

@@ -16,6 +16,7 @@ import CommentIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import AutoplayIcon from '@mui/icons-material/AllInclusiveRounded';
 import PremiumIcon from '@mui/icons-material/WorkspacePremiumRounded';
 import ShareIcon from '@mui/icons-material/ShareRounded';
+import QueueIcon from '@mui/icons-material/QueueMusicRounded';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/client/client.service';
 import useAppToast from '../../../components/common/useAppToast';
@@ -35,6 +36,8 @@ function ClientNowPlayingBar({
   desktopSidebarOpen = true,
   commentsOpen,
   onToggleComments,
+  queueOpen,
+  onToggleQueue,
   commentCount,
   setCommentCount,
 }) {
@@ -45,6 +48,7 @@ function ClientNowPlayingBar({
 
   const {
     currentSong,
+    queue,
     isPlaying,
     currentTime,
     duration,
@@ -272,7 +276,7 @@ function ClientNowPlayingBar({
         }),
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 2 }} sx={{ minWidth: 0, flexShrink: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 0 }} sx={{ minWidth: 0, flexShrink: 0 }}>
         <Stack
           direction="row"
           spacing={1.5}
@@ -340,33 +344,22 @@ function ClientNowPlayingBar({
             </Avatar>
           </Box>
           <Box sx={{ minWidth: 0, flexGrow: 1, width: '100%', overflow: 'hidden' }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
-              <Typography
-                variant="body2"
-                fontWeight={850}
-                noWrap
-                sx={{
-                  fontSize: { xs: 13, md: 14 },
-                  letterSpacing: '-0.01em',
-                  display: 'block',
-                  minWidth: 0,
-                  flexGrow: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {currentSong?.title}
-              </Typography>
-              {isPlaying && (
-                <Stack direction="row" spacing={0.3} alignItems="flex-end" sx={{ height: 12, flexShrink: 0, pb: 0.2 }}>
-                  <Box sx={{ width: 2, bgcolor: '#00e5ff', borderRadius: 1 }} className="spectrum-bar-1" />
-                  <Box sx={{ width: 2, bgcolor: '#8c85ff', borderRadius: 1 }} className="spectrum-bar-2" />
-                  <Box sx={{ width: 2, bgcolor: '#6c63ff', borderRadius: 1 }} className="spectrum-bar-3" />
-                  <Box sx={{ width: 2, bgcolor: '#00e5ff', borderRadius: 1 }} className="spectrum-bar-4" />
-                </Stack>
-              )}
-            </Stack>
+            <Typography
+              variant="body2"
+              fontWeight={850}
+              noWrap
+              sx={{
+                fontSize: { xs: 13, md: 14 },
+                letterSpacing: '-0.01em',
+                display: 'block',
+                width: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {currentSong?.title}
+            </Typography>
             <Typography
               variant="caption"
               noWrap
@@ -383,44 +376,60 @@ function ClientNowPlayingBar({
             >
               {currentSong?.artistText || 'Unknown artist'}
             </Typography>
-            <Stack direction="row" spacing={0.3} sx={{ mt: 0.2 }}>
-              <Typography variant="caption" sx={{ opacity: 0.85, fontSize: 11, fontWeight: 700, color: '#00e5ff' }}>
-                {formatDuration(currentTime)}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.4, fontSize: 11 }}>
-                /
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
-                {formatDuration(displayDuration)}
-              </Typography>
+            <Stack direction="row" alignItems="center" sx={{ mt: 0.2 }}>
+              <Stack direction="row" spacing={0.3} alignItems="center">
+                <Typography variant="caption" sx={{ opacity: 0.85, fontSize: 11, fontWeight: 700, color: '#00e5ff' }}>
+                  {formatDuration(currentTime)}
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.4, fontSize: 11 }}>
+                  /
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.7, fontSize: 11, fontWeight: 600 }}>
+                  {formatDuration(displayDuration)}
+                </Typography>
+              </Stack>
+              {isPlaying && (
+                <Stack direction="row" spacing={0.35} alignItems="flex-end" sx={{ height: 11, flexShrink: 0, pb: 0.2, ml: '95px' }}>
+                  <Box sx={{ width: 2, bgcolor: '#00e5ff', borderRadius: 1 }} className="spectrum-bar-1" />
+                  <Box sx={{ width: 2, bgcolor: '#8c85ff', borderRadius: 1 }} className="spectrum-bar-2" />
+                  <Box sx={{ width: 2, bgcolor: '#6c63ff', borderRadius: 1 }} className="spectrum-bar-3" />
+                  <Box sx={{ width: 2, bgcolor: '#00e5ff', borderRadius: 1 }} className="spectrum-bar-4" />
+                </Stack>
+              )}
             </Stack>
           </Box>
         </Stack>
 
-        <Stack direction="row" alignItems="center" spacing={0.6} sx={{ display: { xs: 'none', md: 'flex' } }}>
-          <IconButton
-            size="small"
-            onClick={handleToggleFavorite}
-            sx={{
-              color: favorite ? '#f43f5e' : 'rgba(255,255,255,0.75)',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              '&:hover': { transform: 'scale(1.1)', color: '#f43f5e' },
-            }}
-          >
-            {favorite ? <FavoriteIcon sx={{ fontSize: 24 }} /> : <FavoriteBorderIcon sx={{ fontSize: 24 }} />}
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={handleDownload}
-            sx={{
-              color: 'rgba(255,255,255,0.75)',
-              transition: 'all 0.2s ease',
-              '&:hover': { color: '#00e5ff', transform: 'scale(1.08)' },
-            }}
-          >
-            <DownloadIcon sx={{ fontSize: 24 }} />
-          </IconButton>
-          <Tooltip title="Chia sẻ bài hát">
+        <Stack direction="row" alignItems="center" spacing={1.1} sx={{ display: { xs: 'none', md: 'flex' }, ml: { xs: 0, md: '105px' } }}>
+          <Tooltip title={favorite ? "Bỏ yêu thích" : "Yêu thích"} arrow>
+            <IconButton
+              size="small"
+              onClick={handleToggleFavorite}
+              sx={{
+                color: favorite ? '#f43f5e' : 'rgba(255,255,255,0.75)',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                '&:hover': { transform: 'scale(1.1)', color: '#f43f5e' },
+              }}
+            >
+              {favorite ? <FavoriteIcon sx={{ fontSize: 24 }} /> : <FavoriteBorderIcon sx={{ fontSize: 24 }} />}
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Tải bài hát về máy" arrow>
+            <IconButton
+              size="small"
+              onClick={handleDownload}
+              sx={{
+                color: 'rgba(255,255,255,0.75)',
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#00e5ff', transform: 'scale(1.08)' },
+              }}
+            >
+              <DownloadIcon sx={{ fontSize: 24 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Chia sẻ bài hát" arrow>
             <IconButton
               size="small"
               onClick={() => setShareOpen(true)}
@@ -433,77 +442,111 @@ function ClientNowPlayingBar({
               <ShareIcon sx={{ fontSize: 22 }} />
             </IconButton>
           </Tooltip>
-          <IconButton
-            size="small"
-            onClick={onToggleComments}
-            sx={{
-              color: commentsOpen ? '#6c63ff' : 'rgba(255,255,255,0.75)',
-              mr: 0.5,
-              transition: 'all 0.2s ease',
-              '&:hover': { color: '#6c63ff', transform: 'scale(1.08)' },
-            }}
-          >
-            <Badge
-              badgeContent={commentCount || 0}
-              color="primary"
-              max={99}
+
+          <Tooltip title="Bình luận & Thảo luận" arrow>
+            <IconButton
+              size="small"
+              onClick={onToggleComments}
               sx={{
-                '& .MuiBadge-badge': {
-                  fontSize: 10,
-                  height: 16,
-                  minWidth: 16,
-                  bgcolor: '#6c63ff',
-                },
+                color: commentsOpen ? '#6c63ff' : 'rgba(255,255,255,0.75)',
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#6c63ff', transform: 'scale(1.08)' },
               }}
             >
-              <CommentIcon sx={{ fontSize: 24 }} />
-            </Badge>
-          </IconButton>
+              <Badge
+                badgeContent={commentCount || 0}
+                color="primary"
+                max={99}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: 10,
+                    height: 16,
+                    minWidth: 16,
+                    bgcolor: '#6c63ff',
+                  },
+                }}
+              >
+                <CommentIcon sx={{ fontSize: 24 }} />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
+          {/* Nút mở Danh sách đang phát (Queue) */}
+          <Tooltip title="Danh sách đang phát" arrow>
+            <IconButton
+              size="small"
+              onClick={onToggleQueue}
+              sx={{
+                color: queueOpen ? '#00bcd4' : 'rgba(255,255,255,0.75)',
+                mr: 0.5,
+                transition: 'all 0.2s ease',
+                '&:hover': { color: '#00bcd4', transform: 'scale(1.08)' },
+              }}
+            >
+              <Badge
+                badgeContent={queue?.length || 0}
+                color="secondary"
+                max={99}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: 10,
+                    height: 16,
+                    minWidth: 16,
+                    bgcolor: '#00bcd4',
+                  },
+                }}
+              >
+                <QueueIcon sx={{ fontSize: 24 }} />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
           {/* Hi-Res Lossless Quality Selector */}
-          <Button
-            size="small"
-            onClick={handleQualityMenuOpen}
-            disabled={isQualityLoading}
-            sx={{
-              color: '#fff',
-              fontSize: '10.5px',
-              fontWeight: 800,
-              bgcolor: 'rgba(255,255,255,0.06)',
-              borderRadius: '9999px',
-              px: 1.5,
-              py: 0.4,
-              textTransform: 'none',
-              letterSpacing: '0.4px',
-              border: '1px solid rgba(255,255,255,0.15)',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: 'rgba(255,255,255,0.12)',
-                borderColor: '#00e5ff',
-                boxShadow: '0 0 10px rgba(0, 229, 255, 0.3)',
-              },
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-              opacity: isQualityLoading ? 0.6 : 1,
-            }}
-          >
-            {isQualityLoading ? (
-              <>
-                <CircularProgress size={12} sx={{ color: '#6c63ff' }} />
-                <span>Đang chuyển...</span>
-              </>
-            ) : actualAudioQuality === 'hq' ? (
-              <>
-                <span style={{ color: '#ffd700' }}>LOSSLESS 320k</span>
-                <PremiumIcon sx={{ fontSize: 13, color: '#ffd700' }} />
-              </>
-            ) : (
-              <>
-                <span style={{ color: '#00e5ff' }}>Hi-Fi 128k</span>
-              </>
-            )}
-          </Button>
+          <Tooltip title="Tùy chọn chất lượng âm thanh" arrow>
+            <Button
+              size="small"
+              onClick={handleQualityMenuOpen}
+              disabled={isQualityLoading}
+              sx={{
+                color: '#fff',
+                fontSize: '10.5px',
+                fontWeight: 800,
+                bgcolor: 'rgba(255,255,255,0.06)',
+                borderRadius: '9999px',
+                px: 1.5,
+                py: 0.4,
+                textTransform: 'none',
+                letterSpacing: '0.4px',
+                border: '1px solid rgba(255,255,255,0.15)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.12)',
+                  borderColor: '#00e5ff',
+                  boxShadow: '0 0 10px rgba(0, 229, 255, 0.3)',
+                },
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                opacity: isQualityLoading ? 0.6 : 1,
+              }}
+            >
+              {isQualityLoading ? (
+                <>
+                  <CircularProgress size={12} sx={{ color: '#6c63ff' }} />
+                  <span>Đang chuyển...</span>
+                </>
+              ) : actualAudioQuality === 'hq' ? (
+                <>
+                  <span style={{ color: '#ffd700' }}>HQ 320k</span>
+                  <PremiumIcon sx={{ fontSize: 13, color: '#ffd700' }} />
+                </>
+              ) : (
+                <>
+                  <span style={{ color: '#00e5ff' }}>STANDARD 128k</span>
+                </>
+              )}
+            </Button>
+          </Tooltip>
         </Stack>
 
         <Stack sx={{ flex: 1, minWidth: 0 }}>
@@ -514,87 +557,104 @@ function ClientNowPlayingBar({
             spacing={{ xs: 0.5, sm: 1, md: 1.2 }}
             sx={{ mb: 0.8 }}
           >
-            <IconButton
-              size="small"
-              onClick={handleToggleShuffle}
-              sx={{
-                color: shuffle ? '#00e5ff' : 'rgba(255,255,255,0.65)',
-                display: { xs: 'none', sm: 'inline-flex' },
-                transition: 'all 0.2s ease',
-                '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
-              }}
-            >
-              <ShuffleIcon sx={{ fontSize: 22 }} />
-            </IconButton>
-            <IconButton
-              size="small"
-              sx={{
-                color: 'rgba(255,255,255,0.85)',
-                transition: 'all 0.2s ease',
-                '&:hover': { color: '#fff', transform: 'scale(1.1)' },
-              }}
-              onClick={handlePrevious}
-            >
-              <PrevIcon sx={{ fontSize: 25 }} />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={togglePlay}
-              sx={{
-                color: '#fff',
-                background: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 60%, #00e5ff 100%)',
-                width: 42,
-                height: 42,
-                boxShadow: isPlaying
-                  ? '0 0 20px rgba(108, 99, 255, 0.6), 0 0 40px rgba(0, 229, 255, 0.3)'
-                  : '0 4px 14px rgba(108, 99, 255, 0.4)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                '&:hover': {
-                  transform: 'scale(1.08)',
-                  boxShadow: '0 0 25px rgba(108, 99, 255, 0.8)',
-                },
-                '&:active': {
-                  transform: 'scale(0.96)',
-                },
-              }}
-            >
-              {isPlaying ? <PauseIcon sx={{ fontSize: 26 }} /> : <PlayIcon sx={{ fontSize: 26, ml: 0.2 }} />}
-            </IconButton>
-            <IconButton
-              size="small"
-              sx={{
-                color: 'rgba(255,255,255,0.85)',
-                transition: 'all 0.2s ease',
-                '&:hover': { color: '#fff', transform: 'scale(1.1)' },
-              }}
-              onClick={handleNext}
-            >
-              <NextIcon sx={{ fontSize: 25 }} />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={handleCycleRepeat}
-              sx={{
-                color: repeatMode !== 'off' ? '#00e5ff' : 'rgba(255,255,255,0.65)',
-                display: { xs: 'none', sm: 'inline-flex' },
-                transition: 'all 0.2s ease',
-                '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
-              }}
-            >
-              {repeatMode === 'one' ? <RepeatOneIcon sx={{ fontSize: 22 }} /> : <RepeatIcon sx={{ fontSize: 22 }} />}
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={handleToggleAutoplay}
-              sx={{
-                color: autoplay ? '#00e5ff' : 'rgba(255,255,255,0.65)',
-                display: { xs: 'none', sm: 'inline-flex' },
-                transition: 'all 0.2s ease',
-                '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
-              }}
-            >
-              <AutoplayIcon sx={{ fontSize: 22 }} />
-            </IconButton>
+            <Tooltip title={shuffle ? "Tắt phát ngẫu nhiên" : "Bật phát ngẫu nhiên"} arrow>
+              <IconButton
+                size="small"
+                onClick={handleToggleShuffle}
+                sx={{
+                  color: shuffle ? '#00e5ff' : 'rgba(255,255,255,0.65)',
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  transition: 'all 0.2s ease',
+                  '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
+                }}
+              >
+                <ShuffleIcon sx={{ fontSize: 22 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Bài trước" arrow>
+              <IconButton
+                size="small"
+                sx={{
+                  color: 'rgba(255,255,255,0.85)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': { color: '#fff', transform: 'scale(1.1)' },
+                }}
+                onClick={handlePrevious}
+              >
+                <PrevIcon sx={{ fontSize: 25 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title={isPlaying ? "Tạm dừng" : "Phát nhạc"} arrow>
+              <IconButton
+                size="small"
+                onClick={togglePlay}
+                sx={{
+                  color: '#fff',
+                  background: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 60%, #00e5ff 100%)',
+                  width: 42,
+                  height: 42,
+                  boxShadow: isPlaying
+                    ? '0 0 20px rgba(108, 99, 255, 0.6), 0 0 40px rgba(0, 229, 255, 0.3)'
+                    : '0 4px 14px rgba(108, 99, 255, 0.4)',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  '&:hover': {
+                    transform: 'scale(1.08)',
+                    boxShadow: '0 0 25px rgba(108, 99, 255, 0.8)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.96)',
+                  },
+                }}
+              >
+                {isPlaying ? <PauseIcon sx={{ fontSize: 26 }} /> : <PlayIcon sx={{ fontSize: 26, ml: 0.2 }} />}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Bài tiếp theo" arrow>
+              <IconButton
+                size="small"
+                sx={{
+                  color: 'rgba(255,255,255,0.85)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': { color: '#fff', transform: 'scale(1.1)' },
+                }}
+                onClick={handleNext}
+              >
+                <NextIcon sx={{ fontSize: 25 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title={repeatMode === 'one' ? "Lặp lại 1 bài" : repeatMode === 'all' ? "Lặp lại toàn bộ" : "Bật lặp lại"} arrow>
+              <IconButton
+                size="small"
+                onClick={handleCycleRepeat}
+                sx={{
+                  color: repeatMode !== 'off' ? '#00e5ff' : 'rgba(255,255,255,0.65)',
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  transition: 'all 0.2s ease',
+                  '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
+                }}
+              >
+                {repeatMode === 'one' ? <RepeatOneIcon sx={{ fontSize: 22 }} /> : <RepeatIcon sx={{ fontSize: 22 }} />}
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title={autoplay ? "Tắt tự động phát liên tục" : "Bật tự động phát liên tục"} arrow>
+              <IconButton
+                size="small"
+                onClick={handleToggleAutoplay}
+                sx={{
+                  color: autoplay ? '#00e5ff' : 'rgba(255,255,255,0.65)',
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  transition: 'all 0.2s ease',
+                  '&:hover': { color: '#00e5ff', transform: 'scale(1.1)' },
+                }}
+              >
+                <AutoplayIcon sx={{ fontSize: 22 }} />
+              </IconButton>
+            </Tooltip>
           </Stack>
 
           <Slider

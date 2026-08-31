@@ -7,6 +7,7 @@ import ClientNowPlayingBar from './ClientNowPlayingBar';
 import ClientFooter from './ClientFooter';
 import ClientAuthDialog from './ClientAuthDialog';
 import ClientSongCommentsDrawer from './ClientSongCommentsDrawer';
+import ClientQueueDrawer from './ClientQueueDrawer';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientSongsApi } from '../../../services/client/client.service';
 
@@ -19,6 +20,7 @@ function ClientLayout({ children, title }) {
     () => localStorage.getItem('musicflow-client-sidebar-open') !== 'false'
   );
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
   const [targetCommentId, setTargetCommentId] = useState(null);
   const [commentTargetSong, setCommentTargetSong] = useState(null);
   const [commentCount, setCommentCount] = useState(0);
@@ -200,8 +202,14 @@ function ClientLayout({ children, title }) {
         desktopSidebarOpen={desktopOpen}
         commentsOpen={commentsOpen}
         onToggleComments={() => setCommentsOpen((prev) => !prev)}
+        queueOpen={queueOpen}
+        onToggleQueue={() => setQueueOpen((prev) => !prev)}
         commentCount={commentCount}
         setCommentCount={setCommentCount}
+      />
+      <ClientQueueDrawer
+        open={queueOpen}
+        onClose={() => setQueueOpen(false)}
       />
       <ClientSongCommentsDrawer
         open={commentsOpen}

@@ -695,12 +695,14 @@ function ClientGenres() {
                   alignItems: 'center',
                   gap: 1.5,
                   fontSize: { xs: '1.6rem', sm: '2rem' },
-                  background: 'linear-gradient(135deg, #ffffff 20%, #a5b4fc 60%, #00e5ff 100%)',
+                  background: (theme) => theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, #ffffff 20%, #a5b4fc 60%, #00e5ff 100%)'
+                    : 'linear-gradient(135deg, #1e1b4b 10%, #4f46e5 60%, #0284c7 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                <ExploreIcon sx={{ color: '#00e5ff', fontSize: 32 }} />
+                <ExploreIcon sx={{ color: '#00bcd4', fontSize: 32 }} />
                 Vũ Trụ Thể Loại & Sóng Âm Nhạc
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 550 }}>

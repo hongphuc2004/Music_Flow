@@ -250,7 +250,9 @@ function ClientDiscover() {
                   letterSpacing: '-0.04em',
                   lineHeight: 1.15,
                   fontSize: { xs: '1.6rem', sm: '2rem' },
-                  background: 'linear-gradient(135deg, #ffffff 20%, #a5b4fc 60%, #00e5ff 100%)',
+                  background: (theme) => theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, #ffffff 20%, #a5b4fc 60%, #00e5ff 100%)'
+                    : 'linear-gradient(135deg, #1e1b4b 10%, #4f46e5 60%, #0284c7 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
@@ -288,9 +290,9 @@ function ClientDiscover() {
                       fontWeight: isTabActive ? 850 : 600,
                       whiteSpace: 'nowrap',
                       bgcolor: isTabActive ? '#6c63ff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                      color: isTabActive ? '#fff' : 'text.secondary',
+                      color: isTabActive ? '#fff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#334155',
                       border: '1px solid',
-                      borderColor: isTabActive ? '#8c85ff' : 'rgba(255,255,255,0.08)',
+                      borderColor: isTabActive ? '#8c85ff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
                       boxShadow: isTabActive ? '0 4px 16px rgba(108, 99, 255, 0.45)' : 'none',
                       transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                       '&:hover': {
@@ -907,9 +909,11 @@ function ClientDiscover() {
                       minHeight: 280,
                       p: 3.5,
                       borderRadius: '28px',
-                      background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(99, 102, 241, 0.25) 100%)',
+                      background: (theme) => theme.palette.mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(99, 102, 241, 0.25) 100%)'
+                        : 'linear-gradient(135deg, #181c32 0%, #0e7490 100%)',
                       border: '1px solid rgba(6, 182, 212, 0.35)',
-                      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+                      boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 20px 50px rgba(0, 0, 0, 0.5)' : '0 16px 40px rgba(6, 182, 212, 0.35)',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
@@ -919,7 +923,7 @@ function ClientDiscover() {
                       transition: 'all 0.25s ease',
                       '&:hover': {
                         transform: 'translateY(-4px)',
-                        boxShadow: '0 24px 60px rgba(6, 182, 212, 0.35)',
+                        boxShadow: '0 24px 60px rgba(6, 182, 212, 0.45)',
                       }
                     }}
                   >
@@ -929,10 +933,10 @@ function ClientDiscover() {
                           📻 PLAYLIST ĐẶC TUYỂN
                         </Typography>
                       </Box>
-                      <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: '-0.03em', mb: 1, lineHeight: 1.2 }}>
+                      <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: '-0.03em', mb: 1, lineHeight: 1.2, color: '#fff' }}>
                         {featuredPlaylist.name}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.85)', fontWeight: 600 }}>
                         Tuyển tập {featuredPlaylist.songCount || 0} giai điệu chất lượng cao được tuyển chọn.
                       </Typography>
                     </Box>

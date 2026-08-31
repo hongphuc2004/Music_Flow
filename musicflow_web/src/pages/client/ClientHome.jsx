@@ -12,6 +12,7 @@ import {
   Slider,
   Stack,
   Typography,
+  Tooltip,
 } from '@mui/material';
 import {
   PlayArrowRounded as PlayIcon,
@@ -27,6 +28,10 @@ import {
   Check as CheckIcon,
   PersonAdd as FollowIcon,
   QueueMusic as QueueMusicIcon,
+  FavoriteRounded as FavoriteIcon,
+  FavoriteBorderRounded as FavoriteBorderIcon,
+  DownloadRounded as DownloadIcon,
+  ShareRounded as ShareIcon,
   BoltRounded as BoltIcon,
   WavesRounded as WavesIcon,
   NightlightRounded as MoonIcon,
@@ -37,7 +42,7 @@ import {
   RadioRounded as RadioIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientArtistApi, clientPlaylistsApi, clientSongsApi } from '../../services/client/client.service';
+import { clientArtistApi, clientPlaylistsApi, clientSongsApi, clientFavoritesApi } from '../../services/client/client.service';
 import ClientQueueDrawer from '../../components/Layout/client/ClientQueueDrawer';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
@@ -48,6 +53,7 @@ import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 import PlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
 import { getOptimizedImageUrl } from '../../utils/imageUtil';
+import ShareSongModal from '../../components/common/ShareSongModal';
 
 
 
@@ -136,6 +142,65 @@ function ClientHome() {
   const spotlightSong = useMemo(() => songs[0] || null, [songs]);
   const quickListenSongs = useMemo(() => songs.slice(0, 6), [songs]);
   const recommendedSongs = useMemo(() => songs.slice(0, displayedSongCount), [songs, displayedSongCount]);
+  const activeHeroSong = currentSong || spotlightSong;
+  const [favorite, setFavorite] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    const checkFavorite = async () => {
+      if (!activeHeroSong?._id || !isLoggedIn) {
+        setFavorite(false);
+        return;
+      }
+      try {
+        const response = await clientFavoritesApi.check(activeHeroSong._id);
+        if (!ignore) {
+          setFavorite(Boolean(response.data?.isFavorite));
+        }
+      } catch {
+        if (!ignore) setFavorite(false);
+      }
+    };
+    checkFavorite();
+    return () => { ignore = true; };
+  }, [activeHeroSong?._id, isLoggedIn]);
+
+  const handleToggleFavoriteHero = async () => {
+    if (!activeHeroSong?._id) return;
+    if (!isLoggedIn) {
+      showToast({ severity: 'info', title: 'Cần đăng nhập', message: 'Vui lòng đăng nhập để lưu bài hát yêu thích.' });
+      navigate('/?auth=login');
+      return;
+    }
+    try {
+      const response = await clientFavoritesApi.toggle(activeHeroSong._id);
+      const next = response.data?.isFavorite ?? !favorite;
+      setFavorite(next);
+      showToast({
+        severity: 'success',
+        title: 'Thành công',
+        message: next ? 'Đã thêm bài hát vào danh sách yêu thích.' : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
+      });
+    } catch (error) {
+      showToast({ severity: 'error', title: 'Lỗi', message: error.response?.data?.message || 'Không thể cập nhật yêu thích.' });
+    }
+  };
+
+  const handleDownloadHero = async () => {
+    if (!activeHeroSong?._id) return;
+    if (!isLoggedIn) {
+      showToast({ severity: 'info', title: 'Cần đăng nhập', message: 'Vui lòng đăng nhập để tải bài hát.' });
+      navigate('/?auth=login');
+      return;
+    }
+    try {
+      await clientSongsApi.requestDownload(activeHeroSong._id);
+      showToast({ severity: 'success', title: 'Đã tải xuống', message: 'Bài hát đã được thêm vào danh sách tải xuống.' });
+    } catch (error) {
+      showToast({ severity: 'error', title: 'Không thể tải', message: error.response?.data?.message || 'Vui lòng thử lại sau.' });
+    }
+  };
 
   const handleLoadMoreSongs = async () => {
     if (displayedSongCount < songs.length) {
@@ -349,9 +414,9 @@ function ClientHome() {
                   fontWeight: isTabActive ? 850 : 600,
                   whiteSpace: 'nowrap',
                   bgcolor: isTabActive ? '#6c63ff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                  color: isTabActive ? '#fff' : 'text.secondary',
+                  color: isTabActive ? '#fff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#334155',
                   border: '1px solid',
-                  borderColor: isTabActive ? '#8c85ff' : 'rgba(255,255,255,0.08)',
+                  borderColor: isTabActive ? '#8c85ff' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
                   boxShadow: isTabActive ? '0 4px 16px rgba(108, 99, 255, 0.45)' : 'none',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                   '&:hover': {
@@ -376,10 +441,14 @@ function ClientHome() {
               p: { xs: 2.5, sm: 3, md: 3.5 },
               minHeight: { xs: 'auto', md: 260 },
               background: (theme) => theme.palette.mode === 'dark'
-                ? 'linear-gradient(135deg, rgba(14, 20, 38, 0.94) 0%, rgba(7, 10, 22, 0.98) 100%)'
-                : 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
-              border: '1px solid rgba(165, 180, 252, 0.18)',
-              boxShadow: '0 24px 60px -15px rgba(0, 0, 0, 0.75), 0 0 35px rgba(99, 102, 241, 0.2), inset 0 1px 1.5px rgba(255, 255, 255, 0.25)',
+                ? 'linear-gradient(135deg, rgba(14, 20, 38, 0.96) 0%, rgba(7, 10, 22, 0.98) 100%)'
+                : 'linear-gradient(135deg, #181c32 0%, #1e1b4b 50%, #0f172a 100%)',
+              border: (theme) => theme.palette.mode === 'dark'
+                ? '1px solid rgba(165, 180, 252, 0.18)'
+                : '1px solid rgba(99, 102, 241, 0.35)',
+              boxShadow: (theme) => theme.palette.mode === 'dark'
+                ? '0 24px 60px -15px rgba(0, 0, 0, 0.75), 0 0 35px rgba(99, 102, 241, 0.2), inset 0 1px 1.5px rgba(255, 255, 255, 0.25)'
+                : '0 20px 50px -10px rgba(30, 27, 75, 0.45), 0 0 30px rgba(99, 102, 241, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.35)',
             }}
           >
             {/* Dynamic Aurora Ambient Backlight */}
@@ -391,7 +460,7 @@ function ClientHome() {
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 filter: 'blur(80px) saturate(2.4)',
-                opacity: 0.38,
+                opacity: (theme) => theme.palette.mode === 'dark' ? 0.38 : 0.45,
                 transform: 'scale(1.3)',
                 zIndex: 0,
                 pointerEvents: 'none',
@@ -449,8 +518,8 @@ function ClientHome() {
                       </Typography>
                       <Typography
                         variant="body2"
-                        color="text.secondary"
                         sx={{
+                          color: 'rgba(255, 255, 255, 0.78)',
                           fontWeight: 650,
                           fontSize: { xs: 13, sm: 14.5 },
                           overflow: 'hidden',
@@ -567,6 +636,97 @@ function ClientHome() {
                         </IconButton>
                       </Stack>
                     )}
+
+                    {/* Action icons capsule on Banner */}
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      alignItems="center"
+                      sx={{
+                        bgcolor: 'rgba(255, 255, 255, 0.08)',
+                        backdropFilter: 'blur(16px)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        borderRadius: '9999px',
+                        px: 1,
+                        py: 0.4,
+                      }}
+                    >
+                      <Tooltip title={favorite ? 'Bỏ thích' : 'Yêu thích'} arrow>
+                        <IconButton
+                          size="small"
+                          onClick={handleToggleFavoriteHero}
+                          sx={{
+                            color: favorite ? '#ff4081' : 'rgba(255, 255, 255, 0.85)',
+                            p: 0.75,
+                            '&:hover': {
+                              transform: 'scale(1.15)',
+                              color: '#ff4081',
+                              bgcolor: 'rgba(255, 64, 129, 0.15)',
+                            },
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          }}
+                        >
+                          {favorite ? <FavoriteIcon sx={{ fontSize: 18 }} /> : <FavoriteBorderIcon sx={{ fontSize: 18 }} />}
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="Tải xuống bài hát" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={handleDownloadHero}
+                          sx={{
+                            color: 'rgba(255, 255, 255, 0.85)',
+                            p: 0.75,
+                            '&:hover': {
+                              transform: 'scale(1.15)',
+                              color: '#00e5ff',
+                              bgcolor: 'rgba(0, 229, 255, 0.15)',
+                            },
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          }}
+                        >
+                          <DownloadIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="Chia sẻ bài hát" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => setShareOpen(true)}
+                          sx={{
+                            color: 'rgba(255, 255, 255, 0.85)',
+                            p: 0.75,
+                            '&:hover': {
+                              transform: 'scale(1.15)',
+                              color: '#6c63ff',
+                              bgcolor: 'rgba(108, 99, 255, 0.18)',
+                            },
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          }}
+                        >
+                          <ShareIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="Danh sách đang phát" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => setQueueOpen(true)}
+                          sx={{
+                            color: queueOpen ? '#6c63ff' : 'rgba(255, 255, 255, 0.85)',
+                            p: 0.75,
+                            '&:hover': {
+                              transform: 'scale(1.15)',
+                              color: '#6c63ff',
+                              bgcolor: 'rgba(108, 99, 255, 0.18)',
+                            },
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          }}
+                        >
+                          <QueueMusicIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
 
                     <Button
                       variant="outlined"
@@ -795,11 +955,13 @@ function ClientHome() {
                         cursor: 'pointer',
                         bgcolor: (theme) => isCurrent
                           ? (theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.12)')
-                          : (theme.palette.mode === 'dark' ? 'rgba(12, 16, 30, 0.6)' : 'rgba(255, 255, 255, 0.7)'),
+                          : (theme.palette.mode === 'dark' ? 'rgba(12, 16, 30, 0.6)' : 'rgba(255, 255, 255, 0.95)'),
                         border: '1px solid',
-                        borderColor: isCurrent ? '#6c63ff' : 'rgba(255, 255, 255, 0.08)',
+                        borderColor: (theme) => isCurrent ? '#6c63ff' : (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'),
                         backdropFilter: 'blur(20px)',
-                        boxShadow: isCurrent ? '0 0 25px rgba(108, 99, 255, 0.35)' : 'none',
+                        boxShadow: (theme) => isCurrent
+                          ? '0 0 25px rgba(108, 99, 255, 0.35)'
+                          : (theme.palette.mode === 'dark' ? 'none' : '0 4px 18px rgba(0, 0, 0, 0.06)'),
                         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                         '&:hover': {
                           borderColor: '#00e5ff',
@@ -935,10 +1097,10 @@ function ClientHome() {
                     src={getOptimizedImageUrl(top3Podium[1].imageUrl, 'song_card')}
                     sx={{ width: 80, height: 80, borderRadius: '20px', mb: 1.5, boxShadow: '0 8px 24px rgba(0, 229, 255, 0.35)' }}
                   />
-                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%' }}>
+                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%', color: '#fff' }}>
                     {top3Podium[1].title}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%', fontWeight: 600 }}>
+                  <Typography variant="caption" noWrap sx={{ maxWidth: '100%', fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)' }}>
                     {Array.isArray(top3Podium[1].artists) ? top3Podium[1].artists.map(a => a?.name).join(', ') : top3Podium[1].artistText}
                   </Typography>
                 </Box>
@@ -963,17 +1125,17 @@ function ClientHome() {
                     '&:hover': { transform: 'translateY(-8px) scale(1.02)' },
                   }}
                 >
-                  <Typography sx={{ fontSize: 32, fontWeight: 950, color: '#ffd700', mb: 1, letterSpacing: 1 }}>
+                  <Typography sx={{ fontSize: 32, fontWeight: 950, color: '#ffd700', mb: 1, letterSpacing: 1, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
                     👑 #01 QUÁN QUÂN
                   </Typography>
                   <Avatar
                     src={getOptimizedImageUrl(top3Podium[0].imageUrl, 'song_card')}
                     sx={{ width: 100, height: 100, borderRadius: '24px', mb: 1.5, boxShadow: '0 12px 30px rgba(255, 215, 0, 0.45)' }}
                   />
-                  <Typography variant="h6" fontWeight={950} noWrap sx={{ maxWidth: '100%', fontSize: 18 }}>
+                  <Typography variant="h6" fontWeight={950} noWrap sx={{ maxWidth: '100%', fontSize: 18, color: '#fff' }}>
                     {top3Podium[0].title}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%', fontWeight: 700 }}>
+                  <Typography variant="caption" noWrap sx={{ maxWidth: '100%', fontWeight: 700, color: 'rgba(255, 255, 255, 0.75)' }}>
                     {Array.isArray(top3Podium[0].artists) ? top3Podium[0].artists.map(a => a?.name).join(', ') : top3Podium[0].artistText}
                   </Typography>
                 </Box>
@@ -1005,10 +1167,10 @@ function ClientHome() {
                     src={getOptimizedImageUrl(top3Podium[2].imageUrl, 'song_card')}
                     sx={{ width: 76, height: 76, borderRadius: '18px', mb: 1.5, boxShadow: '0 8px 24px rgba(192, 132, 252, 0.35)' }}
                   />
-                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%' }}>
+                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%', color: '#fff' }}>
                     {top3Podium[2].title}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%', fontWeight: 600 }}>
+                  <Typography variant="caption" noWrap sx={{ maxWidth: '100%', fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)' }}>
                     {Array.isArray(top3Podium[2].artists) ? top3Podium[2].artists.map(a => a?.name).join(', ') : top3Podium[2].artistText}
                   </Typography>
                 </Box>
@@ -1064,8 +1226,10 @@ function ClientHome() {
                       p: 2,
                       borderRadius: '22px',
                       cursor: 'pointer',
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(14, 18, 34, 0.65)' : 'rgba(255, 255, 255, 0.8)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(14, 18, 34, 0.65)' : 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid',
+                      borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)',
+                      boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 4px 16px rgba(0, 0, 0, 0.05)',
                       textAlign: 'center',
                       '&:hover': {
                         borderColor: genre.color,
@@ -1276,6 +1440,7 @@ function ClientHome() {
       </Stack>
 
       <ClientQueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
+      <ShareSongModal open={shareOpen} onClose={() => setShareOpen(false)} song={activeHeroSong} />
     </ClientLayout>
   );
 }

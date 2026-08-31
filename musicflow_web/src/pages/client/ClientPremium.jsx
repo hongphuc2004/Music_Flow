@@ -476,61 +476,61 @@ function ClientPremium() {
               So sánh chi tiết tính năng & hạn mức
             </Typography>
             
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4, overflow: 'hidden' }}>
-              <Table>
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 4, overflowX: 'auto', width: '100%' }}>
+              <Table sx={{ width: '100%', minWidth: 680, tableLayout: 'fixed' }}>
+                <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '14.5px' }}>Tính năng & Hạn mức</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '14.5px' }} align="center">Tài khoản FREE</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '14.5px', color: '#6c63ff' }} align="center">Gói GO</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '14.5px', color: '#6c63ff' }} align="center">Gói PLUS</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: '14.5px', color: '#00bcd4' }} align="center">Gói PREMIUM</TableCell>
+                    <TableCell sx={{ fontWeight: 850, fontSize: '14.5px', width: '34%', pl: { xs: 3, md: 30 }, py: 2.2 }}>Tính năng & Hạn mức</TableCell>
+                    <TableCell sx={{ fontWeight: 850, fontSize: '14.5px', width: '16.5%', py: 2.2 }} align="center">Tài khoản FREE</TableCell>
+                    <TableCell sx={{ fontWeight: 850, fontSize: '14.5px', color: '#6c63ff', width: '16.5%', py: 2.2 }} align="center">Gói GO</TableCell>
+                    <TableCell sx={{ fontWeight: 850, fontSize: '14.5px', color: '#6c63ff', width: '16.5%', py: 2.2 }} align="center">Gói PLUS</TableCell>
+                    <TableCell sx={{ fontWeight: 850, fontSize: '14.5px', color: '#00bcd4', width: '16.5%', py: 2.2 }} align="center">Gói PREMIUM</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {/* Chi phí */}
                   <TableRow hover>
-                    <TableCell sx={{ fontWeight: 750 }}>Chi phí / tháng</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Miễn phí</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>19.000 đ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>49.000 đ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>89.000 đ</TableCell>
+                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 33 }, py: 2 }}>Chi phí / tháng</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Miễn phí</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#6c63ff', py: 2 }}>19.000 đ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#6c63ff', py: 2 }}>49.000 đ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>89.000 đ</TableCell>
                   </TableRow>
                   
                   {/* Tải lên */}
                   <TableRow hover>
-                    <TableCell sx={{ fontWeight: 750 }}>Dung lượng tải lên (Upload)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tối đa 100 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 250 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 500 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4' }}>Tối đa 1 GB</TableCell>
+                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 28 }, py: 2 }}>Dung lượng tải lên (Upload)</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tối đa 100 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 250 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 500 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>Tối đa 1 GB</TableCell>
                   </TableRow>
                   
                   {/* Tải xuống */}
                   <TableRow hover>
-                    <TableCell sx={{ fontWeight: 750 }}>Tải nhạc ngoại tuyến (Download)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tối đa 100 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 300 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>Tối đa 700 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4' }}>Tối đa 1 GB</TableCell>
+                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 26 }, py: 2 }}>Tải nhạc ngoại tuyến (Download)</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tối đa 100 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 300 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 700 MB</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>Tối đa 1 GB</TableCell>
                   </TableRow>
                   
                   {/* Trợ lý AI */}
                   <TableRow hover>
-                    <TableCell sx={{ fontWeight: 750 }}>Trò chuyện & Tạo Playlist AI</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>5 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>10 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750 }}>15 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4' }}>20 yêu cầu / 24 giờ</TableCell>
+                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 27 }, py: 2 }}>Trò chuyện & Tạo Playlist AI</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>5 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>10 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>15 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>20 yêu cầu / 24 giờ</TableCell>
                   </TableRow>
                   
                   {/* Chất lượng âm thanh */}
                   <TableRow hover>
-                    <TableCell sx={{ fontWeight: 750 }}>Chất lượng âm thanh</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600 }}>Tiêu chuẩn (128kbps)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600 }}>HQ (320kbps - Sắp có)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600 }}>HQ (320kbps - Sắp có)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600 }}>HQ (320kbps - Sắp có)</TableCell>
+                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 31 }, py: 2 }}>Chất lượng âm thanh</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tiêu chuẩn (128kbps)</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600, py: 2 }}>HQ (320kbps - Sắp có)</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600, py: 2 }}>HQ (320kbps - Sắp có)</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600, py: 2 }}>HQ (320kbps - Sắp có)</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

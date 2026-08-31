@@ -164,15 +164,21 @@ function ClientSidebar({
                 borderRadius: '50%',
                 bgcolor: isDark ? 'rgba(108, 99, 255, 0.18)' : 'rgba(108, 99, 255, 0.12)',
                 border: isDark ? '1px solid rgba(108, 99, 255, 0.35)' : '1px solid rgba(108, 99, 255, 0.25)',
-                boxShadow: isDark ? '0 0 14px rgba(108, 99, 255, 0.3)' : '0 0 10px rgba(108, 99, 255, 0.15)',
+                overflow: 'hidden',
+                flexShrink: 0,
                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              <HeadphonesIcon
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
                 className="brand-logo-icon"
                 sx={{
-                  color: isDark ? '#8c85ff' : '#6c63ff',
-                  fontSize: 22,
+                  width: 28,
+                  height: 28,
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 2px 6px rgba(0, 188, 212, 0.45))',
                   opacity: 1,
                   transition: 'opacity 0.16s ease',
                 }}

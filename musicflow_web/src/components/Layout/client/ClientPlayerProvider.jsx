@@ -109,6 +109,37 @@ export function ClientPlayerProvider({ children }) {
 
   const toggleAutoplay = useCallback(() => setAutoplay((prev) => !prev), []);
 
+  // Đồng bộ tiêu đề tab trình duyệt (document.title) và Web Media Session khi phát bài hát
+  useEffect(() => {
+    if (currentSong?.title) {
+      const artist = currentSong.artistText || 'MusicFlow';
+      document.title = `${currentSong.title} - ${artist} | MusicFlow`;
+
+      if ('mediaSession' in navigator && window.MediaMetadata) {
+        try {
+          navigator.mediaSession.metadata = new window.MediaMetadata({
+            title: currentSong.title,
+            artist: artist,
+            album: 'MusicFlow',
+            artwork: currentSong.imageUrl
+              ? [
+                  { src: currentSong.imageUrl, sizes: '96x96', type: 'image/jpeg' },
+                  { src: currentSong.imageUrl, sizes: '128x128', type: 'image/jpeg' },
+                  { src: currentSong.imageUrl, sizes: '256x256', type: 'image/jpeg' },
+                  { src: currentSong.imageUrl, sizes: '512x512', type: 'image/jpeg' },
+                ]
+              : [],
+          });
+          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+        } catch {
+          // Bỏ qua nếu không hỗ trợ
+        }
+      }
+    } else {
+      document.title = 'MusicFlow – Nghe nhạc trực tuyến';
+    }
+  }, [currentSong, isPlaying]);
+
   const [audioQuality, setAudioQualityState] = useState(
     () => localStorage.getItem('musicflow_audio_quality') || 'std'
   );

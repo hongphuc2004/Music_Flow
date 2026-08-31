@@ -156,15 +156,26 @@ export default function AssistantHost() {
     }
   };
 
+  const getActorRole = () => {
+    if (location.pathname.startsWith('/artist')) return 'artist';
+    if (location.pathname.startsWith('/client') || location.pathname.startsWith('/ai-mood')) return 'user';
+    if (location.pathname.startsWith('/admin')) return 'admin';
+    if (location.pathname === '/') {
+      return userRole === 'admin' ? 'admin' : 'user';
+    }
+    return userRole || 'user';
+  };
+
   const getQuickPrompts = () => {
-    if (userRole === 'artist') {
+    const actor = getActorRole();
+    if (actor === 'artist') {
       return [
         { label: '📊 Thống kê lượt nghe', text: 'Thống kê lượt nghe của tôi' },
         { label: '🎵 Nhạc đã đăng', text: 'Danh sách nhạc tôi đã upload' },
         { label: '📤 Tải bài hát mới', text: 'Mở trang upload nhạc' },
       ];
     }
-    if (userRole === 'admin') {
+    if (actor === 'admin') {
       return [
         { label: '📈 Stats hệ thống', text: 'Hệ thống có bao nhiêu bài hát' },
         { label: '👥 Quản lý tài khoản', text: 'Tìm tài khoản email admin@musicflow.com' },
@@ -173,7 +184,8 @@ export default function AssistantHost() {
     }
     return [
       { label: '🌧️ Nhạc buồn lofi', text: 'Gợi ý playlist nhạc buồn lofi tâm trạng' },
-      { label: '☕ Nhạc chill', text: 'Bật cho mình một bài hát chill nhẹ nhàng' },
+      { label: '☕ Nhạc chill thư giãn', text: 'Bật cho mình một bài hát chill nhẹ nhàng' },
+      { label: '🔥 Nhạc thịnh hành', text: 'Gợi ý cho mình các bài hát đang thịnh hành' },
       { label: '❤️ Bài hát yêu thích', text: 'Mở trang danh sách bài hát yêu thích' },
     ];
   };

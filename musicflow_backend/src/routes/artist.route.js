@@ -3,6 +3,8 @@ const router = express.Router();
 const multer = require("multer");
 const fs = require("fs");
 const artistController = require("../controllers/artist.controller");
+const artistAnalyticsController = require("../controllers/artist-analytics.controller");
+const lyricsController = require("../controllers/lyrics.controller");
 const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
 const SongPlayEvent = require("../models/song-play-event.model");
@@ -377,5 +379,21 @@ router.post("/follow-statuses", authMiddleware, async (req, res) => {
     });
   }
 });
+
+// =================================================
+// 📊 ARTIST DASHBOARD & ANALYTICS MODULE (AUTH REQUIRED)
+// =================================================
+router.get("/analytics/summary", authMiddleware, artistAnalyticsController.getSummary);
+router.get("/analytics/timeseries", authMiddleware, artistAnalyticsController.getTimeseries);
+router.get("/analytics/top-songs", authMiddleware, artistAnalyticsController.getTopSongs);
+router.get("/analytics/discovery-sources", authMiddleware, artistAnalyticsController.getDiscoverySources);
+
+// =================================================
+// 📝 LYRICS & LRC MANAGEMENT MODULE (AUTH REQUIRED)
+// =================================================
+router.get("/songs/:id/lyrics", authMiddleware, lyricsController.getSongLyrics);
+router.put("/songs/:id/lyrics/draft", authMiddleware, lyricsController.saveDraftLyrics);
+router.post("/songs/:id/lyrics/publish", authMiddleware, lyricsController.publishLyrics);
+router.post("/songs/:id/lyrics/unpublish", authMiddleware, lyricsController.unpublishLyrics);
 
 module.exports = router;

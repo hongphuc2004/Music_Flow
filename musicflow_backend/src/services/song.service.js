@@ -759,25 +759,11 @@ const deleteSong = async (songId, userId) => {
 
 /**
  * @param {string} songId
- * @returns {Promise<{ songId, title, artists, lyrics }>}
+ * @returns {Promise<{ songId, title, artists, lyrics, isSynced, syncedLines, status }>}
  */
 const getLyrics = async (songId) => {
-  const song = await Song.findById(songId)
-    .select("_id title artists lyrics")
-    .populate("artists", "name");
-
-  if (!song) {
-    const err = new Error("Không tìm thấy bài hát");
-    err.status = 404;
-    throw err;
-  }
-
-  return {
-    songId: song._id,
-    title: song.title,
-    artists: song.artists,
-    lyrics: song.lyrics || "",
-  };
+  const lyricsService = require("./lyrics.service");
+  return await lyricsService.getPublishedLyricsForClient(songId);
 };
 
 // ---------------------------------------------------------------------------

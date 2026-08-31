@@ -26,8 +26,20 @@ export function useLyrics(audioRef, currentTime) {
     }
     try {
       const response = await clientSongsApi.getLyrics(songId);
-      const parsed = parseLyrics(response.data?.lyrics || '');
-      setLyricsData(parsed);
+      const resData = response.data || {};
+      if (resData.isSynced && Array.isArray(resData.syncedLines) && resData.syncedLines.length > 0) {
+        setLyricsData({
+          isSynced: true,
+          lines: resData.syncedLines.map((line) => ({
+            time: Number(line.startTime ?? line.time) || 0,
+            text: line.text || '',
+          })),
+          plainText: resData.lyrics || '',
+        });
+      } else {
+        const parsed = parseLyrics(resData.lyrics || '');
+        setLyricsData(parsed);
+      }
     } catch {
       setLyricsData({ isSynced: false, lines: [], plainText: '' });
     }

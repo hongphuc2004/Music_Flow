@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/theme/app_theme.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/login/login_screen.dart';
 import 'package:musicflow_app/presentation/widgets/music_flow_backdrop.dart';
@@ -28,22 +29,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final confirmPassword = confirmPasswordController.text;
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      _showSnackBar('Vui lòng nhập đầy đủ thông tin');
+      AppToast.showError(context, 'Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
     if (password.length < 6) {
-      _showSnackBar('Mật khẩu phải có ít nhất 6 ký tự');
+      AppToast.showError(context, 'Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
     if (password != confirmPassword) {
-      _showSnackBar('Mật khẩu xác nhận không khớp');
+      AppToast.showError(context, 'Mật khẩu xác nhận không khớp');
       return;
     }
 
     if (!_isValidEmail(email)) {
-      _showSnackBar('Email không hợp lệ');
+      AppToast.showError(context, 'Email không hợp lệ');
       return;
     }
 
@@ -56,8 +57,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (result.success) {
-      _showSnackBar('Đăng ký thành công! Vui lòng đăng nhập.', isError: false);
       if (mounted) {
+        AppToast.showSuccess(context, 'Đăng ký thành công! Vui lòng đăng nhập.');
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
@@ -71,29 +72,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } else {
-      _showSnackBar(result.message ?? 'Đăng ký thất bại');
+      if (mounted) {
+        AppToast.showError(context, result.message ?? 'Đăng ký thất bại');
+      }
     }
   }
 
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-
-  void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        backgroundColor: isError ? AppColors.accentPink : AppColors.secondary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.small),
-        ),
-        margin: const EdgeInsets.all(AppSpacing.md),
-      ),
-    );
   }
 
   @override

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/main.dart';
 import 'package:musicflow_app/core/theme/app_theme.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/login/register_screen.dart';
 import 'package:musicflow_app/presentation/widgets/music_flow_backdrop.dart';
@@ -25,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      _showSnackBar('Vui lòng nhập email và mật khẩu');
+      AppToast.showError(context, 'Vui lòng nhập đầy đủ email và mật khẩu');
       return;
     }
 
@@ -34,8 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.success) {
-      _showSnackBar('Đăng nhập thành công!', isError: false);
       if (mounted) {
+        AppToast.showSuccess(context, 'Chào mừng bạn quay trở lại!');
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
@@ -49,7 +50,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } else {
-      _showSnackBar(result.message ?? 'Đăng nhập thất bại');
+      if (mounted) {
+        AppToast.showError(context, result.message ?? 'Đăng nhập thất bại');
+      }
     }
   }
 
@@ -59,8 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isGoogleLoading = false);
 
     if (result.success) {
-      _showSnackBar('Đăng nhập Google thành công!', isError: false);
       if (mounted) {
+        AppToast.showSuccess(context, 'Đăng nhập Google thành công!');
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
@@ -74,25 +77,10 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } else {
-      _showSnackBar(result.message ?? 'Đăng nhập Google thất bại');
+      if (mounted) {
+        AppToast.showError(context, result.message ?? 'Đăng nhập Google thất bại');
+      }
     }
-  }
-
-  void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        backgroundColor: isError ? AppColors.accentPink : AppColors.secondary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.small),
-        ),
-        margin: const EdgeInsets.all(AppSpacing.md),
-      ),
-    );
   }
 
   @override
@@ -177,9 +165,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           Text(
                             'Đăng nhập',
+                            textAlign: TextAlign.center,
                             style: theme.textTheme.titleLarge?.copyWith(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
                             ),
                           ),
                           const SizedBox(height: AppSpacing.lg),
@@ -286,43 +276,64 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: AppSpacing.md),
 
-                          // Google Sign In
-                          OutlinedButton.icon(
-                            onPressed: _isGoogleLoading ? null : _loginWithGoogle,
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 48),
-                              side: BorderSide(
-                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.smallBorder,
-                              ),
-                              backgroundColor: isDark
-                                  ? Colors.white.withOpacity(0.02)
-                                  : Colors.black.withOpacity(0.01),
+                          // Google Sign In (High-contrast, Official Google theme)
+                          Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: AppRadius.smallBorder,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
-                            icon: _isGoogleLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : Image.network(
-                                    'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                                    height: 20,
-                                    width: 20,
-                                    errorBuilder: (_, __, ___) => Icon(
-                                      Icons.g_mobiledata_rounded,
-                                      size: 20,
-                                      color: isDark ? Colors.white : Colors.black,
-                                    ),
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: AppRadius.smallBorder,
+                              child: InkWell(
+                                onTap: _isGoogleLoading ? null : _loginWithGoogle,
+                                borderRadius: AppRadius.smallBorder,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (_isGoogleLoading)
+                                        const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4285F4)),
+                                          ),
+                                        )
+                                      else
+                                        Image.asset(
+                                          'assets/images/google_logo.png',
+                                          height: 22,
+                                          width: 22,
+                                          errorBuilder: (_, __, ___) => const Icon(
+                                            Icons.g_mobiledata_rounded,
+                                            size: 24,
+                                            color: Color(0xFF4285F4),
+                                          ),
+                                        ),
+                                      const SizedBox(width: 10),
+                                      const Text(
+                                        'Đăng nhập với Google',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1F2937),
+                                          letterSpacing: 0.1,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                            label: Text(
-                              'Đăng nhập với Google',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                                ),
                               ),
                             ),
                           ),

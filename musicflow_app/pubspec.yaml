@@ -50,6 +50,7 @@ dependencies:
   audio_session: ^0.2.2
   speech_to_text: ^7.0.0
   lottie: ^3.1.0
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -68,7 +69,8 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:
-    - assets/images/logo.png
+    - assets/images/
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -106,8 +108,14 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/images/logo.png
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "assets/images/app_icon_background.png"
+  adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+
 

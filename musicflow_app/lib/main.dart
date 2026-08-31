@@ -7,19 +7,22 @@ import 'package:musicflow_app/presentation/screens/splash/splash_screen.dart';
 import 'package:musicflow_app/presentation/screens/home/home_screen.dart';
 import 'package:musicflow_app/presentation/screens/chart/flowchart_screen.dart';
 import 'package:musicflow_app/presentation/screens/search/search_screen.dart';
-import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
+import 'package:musicflow_app/presentation/screens/ai_assistant/ai_assistant_screen.dart';
 import 'package:musicflow_app/presentation/screens/library/library_screen.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/core/theme/theme_service.dart';
 
 import 'package:musicflow_app/core/theme/app_theme.dart';
+import 'package:musicflow_app/core/services/app_settings_service.dart';
 import 'package:musicflow_app/presentation/widgets/music_flow_floating_nav_bar.dart';
 import 'package:musicflow_app/presentation/widgets/music_flow_backdrop.dart';
+import 'package:musicflow_app/presentation/widgets/ai_floating_assistant_orb.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeService().init();
+  await AppSettingsService().init();
   runApp(const MusicFlowApp());
   unawaited(_bootstrapAudioServices());
 }
@@ -90,7 +93,7 @@ class MainScreenState extends State<MainScreen> {
       case 2:
         return SearchScreen(onSongTap: playSong);
       case 3:
-        return AiDjScreen(onSongTap: playSong, onPlayAll: playPlaylist);
+        return AiAssistantScreen(onSongTap: playSong, onPlayAll: playPlaylist);
       case 4:
         return LibraryScreen(
           key: _libraryKey,
@@ -133,91 +136,109 @@ class MainScreenState extends State<MainScreen> {
     );
 
     return MusicFlowBackdrop(
-      child: Scaffold(
-        backgroundColor: Colors.transparent, // Let backdrop glow show through
-        body: IndexedStack(index: _currentIndex, children: tabs),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Mini Player
-              AnimatedBuilder(
-                animation: _audioState,
-                builder: (context, child) {
-                  if (_audioState.currentSong == null) {
-                    return const SizedBox.shrink();
-                  }
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: Colors.transparent, // Let backdrop glow show through
+            body: IndexedStack(index: _currentIndex, children: tabs),
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Mini Player
+                  AnimatedBuilder(
+                    animation: _audioState,
+                    builder: (context, child) {
+                      if (_audioState.currentSong == null) {
+                        return const SizedBox.shrink();
+                      }
 
-                  return MiniPlayer(
-                    isPlaying: _audioState.isPlaying,
-                    songTitle: _audioState.currentSong!.title,
-                    artist: _audioState.currentSong!.artists.join(', '),
-                    song: _audioState.currentSong,
-                    progress: _audioState.progress,
-                    playlist: _audioState.playlist,
-                    currentIndex: _audioState.currentIndex,
-                    onPlayPause: _audioState.togglePlayPause,
-                    onNext: _audioState.playNext,
-                    onPrevious: _audioState.playPrevious,
-                    onPlaylistItemTap: _audioState.playAtIndex,
-                    onClose: _audioState.stop,
-                  );
-                },
-              ),
-              // Custom Floating Navigation Bar
-              MusicFlowFloatingNavBar(
-                currentIndex: _currentIndex,
-                onTap: (index) {
-                  if (_tabCache[index] == null) {
-                    setState(() {
-                      _tabCache[index] = _buildTab(index);
-                    });
-                  }
+                      return MiniPlayer(
+                        isPlaying: _audioState.isPlaying,
+                        songTitle: _audioState.currentSong!.title,
+                        artist: _audioState.currentSong!.artists.join(', '),
+                        song: _audioState.currentSong,
+                        progress: _audioState.progress,
+                        playlist: _audioState.playlist,
+                        currentIndex: _audioState.currentIndex,
+                        onPlayPause: _audioState.togglePlayPause,
+                        onNext: _audioState.playNext,
+                        onPrevious: _audioState.playPrevious,
+                        onPlaylistItemTap: _audioState.playAtIndex,
+                        onClose: _audioState.stop,
+                      );
+                    },
+                  ),
+                  // Custom Floating Navigation Bar
+                  MusicFlowFloatingNavBar(
+                    currentIndex: _currentIndex,
+                    onTap: (index) {
+                      if (_tabCache[index] == null) {
+                        setState(() {
+                          _tabCache[index] = _buildTab(index);
+                        });
+                      }
 
-                  setState(() {
-                    _currentIndex = index;
-                    if (index == 1) {
-                      _flowchartRefreshTrigger++;
-                      _tabCache[1] = _buildTab(1);
-                    }
-                  });
-                  // Refresh Library khi chuyển sang tab Library
-                  if (index == 4) {
-                    _libraryKey.currentState?.refreshFavorites();
-                  }
-                },
-                items: const [
-                  FloatingNavBarItem(
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
-                    label: 'Home',
-                  ),
-                  FloatingNavBarItem(
-                    icon: Icons.trending_up_rounded,
-                    activeIcon: Icons.trending_up_rounded,
-                    label: 'Trending',
-                  ),
-                  FloatingNavBarItem(
-                    icon: Icons.search_rounded,
-                    activeIcon: Icons.search_rounded,
-                    label: 'Search',
-                  ),
-                  FloatingNavBarItem(
-                    icon: Icons.auto_awesome_outlined,
-                    activeIcon: Icons.auto_awesome_rounded,
-                    label: 'AI DJ',
-                  ),
-                  FloatingNavBarItem(
-                    icon: Icons.library_music_outlined,
-                    activeIcon: Icons.library_music_rounded,
-                    label: 'Library',
+                      setState(() {
+                        _currentIndex = index;
+                        if (index == 1) {
+                          _flowchartRefreshTrigger++;
+                          _tabCache[1] = _buildTab(1);
+                        }
+                      });
+                      // Refresh Library khi chuyển sang tab Library
+                      if (index == 4) {
+                        _libraryKey.currentState?.refreshFavorites();
+                      }
+                    },
+                    items: const [
+                      FloatingNavBarItem(
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Home',
+                      ),
+                      FloatingNavBarItem(
+                        icon: Icons.trending_up_rounded,
+                        activeIcon: Icons.trending_up_rounded,
+                        label: 'Trending',
+                      ),
+                      FloatingNavBarItem(
+                        icon: Icons.search_rounded,
+                        activeIcon: Icons.search_rounded,
+                        label: 'Search',
+                      ),
+                      FloatingNavBarItem(
+                        icon: Icons.auto_awesome_outlined,
+                        activeIcon: Icons.auto_awesome_rounded,
+                        label: 'AI Assistant',
+                      ),
+                      FloatingNavBarItem(
+                        icon: Icons.library_music_outlined,
+                        activeIcon: Icons.library_music_rounded,
+                        label: 'Library',
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+
+          // Floating AI Assistant Orb (Always on top of entire screen, like oil on water)
+          AnimatedBuilder(
+            animation: AppSettingsService(),
+            builder: (context, _) {
+              if (!AppSettingsService().isFloatingAiEnabled || _currentIndex == 3) {
+                return const SizedBox.shrink();
+              }
+              return AiFloatingAssistantOrb(
+                onSongTap: playSong,
+                onPlayAll: playPlaylist,
+              );
+            },
+          ),
+        ],
       ),
     );
   }

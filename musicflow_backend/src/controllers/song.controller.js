@@ -198,7 +198,12 @@ exports.streamSong = async (req, res) => {
     const { id } = req.params;
     const { ticket } = req.query;
 
-    const streamUrl = await songService.resolveStreamUrlByTicket(id, ticket);
+    let streamUrl;
+    if (ticket) {
+      streamUrl = await songService.resolveStreamUrlByTicket(id, ticket);
+    } else {
+      streamUrl = await songService.resolveSongStreamUrl(id);
+    }
     return res.redirect(302, streamUrl);
   } catch (error) {
     const status = error.status || 500;

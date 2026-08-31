@@ -124,6 +124,48 @@ class SongApiService {
 
 
 
+  /// Lấy danh sách bài hát tương tự / liên quan theo topic hoặc nghệ sĩ (Autoplay & Song Radio)
+  static Future<List<Song>> fetchSimilarSongs(String songId, {int limit = 10}) async {
+    if (songId.isEmpty) return [];
+    try {
+      final uri = Uri.parse("$baseUrl/$songId/similar?limit=$limit");
+      final response = await ApiClient.get(uri);
+
+      if (response.statusCode == 200) {
+        final dynamic data = json.decode(response.body);
+        if (data is List) {
+          return data.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+        } else if (data is Map && data['songs'] is List) {
+          return (data['songs'] as List).map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Lấy danh sách bài hát theo tên nghệ sĩ
+  static Future<List<Song>> fetchSongsByArtistName(String artistName, {int limit = 10}) async {
+    if (artistName.isEmpty) return [];
+    try {
+      final uri = Uri.parse("$baseUrl/by-artist").replace(
+        queryParameters: {'name': artistName, 'limit': limit.toString()},
+      );
+      final response = await ApiClient.get(uri);
+
+      if (response.statusCode == 200) {
+        final dynamic data = json.decode(response.body);
+        if (data is List) {
+          return data.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Lấy danh sách bài hát gợi ý (random)
   static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
     final uri = Uri.parse("$baseUrl/recommended?limit=$limit");

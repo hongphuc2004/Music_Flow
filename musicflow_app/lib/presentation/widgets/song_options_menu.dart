@@ -8,6 +8,8 @@ import 'package:musicflow_app/data/services/favorite_service.dart';
 import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/widgets/song_share_sheet.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
+
 
 
 /// Widget hiển thị menu tùy chọn cho bài hát (3 chấm dọc)
@@ -117,22 +119,14 @@ class _SongOptionsSheetState extends State<SongOptionsSheet> {
       widget.onFavoriteChanged?.call();
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message ?? ''),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        AppToast.showSuccess(
+          context,
+          result.message ?? (_isFavorite ? 'Đã thêm vào yêu thích' : 'Đã xóa khỏi yêu thích'),
         );
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message ?? 'Lỗi'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context, result.message ?? 'Đã xảy ra lỗi');
       }
     }
   }
@@ -304,15 +298,11 @@ class _SongOptionsSheetState extends State<SongOptionsSheet> {
     if (!mounted) return;
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          hadActiveQueue
-              ? 'Đã thêm vào danh sách chờ'
-              : 'Chưa có bài đang phát, đã bắt đầu phát bài hát',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
+    AppToast.showInfo(
+      context,
+      hadActiveQueue
+          ? 'Đã thêm vào danh sách phát tiếp theo'
+          : 'Đã bắt đầu phát bài hát',
     );
   }
 
@@ -339,19 +329,17 @@ class _SongOptionsSheetState extends State<SongOptionsSheet> {
     );
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.success
-                ? 'Đã xóa "${widget.song.title}" khỏi playlist'
-                : result.message ?? 'Xóa thất bại',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
       if (result.success) {
+        AppToast.showSuccess(
+          context,
+          'Đã xóa "${widget.song.title}" khỏi playlist',
+        );
         widget.onRemovedFromPlaylist?.call();
+      } else {
+        AppToast.showError(
+          context,
+          result.message ?? 'Xóa thất bại',
+        );
       }
     }
   }
@@ -367,11 +355,9 @@ class _SongOptionsSheetState extends State<SongOptionsSheet> {
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
       if (rootContext.mounted) {
-        ScaffoldMessenger.of(rootContext).showSnackBar(
-          const SnackBar(
-            content: Text('Vui lòng đăng nhập để sử dụng tính năng này'),
-            duration: Duration(seconds: 2),
-          ),
+        AppToast.showInfo(
+          rootContext,
+          'Vui lòng đăng nhập để sử dụng tính năng này',
         );
       }
       return;
@@ -661,16 +647,17 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
 
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.success
-                ? 'Đã thêm vào "${playlist.name}"'
-                : result.message ?? 'Thêm thất bại',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (result.success) {
+        AppToast.showSuccess(
+          context,
+          'Đã thêm vào playlist "${playlist.name}"',
+        );
+      } else {
+        AppToast.showError(
+          context,
+          result.message ?? 'Thêm vào playlist thất bại',
+        );
+      }
     }
   }
 
@@ -724,22 +711,16 @@ class _PlaylistSelectionSheetState extends State<_PlaylistSelectionSheet> {
 
                 if (mounted) {
                   Navigator.pop(context); // Close playlist selection sheet
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Đã tạo và thêm vào "${nameController.text.trim()}"',
-                      ),
-                      duration: const Duration(seconds: 2),
-                    ),
+                  AppToast.showSuccess(
+                    context,
+                    'Đã tạo và thêm vào playlist "${nameController.text.trim()}"',
                   );
                 }
               } else {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result.message ?? 'Tạo playlist thất bại'),
-                      duration: const Duration(seconds: 2),
-                    ),
+                  AppToast.showError(
+                    context,
+                    result.message ?? 'Tạo playlist thất bại',
                   );
                 }
               }

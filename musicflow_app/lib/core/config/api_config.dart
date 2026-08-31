@@ -46,6 +46,8 @@ class ApiConfig {
       "$aiMoodConversationEndpoint/$conversationId";
   static const String usersMeEndpoint = "$baseUrl/api/users/me";
   static const String usersUpdateEndpoint = "$baseUrl/api/users/update";
+  static const String plansEndpoint = "$baseUrl/api/plans";
+  static const String subscriptionsEndpoint = "$baseUrl/api/subscriptions";
   static String songStreamUrl(String songId) => "$songsEndpoint/$songId/stream";
 
   static String artistProfileUrlByName(String artistName) =>

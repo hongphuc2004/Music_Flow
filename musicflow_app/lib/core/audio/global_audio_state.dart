@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'dart:math';
 import 'package:musicflow_app/core/config/api_config.dart';
@@ -6,6 +6,7 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
+import 'package:musicflow_app/data/services/song_api_service.dart';
 
 enum PlaybackRepeatMode { off, all, one }
 
@@ -31,6 +32,8 @@ class GlobalAudioState extends ChangeNotifier {
   Duration _lastNotifiedPosition = Duration.zero;
   DateTime _lastProgressNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isShuffleEnabled = false;
+  bool _isAutoplayEnabled = true;
+  bool _isFetchingAutoplay = false;
   PlaybackRepeatMode _repeatMode = PlaybackRepeatMode.off;
   final Random _random = Random();
 
@@ -45,6 +48,7 @@ class GlobalAudioState extends ChangeNotifier {
   Duration get totalDuration => _totalDuration;
   bool get hasActiveQueue => _currentSong != null && _playlist.isNotEmpty;
   bool get isShuffleEnabled => _isShuffleEnabled;
+  bool get isAutoplayEnabled => _isAutoplayEnabled;
   PlaybackRepeatMode get repeatMode => _repeatMode;
 
   void initialize() {
@@ -137,7 +141,9 @@ class GlobalAudioState extends ChangeNotifier {
     );
     final playbackUrl = localPath != null
         ? Uri.file(localPath).toString()
-        : ApiConfig.songStreamUrl(_currentSong!.id);
+        : (_currentSong!.audioUrl.isNotEmpty
+            ? _currentSong!.audioUrl
+            : ApiConfig.songStreamUrl(_currentSong!.id));
 
     _audioService.play(
       url: playbackUrl,
@@ -148,7 +154,7 @@ class GlobalAudioState extends ChangeNotifier {
     );
   }
 
-  void playNext({bool fromCompletion = false}) {
+  Future<void> playNext({bool fromCompletion = false}) async {
     if (_playlist.isEmpty || _isChangingSong) return;
 
     if (fromCompletion && _repeatMode == PlaybackRepeatMode.one) {
@@ -158,19 +164,82 @@ class GlobalAudioState extends ChangeNotifier {
     }
 
     final nextIndex = _resolveNextIndex();
-    if (nextIndex == null) {
+    if (nextIndex != null) {
+      _isChangingSong = true;
+      _currentIndex = nextIndex;
+      _currentSong = _playlist[_currentIndex];
+      notifyListeners();
+      _playCurrentSong();
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isChangingSong = false;
+      });
       return;
     }
 
-    _isChangingSong = true;
-    _currentIndex = nextIndex;
-    _currentSong = _playlist[_currentIndex];
-    notifyListeners();
-    _playCurrentSong();
+    // Khi đã đến cuối danh sách phát và đang bật tính năng Autoplay
+    if (_isAutoplayEnabled && _currentSong != null && !_isFetchingAutoplay) {
+      await _handleAutoplayNext();
+    }
+  }
 
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _isChangingSong = false;
-    });
+  Future<void> _handleAutoplayNext() async {
+    if (_currentSong == null || _isFetchingAutoplay) return;
+    _isFetchingAutoplay = true;
+
+    try {
+      final currentSongRef = _currentSong!;
+      final currentId = currentSongRef.id;
+      final existingIds = _playlist.map((s) => s.id).toSet();
+
+      // 1. Lấy danh sách bài hát tương tự / liên quan từ backend (theo topic, nghệ sĩ, recommendation)
+      List<Song> candidates = await SongApiService.fetchSimilarSongs(currentId, limit: 10);
+      candidates = candidates.where((s) => !existingIds.contains(s.id)).toList();
+
+      // 2. Nếu chưa có, thử tìm theo nghệ sĩ chính
+      if (candidates.isEmpty && currentSongRef.artists.isNotEmpty) {
+        final artistSongs = await SongApiService.fetchSongsByArtistName(
+          currentSongRef.artists.first,
+          limit: 10,
+        );
+        candidates = artistSongs.where((s) => !existingIds.contains(s.id)).toList();
+      }
+
+      // 3. Fallback: Lấy danh sách bài hát đề xuất ngẫu nhiên
+      if (candidates.isEmpty) {
+        final recommended = await SongApiService.fetchRecommendedSongs(limit: 10);
+        candidates = recommended.where((s) => !existingIds.contains(s.id)).toList();
+      }
+
+      if (candidates.isNotEmpty) {
+        _playlist.addAll(candidates);
+        _currentIndex = _currentIndex + 1;
+        if (_currentIndex < _playlist.length) {
+          _isChangingSong = true;
+          _currentSong = _playlist[_currentIndex];
+          notifyListeners();
+          _playCurrentSong();
+
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isChangingSong = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[GlobalAudioState] Autoplay error: $e');
+    } finally {
+      _isFetchingAutoplay = false;
+    }
+  }
+
+  void toggleAutoplay() {
+    _isAutoplayEnabled = !_isAutoplayEnabled;
+    notifyListeners();
+  }
+
+  void setAutoplayEnabled(bool value) {
+    _isAutoplayEnabled = value;
+    notifyListeners();
   }
 
   void playPrevious() {

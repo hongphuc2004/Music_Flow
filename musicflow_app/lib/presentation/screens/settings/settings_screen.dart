@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../widgets/music_flow_backdrop.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/play_history_service.dart';
 import '../login/login_screen.dart';
 import '../../../core/theme/theme_service.dart';
 import 'edit_profile_screen.dart';
+import '../premium/premium_screen.dart';
+import '../../../core/services/app_settings_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -117,9 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       widget.onLogout?.call();
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã đăng xuất')));
+      AppToast.showInfo(context, 'Đã đăng xuất');
     }
   }
 
@@ -151,9 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm == true) {
       await PlayHistoryService.clearHistory();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã xóa lịch sử phát')));
+      AppToast.showSuccess(context, 'Đã xóa lịch sử phát');
     }
   }
 
@@ -235,10 +234,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                 children: [
                   _buildSectionHeader('Tài khoản'),
-                  if (_isLoggedIn && _currentUser != null)
-                    _buildAccountCard()
-                  else
+                  if (_isLoggedIn && _currentUser != null) ...[
+                    _buildAccountCard(),
+                    const SizedBox(height: 12),
+                    _buildPremiumBannerCard(),
+                  ] else ...[
                     _buildLoginPrompt(),
+                    const SizedBox(height: 12),
+                    _buildPremiumBannerCard(),
+                  ],
                   const SizedBox(height: AppSpacing.md),
 
                   _buildSectionHeader('Phát nhạc'),
@@ -267,6 +271,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: 'Tự động phát bài hát tiếp theo',
                         value: _autoPlay,
                         onChanged: (value) => setState(() => _autoPlay = value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  _buildSectionHeader('Trợ lý AI'),
+                  _buildGroupContainer(
+                    children: [
+                      AnimatedBuilder(
+                        animation: AppSettingsService(),
+                        builder: (context, _) {
+                          return _buildSwitchTile(
+                            icon: Icons.auto_awesome_rounded,
+                            title: 'Nút Trợ lý AI nổi',
+                            subtitle: 'Hiển thị nút trợ lý AI nổi trên các màn hình',
+                            value: AppSettingsService().isFloatingAiEnabled,
+                            onChanged: (val) {
+                              AppSettingsService().setFloatingAiEnabled(val);
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -416,45 +441,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildAccountCard() {
     final hasAvatar = _currentUser?.avatar.trim().isNotEmpty == true;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPremium = _currentUser?.hasActivePremium == true;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceGlass : AppColors.lightSurfaceGlass,
         borderRadius: AppRadius.mediumBorder,
-        border: Border.all(color: isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass),
+        border: Border.all(
+          color: isPremium
+              ? const Color(0xFFF59E0B).withOpacity(0.4)
+              : (isDark ? AppColors.darkBorderGlass : AppColors.lightBorderGlass),
+        ),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.primary,
-            backgroundImage: hasAvatar
-                ? NetworkImage(_currentUser!.avatar)
-                : null,
-            child: !hasAvatar
-                ? Text(
-                    _currentUser?.name.substring(0, 1).toUpperCase() ?? 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.primary,
+                backgroundImage: hasAvatar
+                    ? NetworkImage(_currentUser!.avatar)
+                    : null,
+                child: !hasAvatar
+                    ? Text(
+                        _currentUser?.name.substring(0, 1).toUpperCase() ?? 'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              ),
+              if (isPremium)
+                Positioned(
+                  right: -4,
+                  bottom: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF59E0B),
+                      shape: BoxShape.circle,
                     ),
-                  )
-                : null,
+                    child: const Icon(
+                      Icons.workspace_premium_rounded,
+                      size: 14,
+                      color: Color(0xFF090D1A),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _currentUser?.name ?? 'Người dùng',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _currentUser?.name ?? 'Người dùng',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isPremium) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF59E0B), Color(0xFFFFD700)],
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _currentUser!.planBadge,
+                          style: const TextStyle(
+                            color: Color(0xFF090D1A),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -472,6 +552,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: _openEditProfile,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumBannerCard() {
+    final isPremium = _currentUser?.hasActivePremium == true;
+
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PremiumScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isPremium
+                ? [
+                    const Color(0xFF2E1C0A),
+                    const Color(0xFF1E1308),
+                  ]
+                : [
+                    const Color(0xFF251849),
+                    const Color(0xFF160E30),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isPremium
+                ? const Color(0xFFF59E0B).withOpacity(0.5)
+                : const Color(0xFF6C63FF).withOpacity(0.4),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isPremium
+                  ? const Color(0xFFF59E0B).withOpacity(0.12)
+                  : const Color(0xFF6C63FF).withOpacity(0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: isPremium
+                    ? const LinearGradient(
+                        colors: [Color(0xFFF59E0B), Color(0xFFFFD700)],
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFF6C63FF), Color(0xFF00E5FF)],
+                      ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.workspace_premium_rounded,
+                color: isPremium ? const Color(0xFF090D1A) : Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        isPremium ? 'Gói MusicFlow Premium' : 'Nâng cấp MusicFlow Premium',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isPremium
+                        ? 'Đang hoạt động · Quản lý hoặc đổi gói cước'
+                        : 'Mở khóa âm thanh 320k, AI DJ 24/7 & Tải 1GB',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white54,
+              size: 14,
+            ),
+          ],
+        ),
       ),
     );
   }

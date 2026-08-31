@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/core/config/api_config.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
 
 
 class SongShareSheet extends StatefulWidget {
@@ -32,18 +33,14 @@ class _SongShareSheetState extends State<SongShareSheet> {
         artistName: widget.song.artists.isNotEmpty ? widget.song.artists.first : null,
       );
 
-
-
   Future<void> _copyToClipboard() async {
     await Clipboard.setData(ClipboardData(text: _shareUrl));
     if (!mounted) return;
     setState(() => _copied = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã sao chép liên kết bài hát vào bộ nhớ tạm!'),
-        duration: Duration(seconds: 2),
-      ),
+    AppToast.showSuccess(
+      context,
+      'Đã sao chép liên kết bài hát vào bộ nhớ tạm!',
     );
 
     Future.delayed(const Duration(seconds: 2), () {

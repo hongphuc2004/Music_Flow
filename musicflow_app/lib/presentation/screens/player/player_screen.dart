@@ -626,12 +626,60 @@ class _PlayerScreenState extends State<PlayerScreen>
                   color: AppColors.secondary,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Danh sách phát (${_activePlaylist.length} bài)',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Danh sách phát (${_activePlaylist.length} bài)',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Autoplay indicator / switch
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _globalAudioState.toggleAutoplay();
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _globalAudioState.isAutoplayEnabled
+                          ? AppColors.primary.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _globalAudioState.isAutoplayEnabled
+                            ? AppColors.primary.withOpacity(0.5)
+                            : Colors.white.withOpacity(0.12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.all_inclusive_rounded,
+                          size: 14,
+                          color: _globalAudioState.isAutoplayEnabled
+                              ? AppColors.secondary
+                              : Colors.white54,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _globalAudioState.isAutoplayEnabled ? 'Tự phát: Bật' : 'Tự phát: Tắt',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _globalAudioState.isAutoplayEnabled
+                                ? AppColors.secondary
+                                : Colors.white54,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

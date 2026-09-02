@@ -12,6 +12,7 @@ import 'package:musicflow_app/presentation/screens/library/library_screen.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/core/theme/theme_service.dart';
+import 'package:musicflow_app/core/config/api_config.dart';
 
 import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/core/services/app_settings_service.dart';
@@ -21,6 +22,7 @@ import 'package:musicflow_app/presentation/widgets/ai_floating_assistant_orb.dar
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ApiConfig.init();
   await ThemeService().init();
   await AppSettingsService().init();
   runApp(const MusicFlowApp());

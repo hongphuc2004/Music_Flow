@@ -128,7 +128,7 @@ class AssistantSendResult {
 }
 
 class AssistantApiService {
-  static const String baseUrl = ApiConfig.assistantEndpoint;
+  static String get baseUrl => ApiConfig.assistantEndpoint;
 
   /// Gửi tin nhắn đến AI Assistant
   static Future<AssistantSendResult> sendMessage({
@@ -139,12 +139,12 @@ class AssistantApiService {
     try {
       final response = await ApiClient.post(
         Uri.parse('$baseUrl/messages'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
+        requireAuth: true,
+        body: {
           'prompt': prompt,
           if (conversationId != null && conversationId.isNotEmpty) 'conversationId': conversationId,
           'scope': scope,
-        }),
+        },
       );
 
       final data = json.decode(response.body);
@@ -212,7 +212,7 @@ class AssistantApiService {
   /// Lấy thông tin hạn mức Quota còn lại trong ngày
   static Future<AssistantQuota?> getQuota() async {
     try {
-      final response = await ApiClient.get(Uri.parse('$baseUrl/quota'));
+      final response = await ApiClient.get(Uri.parse('$baseUrl/quota'), requireAuth: true);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -231,7 +231,7 @@ class AssistantApiService {
       final uri = Uri.parse('$baseUrl/conversations').replace(
         queryParameters: {'scope': scope},
       );
-      final response = await ApiClient.get(uri);
+      final response = await ApiClient.get(uri, requireAuth: true);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] is List) {
@@ -249,7 +249,7 @@ class AssistantApiService {
   /// Lấy chi tiết cuộc hội thoại và lịch sử tin nhắn
   static Future<List<AssistantMessage>> getConversationMessages(String conversationId) async {
     try {
-      final response = await ApiClient.get(Uri.parse('$baseUrl/conversations/$conversationId'));
+      final response = await ApiClient.get(Uri.parse('$baseUrl/conversations/$conversationId'), requireAuth: true);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -270,7 +270,7 @@ class AssistantApiService {
   /// Xóa một cuộc hội thoại
   static Future<bool> deleteConversation(String conversationId) async {
     try {
-      final response = await ApiClient.delete(Uri.parse('$baseUrl/conversations/$conversationId'));
+      final response = await ApiClient.delete(Uri.parse('$baseUrl/conversations/$conversationId'), requireAuth: true);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['success'] == true;

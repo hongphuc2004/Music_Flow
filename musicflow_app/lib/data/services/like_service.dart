@@ -8,7 +8,7 @@ import 'package:musicflow_app/core/config/api_config.dart';
 import 'auth_service.dart';
 
 class LikeService {
-  static const String baseUrl = ApiConfig.songLikesEndpoint;
+  static String get baseUrl => ApiConfig.songLikesEndpoint;
   static const Duration timeout = Duration(seconds: 15);
 
   static Future<Map<String, String>> _getAuthHeaders() async {

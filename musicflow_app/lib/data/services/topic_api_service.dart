@@ -5,7 +5,7 @@ import '../models/song_model.dart';
 import '../models/topic_model.dart';
 
 class TopicApiService {
-  static const String baseUrl = ApiConfig.topicsEndpoint;
+  static String get baseUrl => ApiConfig.topicsEndpoint;
 
   static dynamic _decodeBody(String body) {
     try {

@@ -32,7 +32,6 @@ class _AiFloatingAssistantOrbState extends State<AiFloatingAssistantOrb>
   // Draggable position
   Offset _position = const Offset(-1, -1);
   bool _isDragging = false;
-  bool _showLabel = true;
 
   @override
   void initState() {
@@ -55,11 +54,6 @@ class _AiFloatingAssistantOrbState extends State<AiFloatingAssistantOrb>
     _glowAnimation = Tween<double>(begin: 0.35, end: 0.85).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-
-    // Auto collapse label after 6 seconds
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) setState(() => _showLabel = false);
-    });
   }
 
   @override
@@ -177,73 +171,15 @@ class _AiFloatingAssistantOrbState extends State<AiFloatingAssistantOrb>
 
             return Transform.scale(
               scale: _isDragging ? 1.12 : pulse,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Optional expandable floating label pill
-                  if (_showLabel && _position.dx > 160) ...[
-                    GestureDetector(
-                      onTap: _openAssistant,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0F0B1E).withOpacity(0.85),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFF00E5FF).withOpacity(0.35),
-                                width: 1,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ShaderMask(
-                                  shaderCallback: (bounds) => const LinearGradient(
-                                    colors: [Color(0xFF00E5FF), Color(0xFFFF77E9), Color(0xFFFFD700)],
-                                  ).createShader(bounds),
-                                  child: const Text(
-                                    'Trợ lý AI MusicFlow',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () => setState(() => _showLabel = false),
-                                  child: const Icon(Icons.close_rounded, size: 13, color: Colors.white38),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Holographic AI Crystal Orb
-                  CustomPaint(
-                    size: const Size(56, 56),
-                    painter: _HolographicAiOrbPainter(
-                      glowIntensity: glow,
-                      rotation: _rotationController.value * 2 * math.pi,
-                    ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: CustomPaint(
+                  size: const Size(56, 56),
+                  painter: _HolographicAiOrbPainter(
+                    glowIntensity: glow,
+                    rotation: _rotationController.value * 2 * math.pi,
                   ),
-                ],
+                ),
               ),
             );
           },

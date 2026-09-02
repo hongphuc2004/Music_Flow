@@ -69,7 +69,7 @@ class SearchResult {
 }
 
 class SongApiService {
-  static const String baseUrl = ApiConfig.songsEndpoint;
+  static String get baseUrl => ApiConfig.songsEndpoint;
 
   static Future<List<Song>> fetchSongs() async {
     final response = await ApiClient.get(

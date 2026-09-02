@@ -10,7 +10,7 @@ import 'package:musicflow_app/core/config/api_config.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  static const String baseUrl = ApiConfig.authEndpoint;
+  static String get baseUrl => ApiConfig.authEndpoint;
   static const Duration timeout = Duration(seconds: 15);
 
   // Keys cho SharedPreferences

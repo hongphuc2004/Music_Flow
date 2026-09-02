@@ -6,7 +6,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 
 class FavoriteService {
-  static const String baseUrl = ApiConfig.favoritesEndpoint;
+  static String get baseUrl => ApiConfig.favoritesEndpoint;
 
   /// Lấy danh sách bài hát yêu thích
   static Future<FavoriteResult> getFavorites() async {

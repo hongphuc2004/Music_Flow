@@ -108,7 +108,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 100),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       itemExtent: _itemExtent,
       itemCount: widget.lyrics.length,
       itemBuilder: (context, index) {

@@ -6,7 +6,7 @@ import '../models/playlist_model.dart';
 import 'auth_service.dart';
 
 class PlaylistApiService {
-  static const String baseUrl = ApiConfig.playlistsEndpoint;
+  static String get baseUrl => ApiConfig.playlistsEndpoint;
 
   // ================= GET ALL PLAYLISTS =================
   /// Lấy tất cả playlist của user hiện tại

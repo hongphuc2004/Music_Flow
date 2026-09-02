@@ -863,12 +863,16 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   Widget _buildInputBar() {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom > 0
+        ? 8.0
+        : MediaQuery.of(context).padding.bottom + 8.0;
+
     return Container(
       padding: EdgeInsets.only(
         left: 12,
         right: 12,
         top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+        bottom: bottomPadding,
       ),
       decoration: BoxDecoration(
         color: const Color(0xFF120C22),

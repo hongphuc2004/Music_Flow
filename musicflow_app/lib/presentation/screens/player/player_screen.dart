@@ -17,7 +17,6 @@ import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
 import 'package:musicflow_app/presentation/widgets/synced_lyrics_view.dart';
 import 'package:musicflow_app/presentation/widgets/song_share_sheet.dart';
 
-
 class PlayerScreen extends StatefulWidget {
   final Song song;
   final List<Song> playlist;
@@ -167,31 +166,59 @@ class _PlayerScreenState extends State<PlayerScreen>
       return;
     }
 
-    final parsedLines = LrcParser.parse(result.lyrics);
     final rawLyrics = result.lyrics.trim();
     _rawLyricsContent = rawLyrics;
 
-    if (parsedLines.isEmpty && rawLyrics.isNotEmpty) {
-      final estimatedLines = _buildEstimatedTimedLyrics(rawLyrics, _duration);
+    // 1. Use real synchronized timeline from backend
+    if (result.isSynced && result.syncedLines.isNotEmpty) {
+      setState(() {
+        _isLyricsLoading = false;
+        _isLyricsSynced = true;
+        _isEstimatedLyrics = false;
+        _lyricsLines = result.syncedLines;
+        _lyricsError = null;
+      });
+      return;
+    }
+
+    // 2. Parse LRC if contained in raw string
+    final parsedLines = LrcParser.parse(result.lyrics);
+    if (parsedLines.isNotEmpty) {
+      setState(() {
+        _isLyricsLoading = false;
+        _isLyricsSynced = true;
+        _isEstimatedLyrics = false;
+        _lyricsLines = parsedLines;
+        _lyricsError = null;
+      });
+      return;
+    }
+
+    // 3. Fallback: Plain unsynced lyrics (no fake mathematical timestamps)
+    if (rawLyrics.isNotEmpty) {
+      final plainLines = rawLyrics
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .map((text) => LrcLine(timestamp: Duration.zero, text: text))
+          .toList();
 
       setState(() {
         _isLyricsLoading = false;
-        _isLyricsSynced = estimatedLines.isNotEmpty;
-        _isEstimatedLyrics = true;
-        _lyricsLines = estimatedLines;
-        _lyricsError = estimatedLines.isEmpty
-            ? 'Bài hát chưa có lyrics.'
-            : null;
+        _isLyricsSynced = false;
+        _isEstimatedLyrics = false;
+        _lyricsLines = plainLines;
+        _lyricsError = plainLines.isEmpty ? 'Bài hát chưa có lyrics.' : null;
       });
       return;
     }
 
     setState(() {
       _isLyricsLoading = false;
-      _isLyricsSynced = true;
+      _isLyricsSynced = false;
       _isEstimatedLyrics = false;
-      _lyricsLines = parsedLines;
-      _lyricsError = parsedLines.isEmpty ? 'Bài hát chưa có lyrics.' : null;
+      _lyricsLines = const [];
+      _lyricsError = 'Bài hát chưa có lyrics.';
     });
   }
 
@@ -357,7 +384,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _shareSong() {
     SongShareSheet.show(context, _currentSong);
   }
-
 
   void _showMoreOptions() {
     showModalBottomSheet(
@@ -528,7 +554,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildPageIndicator() {
     final labels = <String>[
       'Đang phát',
-      'Lyrics',
+      'Lời bài hát',
       if (_activePlaylist.isNotEmpty) 'Danh sách chờ',
     ];
 
@@ -581,6 +607,100 @@ class _PlayerScreenState extends State<PlayerScreen>
     return _buildAlbumArt();
   }
 
+  Widget _buildLyricsSongHeader() {
+    final artist = _currentSong.artists.isNotEmpty
+        ? _currentSong.artists.join(', ')
+        : 'Nghệ sĩ';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          // Album thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              _currentSong.imageUrl,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 44,
+                height: 44,
+                color: Colors.white12,
+                child: const Icon(Icons.music_note_rounded, color: Colors.white60, size: 20),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Title and Artist
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _currentSong.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  artist,
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+
+          // Live audio pulse wave badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.graphic_eq_rounded, size: 14, color: AppColors.secondary),
+                SizedBox(width: 4),
+                Text(
+                  'LỜI NHẠC',
+                  style: TextStyle(
+                    color: AppColors.secondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLyricsPage() {
     if (_isLyricsLoading) {
       return const Center(
@@ -601,13 +721,20 @@ class _PlayerScreenState extends State<PlayerScreen>
       );
     }
 
-    return SyncedLyricsView(
-      lyrics: _lyricsLines,
-      currentPosition: _position,
-      isSynced: _isLyricsSynced,
-      onLineTap: _isEstimatedLyrics
-          ? null
-          : (timestamp) => _audioService.seek(timestamp),
+    return Column(
+      children: [
+        _buildLyricsSongHeader(),
+        Expanded(
+          child: SyncedLyricsView(
+            lyrics: _lyricsLines,
+            currentPosition: _position,
+            isSynced: _isLyricsSynced,
+            onLineTap: _isEstimatedLyrics
+                ? null
+                : (timestamp) => _audioService.seek(timestamp),
+          ),
+        ),
+      ],
     );
   }
 
@@ -645,7 +772,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _globalAudioState.isAutoplayEnabled
                           ? AppColors.primary.withOpacity(0.2)
@@ -669,7 +799,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _globalAudioState.isAutoplayEnabled ? 'Tự phát: Bật' : 'Tự phát: Tắt',
+                          _globalAudioState.isAutoplayEnabled
+                              ? 'Tự phát: Bật'
+                              : 'Tự phát: Tắt',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,

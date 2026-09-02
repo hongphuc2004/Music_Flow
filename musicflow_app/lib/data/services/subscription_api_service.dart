@@ -45,8 +45,8 @@ class CheckoutResult {
 }
 
 class SubscriptionApiService {
-  static const String plansUrl = ApiConfig.plansEndpoint;
-  static const String subUrl = ApiConfig.subscriptionsEndpoint;
+  static String get plansUrl => ApiConfig.plansEndpoint;
+  static String get subUrl => ApiConfig.subscriptionsEndpoint;
 
   /// Lấy danh sách các gói cước đang hoạt động
   static Future<List<Plan>> getActivePlans() async {

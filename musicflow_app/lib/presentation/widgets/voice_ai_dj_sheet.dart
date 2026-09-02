@@ -48,6 +48,7 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
   String _assistantReply = '';
   String _errorMessage = '';
   List<Song> _actionSongs = [];
+  bool _isSubmitting = false;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -78,7 +79,7 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
   }
 
   Future<void> _startVoiceSession() async {
-    if (!mounted) return;
+    if (!mounted || _isSubmitting) return;
     setState(() {
       _state = VoiceState.listening;
       _liveTranscript = '';
@@ -89,17 +90,17 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
 
     final success = await _voiceService.startListening(
       onResult: (partialText) {
-        if (!mounted) return;
+        if (!mounted || _isSubmitting) return;
         setState(() {
           _liveTranscript = partialText;
         });
       },
       onComplete: (finalText) {
-        if (!mounted) return;
+        if (!mounted || _isSubmitting) return;
         _sendTranscriptToAssistant(finalText);
       },
       onError: (errorMsg) {
-        if (!mounted) return;
+        if (!mounted || _isSubmitting) return;
         setState(() {
           _state = VoiceState.error;
           _errorMessage = errorMsg;
@@ -116,6 +117,7 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
   }
 
   Future<void> _stopAndSubmit() async {
+    if (_isSubmitting) return;
     await _voiceService.stopListening();
     if (_liveTranscript.trim().length >= 2) {
       _sendTranscriptToAssistant(_liveTranscript.trim());
@@ -128,10 +130,15 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
   }
 
   Future<void> _sendTranscriptToAssistant(String prompt) async {
-    if (!mounted) return;
+    final cleanPrompt = prompt.trim();
+    if (cleanPrompt.length < 2 || _isSubmitting || !mounted) return;
+
+    _isSubmitting = true;
+    _voiceService.stopListening();
+
     setState(() {
       _state = VoiceState.processing;
-      _liveTranscript = prompt;
+      _liveTranscript = cleanPrompt;
     });
 
     final token = await AuthService.getToken();
@@ -141,6 +148,7 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
       setState(() {
         _state = VoiceState.error;
         _errorMessage = 'Vui lòng đăng nhập để dùng trợ lý giọng nói AI.';
+        _isSubmitting = false;
       });
       return;
     }
@@ -153,7 +161,7 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
           'Authorization': 'Bearer $token',
         },
         body: json.encode({
-          'prompt': prompt,
+          'prompt': cleanPrompt,
           if (widget.conversationId != null) 'conversationId': widget.conversationId,
         }),
       );
@@ -200,6 +208,10 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
         _state = VoiceState.error;
         _errorMessage = 'Lỗi kết nối mạng. Vui lòng thử lại sau.';
       });
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 

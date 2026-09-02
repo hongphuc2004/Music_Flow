@@ -3,21 +3,25 @@ const AssistantMessage = require("../models/assistant-message.model");
 const User = require("../models/user.model");
 const { hasPremiumAccess } = require("../utils/premium.util");
 
-// Concurrency lock tracking
-const activeRequests = new Set();
+// Concurrency lock tracking with safety expiration (15 seconds)
+const activeRequests = new Map();
+const LOCK_TIMEOUT_MS = 15000;
 
 /**
  * Acquires a concurrent request lock for the user.
- * Throws 429 if another request is already in progress.
+ * Throws 429 if another request is already in progress within safety window.
  */
 function acquireLock(userId) {
   const userKey = userId.toString();
-  if (activeRequests.has(userKey)) {
+  const now = Date.now();
+  const existingTime = activeRequests.get(userKey);
+
+  if (existingTime && (now - existingTime < LOCK_TIMEOUT_MS)) {
     const error = new Error("Bạn đang có một yêu cầu AI đang xử lý. Vui lòng đợi trong giây lát.");
     error.status = 429;
     throw error;
   }
-  activeRequests.add(userKey);
+  activeRequests.set(userKey, now);
 }
 
 /**

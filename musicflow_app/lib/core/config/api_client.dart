@@ -49,7 +49,7 @@ class ApiClient {
   }) async {
     int attempts = 0;
     final allHeaders = await _getHeaders(requireAuth: requireAuth, extraHeaders: headers);
-    final String? bodyStr = body != null ? jsonEncode(body) : null;
+    final String? bodyStr = body is String ? body : (body != null ? jsonEncode(body) : null);
 
     while (attempts < maxRetries) {
       try {

@@ -33,8 +33,10 @@ from pipeline.downloader import AudioValidationError, download_audio_asset
 from pipeline.postprocessor import apply_energy_tail_extension, compile_line_and_word_lyrics
 from pipeline.onset_snapper import snap_word_onsets
 from pipeline.preprocessor import convert_to_16k_mono
-from pipeline.separator import GPUOutOfMemoryError, separate_vocals
 from pipeline.validator import validate_alignment_quality
+
+class GPUOutOfMemoryError(Exception):
+    pass
 
 # Configure Logging
 logging.basicConfig(
@@ -64,7 +66,7 @@ class AlignmentWorker:
         logger.info(f"Initialized AI Alignment Worker (ID: {self.worker_id})")
         logger.info(f"Connected to MongoDB: {config.DATABASE_NAME}")
         logger.info(f"Config: Device={config.WORKER_DEVICE}, CPU_Fallback={config.ALLOW_CPU_FALLBACK}")
-        self.warmup_models()
+        # Note: Model loading is lazy-deferred to job execution to keep container boot RAM under ~60MB
 
     def warmup_models(self):
         """
@@ -291,6 +293,7 @@ class AlignmentWorker:
                 sep_start = time.time()
                 logger.info(f"[{job_id}] Running HTDemucs vocal separation...")
                 try:
+                    from pipeline.separator import separate_vocals
                     vocals_path = separate_vocals(
                         wav_16k_path,
                         temp_job_dir,

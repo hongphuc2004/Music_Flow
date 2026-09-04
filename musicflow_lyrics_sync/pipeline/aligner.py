@@ -640,8 +640,9 @@ def align_lyrics(
     if data.ndim > 1:
         data = np.mean(data, axis=1)
     if sr != 16000:
-        import librosa
-        data = librosa.resample(data, orig_sr=sr, target_sr=16000)
+        from scipy import signal
+        gcd = np.gcd(16000, sr)
+        data = signal.resample_poly(data, 16000 // gcd, sr // gcd)
         sr = 16000
     duration_sec = float(len(data)) / float(sr)
 

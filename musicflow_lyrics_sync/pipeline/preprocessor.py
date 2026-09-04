@@ -73,11 +73,17 @@ def convert_to_16k_mono(
     except Exception:
         pass
 
-    # 2. Fallback to librosa / soundfile
+    # 2. Fallback to soundfile / scipy if ffmpeg fails
     if data is None:
         try:
-            import librosa
-            data, sr = librosa.load(input_audio_path, sr=16000, mono=True)
+            data, file_sr = sf.read(input_audio_path)
+            if data.ndim > 1:
+                data = np.mean(data, axis=1)
+            if file_sr != 16000:
+                from scipy import signal
+                gcd = np.gcd(16000, file_sr)
+                data = signal.resample_poly(data, 16000 // gcd, file_sr // gcd)
+                sr = 16000
         except Exception as e:
             raise RuntimeError(f"Không thể chuyển đổi định dạng âm thanh 16kHz mono: {str(e)}")
 

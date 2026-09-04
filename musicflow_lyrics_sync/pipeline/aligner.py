@@ -134,8 +134,15 @@ class CTCModelManager:
 
         logger.info(f"[CTCModelManager] Loading CTC Model: {model_name} on device: {target_device}...")
         try:
+            import gc
+            gc.collect()
+            if target_device == "cpu":
+                torch.set_num_threads(1)
             processor = AutoProcessor.from_pretrained(model_name)
-            model = Wav2Vec2ForCTC.from_pretrained(model_name)
+            try:
+                model = Wav2Vec2ForCTC.from_pretrained(model_name, low_cpu_mem_usage=True)
+            except Exception:
+                model = Wav2Vec2ForCTC.from_pretrained(model_name)
             model.eval()
             model.to(target_device)
 

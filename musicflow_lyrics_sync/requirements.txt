@@ -9,3 +9,4 @@ scipy>=1.11.0
 numpy>=1.24.0
 requests>=2.31.0
 pydantic>=2.5.0
+accelerate>=0.26.0

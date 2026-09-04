@@ -68,16 +68,19 @@ class AlignmentWorker:
 
     def warmup_models(self):
         """
-        Pre-warms PyTorch inference tensors, Demucs separation buffers, and Wav2Vec2 weights
-        during worker startup to guarantee subsequent jobs achieve zero initialization latency (separatorLoadMs=0).
+        Pre-warms PyTorch inference tensors and Wav2Vec2 weights during worker startup
+        so all subsequent jobs execute with zero initialization latency.
         """
         try:
-            logger.info("[Worker] Pre-warming models and GPU tensors...")
+            logger.info("[Worker] Pre-warming models and inference tensors...")
             w_start = time.time()
             if config.WORKER_DEVICE == "cuda":
                 import torch
                 _ = torch.zeros((1, 1, 16000), device="cuda")
                 torch.cuda.synchronize()
+            else:
+                from pipeline.aligner import CTCModelManager
+                CTCModelManager().load_model(config.CTC_MODEL_NAME, device=config.WORKER_DEVICE)
             w_dur = round((time.time() - w_start) * 1000, 1)
             logger.info(f"[Worker] Models and device warmed up in {w_dur}ms (Lifecycle: Ready)")
         except Exception as e:

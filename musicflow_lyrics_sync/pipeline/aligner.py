@@ -635,14 +635,14 @@ def align_lyrics(
     Main entry point for Phase 9 Real Neural CTC Forced Alignment.
     Returns: (aligned_words_list, audio_duration_sec)
     """
-    # 1. Load Audio
-    data, sr = sf.read(vocals_wav_path)
+    # 1. Load Audio (float32 to minimize memory allocation)
+    data, sr = sf.read(vocals_wav_path, dtype="float32")
     if data.ndim > 1:
         data = np.mean(data, axis=1)
     if sr != 16000:
         from scipy import signal
         gcd = np.gcd(16000, sr)
-        data = signal.resample_poly(data, 16000 // gcd, sr // gcd)
+        data = signal.resample_poly(data, 16000 // gcd, sr // gcd).astype(np.float32)
         sr = 16000
     duration_sec = float(len(data)) / float(sr)
 

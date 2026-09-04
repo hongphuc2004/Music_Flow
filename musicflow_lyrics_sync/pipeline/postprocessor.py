@@ -40,7 +40,7 @@ def apply_energy_tail_extension(
 
     if vocals_wav_path and os.path.exists(vocals_wav_path):
         try:
-            data, sr = sf.read(vocals_wav_path)
+            data, sr = sf.read(vocals_wav_path, dtype="float32")
             if data.ndim > 1:
                 data = np.mean(data, axis=1)
             peak_amp = float(np.max(np.abs(data))) + 1e-12

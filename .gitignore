@@ -102,6 +102,10 @@ __tests__/
 *.test.*
 *.spec.*
 
+# AI Model local caches
+model_cache/
+*.pt
+
 # Ignore all dot-directories (IDE/editor configs, agent folders, etc.)
 .*/
 

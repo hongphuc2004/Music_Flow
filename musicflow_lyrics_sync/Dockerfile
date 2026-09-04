@@ -28,10 +28,11 @@ RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pyt
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-cache Vietnamese Wav2Vec2 model into image during build to eliminate runtime download latency and memory spikes
-RUN python3 -c "from transformers import AutoProcessor, Wav2Vec2ForCTC; \
-    AutoProcessor.from_pretrained('nguyenvulebinh/wav2vec2-base-vietnamese-250h'); \
-    Wav2Vec2ForCTC.from_pretrained('nguyenvulebinh/wav2vec2-base-vietnamese-250h', low_cpu_mem_usage=True)"
+# Pre-compile & export quantized TorchScript int8 Wav2Vec2 model into image during build
+# This bakes the compact 116MB int8 model directly into the filesystem, completely eliminating
+# runtime HuggingFace downloads and memory spikes on Render 512MB RAM free tier.
+COPY export_quantized_model.py .
+RUN python3 export_quantized_model.py
 
 # Copy application source code
 COPY . .

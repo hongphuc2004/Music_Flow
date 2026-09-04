@@ -138,25 +138,39 @@ class CTCModelManager:
             gc.collect()
             if target_device == "cpu":
                 torch.set_num_threads(1)
+
+            # Check for pre-compiled TorchScript int8 model (from Docker build)
+            cache_dir = os.getenv("MODEL_CACHE_DIR", "/app/model_cache")
+            jit_path = os.path.join(cache_dir, "wav2vec2_int8.pt")
+            proc_path = os.path.join(cache_dir, "processor")
+
+            # Fallback to local relative cache if running outside container
+            if not os.path.exists(jit_path):
+                local_cache = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "model_cache")
+                if os.path.exists(os.path.join(local_cache, "wav2vec2_int8.pt")):
+                    jit_path = os.path.join(local_cache, "wav2vec2_int8.pt")
+                    proc_path = os.path.join(local_cache, "processor")
+
+            if os.path.exists(jit_path) and target_device == "cpu":
+                logger.info(f"[CTCModelManager] Loading pre-compiled TorchScript int8 model from {jit_path} (~116MB)...")
+                processor = AutoProcessor.from_pretrained(proc_path if os.path.exists(proc_path) else model_name)
+                model = torch.jit.load(jit_path, map_location=target_device)
+                model.eval()
+
+                self.model = model
+                self.processor = processor
+                self.cached_model_name = model_name
+                self.device = target_device
+                logger.info(f"[CTCModelManager] Pre-compiled TorchScript int8 model loaded on {target_device} with ultra-low RAM footprint (~116MB, Zero Spikes).")
+                return model, processor
+
+            # Fallback: Standard HuggingFace load
             processor = AutoProcessor.from_pretrained(model_name)
             try:
                 model = Wav2Vec2ForCTC.from_pretrained(model_name, low_cpu_mem_usage=True)
             except Exception:
                 model = Wav2Vec2ForCTC.from_pretrained(model_name)
             model.eval()
-
-            # Dynamic int8 quantization on CPU reduces RAM from 380MB to ~95MB (75% savings)
-            # and accelerates CPU matrix multiplication, ensuring safe execution under 512MB RAM
-            if target_device == "cpu":
-                logger.info("[CTCModelManager] Applying dynamic int8 quantization (380MB -> 95MB RAM)...")
-                try:
-                    model = torch.quantization.quantize_dynamic(
-                        model, {torch.nn.Linear}, dtype=torch.qint8
-                    )
-                    gc.collect()
-                except Exception as q_err:
-                    logger.warning(f"[CTCModelManager] Dynamic quantization bypassed: {q_err}")
-
             model.to(target_device)
 
             self.model = model
@@ -177,8 +191,18 @@ class CTCEmissionExtractor:
     """
 
     @staticmethod
+    def _extract_logits(outputs: Any) -> torch.Tensor:
+        if hasattr(outputs, "logits"):
+            return outputs.logits
+        if isinstance(outputs, dict) and "logits" in outputs:
+            return outputs["logits"]
+        if isinstance(outputs, (tuple, list)):
+            return outputs[0]
+        return outputs
+
+    @staticmethod
     def extract_emissions(
-        model: Wav2Vec2ForCTC,
+        model: Any,
         processor: AutoProcessor,
         audio_waveform: np.ndarray,
         sr: int = 16000,
@@ -201,7 +225,7 @@ class CTCEmissionExtractor:
                 input_tensor = torch.tensor(audio_waveform, dtype=torch.float32).unsqueeze(0).to(device)
                 with torch.inference_mode():
                     outputs = model(input_tensor)
-                    logits = outputs.logits
+                    logits = CTCEmissionExtractor._extract_logits(outputs)
                     emissions = torch.log_softmax(logits, dim=-1).squeeze(0).cpu()
                 return emissions
 
@@ -221,7 +245,7 @@ class CTCEmissionExtractor:
 
                 with torch.inference_mode():
                     outputs = model(input_tensor)
-                    logits = outputs.logits
+                    logits = CTCEmissionExtractor._extract_logits(outputs)
                     chunk_emissions = torch.log_softmax(logits, dim=-1).squeeze(0).cpu()
 
                 # Calculate frame trim for overlap boundary

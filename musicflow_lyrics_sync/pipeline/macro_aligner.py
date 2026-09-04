@@ -176,7 +176,8 @@ class MacroAligner:
                 break
             input_tensor = torch.tensor(chunk, dtype=torch.float32).unsqueeze(0).to(device)
             with torch.inference_mode():
-                logits = model(input_tensor).logits[0]
+                out = model(input_tensor)
+                logits = out.logits[0] if hasattr(out, "logits") else (out["logits"][0] if isinstance(out, dict) else (out[0][0] if isinstance(out, (tuple, list)) else out[0]))
             pred_ids = torch.argmax(logits, dim=-1).tolist()
 
             recognized = []

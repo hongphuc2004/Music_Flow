@@ -277,18 +277,33 @@ class AlignmentWorker:
             )
             prep_duration = round(time.time() - prep_start, 3)
 
-            # 5. HTDemucs Vocal Separation
-            self.update_job_progress(job_id, "SEPARATING", 45, "Đang lọc tách giọng hát ca sĩ...")
-            sep_start = time.time()
-            logger.info(f"[{job_id}] Running HTDemucs vocal separation...")
-            vocals_path = separate_vocals(
-                wav_16k_path,
-                temp_job_dir,
-                model_name=config.SEPARATOR_MODEL,
-                allow_cpu_fallback=config.ALLOW_CPU_FALLBACK,
-                device=config.WORKER_DEVICE
+            # 5. HTDemucs Vocal Separation (Optional, skipped in lightweight mode to prevent OOM on 512MB RAM)
+            use_separation = (
+                config.ENABLE_VOCAL_SEPARATION
+                and config.SEPARATOR_MODEL
+                and config.SEPARATOR_MODEL.lower() != "none"
             )
-            sep_duration = round(time.time() - sep_start, 3)
+            if use_separation:
+                self.update_job_progress(job_id, "SEPARATING", 45, "Đang lọc tách giọng hát ca sĩ...")
+                sep_start = time.time()
+                logger.info(f"[{job_id}] Running HTDemucs vocal separation...")
+                try:
+                    vocals_path = separate_vocals(
+                        wav_16k_path,
+                        temp_job_dir,
+                        model_name=config.SEPARATOR_MODEL,
+                        allow_cpu_fallback=config.ALLOW_CPU_FALLBACK,
+                        device=config.WORKER_DEVICE
+                    )
+                    sep_duration = round(time.time() - sep_start, 3)
+                except Exception as e:
+                    logger.warning(f"[{job_id}] Vocal separation bypassed: {e}. Falling back to master audio.")
+                    vocals_path = wav_16k_path
+                    sep_duration = 0.0
+            else:
+                logger.info(f"[{job_id}] Vocal separation bypassed (Lightweight direct alignment mode).")
+                vocals_path = wav_16k_path
+                sep_duration = 0.0
 
             # 6. Real Neural Wav2Vec2 CTC Forced Alignment
             self.update_job_progress(job_id, "ALIGNING", 70, "Đang lắng nghe & bắt nhịp bằng Neural CTC...")

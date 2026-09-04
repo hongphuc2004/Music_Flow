@@ -37,7 +37,8 @@ ENERGY_TAIL_THRESHOLD_DB = float(os.getenv("ENERGY_TAIL_THRESHOLD_DB", "-35.0"))
 TEMP_STORAGE_DIR = os.getenv("TEMP_STORAGE_DIR", "/tmp/musicflow_alignment")
 
 # Models & Pipeline Identifiers
-SEPARATOR_MODEL = os.getenv("SEPARATOR_MODEL", "htdemucs")
+ENABLE_VOCAL_SEPARATION = os.getenv("ENABLE_VOCAL_SEPARATION", "false").lower() in ("true", "1", "yes")
+SEPARATOR_MODEL = os.getenv("SEPARATOR_MODEL", "htdemucs" if ENABLE_VOCAL_SEPARATION else "none")
 ALIGNMENT_MODEL = os.getenv("ALIGNMENT_MODEL", "nguyenvulebinh/wav2vec2-base-vietnamese-250h")
 CTC_MODEL_NAME = os.getenv("CTC_MODEL_NAME", ALIGNMENT_MODEL)
 PIPELINE_VERSION = os.getenv("PIPELINE_VERSION", "3.0.0")

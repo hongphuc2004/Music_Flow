@@ -24,4 +24,6 @@ export const artistApi = {
   saveDraftLyrics: (songId, payload) => api.put(`/artist/songs/${songId}/lyrics/draft`, payload),
   publishLyrics: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/publish`, payload),
   unpublishLyrics: (songId) => api.post(`/artist/songs/${songId}/lyrics/unpublish`),
+  triggerLyricsAlignment: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/alignment`, payload),
+  getLyricsAlignmentStatus: (songId) => api.get(`/artist/songs/${songId}/lyrics/alignment/status`),
 };

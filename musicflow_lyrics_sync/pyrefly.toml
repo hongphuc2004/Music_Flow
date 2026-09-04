@@ -1,0 +1,9 @@
+# Pyrefly Configuration for musicflow_lyrics_sync
+# Relative module search paths (Platform-independent)
+
+search-path = [
+    ".",
+    "pipeline",
+    "tests",
+    ".."
+]

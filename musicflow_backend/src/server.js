@@ -14,9 +14,9 @@ const envFileName = envFileFromVar
 const envPath = path.resolve(__dirname, "..", envFileName);
 const envFallbackPath = path.resolve(__dirname, "..", ".env");
 
-dotenv.config({ path: envPath });
+dotenv.config({ path: envPath, override: true });
 if (!process.env.GEMINI_API_KEY || !process.env.JWT_SECRET) {
-  dotenv.config({ path: envFallbackPath });
+  dotenv.config({ path: envFallbackPath, override: true });
 }
 
 const uploadRoute = require("./routes/upload.route");
@@ -260,7 +260,6 @@ mongoose
     startMonthlyListenersJob();
     startSubscriptionExpiryJob();
     startSongIntelligenceJob();
-
   })
   .catch((err) => logger.error("MongoDB connection error on startup: %s", err.stack || err));
 

@@ -1,4 +1,4 @@
-export function parseLyrics(rawLyrics) {
+export function parseLyrics(rawLyrics, structuredSyncedLines = []) {
   const raw = typeof rawLyrics === 'string' ? rawLyrics : '';
   const sourceLines = raw
     .split(/\r?\n/)
@@ -20,9 +20,21 @@ export function parseLyrics(rawLyrics) {
         const frac = Number(fracRaw.padEnd(3, '0').slice(0, 3)) / 1000;
         const time = mins * 60 + secs + frac;
 
+        // Check if we have matching structured line with word timestamps
+        const matchedStruct = Array.isArray(structuredSyncedLines)
+          ? structuredSyncedLines.find(
+              (s) =>
+                Math.abs((s.startTime || s.time || 0) - time) < 0.05 ||
+                (s.text && s.text.trim() === lyricText)
+            )
+          : null;
+
         syncedLines.push({
           time,
+          startTime: time,
+          endTime: matchedStruct?.endTime || time + 3.0,
           text: lyricText || '...',
+          words: Array.isArray(matchedStruct?.words) ? matchedStruct.words : [],
         });
       });
       return;
@@ -46,7 +58,7 @@ export function parseLyrics(rawLyrics) {
 
   return {
     isSynced: false,
-    lines: fallbackLines.map((text, index) => ({ time: index, text })),
+    lines: fallbackLines.map((text, index) => ({ time: index, text, words: [] })),
     plainText: fallbackLines.join('\n'),
   };
 }
@@ -58,7 +70,7 @@ export function findActiveLyricIndex(lines, currentTime) {
   let activeIndex = -1;
 
   for (let index = 0; index < lines.length; index += 1) {
-    if ((lines[index]?.time || 0) <= time) {
+    if ((lines[index]?.time || lines[index]?.startTime || 0) <= time) {
       activeIndex = index;
     } else {
       break;
@@ -67,3 +79,19 @@ export function findActiveLyricIndex(lines, currentTime) {
 
   return activeIndex;
 }
+
+export function findActiveWordIndex(words, currentTime) {
+  if (!Array.isArray(words) || !words.length) return -1;
+  const time = Number(currentTime) || 0;
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const wStart = Number(w.startTime) || 0;
+    const wEnd = Number(w.endTime) || wStart + 0.3;
+    if (time >= wStart && time <= wEnd) {
+      return i;
+    }
+  }
+  return -1;
+}
+

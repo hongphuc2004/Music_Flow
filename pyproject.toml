@@ -1,0 +1,7 @@
+[tool.pyrefly]
+search-path = [
+    ".",
+    "musicflow_lyrics_sync",
+    "musicflow_lyrics_sync/pipeline",
+    "musicflow_lyrics_sync/tests"
+]

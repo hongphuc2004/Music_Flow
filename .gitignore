@@ -82,7 +82,25 @@ musicflow_backend/src/scripts/
 musicflow_backend/data/
 musicflow_backend/logs/
 
+### Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+*.egg-info/
 
+### Tests & Benchmarks (Local only)
+musicflow_lyrics_sync/tests/
+tests/
+__tests__/
+*.test.*
+*.spec.*
 
 # Ignore all dot-directories (IDE/editor configs, agent folders, etc.)
 .*/

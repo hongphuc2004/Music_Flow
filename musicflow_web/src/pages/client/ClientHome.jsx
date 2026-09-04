@@ -82,6 +82,7 @@ function ClientHome() {
     duration,
     lyricsLines,
     activeLyricIndex,
+    activeWordIndex,
     hasSyncedLyrics,
     lyricsLoading,
     handleNext,
@@ -100,6 +101,7 @@ function ClientHome() {
   const [displayedSongCount, setDisplayedSongCount] = useState(8);
   const [loadingMoreSongs, setLoadingMoreSongs] = useState(false);
   const [scrubTime, setScrubTime] = useState(null);
+  const [lyricsMode, setLyricsMode] = useState(() => localStorage.getItem('musicflow_lyrics_mode') || 'karaoke');
   const lyricItemRefs = useRef([]);
   const lyricsContainerRef = useRef(null);
 
@@ -773,17 +775,66 @@ function ClientHome() {
                     justifyContent: 'center',
                   }}
                 >
-                  {/* Lyrics Header Tag */}
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, px: 1 }}>
+                  {/* Lyrics Header Tag & Mode Selector */}
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, px: 1, flexWrap: 'wrap', gap: 1 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <MicIcon sx={{ fontSize: 18, color: '#00e5ff' }} />
                       <Typography sx={{ fontSize: 11.5, fontWeight: 850, textTransform: 'uppercase', letterSpacing: 1, color: '#00e5ff' }}>
-                        {hasSyncedLyrics ? 'Live Karaoke Lyrics' : 'Lời Bài Hát'}
+                        {hasSyncedLyrics ? 'Lời Bài Hát Trực Tiếp' : 'Lời Bài Hát'}
                       </Typography>
                     </Stack>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600 }}>
-                      Chạm câu hát để tua nhanh
-                    </Typography>
+
+                    {/* 🎛️ Dual Mode Selector: Karaoke (Từng Chữ) vs Timeline (Từng Dòng) */}
+                    {hasSyncedLyrics && (
+                      <Stack direction="row" spacing={0.5} sx={{ bgcolor: 'rgba(255,255,255,0.06)', p: 0.3, borderRadius: 2 }}>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setLyricsMode('karaoke');
+                            try { localStorage.setItem('musicflow_lyrics_mode', 'karaoke'); } catch (e) { void e; }
+                          }}
+                          sx={{
+                            py: 0.2,
+                            px: 1.2,
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            textTransform: 'none',
+                            borderRadius: 1.5,
+                            minWidth: 'auto',
+                            bgcolor: lyricsMode === 'karaoke' ? '#00e5ff' : 'transparent',
+                            color: lyricsMode === 'karaoke' ? '#000' : 'rgba(255,255,255,0.7)',
+                            '&:hover': {
+                              bgcolor: lyricsMode === 'karaoke' ? '#00e5ff' : 'rgba(255,255,255,0.1)',
+                            },
+                          }}
+                        >
+                          🎙️ Karaoke
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setLyricsMode('line');
+                            try { localStorage.setItem('musicflow_lyrics_mode', 'line'); } catch (e) { void e; }
+                          }}
+                          sx={{
+                            py: 0.2,
+                            px: 1.2,
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            textTransform: 'none',
+                            borderRadius: 1.5,
+                            minWidth: 'auto',
+                            bgcolor: lyricsMode === 'line' ? '#6c63ff' : 'transparent',
+                            color: lyricsMode === 'line' ? '#fff' : 'rgba(255,255,255,0.7)',
+                            '&:hover': {
+                              bgcolor: lyricsMode === 'line' ? '#6c63ff' : 'rgba(255,255,255,0.1)',
+                            },
+                          }}
+                        >
+                          🎵 Từng câu
+                        </Button>
+                      </Stack>
+                    )}
                   </Stack>
 
                   {lyricsLoading ? (
@@ -814,33 +865,90 @@ function ClientHome() {
                         {lyricsLines.map((line, index) => {
                           const isActive = hasSyncedLyrics && index === activeLyricIndex;
                           const isPast = hasSyncedLyrics && activeLyricIndex >= 0 && index < activeLyricIndex;
+                          const hasWordTimestamps = Array.isArray(line.words) && line.words.length > 0;
+                          const lineStartTime = Number(line.startTime ?? line.time) || 0;
+                          const renderAsKaraoke = lyricsMode === 'karaoke' && isActive && hasWordTimestamps;
 
                           return (
-                            <Typography
+                            <Box
                               key={`${line.time}-${line.text}-${index}`}
                               ref={(el) => {
                                 lyricItemRefs.current[index] = el;
                               }}
-                              variant="h5"
-                              onClick={() => seekTo(line.time / 1000)}
+                              onClick={() => seekTo(lineStartTime)}
                               sx={{
                                 textAlign: { xs: 'center', md: 'left' },
-                                fontWeight: isActive ? 950 : 600,
-                                fontSize: isActive ? { xs: '1.18rem', sm: '1.4rem' } : { xs: '0.9rem', sm: '1.02rem' },
-                                color: isActive ? '#ffffff' : isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.58)',
-                                transform: isActive ? 'scale(1.04)' : 'scale(1)',
-                                transformOrigin: 'left center',
-                                textShadow: isActive ? '0 0 25px rgba(165, 180, 252, 0.95), 0 0 45px rgba(6, 182, 212, 0.6)' : 'none',
-                                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                                 cursor: 'pointer',
-                                '&:hover': {
-                                  color: '#a5b4fc',
-                                  opacity: 1,
-                                },
+                                py: 0.25,
                               }}
                             >
-                              {line.text}
-                            </Typography>
+                              {renderAsKaraoke ? (
+                                <Box sx={{ display: 'inline-block' }}>
+                                  {line.words.map((w, wIdx) => {
+                                    const wStart = Number(w.startTime) || 0;
+                                    const wEnd = Number(w.endTime) || (wStart + 0.3);
+                                    const isPastWord = currentTime >= wEnd || (activeWordIndex >= 0 && wIdx < activeWordIndex);
+                                    const isCurrentWord = wIdx === activeWordIndex || (currentTime >= wStart && currentTime < wEnd);
+                                    const wDur = Math.max(0.08, wEnd - wStart);
+                                    const fillRatio = isPastWord ? 1 : isCurrentWord ? Math.min(1, Math.max(0, (currentTime - wStart) / wDur)) : 0;
+                                    const fillPercent = Math.round(fillRatio * 100);
+
+                                    return (
+                                      <Typography
+                                        key={wIdx}
+                                        component="span"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          seekTo(wStart);
+                                        }}
+                                        sx={{
+                                          mr: 1,
+                                          display: 'inline-block',
+                                          fontWeight: isCurrentWord ? 950 : isPastWord ? 900 : 700,
+                                          fontSize: isCurrentWord ? { xs: '1.25rem', sm: '1.45rem' } : { xs: '1.1rem', sm: '1.3rem' },
+                                          background: isPastWord
+                                            ? '#00e5ff'
+                                            : isCurrentWord
+                                            ? `linear-gradient(90deg, #00e5ff 0%, #00e5ff ${fillPercent}%, rgba(255, 255, 255, 0.45) ${fillPercent}%, rgba(255, 255, 255, 0.45) 100%)`
+                                            : 'rgba(255, 255, 255, 0.45)',
+                                          WebkitBackgroundClip: 'text',
+                                          WebkitTextFillColor: isPastWord ? '#00e5ff' : 'transparent',
+                                          textShadow: isPastWord || isCurrentWord
+                                            ? '0 0 20px rgba(0, 229, 255, 0.85), 0 0 35px rgba(108, 99, 255, 0.5)'
+                                            : 'none',
+                                          transform: isCurrentWord ? 'scale(1.08)' : 'scale(1)',
+                                          transformOrigin: 'left center',
+                                          transition: 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
+                                          cursor: 'pointer',
+                                          '&:hover': {
+                                            filter: 'brightness(1.2)',
+                                          },
+                                        }}
+                                      >
+                                        {w.text}
+                                      </Typography>
+                                    );
+                                  })}
+                                </Box>
+                              ) : (
+                                <Typography
+                                  variant="h5"
+                                  sx={{
+                                    fontWeight: isActive ? 950 : 600,
+                                    fontSize: isActive ? { xs: '1.25rem', sm: '1.45rem' } : { xs: '0.9rem', sm: '1.02rem' },
+                                    color: isActive ? '#00e5ff' : isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.58)',
+                                    textShadow: isActive
+                                      ? '0 0 20px rgba(0, 229, 255, 0.85), 0 0 40px rgba(108, 99, 255, 0.5)'
+                                      : 'none',
+                                    transform: isActive ? 'scale(1.04)' : 'scale(1)',
+                                    transformOrigin: 'left center',
+                                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  }}
+                                >
+                                  {line.text}
+                                </Typography>
+                              )}
+                            </Box>
                           );
                         })}
                       </Stack>

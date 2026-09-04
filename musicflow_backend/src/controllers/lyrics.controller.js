@@ -76,3 +76,43 @@ exports.unpublishLyrics = async (req, res) => {
     return handleError(res, error, "Không thể hủy xuất bản lời bài hát");
   }
 };
+
+/**
+ * POST /api/artist/songs/:id/lyrics/alignment
+ */
+exports.triggerAlignment = async (req, res) => {
+  try {
+    const data = await lyricsService.triggerAlignmentJob(
+      req.params.id,
+      req.userId,
+      req.userRole,
+      req.body
+    );
+    return res.status(data.isCached ? 200 : 202).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Không thể khởi tạo tác vụ AI căn nhịp");
+  }
+};
+
+/**
+ * GET /api/artist/songs/:id/lyrics/alignment/status
+ */
+exports.getAlignmentStatus = async (req, res) => {
+  try {
+    const data = await lyricsService.getAlignmentJobStatus(
+      req.params.id,
+      req.userId,
+      req.userRole
+    );
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Không thể kiểm tra trạng thái tác vụ AI căn nhịp");
+  }
+};
+

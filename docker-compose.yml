@@ -74,6 +74,36 @@ services:
     ports:
       - "${MUSICFLOW_WEB_DEV_PORT:-5173}:5173"
 
+  lyrics_sync:
+    profiles:
+      - prod
+    build:
+      context: ./musicflow_lyrics_sync
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      MONGODB_URI: "${MONGO_URI:-mongodb://mongo:27017/musicflow_db}"
+      WORKER_DEVICE: "cpu"
+      ALLOW_CPU_FALLBACK: "true"
+
+  lyrics_sync_dev:
+    profiles:
+      - dev
+    build:
+      context: ./musicflow_lyrics_sync
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      MONGODB_URI: "mongodb://mongo:27017/musicflow_db"
+      WORKER_DEVICE: "cpu"
+      ALLOW_CPU_FALLBACK: "true"
+    volumes:
+      - ./musicflow_lyrics_sync:/app
+
 volumes:
   mongo_data:
   backend_node_modules:

@@ -395,5 +395,7 @@ router.get("/songs/:id/lyrics", authMiddleware, lyricsController.getSongLyrics);
 router.put("/songs/:id/lyrics/draft", authMiddleware, lyricsController.saveDraftLyrics);
 router.post("/songs/:id/lyrics/publish", authMiddleware, lyricsController.publishLyrics);
 router.post("/songs/:id/lyrics/unpublish", authMiddleware, lyricsController.unpublishLyrics);
+router.post("/songs/:id/lyrics/alignment", authMiddleware, lyricsController.triggerAlignment);
+router.get("/songs/:id/lyrics/alignment/status", authMiddleware, lyricsController.getAlignmentStatus);
 
 module.exports = router;

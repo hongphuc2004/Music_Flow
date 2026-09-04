@@ -22,8 +22,22 @@ const songLyricsSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["not_added", "draft", "published"],
+      enum: ["not_added", "draft", "ready", "published"],
       default: "draft",
+    },
+
+
+    // 🏷️ SYNCHRONIZATION SOURCE METADATA
+    syncSource: {
+      type: String,
+      enum: ["manual", "lrclib", "ai_alignment", "ai_aligned"],
+      default: "manual",
+    },
+
+    lastAlignmentJobId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "LyricsAlignmentJob",
+      default: null,
     },
 
     // 📝 DRAFT WORKSPACE (Dành riêng cho Artist soạn thảo, không lộ ra Client)
@@ -38,7 +52,15 @@ const songLyricsSchema = new mongoose.Schema(
     syncedLines: [
       {
         startTime: { type: Number, required: true }, // Giây (float)
+        endTime: { type: Number, default: null },
         text: { type: String, default: "" },
+        words: [
+          {
+            text: { type: String, default: "" },
+            startTime: { type: Number, required: true },
+            endTime: { type: Number, required: true },
+          },
+        ],
       },
     ],
 
@@ -59,7 +81,15 @@ const songLyricsSchema = new mongoose.Schema(
     publishedSyncedLines: [
       {
         startTime: { type: Number, required: true },
+        endTime: { type: Number, default: null },
         text: { type: String, default: "" },
+        words: [
+          {
+            text: { type: String, default: "" },
+            startTime: { type: Number, required: true },
+            endTime: { type: Number, required: true },
+          },
+        ],
       },
     ],
     publishedAt: {

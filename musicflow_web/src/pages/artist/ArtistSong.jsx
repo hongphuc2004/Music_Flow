@@ -110,8 +110,8 @@ function ArtistSong() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [lyricsDialog, setLyricsDialog] = useState({ open: false, song: null });
 
-  const fetchSongs = async () => {
-    setLoading(true);
+  const fetchSongs = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     setError(null);
     try {
       const artistId = localStorage.getItem('artistId');
@@ -123,7 +123,7 @@ function ArtistSong() {
     } catch (err) {
       setError(err.response?.data?.message || 'Không thể tải danh sách bài hát.');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -386,11 +386,11 @@ function ArtistSong() {
                     <Typography variant="h4" fontWeight={900}>{stats.total}</Typography>
                   </Box>
                   <Box sx={{ bgcolor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', px: 2.5, py: 1.5, borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)' }}>
-                    <Typography variant="caption" sx={{ display: 'block', opacity: 0.8, fontWeight: 600 }}>CÔNG KHAI (PUBLIC)</Typography>
+                    <Typography variant="caption" sx={{ display: 'block', opacity: 0.8, fontWeight: 600 }}>CÔNG KHAI</Typography>
                     <Typography variant="h4" fontWeight={900}>{stats.publicSongs}</Typography>
                   </Box>
                   <Box sx={{ bgcolor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', px: 2.5, py: 1.5, borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)' }}>
-                    <Typography variant="caption" sx={{ display: 'block', opacity: 0.8, fontWeight: 600 }}>RIÊNG TƯ (PRIVATE)</Typography>
+                    <Typography variant="caption" sx={{ display: 'block', opacity: 0.8, fontWeight: 600 }}>RIÊNG TƯ</Typography>
                     <Typography variant="h4" fontWeight={900}>{stats.privateSongs}</Typography>
                   </Box>
                 </Stack>
@@ -453,7 +453,7 @@ function ArtistSong() {
         <Card 
           elevation={0} 
           sx={{ 
-            borderRadius: 6, 
+            borderRadius: 4, 
             border: '1px solid', 
             borderColor: 'divider', 
             bgcolor: 'background.paper',
@@ -732,7 +732,19 @@ function ArtistSong() {
                 setPage(0);
               }}
               rowsPerPageOptions={[5, 10, 25]}
-              sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+              sx={{
+                borderTop: '1px solid',
+                borderColor: 'divider',
+                px: 2,
+                '& .MuiTablePagination-toolbar': {
+                  pr: { xs: 2.5, sm: 4 },
+                  pl: { xs: 1.5, sm: 2 },
+                },
+                '& .MuiTablePagination-actions': {
+                  ml: 2,
+                  mr: 1,
+                },
+              }}
             />
           )}
         </Card>
@@ -1243,7 +1255,7 @@ function ArtistSong() {
         open={lyricsDialog.open}
         song={lyricsDialog.song}
         onClose={() => setLyricsDialog({ open: false, song: null })}
-        onUpdated={fetchSongs}
+        onUpdated={() => fetchSongs(true)}
       />
     </ArtistLayout>
   );

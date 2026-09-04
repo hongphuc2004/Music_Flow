@@ -148,6 +148,7 @@ docker compose --profile prod up --build -d  # prod
 |---------|---------|--------|
 | Backend | Render | Root: `musicflow_backend`, Start: `npm start` |
 | Web | Vercel | Root: `musicflow_web`, Build: `npm run build`, Out: `dist` |
+| Lyrics Sync Worker | Render | Root: `musicflow_lyrics_sync`, Docker runtime |
 | Database | MongoDB Atlas | M0 cluster |
 
 **Vercel env:**

@@ -1,0 +1,32 @@
+# Dockerfile for MusicFlow AI Alignment Worker (NVIDIA GPU / CUDA Enabled)
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV TEMP_STORAGE_DIR=/tmp/musicflow_alignment
+
+# Install system dependencies (ffmpeg, python, libsndfile)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
+    ffmpeg \
+    libsndfile1 \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python requirements
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy worker application
+COPY . .
+
+# Create temporary working directory
+RUN mkdir -p /tmp/musicflow_alignment
+
+# Run worker process
+CMD ["python3", "main.py"]

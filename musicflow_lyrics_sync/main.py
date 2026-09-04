@@ -507,10 +507,8 @@ class AlignmentWorker:
                 time.sleep(config.POLL_INTERVAL_SEC)
 
 def start_health_server():
-    """Optional lightweight HTTP health check server for platforms like Render Web Service (Free Tier)."""
-    port_env = os.getenv("PORT")
-    if not port_env:
-        return
+    """Lightweight HTTP health check server for platforms like Render Web Service."""
+    port_env = os.getenv("PORT", "10000")
     try:
         import http.server
         port = int(port_env)
@@ -525,8 +523,10 @@ def start_health_server():
         server = http.server.HTTPServer(("0.0.0.0", port), HealthCheckHandler)
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
-        logger.info(f"[Worker] Health check HTTP server started on port {port}")
+        print(f"[Worker] Health check HTTP server started on 0.0.0.0:{port}", flush=True)
+        logger.info(f"[Worker] Health check HTTP server started on 0.0.0.0:{port}")
     except Exception as e:
+        print(f"[Worker] Could not start health check HTTP server on port {port_env}: {e}", flush=True)
         logger.warning(f"[Worker] Could not start health check HTTP server on port {port_env}: {e}")
 
 if __name__ == "__main__":

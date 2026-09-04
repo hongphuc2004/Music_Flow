@@ -7,6 +7,9 @@ ENV PYTHONUNBUFFERED=1
 ENV TEMP_STORAGE_DIR=/tmp/musicflow_alignment
 ENV WORKER_DEVICE=cpu
 ENV ALLOW_CPU_FALLBACK=true
+ENV PORT=10000
+
+EXPOSE 10000
 
 # Install system dependencies (ffmpeg for audio decoding, libsndfile for librosa/soundfile)
 RUN apt-get update && apt-get install -y --no-install-recommends \

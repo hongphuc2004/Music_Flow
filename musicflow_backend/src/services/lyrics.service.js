@@ -461,11 +461,21 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
       expectedDraftVersion: songLyrics.version || 1,
       metadata: {
         separatorModel: alignmentConfig.SEPARATOR_MODEL,
-        alignmentModel: alignmentConfig.ALIGNMENT_MODEL,
-        pipelineVersion: alignmentConfig.PIPELINE_VERSION,
+        alignmentModel: "google/gemini-2.5-flash",
+        pipelineVersion: "3.5.0-gemini",
         postProcessVersion: alignmentConfig.POSTPROCESS_VERSION,
       },
     });
+
+    // Trigger Gemini direct alignment in background
+    if (process.env.GEMINI_API_KEY) {
+      const { processGeminiAlignmentJob } = require("./geminiLyricsAligner.service");
+      setImmediate(() => {
+        processGeminiAlignmentJob(newJob._id).catch((err) => {
+          console.error("[LyricsService] Background Gemini alignment error:", err);
+        });
+      });
+    }
 
     return {
       jobId: newJob._id,

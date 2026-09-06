@@ -1,5 +1,5 @@
 # Dockerfile for MusicFlow AI Alignment Worker
-# Optimized for Production (Render / Cloud / Docker CPU)
+# Optimized for Production (Hugging Face Spaces 16GB RAM / Render / Cloud Docker)
 FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install PyTorch CPU first (drastically reduces image size from ~5GB to ~800MB and speeds up build on Render)
+# Install PyTorch CPU first (drastically reduces image size from ~5GB to ~800MB and speeds up build)
 RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining Python requirements
@@ -29,16 +29,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-compile & export quantized TorchScript int8 Wav2Vec2 model into image during build
-# This bakes the compact 116MB int8 model directly into the filesystem, completely eliminating
-# runtime HuggingFace downloads and memory spikes on Render 512MB RAM free tier.
 COPY export_quantized_model.py .
 RUN python3 export_quantized_model.py
 
 # Copy application source code
 COPY . .
 
-# Create temporary working directory for audio processing
-RUN mkdir -p /tmp/musicflow_alignment
+# Create temporary working directory with full read/write permissions
+RUN mkdir -p /tmp/musicflow_alignment && chmod -R 777 /tmp/musicflow_alignment /app
 
 # Run worker process
 CMD ["python3", "main.py"]

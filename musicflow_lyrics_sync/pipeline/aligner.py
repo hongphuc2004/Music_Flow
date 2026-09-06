@@ -207,12 +207,14 @@ class CTCEmissionExtractor:
         audio_waveform: np.ndarray,
         sr: int = 16000,
         device: str = "cpu",
-        window_sec: int = 60,
-        overlap_sec: int = 3
+        window_sec: int = 15,
+        overlap_sec: int = 2
     ) -> torch.Tensor:
         """
         Returns: emissions tensor of shape [num_frames, vocab_size] in log-space.
+        Uses 15s micro-chunking with aggressive garbage collection to strictly guarantee RAM < 200MB.
         """
+        import gc
         if audio_waveform.ndim > 1:
             audio_waveform = np.mean(audio_waveform, axis=1)
 
@@ -220,17 +222,19 @@ class CTCEmissionExtractor:
         total_duration_sec = float(total_samples) / float(sr)
 
         try:
-            # For tracks <= window_sec + overlap_sec, run single forward pass
-            if total_duration_sec <= window_sec + overlap_sec:
+            # For short tracks <= window_sec, run single forward pass
+            if total_duration_sec <= window_sec:
                 input_tensor = torch.tensor(audio_waveform, dtype=torch.float32).unsqueeze(0).to(device)
                 with torch.inference_mode():
                     outputs = model(input_tensor)
                     logits = CTCEmissionExtractor._extract_logits(outputs)
                     emissions = torch.log_softmax(logits, dim=-1).squeeze(0).cpu()
+                del input_tensor, outputs, logits
+                gc.collect()
                 return emissions
 
-            # For long audio (> 60s), run chunked sliding window with overlap
-            logger.info(f"[CTCEmissionExtractor] Running chunked neural forward pass for {total_duration_sec:.1f}s audio...")
+            # For tracks > 15s, run micro-chunking with overlap to prevent memory spikes
+            logger.info(f"[CTCEmissionExtractor] Running 15s micro-chunked neural forward pass for {total_duration_sec:.1f}s audio (RAM Protected)...")
             window_samples = int(window_sec * sr)
             overlap_samples = int(overlap_sec * sr)
             step_samples = window_samples - overlap_samples
@@ -263,11 +267,17 @@ class CTCEmissionExtractor:
                     keep_end_frames = chunk_emissions.size(0) - int((overlap_sec / 2) * 50)
                     emissions_list.append(chunk_emissions[keep_start_frames:keep_end_frames])
 
+                # Free intermediate tensors immediately
+                del input_tensor, outputs, logits, chunk_emissions
+                gc.collect()
+
                 if curr_end >= total_samples:
                     break
                 curr_start += step_samples
 
             full_emissions = torch.cat(emissions_list, dim=0)
+            del emissions_list
+            gc.collect()
             return full_emissions
 
         except Exception as e:

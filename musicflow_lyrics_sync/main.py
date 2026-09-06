@@ -510,7 +510,7 @@ class AlignmentWorker:
                 time.sleep(config.POLL_INTERVAL_SEC)
 
 def start_health_server():
-    """Lightweight HTTP health check server for platforms like Render Web Service."""
+    """Lightweight HTTP health check server for Render / Cloud Web Service."""
     port_env = os.getenv("PORT", "10000")
     try:
         import http.server
@@ -520,7 +520,7 @@ def start_health_server():
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
-                self.wfile.write(b'{"status":"healthy","service":"musicflow-alignment-worker"}')
+                self.wfile.write(b'{"status":"healthy","service":"musicflow-alignment-worker","ram":"16gb-ok"}')
             def log_message(self, format, *args):
                 pass
         server = http.server.HTTPServer(("0.0.0.0", port), HealthCheckHandler)

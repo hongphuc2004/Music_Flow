@@ -222,64 +222,15 @@ class CTCEmissionExtractor:
         total_duration_sec = float(total_samples) / float(sr)
 
         try:
-            # For short tracks <= window_sec, run single forward pass
-            if total_duration_sec <= window_sec:
-                input_tensor = torch.tensor(audio_waveform, dtype=torch.float32).unsqueeze(0).to(device)
-                with torch.inference_mode():
-                    outputs = model(input_tensor)
-                    logits = CTCEmissionExtractor._extract_logits(outputs)
-                    emissions = torch.log_softmax(logits, dim=-1).squeeze(0).cpu()
-                del input_tensor, outputs, logits
-                gc.collect()
-                return emissions
-
-            # For tracks > 15s, run micro-chunking with overlap to prevent memory spikes
-            logger.info(f"[CTCEmissionExtractor] Running 15s micro-chunked neural forward pass for {total_duration_sec:.1f}s audio (RAM Protected)...")
-            window_samples = int(window_sec * sr)
-            overlap_samples = int(overlap_sec * sr)
-            step_samples = window_samples - overlap_samples
-
-            emissions_list: List[torch.Tensor] = []
-            curr_start = 0
-
-            while curr_start < total_samples:
-                curr_end = min(total_samples, curr_start + window_samples)
-                chunk = audio_waveform[curr_start:curr_end]
-                input_tensor = torch.tensor(chunk, dtype=torch.float32).unsqueeze(0).to(device)
-
-                with torch.inference_mode():
-                    outputs = model(input_tensor)
-                    logits = CTCEmissionExtractor._extract_logits(outputs)
-                    chunk_emissions = torch.log_softmax(logits, dim=-1).squeeze(0).cpu()
-
-                # Calculate frame trim for overlap boundary
-                if curr_start == 0:
-                    # First chunk: keep until end minus half overlap
-                    keep_end_frames = chunk_emissions.size(0) - (int((overlap_sec / 2) * 50) if curr_end < total_samples else 0)
-                    emissions_list.append(chunk_emissions[:keep_end_frames])
-                elif curr_end >= total_samples:
-                    # Last chunk: keep from half overlap to end
-                    keep_start_frames = int((overlap_sec / 2) * 50)
-                    emissions_list.append(chunk_emissions[keep_start_frames:])
-                else:
-                    # Intermediate chunk: trim both sides
-                    keep_start_frames = int((overlap_sec / 2) * 50)
-                    keep_end_frames = chunk_emissions.size(0) - int((overlap_sec / 2) * 50)
-                    emissions_list.append(chunk_emissions[keep_start_frames:keep_end_frames])
-
-                # Free intermediate tensors immediately
-                del input_tensor, outputs, logits, chunk_emissions
-                gc.collect()
-
-                if curr_end >= total_samples:
-                    break
-                curr_start += step_samples
-
-            full_emissions = torch.cat(emissions_list, dim=0)
-            del emissions_list
+            logger.info(f"[CTCEmissionExtractor] Running full continuous neural forward pass for {total_duration_sec:.1f}s audio on {device}...")
+            input_tensor = torch.tensor(audio_waveform, dtype=torch.float32).unsqueeze(0).to(device)
+            with torch.inference_mode():
+                outputs = model(input_tensor)
+                logits = CTCEmissionExtractor._extract_logits(outputs)
+                emissions = torch.log_softmax(logits, dim=-1).squeeze(0).cpu()
+            del input_tensor, outputs, logits
             gc.collect()
-            return full_emissions
-
+            return emissions
         except Exception as e:
             logger.error(f"[CTCEmissionExtractor] CTC forward pass failed: {str(e)}")
             raise CTCInferenceError(f"CTC_INFERENCE_FAILED: Lỗi trong quá trình neural forward pass ({str(e)})")

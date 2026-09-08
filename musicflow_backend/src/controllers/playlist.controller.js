@@ -54,7 +54,7 @@ async function triggerUnsplashDownload(photoId) {
 const { cache, CACHE_TTL } = require("../utils/cache.util");
 
 const PLAYLIST_SONG_SELECT =
-  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
+  "title artists topicIds uploadedBy isPublic audioUrl audioPublicId audioMetadata duration imageUrl source allowDownload playCount likeCount createdAt";
 
 // ================= GET SYSTEM PLAYLISTS (public) =================
 exports.getSystemPlaylists = async (req, res) => {

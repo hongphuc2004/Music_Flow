@@ -559,32 +559,22 @@ function ClientDiscover() {
                     </Typography>
                   </Stack>
 
-                  {/* Artwork & Rotating Mini Vinyl */}
+                  {/* Artwork & Rotating Full Disc (Giống Home) */}
                   <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                    <Box sx={{ position: 'relative', width: 140, height: 140 }}>
+                    <Box sx={{ position: 'relative', width: 145, height: 145, flexShrink: 0 }}>
                       <Box
                         className="animate-vinyl-spin"
                         sx={{
-                          width: 140,
-                          height: 140,
+                          width: '100%',
+                          height: '100%',
                           borderRadius: '50%',
-                          background: 'radial-gradient(circle, #05070e 20%, #1e2640 21%, #0b0f1d 40%, #2a3558 41%, #05070e 65%, #3b4876 66%, #05070e 100%)',
-                          border: '2px solid rgba(255, 255, 255, 0.25)',
-                          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(236, 72, 153, 0.4)',
-                          display: 'grid',
-                          placeItems: 'center',
+                          backgroundImage: `url(${spotlightSong?.imageUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400'})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          border: '3px solid rgba(255, 255, 255, 0.45)',
+                          boxShadow: '0 10px 28px rgba(0, 0, 0, 0.65), 0 0 24px rgba(236, 72, 153, 0.45)',
                         }}
-                      >
-                        <Avatar
-                          src={spotlightSong?.imageUrl}
-                          sx={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: '50%',
-                            border: '2px solid #05070e',
-                          }}
-                        />
-                      </Box>
+                      />
                     </Box>
                   </Box>
 

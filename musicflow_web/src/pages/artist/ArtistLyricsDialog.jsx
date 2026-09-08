@@ -187,9 +187,11 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
       setLyricsData(data);
 
       if (!isSilent) {
-        setPlainText(data.plainLyrics || data.publishedPlainLyrics || '');
-        setLrcText(data.lrcData || data.publishedLrcData || '');
-        setTabIndex(data.lyricsType === 'synced' ? 1 : 0);
+        const initialPlain = data.plainLyrics !== undefined ? data.plainLyrics : (data.publishedPlainLyrics || '');
+        const initialLrc = data.lrcData !== undefined ? data.lrcData : (data.publishedLrcData || '');
+        setPlainText(initialPlain);
+        setLrcText(initialLrc);
+        setTabIndex((data.lyricsType === 'synced' || initialLrc) ? 1 : 0);
       }
 
       // Check existing alignment job status
@@ -307,21 +309,30 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
     }
   };
 
-  // Clear all lyrics completely (Both Plain & Synced) to start from blank
+  // Clear synced LRC lyrics while preserving plain text lyrics
   const handleClearAllLyrics = async () => {
     try {
       setActionLoading('clear');
-      setPlainText('');
       setLrcText('');
       setTabIndex(0);
       setAlignmentState('IDLE');
       setAlignmentJob(null);
       setAiResultAvailable(null);
       setDraftConflictNote(null);
+      setLyricsData((prev) =>
+        prev
+          ? {
+              ...prev,
+              lrcData: '',
+              syncedLines: [],
+              lyricsType: 'plain',
+            }
+          : prev
+      );
 
       await artistApi.saveDraftLyrics(song._id, {
         lyricsType: 'plain',
-        plainLyrics: '',
+        plainLyrics: plainText,
         lrcData: '',
       });
 
@@ -329,15 +340,15 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
 
       showToast({
         severity: 'info',
-        title: 'Đã xóa sạch lời bài hát',
-        message: 'Đã xóa toàn bộ bản nháp lời. Bạn có thể bấm "Tự nghe & nhận diện lời" để AI tự động làm tất cả!',
+        title: 'Đã xóa lời đồng bộ (LRC)',
+        message: 'Đã xóa mốc thời gian căn nhịp. Lời thường của bạn vẫn được giữ nguyên an toàn.',
       });
       if (onUpdated) onUpdated();
     } catch {
       showToast({
         severity: 'error',
         title: 'Lỗi',
-        message: 'Không thể xóa lời bài hát.',
+        message: 'Không thể xóa lời đồng bộ.',
       });
     } finally {
       setActionLoading(null);
@@ -656,7 +667,7 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
             </Button>
           </Tooltip>
           {plainText && (
-            <Tooltip title="Xóa sạch toàn bộ lời bài hát để làm lại từ đầu">
+            <Tooltip title="Xóa mốc thời gian căn nhịp (Giữ nguyên lời thường)">
               <IconButton
                 size="small"
                 onClick={handleClearAllLyrics}
@@ -711,7 +722,7 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
         </Tooltip>
 
         {plainText && (
-          <Tooltip title="Xóa sạch toàn bộ lời bài hát">
+          <Tooltip title="Xóa mốc thời gian căn nhịp (Giữ nguyên lời thường)">
             <IconButton
               size="small"
               onClick={handleClearAllLyrics}
@@ -1128,20 +1139,21 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
                         {alignmentJob?.progressMessage || 'Đang xử lý bắt nhịp lời bài hát...'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" fontWeight={650} sx={{ mb: 2 }}>
-                        Tiến trình:{' '}
+                        Trạng thái:{' '}
                         <span style={{ color: '#00e5ff', fontWeight: 800 }}>
                           {
                             {
-                              STARTING: 'Khởi động phòng thu',
+                              STARTING: 'Chuẩn bị phòng thu',
                               DOWNLOADING: 'Nạp âm thanh',
-                              PREPROCESSING: 'Chuẩn hóa âm thanh',
+                              PREPROCESSING: 'Xử lý âm thanh',
                               SEPARATING: 'Lọc giọng hát',
-                              TRANSCRIBING: 'Nhận diện lời AI',
-                              NORMALIZING: 'Chuẩn hóa câu chữ',
+                              TRANSCRIBING: 'Nhận diện giọng hát',
+                              NORMALIZING: 'Khớp câu chữ',
                               ALIGNING: 'Bắt nhịp từng câu',
-                              POSTPROCESSING: 'Hoàn thiện',
+                              POSTPROCESSING: 'Tinh chỉnh mốc nhịp',
                               COMPLETED: 'Hoàn tất',
-                            }[alignmentJob?.stage] || alignmentJob?.stage || 'Đang tiến hành'
+                              FAILED: 'Cần thử lại',
+                            }[alignmentJob?.stage] || alignmentJob?.stage || 'Đang xử lý'
                           }
                         </span>
                       </Typography>
@@ -1149,10 +1161,10 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
                       {/* 5 Pipeline Step Badges */}
                       <Stack direction="row" spacing={0.8} sx={{ width: '100%', maxWidth: 390, mb: 2 }}>
                         {[
-                          { label: '1. Nạp & Lọc', minP: 25 },
-                          { label: '2. Nhận diện', minP: 55 },
-                          { label: '3. Chuẩn hóa', minP: 65 },
-                          { label: '4. Khớp nhịp', minP: 85 },
+                          { label: '1. Nạp nhạc', minP: 25 },
+                          { label: '2. Lắng nghe', minP: 50 },
+                          { label: '3. Khớp câu', minP: 70 },
+                          { label: '4. Bắt nhịp', minP: 85 },
                           { label: '5. Hoàn tất', minP: 100 },
                         ].map((st, idx) => {
                           const isDone = (alignmentJob?.progressPercent || 0) >= st.minP;

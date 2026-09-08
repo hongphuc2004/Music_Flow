@@ -285,7 +285,7 @@ const updatePlayFeedback = async (songId, eventId, req, body = {}) => {
  * @returns {Promise<{ songId: string, title: string, audioUrl: string }>}
  */
 const downloadSong = async (songId, userId) => {
-  const song = await Song.findById(songId).select("_id title source allowDownload audioUrl fileSize");
+  const song = await Song.findById(songId).select("_id title source allowDownload audioUrl audioPublicId audioMetadata fileSize");
   if (!song) {
     const err = new Error("Không tìm thấy bài hát");
     err.status = 404;
@@ -299,10 +299,11 @@ const downloadSong = async (songId, userId) => {
   }
 
   const SongDownloadEvent = require("../models/song-download-event.model");
+  let finalAudioUrl = song.audioUrl;
 
   if (userId) {
     const user = await User.findById(userId).populate("premiumPlan");
-    const { hasPremiumAccess } = require("../utils/premium.util");
+    const { hasPremiumAccess, canAccessHQQuality } = require("../utils/premium.util");
 
     let downloadLimitBytes = 100 * 1024 * 1024; // Mặc định Free: 100MB
     let planLabel = "miễn phí";
@@ -351,6 +352,18 @@ const downloadSong = async (songId, userId) => {
       }
     }
 
+    // Xác định định dạng URL tải theo quyền hạn của user
+    if (song.audioPublicId) {
+      const cloudinary = require("../config/cloudinary");
+      const isHQEligible = user && canAccessHQQuality(user) && song.audioMetadata?.hasHighQualitySource === true;
+      const targetBitrate = isHQEligible ? "320k" : "128k";
+      finalAudioUrl = cloudinary.url(song.audioPublicId, {
+        resource_type: "video",
+        secure: true,
+        transformation: [{ bit_rate: targetBitrate }]
+      });
+    }
+
     SongDownloadEvent.create({
       userId,
       songId: song._id,
@@ -358,9 +371,17 @@ const downloadSong = async (songId, userId) => {
     }).catch((err) => {
       console.error("Create song download event failed:", err.message);
     });
+  } else if (song.audioPublicId) {
+    // Không đăng nhập / ẩn danh: Tối đa 128kbps
+    const cloudinary = require("../config/cloudinary");
+    finalAudioUrl = cloudinary.url(song.audioPublicId, {
+      resource_type: "video",
+      secure: true,
+      transformation: [{ bit_rate: "128k" }]
+    });
   }
 
-  return { songId: song._id, title: song.title, audioUrl: song.audioUrl };
+  return { songId: song._id, title: song.title, audioUrl: finalAudioUrl };
 };
 
 /**
@@ -1015,7 +1036,7 @@ const getRankings = async ({ period: rawPeriod } = {}) => {
 const issuePlaybackTicket = async (songId, quality, token) => {
   const Song = require("../models/song.model");
   const User = require("../models/user.model");
-  const { hasPremiumAccess } = require("../utils/premium.util");
+  const { hasPremiumAccess, canAccessHQQuality } = require("../utils/premium.util");
 
   const song = await Song.findById(songId);
   if (!song) {
@@ -1031,21 +1052,21 @@ const issuePlaybackTicket = async (songId, quality, token) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const resolvedUserId = decoded.userId || decoded.id || decoded._id || null;
       if (resolvedUserId) {
-        user = await User.findById(resolvedUserId);
+        user = await User.findById(resolvedUserId).populate("premiumPlan");
       }
     } catch (err) {
       console.warn("JWT verification in ticket issuance failed:", err.message);
     }
   }
 
-  const isPremium = user && hasPremiumAccess(user);
+  const isHQEligible = user && canAccessHQQuality(user);
 
   // Nếu người dùng yêu cầu chất lượng cao (HQ 320kbps)
   if (quality === "hq") {
-    if (!isPremium) {
-      const err = new Error("Yêu cầu tài khoản Premium để nghe chất lượng HQ.");
+    if (!isHQEligible) {
+      const err = new Error("Yêu cầu tài khoản Gói PLUS hoặc PREMIUM để nghe chất lượng HQ 320kbps.");
       err.status = 403;
-      err.code = "PREMIUM_REQUIRED";
+      err.code = "PLUS_OR_PREMIUM_REQUIRED";
       throw err;
     }
 
@@ -1067,7 +1088,7 @@ const issuePlaybackTicket = async (songId, quality, token) => {
     {
       type: "playback",
       songId: song._id.toString(),
-      permittedQuality: quality === "hq" ? "hq" : "std",
+      permittedQuality: (quality === "hq" && isHQEligible) ? "hq" : "std",
       userId: user ? user._id.toString() : null
     },
     PLAYBACK_TICKET_SECRET,

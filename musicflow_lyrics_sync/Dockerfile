@@ -1,5 +1,4 @@
-# Dockerfile for MusicFlow AI Alignment Worker
-# Optimized for Production (Hugging Face Spaces 16GB RAM / Render / Cloud Docker)
+# Dockerfile for MusicFlow AI Lyrics Alignment Worker
 FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -7,9 +6,6 @@ ENV PYTHONUNBUFFERED=1
 ENV TEMP_STORAGE_DIR=/tmp/musicflow_alignment
 ENV WORKER_DEVICE=cpu
 ENV ALLOW_CPU_FALLBACK=true
-ENV PORT=10000
-
-EXPOSE 10000
 
 # Install system dependencies (ffmpeg for audio decoding, libsndfile for librosa/soundfile)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -28,15 +24,11 @@ RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pyt
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-compile & export quantized TorchScript int8 Wav2Vec2 model into image during build
-COPY export_quantized_model.py .
-RUN python3 export_quantized_model.py
-
 # Copy application source code
 COPY . .
 
 # Create temporary working directory with full read/write permissions
 RUN mkdir -p /tmp/musicflow_alignment && chmod -R 777 /tmp/musicflow_alignment /app
 
-# Run worker process
+# Run background alignment worker
 CMD ["python3", "main.py"]

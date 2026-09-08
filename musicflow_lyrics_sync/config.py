@@ -47,6 +47,8 @@ POSTPROCESS_VERSION = os.getenv("POSTPROCESS_VERSION", "3.0.0")
 # Preprocessing & Filter Settings
 AUDIO_HIGH_PASS_ENABLED = os.getenv("AUDIO_HIGH_PASS_ENABLED", "true").lower() in ("true", "1", "yes")
 AUDIO_HIGH_PASS_HZ = float(os.getenv("AUDIO_HIGH_PASS_HZ", "80.0"))
+AUDIO_NORMALIZE_ENABLED = os.getenv("AUDIO_NORMALIZE_ENABLED", "true").lower() in ("true", "1", "yes")
+
 # Fallback Policy
 ALLOW_HEURISTIC_FALLBACK = os.getenv("ALLOW_HEURISTIC_FALLBACK", "false").lower() in ("true", "1", "yes")
 

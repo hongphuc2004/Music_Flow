@@ -13,6 +13,55 @@ class AudioValidationError(Exception):
         self.code = code
         self.message = message
 
+def download_audio_from_url(
+    audio_url: str,
+    output_dir: str,
+    max_duration_sec: int = 420
+) -> Tuple[str, float]:
+    """
+    Directly downloads audio stream from a public URL (e.g., Cloudinary or HTTP URL).
+    Validates file integrity and duration limit.
+    Returns: (audio_path, duration_sec)
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    destination_path = os.path.join(output_dir, "input_raw.audio")
+
+    if not audio_url:
+        raise AudioValidationError("AUDIO_NOT_FOUND", "URL âm thanh không hợp lệ hoặc trống")
+
+    # 1. Download audio stream
+    try:
+        response = requests.get(audio_url, stream=True, timeout=30)
+        if response.status_code != 200:
+            raise AudioValidationError(
+                "AUDIO_DOWNLOAD_FAILED",
+                f"Tải tệp âm thanh thất bại (HTTP {response.status_code})"
+            )
+
+        with open(destination_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=65536):
+                if chunk:
+                    f.write(chunk)
+    except requests.RequestException as e:
+        raise AudioValidationError("AUDIO_DOWNLOAD_FAILED", f"Lỗi kết nối khi tải âm thanh: {str(e)}")
+
+    # 2. Validate audio file readability and duration
+    try:
+        info = sf.info(destination_path)
+        duration_sec = float(info.duration)
+    except Exception:
+        # Fallback if raw container can't be probed by libsndfile directly before ffmpeg conversion
+        duration_sec = 0.0
+
+    if duration_sec > max_duration_sec and duration_sec > 0:
+        raise AudioValidationError(
+            "AUDIO_TOO_LONG",
+            f"Thời lượng bài hát ({round(duration_sec, 1)}s) vượt quá giới hạn tối đa cho phép ({max_duration_sec}s)"
+        )
+
+    return destination_path, duration_sec
+
+
 def download_audio_asset(
     db,
     song_id,

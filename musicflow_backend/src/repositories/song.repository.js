@@ -16,7 +16,7 @@ const Song = require("../models/song.model");
 
 /** Fields returned for public song listings. */
 const SONG_PUBLIC_SELECT =
-  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl " +
+  "title artists topicIds uploadedBy isPublic audioUrl audioPublicId audioMetadata duration imageUrl " +
   "source allowDownload playCount likeCount createdAt";
 
 /** Standard populate options for public-facing responses. */

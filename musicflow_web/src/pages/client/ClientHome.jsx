@@ -90,6 +90,7 @@ function ClientHome() {
   } = useClientPlayer();
   const [songs, setSongs] = useState([]);
   const [playlists, setPlaylists] = useState([]);
+  const [rankingSongs, setRankingSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [queueOpen, setQueueOpen] = useState(false);
@@ -120,13 +121,15 @@ function ClientHome() {
         setLoading(true);
         setError('');
 
-        const [songsRes, playlistsRes] = await Promise.all([
+        const [songsRes, playlistsRes, rankingsRes] = await Promise.all([
           clientSongsApi.getRecommended({ limit: 24 }),
           clientPlaylistsApi.getSystem({ limit: 16 }),
+          clientSongsApi.getRankings('week').catch(() => ({ data: { rankings: [] } })),
         ]);
 
         setSongs(Array.isArray(songsRes.data) ? songsRes.data : []);
         setPlaylists(playlistsRes.data?.playlists || []);
+        setRankingSongs(Array.isArray(rankingsRes.data?.rankings) ? rankingsRes.data.rankings : []);
       } catch (err) {
         setError(err.response?.data?.message || 'Không thể tải dữ liệu trang chủ.');
       } finally {
@@ -137,10 +140,12 @@ function ClientHome() {
     fetchData();
   }, []);
 
-  const topSongs = useMemo(
-    () => [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 6),
-    [songs],
-  );
+  const topSongs = useMemo(() => {
+    if (rankingSongs.length >= 3) {
+      return rankingSongs.slice(0, 10);
+    }
+    return [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 10);
+  }, [rankingSongs, songs]);
   const spotlightSong = useMemo(() => songs[0] || null, [songs]);
   const quickListenSongs = useMemo(() => songs.slice(0, 6), [songs]);
   const recommendedSongs = useMemo(() => songs.slice(0, displayedSongCount), [songs, displayedSongCount]);
@@ -1328,7 +1333,7 @@ function ClientHome() {
               {genreCapsules.map((genre) => (
                 <Grid size={{ xs: 6, sm: 4, md: 2 }} key={genre.id}>
                   <Box
-                    onClick={() => navigate(`/genres?cat=${genre.id}`)}
+                    onClick={() => navigate(`/genres?topic=${genre.id}`)}
                     className="glass-card-interactive"
                     sx={{
                       p: 2,

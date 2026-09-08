@@ -59,27 +59,33 @@ function ClientProfile() {
 
   const userName = useMemo(() => form.name || 'Người nghe', [form.name]);
 
+  const resolvedPlanName = useMemo(() => {
+    return activeSub?.plan?.name || user?.premiumPlan?.name || '';
+  }, [activeSub, user]);
+
   const isPremium = useMemo(() => {
-    return (user?.isPremium && user?.premiumExpiry && new Date(user.premiumExpiry) > new Date()) || !!activeSub;
+    const isUserPremium = Boolean(user?.isPremium && user?.premiumExpiry && new Date(user.premiumExpiry) > new Date());
+    const isSubActive = Boolean(activeSub?.status === 'active' && activeSub?.endDate && new Date(activeSub.endDate) > new Date());
+    return isUserPremium || isSubActive;
   }, [user, activeSub]);
 
   const currentPlanTitle = useMemo(() => {
     if (!isPremium) return 'Basic (Miễn phí)';
-    if (activeSub?.planName) return activeSub.planName;
+    if (resolvedPlanName) return resolvedPlanName;
     return 'Premium';
-  }, [isPremium, activeSub]);
+  }, [isPremium, resolvedPlanName]);
 
   const currentPlanBadge = useMemo(() => {
     if (!isPremium) return 'BASIC';
-    if (activeSub?.planName) {
-      const upper = activeSub.planName.toUpperCase();
+    if (resolvedPlanName) {
+      const upper = resolvedPlanName.toUpperCase();
       if (upper.includes('GO')) return 'GO';
       if (upper.includes('PLUS')) return 'PLUS';
       if (upper.includes('PREMIUM')) return 'PREMIUM';
-      return activeSub.planName;
+      return resolvedPlanName;
     }
     return 'PREMIUM';
-  }, [isPremium, activeSub]);
+  }, [isPremium, resolvedPlanName]);
 
   const planQuota = useMemo(() => {
     switch (currentPlanBadge) {
@@ -90,7 +96,7 @@ function ClientProfile() {
           downloadMax: 300,
           downloadLabel: '300 MB',
           aiRequests: '10 lượt/ngày',
-          soundQuality: 'Âm Thanh HQ 320kbps',
+          soundQuality: 'Âm Thanh Tiêu Chuẩn 128kbps',
           unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 250 MB',
           descUpload: '🌟 Gói GO hỗ trợ tải lên bài hát tối đa 250 MB.',
           descDownload: '🌟 Gói GO hỗ trợ tải bài hát về nghe offline tối đa 300 MB.',
@@ -114,7 +120,7 @@ function ClientProfile() {
           downloadMax: 1024,
           downloadLabel: '1 GB',
           aiRequests: '20 lượt/ngày',
-          soundQuality: 'Âm Thanh Lossless Hi-Fi 320kbps',
+          soundQuality: 'Âm Thanh HQ 320kbps',
           unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 1 GB',
           descUpload: '🌟 Gói PREMIUM hỗ trợ tải lên bài hát tối đa 1 GB (1024 MB).',
           descDownload: '🌟 Gói PREMIUM hỗ trợ tải bài hát về nghe offline tối đa 1 GB (1024 MB).',

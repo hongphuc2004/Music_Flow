@@ -467,6 +467,14 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
       },
     });
 
+    // Trigger Multi-Provider Alignment Router in background (Modal -> Gemini Fallback)
+    const { processAlignmentWithFallback } = require("./aiLyricsAlignerRouter.service");
+    setImmediate(() => {
+      processAlignmentWithFallback(newJob._id).catch((err) => {
+        console.error("[LyricsService] Alignment router execution error:", err);
+      });
+    });
+
     return {
       jobId: newJob._id,
       songId: song._id,

@@ -134,7 +134,8 @@ function RouteProviders({ children }) {
 
   useEffect(() => {
     preloadRoute(location.pathname);
-  }, [location.pathname]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname, location.search]);
 
   // Only skip ClientPlayerProvider for actual admin/artist portal routes.
   // Known artist portal paths: /artist/dashboard, /artist/songs, /artist/analytics, /artist/profile

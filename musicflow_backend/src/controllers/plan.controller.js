@@ -23,9 +23,10 @@ exports.getActivePlans = async (req, res) => {
           price: 19000,
           durationInDays: 30,
           description: [
-            "Tải lên tối đa 100MB bài hát lưu trữ",
-            "Tải nhạc ngoại tuyến không giới hạn",
-            "Trò chuyện AI DJ không giới hạn 24/7"
+            "Chất lượng âm thanh Tiêu chuẩn (128kbps)",
+            "Tải nhạc ngoại tuyến 128kbps (Tối đa 300MB)",
+            "Tải lên tối đa 250MB bài hát lưu trữ",
+            "Trò chuyện AI DJ (10 lượt/ngày)"
           ],
           isActive: true
         },
@@ -34,9 +35,10 @@ exports.getActivePlans = async (req, res) => {
           price: 49000,
           durationInDays: 30,
           description: [
+            "Mở khóa Âm thanh chất lượng cao HQ 320kbps",
+            "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 700MB)",
             "Tải lên tối đa 500MB bài hát lưu trữ",
-            "Tải nhạc ngoại tuyến không giới hạn",
-            "Trò chuyện AI DJ không giới hạn 24/7"
+            "Trò chuyện AI DJ (15 lượt/ngày)"
           ],
           isActive: true
         },
@@ -45,9 +47,10 @@ exports.getActivePlans = async (req, res) => {
           price: 89000,
           durationInDays: 30,
           description: [
-            "Tải lên không giới hạn dung lượng lưu trữ",
-            "Tải nhạc ngoại tuyến không giới hạn",
-            "Trò chuyện AI DJ không giới hạn 24/7"
+            "Âm thanh chất lượng cao HQ 320kbps toàn diện",
+            "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 1GB)",
+            "Tải lên tối đa 1GB bài hát lưu trữ",
+            "Trò chuyện AI DJ (20 lượt/ngày, mô hình AI thông minh nhất)"
           ],
           isActive: true
         }

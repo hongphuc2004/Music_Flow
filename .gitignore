@@ -105,6 +105,7 @@ __tests__/
 # AI Model local caches
 model_cache/
 *.pt
+musicflow_lyrics_sync/models/wav2vec2_onnx/
 
 # Ignore all dot-directories (IDE/editor configs, agent folders, etc.)
 .*/

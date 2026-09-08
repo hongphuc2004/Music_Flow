@@ -65,7 +65,7 @@ function ClientNowPlayingBar({
     toggleAutoplay,
     audioQuality,
     actualAudioQuality,
-    isPremium,
+    canPlayHQ,
     setAudioQuality,
     isQualityLoading,
   } = useClientPlayer();
@@ -85,7 +85,7 @@ function ClientNowPlayingBar({
   const handleSelectQuality = (quality) => {
     handleQualityMenuClose();
     if (quality === 'hq') {
-      if (!isPremium) {
+      if (!canPlayHQ) {
         setPremiumDialogOpen(true);
         return;
       }
@@ -801,7 +801,7 @@ function ClientNowPlayingBar({
         </DialogTitle>
         <DialogContent sx={{ textAlign: 'center', py: 1 }}>
           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.6 }}>
-            Chất lượng âm thanh trung thực cao **HQ 320kbps** chỉ dành riêng cho thành viên Premium. Hãy nâng cấp ngay để tận hưởng âm nhạc không giới hạn!
+            Chất lượng âm thanh trung thực cao <strong>HQ 320kbps</strong> chỉ dành riêng cho thành viên <strong>Gói PLUS</strong> và <strong>Gói PREMIUM</strong>. Hãy nâng cấp ngay để thưởng thức âm nhạc đỉnh cao!
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', gap: 1.5, pb: 2, px: 2 }}>
@@ -838,7 +838,7 @@ function ClientNowPlayingBar({
               }
             }}
           >
-            Nâng cấp Premium
+            Nâng cấp gói ngay
           </Button>
         </DialogActions>
       </Dialog>

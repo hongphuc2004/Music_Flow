@@ -243,6 +243,81 @@ function toSlug(str) {
     .replace(/-+/g, '-');
 }
 
+const GENRE_CAPSULES = [
+  {
+    id: 'vpop',
+    title: 'V-Pop Điểm Hẹn',
+    name: 'V-Pop Điểm Hẹn',
+    topicName: 'V-Pop',
+    color: '#ec4899',
+    icon: '🇻🇳',
+    desc: 'Bản hit Việt mới nhất',
+    query: 'Việt',
+    image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.85) 0%, rgba(139, 92, 246, 0.85) 50%, rgba(99, 102, 241, 0.85) 100%)',
+  },
+  {
+    id: 'usuk',
+    title: 'US-UK Billboard',
+    name: 'US-UK Billboard',
+    topicName: 'US-UK',
+    color: '#6366f1',
+    icon: '🇺🇸',
+    desc: 'Top hits toàn cầu',
+    query: 'US UK',
+    image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.85) 0%, rgba(59, 130, 246, 0.85) 100%)',
+  },
+  {
+    id: 'kpop',
+    title: 'K-Pop Hallyu',
+    name: 'K-Pop Hallyu',
+    topicName: 'K-Pop',
+    color: '#06b6d4',
+    icon: '🇰🇷',
+    desc: 'Giai điệu xu hướng',
+    query: 'Kpop',
+    image: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.85) 0%, rgba(219, 39, 119, 0.85) 100%)',
+  },
+  {
+    id: 'indie',
+    title: 'Indie & Acoustic',
+    name: 'Indie & Acoustic',
+    topicName: 'Acoustic',
+    color: '#10b981',
+    icon: '🎸',
+    desc: 'Mộc mạc & Thư thái',
+    query: 'acoustic',
+    image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.85) 0%, rgba(245, 158, 11, 0.85) 100%)',
+  },
+  {
+    id: 'rap',
+    title: 'Rap & Hip-Hop',
+    name: 'Rap & Hip-Hop',
+    topicName: 'Rap',
+    color: '#f59e0b',
+    icon: '🎤',
+    desc: 'Bùng nổ nhịp beat',
+    query: 'rap',
+    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.85) 0%, rgba(239, 68, 68, 0.85) 100%)',
+  },
+  {
+    id: 'edm',
+    title: 'EDM Không Gian',
+    name: 'EDM Không Gian',
+    topicName: 'EDM',
+    color: '#a855f7',
+    icon: '🌌',
+    desc: 'Năng lượng vũ trụ',
+    query: 'EDM',
+    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1400&auto=format&fit=crop&q=80',
+    gradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.85) 0%, rgba(236, 72, 153, 0.85) 100%)',
+  },
+];
+
 function findMatchingDbTopic(item, topicsList) {
   if (!topicsList || topicsList.length === 0) return null;
   if (item._id) return item;
@@ -264,20 +339,24 @@ function findMatchingDbTopic(item, topicsList) {
   if (match) return match;
 
   const keywords = {
-    'viet': ['việt', 'vpop', 'v-pop', 'nhac viet'],
+    'viet': ['việt', 'vpop', 'v-pop', 'nhac viet', 'pop'],
+    'vpop': ['việt', 'vpop', 'v-pop', 'nhac viet', 'pop'],
     'lofi': ['lofi', 'chill'],
     'ballad': ['pop', 'ballad'],
-    'acoustic': ['acoustic', 'cafe', 'mộc'],
+    'acoustic': ['acoustic', 'cafe', 'mộc', 'indie'],
+    'indie': ['indie', 'acoustic', 'mộc'],
     'edm': ['edm', 'dance', 'electronic', 'remix'],
-    'us-uk': ['us', 'uk', 'pop', 'âu mỹ'],
-    'kpop': ['kpop', 'k-pop', 'hàn'],
+    'us-uk': ['us', 'uk', 'pop', 'âu mỹ', 'billboard'],
+    'usuk': ['us', 'uk', 'pop', 'âu mỹ', 'billboard'],
+    'kpop': ['kpop', 'k-pop', 'hàn', 'korean'],
     'cpop': ['hoa', 'cpop', 'c-pop'],
+    'rap': ['rap', 'hip-hop', 'hiphop', 'hip hop'],
     'gym': ['gym', 'workout', 'remix', 'edm'],
     'focus': ['focus', 'lofi', 'không lời']
   };
 
   for (const [key, aliases] of Object.entries(keywords)) {
-    if (searchSlug.includes(key) || searchName.includes(key)) {
+    if (searchSlug.includes(key) || searchName.includes(key) || item.id === key) {
       const aliasMatch = topicsList.find(t => {
         const dbName = t.name.toLowerCase();
         return aliases.some(alias => dbName.includes(alias));
@@ -468,7 +547,7 @@ function ClientGenres() {
 
   const fetchTopicSongs = useCallback(async (item) => {
     const itemId = item.id || item._id;
-    const itemName = item.title || item.name;
+    const itemName = item.title || item.name || item.topicName || 'Chủ đề';
 
     setSelectedTopic(itemId);
     setSelectedTitle(itemName);
@@ -480,10 +559,43 @@ function ClientGenres() {
       setLoading(true);
       setError('');
       
-      const dbTopic = findMatchingDbTopic(item, topics);
-      if (dbTopic) {
-        const response = await clientTopicsApi.getSongsByTopic(dbTopic._id);
-        setSongs(response.data || []);
+      // 1. Thử gọi trực tiếp bằng _id, id hoặc slug
+      const targetIdOrSlug = item._id || item.id || toSlug(item.topicName || item.name || item.title);
+      let fetchedSongs = [];
+      
+      if (targetIdOrSlug) {
+        try {
+          const response = await clientTopicsApi.getSongsByTopic(targetIdOrSlug);
+          fetchedSongs = Array.isArray(response.data) ? response.data : [];
+        } catch (e) {
+          fetchedSongs = [];
+        }
+      }
+
+      // 2. Nếu chưa có kết quả, thử map qua DB Topic
+      if (fetchedSongs.length === 0) {
+        const dbTopic = findMatchingDbTopic(item, topics);
+        if (dbTopic && dbTopic._id !== targetIdOrSlug) {
+          try {
+            const response = await clientTopicsApi.getSongsByTopic(dbTopic._id);
+            fetchedSongs = Array.isArray(response.data) ? response.data : [];
+          } catch (e) {
+            fetchedSongs = [];
+          }
+        }
+      }
+
+      if (fetchedSongs.length > 0) {
+        setSongs(fetchedSongs);
+        return;
+      }
+
+      // 3. Fallback: search bài hát theo từ khóa chủ đề nếu DB chưa phân loại bài hát
+      const fallbackQuery = item.query || item.topicName || itemName;
+      if (fallbackQuery) {
+        const response = await clientSongsApi.search({ query: fallbackQuery, limit: 30 });
+        const searchedSongs = Array.isArray(response.data) ? response.data : [];
+        setSongs(searchedSongs);
       } else {
         setSongs([]);
       }
@@ -497,16 +609,18 @@ function ClientGenres() {
 
   const handleSelectCategory = useCallback((item) => {
     const itemName = item.title || item.name || item.topicName;
-    const slug = toSlug(itemName) || item.id || item._id;
+    const slug = item.id || item._id || toSlug(itemName);
     const newParams = new URLSearchParams(searchParams);
     newParams.set('topic', slug);
+    newParams.delete('cat');
+    newParams.delete('genre');
     newParams.delete('query');
     newParams.delete('tab');
     setSearchParams(newParams);
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    const topicParam = searchParams.get('topic');
+    const topicParam = searchParams.get('topic') || searchParams.get('cat') || searchParams.get('genre') || searchParams.get('id');
     if (topicParam) {
       const normalizedParam = topicParam.trim();
       if (selectedTopic !== normalizedParam) {
@@ -521,24 +635,29 @@ function ClientGenres() {
           }
         }
         
-        // 2. Tìm trong Curated items
+        // 2. Tìm trong Curated items + Genre Capsules
         const allCurated = [
+          ...GENRE_CAPSULES,
           ...FEATURED_ITEMS,
           ...NATIONS_ITEMS,
           ...MOODS_ITEMS,
-          ...CAROUSEL_SLIDES
+          ...CAROUSEL_SLIDES,
         ];
         const curatedMatch = allCurated.find(
-          (item) => item.id === normalizedParam || toSlug(item.title) === normalizedParam || toSlug(item.label) === normalizedParam
+          (item) => item.id === normalizedParam || toSlug(item.title || '') === normalizedParam || toSlug(item.name || '') === normalizedParam || toSlug(item.label || '') === normalizedParam
         );
         
         if (curatedMatch) {
           fetchTopicSongs(curatedMatch);
         } else if (topics.length > 0) {
-          const fallbackMatch = topics.find((t) => toSlug(t.name).includes(toSlug(normalizedParam)));
+          const fallbackMatch = findMatchingDbTopic({ name: normalizedParam, topicName: normalizedParam, id: normalizedParam }, topics) || topics.find((t) => toSlug(t.name).includes(toSlug(normalizedParam)));
           if (fallbackMatch) {
             fetchTopicSongs(fallbackMatch);
+          } else {
+            fetchTopicSongs({ id: normalizedParam, name: normalizedParam, query: normalizedParam });
           }
+        } else {
+          fetchTopicSongs({ id: normalizedParam, name: normalizedParam, query: normalizedParam });
         }
       }
     } else {
@@ -557,12 +676,7 @@ function ClientGenres() {
     setSelectedTitle('Gợi ý cho bạn');
     setSongs(defaultSongs);
     setQuery('');
-    
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/genres', { replace: true });
-    }
+    setSearchParams({});
   };
 
   const handleSelectTopicTab = (tab) => {
@@ -633,6 +747,9 @@ function ClientGenres() {
 
   const activeGradient = useMemo(() => {
     if (!selectedTopic) return '';
+    const capsuleMatch = GENRE_CAPSULES.find(c => c.id === selectedTopic);
+    if (capsuleMatch) return capsuleMatch.gradient;
+
     const slideMatch = CAROUSEL_SLIDES.find(c => c.id === selectedTopic);
     if (slideMatch) return slideMatch.gradient;
     
@@ -653,6 +770,9 @@ function ClientGenres() {
 
   const activeImage = useMemo(() => {
     if (!selectedTopic) return '';
+    const capsuleMatch = GENRE_CAPSULES.find(c => c.id === selectedTopic);
+    if (capsuleMatch) return capsuleMatch.image;
+
     const slideMatch = CAROUSEL_SLIDES.find(c => c.id === selectedTopic);
     if (slideMatch) return slideMatch.image;
     

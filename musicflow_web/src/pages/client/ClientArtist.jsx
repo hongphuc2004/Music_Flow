@@ -37,6 +37,7 @@ function ClientArtist() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     const fetchArtistSongs = async () => {
       try {
         setLoading(true);

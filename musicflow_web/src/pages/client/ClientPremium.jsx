@@ -32,7 +32,7 @@ import {
   AccountBalanceWalletRounded as WalletIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientPlansApi, clientSubscriptionApi } from '../../services/client/client.service';
+import { clientPlansApi, clientSubscriptionApi, clientUserApi } from '../../services/client/client.service';
 import useAppToast from '../../components/common/useAppToast';
 import { useNavigate } from 'react-router-dom';
 
@@ -46,6 +46,7 @@ function ClientPremium() {
   
   // Trạng thái Premium hiện tại của user
   const [currentSub, setCurrentSub] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [expiryDate, setExpiryDate] = useState('');
 
@@ -65,16 +66,31 @@ function ClientPremium() {
         const plansRes = await clientPlansApi.getActive();
         setPlans(plansRes.data?.data || []);
 
-        // 2. Tải thông tin cước hiện tại của user
-        const subRes = await clientSubscriptionApi.getCurrent();
-        const activeSub = subRes.data?.data?.activeSubscription;
-        setCurrentSub(activeSub);
+        // 2. Tải thông tin cước hiện tại của user & user profile
+        try {
+          const [subRes, userRes] = await Promise.all([
+            clientSubscriptionApi.getCurrent(),
+            clientUserApi.getMe()
+          ]);
+          const activeSub = subRes.data?.data?.activeSubscription || null;
+          const userObj = userRes.data?.user || null;
+          setCurrentSub(activeSub);
+          setCurrentUser(userObj);
 
-        if (activeSub) {
-          setIsPremiumUser(true);
-          if (activeSub.endDate) {
-            setExpiryDate(new Date(activeSub.endDate).toLocaleDateString('vi-VN'));
+          const isUserActive = Boolean(
+            (userObj?.isPremium && userObj?.premiumExpiry && new Date(userObj.premiumExpiry) > new Date()) ||
+            (activeSub?.status === 'active' && activeSub?.endDate && new Date(activeSub.endDate) > new Date())
+          );
+
+          setIsPremiumUser(isUserActive);
+          if (isUserActive) {
+            const exp = activeSub?.endDate || userObj?.premiumExpiry;
+            if (exp) {
+              setExpiryDate(new Date(exp).toLocaleDateString('vi-VN'));
+            }
           }
+        } catch {
+          // ignore error if guest
         }
       } catch (err) {
         console.error('Failed to load premium info:', err);
@@ -289,7 +305,13 @@ function ClientPremium() {
 
             <Grid container spacing={3.5} justifyContent="center" alignItems="stretch">
               {plans.map((plan) => {
-                const isCurrentPlan = currentSub && currentSub.plan && currentSub.plan._id === plan._id;
+                const isCurrentPlan = isPremiumUser && Boolean(
+                  (currentSub?.plan?._id && String(currentSub.plan._id) === String(plan._id)) ||
+                  (currentSub?.plan && String(currentSub.plan) === String(plan._id)) ||
+                  (currentUser?.premiumPlan?._id && String(currentUser.premiumPlan._id) === String(plan._id)) ||
+                  (currentUser?.premiumPlan && String(currentUser.premiumPlan) === String(plan._id)) ||
+                  (currentUser?.premiumPlan?.name && currentUser.premiumPlan.name === plan.name)
+                );
                 const { title: displayTitle, badge: highlightBadge } = getMappedPlanLabel(plan);
                 const planBenefits = getConciseBenefits(plan);
 
@@ -509,10 +531,10 @@ function ClientPremium() {
                   {/* Tải xuống */}
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 26 }, py: 2 }}>Tải nhạc ngoại tuyến (Download)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tối đa 100 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 300 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 700 MB</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>Tối đa 1 GB</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tối đa 100 MB (128k)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>Tối đa 300 MB (128k)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, color: '#6c63ff', py: 2 }}>Tối đa 700 MB (320k)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>Tối đa 1 GB (320k)</TableCell>
                   </TableRow>
                   
                   {/* Trợ lý AI */}
@@ -526,11 +548,11 @@ function ClientPremium() {
                   
                   {/* Chất lượng âm thanh */}
                   <TableRow hover>
-                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 31 }, py: 2 }}>Chất lượng âm thanh</TableCell>
+                    <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 31 }, py: 2 }}>Chất lượng nghe trực tuyến</TableCell>
                     <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tiêu chuẩn (128kbps)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600, py: 2 }}>HQ (320kbps - Sắp có)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600, py: 2 }}>HQ (320kbps - Sắp có)</TableCell>
-                    <TableCell align="center" sx={{ color: 'text.disabled', fontStyle: 'italic', fontWeight: 600, py: 2 }}>HQ (320kbps - Sắp có)</TableCell>
+                    <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>Tiêu chuẩn (128kbps)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#6c63ff', py: 2 }}>HQ 320kbps ✨</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>HQ 320kbps ✨</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

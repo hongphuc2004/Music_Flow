@@ -40,6 +40,7 @@ function ClientPlaylist() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     const fetchPlaylist = async () => {
       try {
         setLoading(true);

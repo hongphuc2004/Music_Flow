@@ -58,11 +58,13 @@ function normalizeSong(song) {
     ? song.artists.map((a) => a?.name).filter(Boolean).join(', ')
     : song.artistText || song.artist || '';
   return {
+    ...song,
     _id: song._id,
     title: song.title || 'Unknown song',
     imageUrl: song.imageUrl || '',
     artistText,
     duration: song.duration || 0,
+    audioMetadata: song.audioMetadata || null,
     streamUrl: song._id
       ? resolveSongStreamUrl(song._id)
       : song.streamUrl || song.audioUrl || '',
@@ -145,12 +147,14 @@ export function ClientPlayerProvider({ children }) {
   );
   const [actualAudioQuality, setActualAudioQuality] = useState('std');
   const [isPremium, setIsPremium] = useState(false);
+  const [userTier, setUserTier] = useState('basic');
   const [isQualityLoading, setIsQualityLoading] = useState(false);
   const isLoggedIn = Boolean(localStorage.getItem('role'));
 
   useEffect(() => {
     if (!isLoggedIn) {
       setIsPremium(false);
+      setUserTier('basic');
       return;
     }
     clientUserApi.getMe()
@@ -162,11 +166,25 @@ export function ClientPlayerProvider({ children }) {
           new Date(userObj.premiumExpiry) > new Date()
         );
         setIsPremium(premium);
+        if (!premium) {
+          setUserTier('basic');
+        } else {
+          const planName = userObj?.premiumPlan?.name || '';
+          if (planName === 'Gói GO') {
+            setUserTier('go');
+          } else if (planName === 'Gói PLUS') {
+            setUserTier('plus');
+          } else {
+            setUserTier('premium');
+          }
+        }
       })
       .catch((err) => {
         console.error("Failed to load user premium status:", err);
       });
   }, [isLoggedIn]);
+
+  const canPlayHQ = userTier === 'plus' || userTier === 'premium';
 
   const audioQualityRef = useRef(audioQuality);
   useEffect(() => {
@@ -185,7 +203,7 @@ export function ClientPlayerProvider({ children }) {
         }
       } catch (err) {
         const errCode = err.response?.data?.code;
-        if (errCode === 'PREMIUM_REQUIRED' || errCode === 'HQ_NOT_AVAILABLE') {
+        if (errCode === 'PREMIUM_REQUIRED' || errCode === 'PLUS_OR_PREMIUM_REQUIRED' || errCode === 'HQ_NOT_AVAILABLE') {
           console.warn(`HQ quality not available (${errCode}). Falling back to Standard.`);
           try {
             const stdResponse = await clientSongsApi.getPlaybackTicket(songId, 'std');
@@ -705,13 +723,15 @@ export function ClientPlayerProvider({ children }) {
     audioQuality,
     actualAudioQuality,
     isPremium,
+    userTier,
+    canPlayHQ,
     isQualityLoading,
   }), [
     currentSong, queue, queueIndex, shuffle, repeatMode,
     isPlaying, currentTime, duration,
     lyricsData.lines, lyricsData.isSynced, lyricsData.plainText,
     activeLyricIndex, activeWordIndex, autoplay,
-    audioQuality, actualAudioQuality, isPremium, isQualityLoading,
+    audioQuality, actualAudioQuality, isPremium, userTier, canPlayHQ, isQualityLoading,
   ]);
 
   const actionsValue = useMemo(() => ({

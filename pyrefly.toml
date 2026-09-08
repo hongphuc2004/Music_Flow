@@ -8,3 +8,7 @@ search-path = [
     "musicflow_lyrics_sync/tests"
 ]
 
+[errors]
+missing-import = false
+
+

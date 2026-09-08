@@ -6,7 +6,7 @@ const Song = require("../models/song.model");
 const { cache, CACHE_TTL } = require("../utils/cache.util");
 
 const TOPIC_SONG_SELECT =
-  "title artists topicIds uploadedBy isPublic audioUrl duration imageUrl source allowDownload playCount likeCount createdAt";
+  "title artists topicIds uploadedBy isPublic audioUrl audioPublicId audioMetadata duration imageUrl source allowDownload playCount likeCount createdAt";
 
 const parsePagination = (query) => {
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
@@ -36,18 +36,41 @@ router.get("/:topicId/songs", async (req, res) => {
     let targetTopicId = topicId;
 
     if (!mongoose.Types.ObjectId.isValid(topicId)) {
-      const decodedParam = decodeURIComponent(topicId).replace(/-/g, " ").trim();
+      const decodedParam = decodeURIComponent(topicId).trim();
+      const withSpaces = decodedParam.replace(/[-_]/g, " ").trim();
+      const withHyphens = decodedParam.replace(/\s+/g, "-").trim();
+
       const foundTopic = await Topic.findOne({
-        name: { $regex: new RegExp(`^${decodedParam}$`, "i") }
+        $or: [
+          { name: { $regex: new RegExp(`^${decodedParam}$`, "i") } },
+          { name: { $regex: new RegExp(`^${withSpaces}$`, "i") } },
+          { name: { $regex: new RegExp(`^${withHyphens}$`, "i") } },
+        ],
       });
       if (foundTopic) {
         targetTopicId = foundTopic._id;
       } else {
-        const looseTopic = await Topic.findOne({
-          name: { $regex: new RegExp(decodedParam, "i") }
+        const allTopics = await Topic.find().select("_id name").lean();
+        const normalizeStr = (s) =>
+          (s || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[đĐ]/g, "d")
+            .replace(/[^a-z0-9]/g, "");
+        const targetNormalized = normalizeStr(decodedParam);
+
+        const matched = allTopics.find((t) => {
+          const tNorm = normalizeStr(t.name);
+          return (
+            tNorm === targetNormalized ||
+            tNorm.includes(targetNormalized) ||
+            targetNormalized.includes(tNorm)
+          );
         });
-        if (looseTopic) {
-          targetTopicId = looseTopic._id;
+
+        if (matched) {
+          targetTopicId = matched._id;
         } else {
           return res.json([]);
         }

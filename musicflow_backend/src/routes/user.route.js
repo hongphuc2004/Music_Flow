@@ -16,7 +16,7 @@ const upload = multer({
 
 router.get("/me", authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.userId).populate("premiumPlan");
 
     if (!user) {
       return res.status(404).json({

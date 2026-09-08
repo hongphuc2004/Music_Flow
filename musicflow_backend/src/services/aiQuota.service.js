@@ -1,7 +1,7 @@
 const AssistantConversation = require("../models/assistant-conversation.model");
 const AssistantMessage = require("../models/assistant-message.model");
 const User = require("../models/user.model");
-const { hasPremiumAccess } = require("../utils/premium.util");
+const { hasPremiumAccess, getUserTier } = require("../utils/premium.util");
 
 // Concurrency lock tracking with safety expiration (15 seconds)
 const activeRequests = new Map();
@@ -162,25 +162,6 @@ async function checkAndTriggerQuotaRestored(userId) {
   } catch (err) {
     console.error("Failed to check and trigger quota restored notification:", err.message);
   }
-}
-
-/**
- * Resolves the subscription tier code ("premium" | "plus" | "go" | "basic") for a user document.
- * @param {Object} user - Mongoose User document or user object
- * @returns {string} Tier code
- */
-function getUserTier(user) {
-  if (!user || !hasPremiumAccess(user)) {
-    return "basic";
-  }
-  const planName = user.premiumPlan?.name || "";
-  if (planName === "Gói GO") {
-    return "go";
-  }
-  if (planName === "Gói PLUS") {
-    return "plus";
-  }
-  return "premium";
 }
 
 module.exports = {

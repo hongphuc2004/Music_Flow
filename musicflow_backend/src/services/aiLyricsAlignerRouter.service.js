@@ -12,8 +12,7 @@ const LyricsAlignmentJob = require("../models/lyrics-alignment-job.model");
 const SongLyrics = require("../models/song-lyrics.model");
 const Song = require("../models/song.model");
 
-const LOCAL_ALIGNMENT_URL = process.env.LOCAL_ALIGNMENT_URL || "http://127.0.0.1:8080/align";
-const DEFAULT_MODAL_URL = process.env.MODAL_ALIGNMENT_URL || "https://hongphuc2004--musicflow-lyrics-sync-align.modal.run";
+const DEFAULT_MODAL_URL = process.env.MODAL_ALIGNMENT_URL || null; // Tắt Modal mặc định để ưu tiên Render/Local
 const GEMINI_SAFE_MODELS = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest", "gemini-2.0-flash-exp"];
 
 function formatLrcTimestamp(seconds) {
@@ -65,33 +64,47 @@ async function processAlignmentWithFallback(jobId) {
   const isDev = process.env.NODE_ENV !== "production";
 
   // ==========================================
-  // TIER 0: Local CPU Service (Chạy trực tiếp máy local)
+  // TIER 0: Local CPU Service (Chạy trực tiếp máy local trên port 8000 hoặc 8080)
   // ==========================================
-  if (isDev && LOCAL_ALIGNMENT_URL) {
-    try {
-      console.log(`[AlignRouter] [Tier 0 Local] Checking local CPU service: ${LOCAL_ALIGNMENT_URL}...`);
-      job.stage = "ALIGNING";
-      job.progressMessage = "Đang xử lý căn nhịp trực tiếp bằng CPU máy...";
-      job.progressPercent = 45;
-      await job.save();
+  if (isDev) {
+    const candidateUrls = [
+      process.env.LOCAL_ALIGNMENT_URL,
+      "http://127.0.0.1:8000/align",
+      "http://127.0.0.1:8080/align",
+      "http://localhost:8000/align",
+      "http://localhost:8080/align",
+    ].filter(Boolean);
 
-      const localRes = await axios.post(
-        LOCAL_ALIGNMENT_URL,
-        {
-          audioUrl: song.audioUrl,
-          plainLyrics: plainLyrics,
-        },
-        { timeout: 120000 }
-      );
+    // Lọc bỏ URL trùng lặp
+    const uniqueUrls = [...new Set(candidateUrls)];
 
-      if (localRes.data && localRes.data.success && localRes.data.syncedLines?.length > 0) {
-        alignmentResult = localRes.data;
-        usedProvider = "local_cpu";
-        console.log(`[AlignRouter] ✅ Local CPU alignment succeeded in ${localRes.data.elapsedSeconds || "?"}s!`);
+    for (const url of uniqueUrls) {
+      if (alignmentResult) break;
+      try {
+        console.log(`[AlignRouter] [Tier 0 Local] Checking local CPU service: ${url}...`);
+        job.stage = "ALIGNING";
+        job.progressMessage = "Đang xử lý căn nhịp trực tiếp bằng CPU máy...";
+        job.progressPercent = 45;
+        await job.save();
+
+        const localRes = await axios.post(
+          url,
+          {
+            audioUrl: song.audioUrl,
+            plainLyrics: plainLyrics,
+          },
+          { timeout: 120000 }
+        );
+
+        if (localRes.data && localRes.data.success && localRes.data.syncedLines?.length > 0) {
+          alignmentResult = localRes.data;
+          usedProvider = "local_cpu";
+          console.log(`[AlignRouter] ✅ Local CPU alignment succeeded on ${url} in ${localRes.data.elapsedSeconds || "?"}s!`);
+          break;
+        }
+      } catch (err) {
+        errors.push(`Local CPU (${url}): ${err.message}`);
       }
-    } catch (err) {
-      console.log(`[AlignRouter] Local CPU service not available (${err.message}). Trying cloud providers...`);
-      errors.push(`Local CPU: ${err.message}`);
     }
   }
 

@@ -4,10 +4,18 @@ Handles atomic job claim, heartbeat loop, stale lock reclamation,
 audio pipeline execution, OCC draft application, and temp file lifecycle.
 """
 
-import logging
 import os
-import shutil
 import sys
+
+# Crucial Memory Safety Constraints for Linux 512MB RAM Containers
+os.environ["MALLOC_ARENA_MAX"] = "1"
+os.environ["ORT_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+import logging
+import shutil
 import threading
 import time
 import uuid
@@ -287,6 +295,20 @@ class AlignmentWorker:
             )
             prep_duration = round(time.time() - prep_start, 3)
 
+            # Immediately delete raw downloaded audio to free disk and tmpfs memory
+            if os.path.exists(raw_audio_path) and raw_audio_path != wav_16k_path:
+                try:
+                    os.remove(raw_audio_path)
+                except Exception:
+                    pass
+            import gc
+            gc.collect()
+            try:
+                import ctypes
+                ctypes.CDLL("libc.so.6").malloc_trim(0)
+            except Exception:
+                pass
+
             # 5. HTDemucs Vocal Separation (Optional, skipped in lightweight mode to prevent OOM on 512MB RAM)
             use_separation = (
                 config.ENABLE_VOCAL_SEPARATION
@@ -528,7 +550,7 @@ def start_health_server():
                 self.wfile.write(b'{"status":"healthy","service":"musicflow-alignment-worker","ram":"16gb-ok"}')
             def log_message(self, format, *args):
                 pass
-        server = http.server.HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+        server = http.server.ThreadingHTTPServer(("0.0.0.0", port), HealthCheckHandler)
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
         print(f"[Worker] Health check HTTP server started on 0.0.0.0:{port}", flush=True)

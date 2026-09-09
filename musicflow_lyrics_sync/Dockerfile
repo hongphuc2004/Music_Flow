@@ -6,6 +6,11 @@ ENV PYTHONUNBUFFERED=1
 ENV TEMP_STORAGE_DIR=/tmp/musicflow_alignment
 ENV WORKER_DEVICE=cpu
 ENV ALLOW_CPU_FALLBACK=true
+ENV MALLOC_ARENA_MAX=1
+ENV ORT_NUM_THREADS=1
+ENV OMP_NUM_THREADS=1
+ENV OPENBLAS_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
 
 # Install system dependencies (ffmpeg for audio decoding, libsndfile for librosa/soundfile, git-lfs)
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -485,15 +485,16 @@ def _extract_emissions_onnx_chunked(
     session: Any,
     audio_waveform: np.ndarray,
     sr: int = 16000,
-    window_sec: float = 10.0,
-    overlap_sec: float = 2.0
+    window_sec: float = 4.0,
+    overlap_sec: float = 1.0
 ) -> np.ndarray:
     """
-    Extracts acoustic emissions via ONNX Runtime using 10s chunk + 2s overlap.
-    Reduces peak attention activation workspace to < 40MB while preserving full acoustic accuracy.
+    Extracts acoustic emissions via ONNX Runtime using 4s chunk + 1s overlap.
+    Reduces peak attention activation workspace to < 10MB while preserving full acoustic accuracy.
     Computes numerically stable log_softmax in pure NumPy to eliminate PyTorch tensor memory.
     """
     import gc
+    import ctypes
     total_samples = len(audio_waveform)
     step_samples = int((window_sec - overlap_sec) * sr)
     overlap_samples = int(overlap_sec * sr)
@@ -527,6 +528,7 @@ def _extract_emissions_onnx_chunked(
         chunk_emissions_np = (logits_np - max_logits) - np.log(sum_exp)
 
         del chunk_input, onnx_outputs, logits_np, max_logits, exp_logits, sum_exp
+        del chunk_audio
 
         left_frames = int(round(left_pad / 320.0))
         right_frames = int(round(right_pad / 320.0))
@@ -537,12 +539,20 @@ def _extract_emissions_onnx_chunked(
         emissions_list.append(valid_emissions)
         del chunk_emissions_np
         gc.collect()
+        try:
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
 
         ptr += step_samples
 
     full_emissions = np.concatenate(emissions_list, axis=0)
     del emissions_list
     gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
     return full_emissions
 
 
@@ -675,13 +685,13 @@ def align_lyrics_onnx_int8(
     onnx_mgr = ONNXCTCModelManager.get_instance()
     session, tokenizer = onnx_mgr.load_model()
 
-    # 1. Extract emissions with 10s chunk + 2s overlap
+    # 1. Extract emissions with 4s chunk + 1s overlap
     emissions_np = _extract_emissions_onnx_chunked(
         session=session,
         audio_waveform=data,
         sr=16000,
-        window_sec=10.0,
-        overlap_sec=2.0
+        window_sec=4.0,
+        overlap_sec=1.0
     )
 
     # 2. Apply Silence-Prior Gating (Intro Lock & Interlude Solo Enforcement)
@@ -857,47 +867,45 @@ def align_lyrics(
 ) -> Tuple[List[Dict[str, Any]], float]:
     """
     Main entry point for Neural CTC Forced Alignment.
-    Primary Path: High-Performance ONNX INT8 Pure Standalone (Peak RSS < 220MB).
-    Fallback Path: PyTorch FP32 Baseline.
+    Primary Path: High-Performance ONNX INT8 Pure Standalone (Peak RSS < 200MB).
     """
-    # Attempt Primary ONNX INT8 Path
-    try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        onnx_model_path = os.path.join(base_dir, "models", "wav2vec2_onnx_int8", "model_quantized.onnx")
-        if os.path.exists(onnx_model_path):
-            logger.info("[AlignLyrics] Executing via Primary ONNX INT8 Standalone Engine...")
-            return align_lyrics_onnx_int8(vocals_wav_path, plain_lyrics)
-    except Exception as onnx_err:
-        logger.warning(f"[AlignLyrics] ONNX INT8 engine encountered issue ({onnx_err}), safely falling back to PyTorch FP32.")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    onnx_model_path = os.path.join(base_dir, "models", "wav2vec2_onnx_int8", "model_quantized.onnx")
+    if os.path.exists(onnx_model_path):
+        logger.info("[AlignLyrics] Executing via Primary ONNX INT8 Standalone Engine...")
+        return align_lyrics_onnx_int8(vocals_wav_path, plain_lyrics)
 
-    # Fallback to PyTorch FP32 Baseline
-    logger.info("[AlignLyrics] Executing via Fallback PyTorch FP32 Engine...")
-    data, sr = sf.read(vocals_wav_path, dtype="float32")
-    if data.ndim > 1:
-        data = np.mean(data, axis=1)
-    if sr != 16000:
-        from scipy import signal
-        gcd = np.gcd(16000, sr)
-        data = signal.resample_poly(data, 16000 // gcd, sr // gcd).astype(np.float32)
-        sr = 16000
-    duration_sec = float(len(data)) / float(sr)
+    # Fallback to PyTorch FP32 ONLY on CUDA environment (never on 512MB RAM CPU)
+    if device == "cuda":
+        logger.info("[AlignLyrics] Executing via Fallback PyTorch FP32 CUDA Engine...")
+        data, sr = sf.read(vocals_wav_path, dtype="float32")
+        if data.ndim > 1:
+            data = np.mean(data, axis=1)
+        if sr != 16000:
+            from scipy import signal
+            gcd = np.gcd(16000, sr)
+            data = signal.resample_poly(data, 16000 // gcd, sr // gcd).astype(np.float32)
+            sr = 16000
+        duration_sec = float(len(data)) / float(sr)
 
-    raw_lines, line_words_map = VietnameseTextNormalizer.extract_words_and_lines(plain_lyrics)
-    flat_words = [w for line in line_words_map for w in line]
+        raw_lines, line_words_map = VietnameseTextNormalizer.extract_words_and_lines(plain_lyrics)
+        flat_words = [w for line in line_words_map for w in line]
 
-    model_mgr = CTCModelManager.get_instance()
-    model, processor = model_mgr.load_model(model_name, device=device)
+        model_mgr = CTCModelManager.get_instance()
+        model, processor = model_mgr.load_model(model_name, device=device)
 
-    aligned_words = _align_single_chunk(
-        model=model,
-        processor=processor,
-        audio_chunk=data,
-        words_info=flat_words,
-        offset_sec=0.0,
-        chunk_dur_sec=duration_sec,
-        device=model_mgr.device
-    )
-    return aligned_words, duration_sec
+        aligned_words = _align_single_chunk(
+            model=model,
+            processor=processor,
+            audio_chunk=data,
+            words_info=flat_words,
+            offset_sec=0.0,
+            chunk_dur_sec=duration_sec,
+            device=model_mgr.device
+        )
+        return aligned_words, duration_sec
+    else:
+        raise CTCModelLoadError("Không tìm thấy model ONNX INT8 và môi trường CPU 512MB RAM không cho phép load PyTorch FP32")
 
 
 

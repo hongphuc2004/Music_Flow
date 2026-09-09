@@ -70,13 +70,18 @@ class AlignmentWorker:
 
     def warmup_models(self):
         """
-        Pre-warms PyTorch inference tensors and Wav2Vec2 weights during worker startup
+        Pre-warms ONNX INT8 session during worker startup
         so all subsequent jobs execute with zero initialization latency.
         """
         try:
-            logger.info("[Worker] Pre-warming models and inference tensors...")
+            logger.info("[Worker] Pre-warming ONNX INT8 acoustic model...")
             w_start = time.time()
-            if config.WORKER_DEVICE == "cuda":
+            from pipeline.aligner import ONNXCTCModelManager
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            onnx_path = os.path.join(base_dir, "models", "wav2vec2_onnx_int8", "model_quantized.onnx")
+            if os.path.exists(onnx_path):
+                ONNXCTCModelManager.get_instance().load_model()
+            elif config.WORKER_DEVICE == "cuda":
                 import torch
                 _ = torch.zeros((1, 1, 16000), device="cuda")
                 torch.cuda.synchronize()

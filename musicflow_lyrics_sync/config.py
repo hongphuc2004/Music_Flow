@@ -21,14 +21,12 @@ HEARTBEAT_INTERVAL_SEC = int(os.getenv("HEARTBEAT_INTERVAL_SEC", "15"))
 MAX_JOB_ATTEMPTS = int(os.getenv("MAX_JOB_ATTEMPTS", "2"))
 
 # Hardware & Memory Safety
-try:
-    import torch
-    has_cuda = torch.cuda.is_available()
-except ImportError:
-    has_cuda = False
-
 ALLOW_CPU_FALLBACK = os.getenv("ALLOW_CPU_FALLBACK", "true").lower() in ("true", "1", "yes")
-WORKER_DEVICE = os.getenv("WORKER_DEVICE", "cuda" if has_cuda else "cpu")
+_env_device = os.getenv("WORKER_DEVICE")
+if _env_device:
+    WORKER_DEVICE = _env_device.lower()
+else:
+    WORKER_DEVICE = "cpu"
 
 # Audio & Post-processing Constraints
 MAX_SONG_DURATION_SEC = int(os.getenv("MAX_SONG_DURATION_SEC", "420")) # 7 minutes

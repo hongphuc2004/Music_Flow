@@ -9,6 +9,7 @@ import { clientSongsApi } from '../../services/client/client.service.js';
  * @param {number} currentTime — current playback time in seconds (from audio player state)
  */
 export function useLyrics(audioRef, currentTime) {
+  const [lyricsLoading, setLyricsLoading] = useState(false);
   const [lyricsData, setLyricsData] = useState({
     isSynced: false,
     lines: [],
@@ -22,9 +23,11 @@ export function useLyrics(audioRef, currentTime) {
   const loadLyrics = useCallback(async (songId) => {
     if (!songId) {
       setLyricsData({ isSynced: false, lines: [], plainText: '' });
+      setLyricsLoading(false);
       return;
     }
     try {
+      setLyricsLoading(true);
       const response = await clientSongsApi.getLyrics(songId);
       const resData = response.data || {};
 
@@ -70,6 +73,8 @@ export function useLyrics(audioRef, currentTime) {
       }
     } catch {
       setLyricsData({ isSynced: false, lines: [], plainText: '' });
+    } finally {
+      setLyricsLoading(false);
     }
   }, []);
 
@@ -91,5 +96,5 @@ export function useLyrics(audioRef, currentTime) {
     return findActiveWordIndex(activeLine.words, currentTime);
   }, [activeLyricIndex, lyricsData.lines, currentTime]);
 
-  return { lyricsData, loadLyrics, activeLyricIndex, activeWordIndex };
+  return { lyricsData, loadLyrics, activeLyricIndex, activeWordIndex, lyricsLoading };
 }

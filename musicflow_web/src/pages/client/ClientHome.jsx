@@ -81,6 +81,8 @@ function ClientHome() {
     currentTime,
     duration,
     lyricsLines,
+    hasSyncedLyrics,
+    lyricsLoading,
     activeLyricIndex,
     activeWordIndex,
     playPrevious,

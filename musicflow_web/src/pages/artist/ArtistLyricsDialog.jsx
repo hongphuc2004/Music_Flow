@@ -142,11 +142,9 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
               }
               setTabIndex(1);
               showToast({
-                severity: hasWarning ? 'warning' : 'success',
-                title: hasWarning ? 'AI căn nhịp hoàn thành (Có lưu ý)' : 'AI căn nhịp thành công',
-                message: hasWarning
-                  ? (job.qualityNotes?.[0] || 'Vui lòng kiểm tra lại các mốc thời gian.')
-                  : 'Đã hoàn tất tạo nhịp tự động cho từng dòng và từng từ!',
+                severity: 'success',
+                title: 'AI căn nhịp thành công',
+                message: 'Đã hoàn tất tạo nhịp tự động cho từng dòng và từng từ!',
               });
             }
 

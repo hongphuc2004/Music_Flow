@@ -308,7 +308,7 @@ export function ClientPlayerProvider({ children }) {
   } = useTracking(audioRef, currentSongRef);
 
 
-  const { lyricsData, loadLyrics, activeLyricIndex, activeWordIndex } = useLyrics(audioRef, currentTime);
+  const { lyricsData, loadLyrics, activeLyricIndex, activeWordIndex, lyricsLoading } = useLyrics(audioRef, currentTime);
 
   const {
     isPrefetchingAutoplayRef,
@@ -720,6 +720,7 @@ export function ClientPlayerProvider({ children }) {
     hasSong: Boolean(currentSong),
     lyricsLines: lyricsData.lines,
     hasSyncedLyrics: lyricsData.isSynced,
+    lyricsLoading,
     activeLyricIndex,
     activeWordIndex,
     plainLyricsText: lyricsData.plainText,
@@ -734,7 +735,7 @@ export function ClientPlayerProvider({ children }) {
     currentSong, queue, queueIndex, shuffle, repeatMode,
     isPlaying, currentTime, duration,
     lyricsData.lines, lyricsData.isSynced, lyricsData.plainText,
-    activeLyricIndex, activeWordIndex, autoplay,
+    lyricsLoading, activeLyricIndex, activeWordIndex, autoplay,
     audioQuality, actualAudioQuality, isPremium, userTier, canPlayHQ, isQualityLoading,
   ]);
 

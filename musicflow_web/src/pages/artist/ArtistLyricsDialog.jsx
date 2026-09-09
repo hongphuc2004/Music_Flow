@@ -1351,9 +1351,9 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
                                 <Box sx={{ flex: 1 }}>
                                   {previewLyricsMode === 'karaoke' && isActive && hasWordTimestamps ? (
                                     <Box sx={{ display: 'inline' }}>
-                                      {line.words.map((w, wIdx) => {
-                                        const wStart = Number(w.startTime) || 0;
-                                        const wEnd = Number(w.endTime) || (wStart + 0.3);
+                                      {Array.isArray(line?.words) && line.words.filter(Boolean).map((w, wIdx) => {
+                                        const wStart = Number(w?.startTime) || 0;
+                                        const wEnd = Number(w?.endTime) || (wStart + 0.3);
                                         const isPastWord = currentTime >= wEnd || (activeWordIndex >= 0 && wIdx < activeWordIndex);
                                         const isCurrentWord = wIdx === activeWordIndex || (currentTime >= wStart && currentTime < wEnd);
                                         const wDur = Math.max(0.08, wEnd - wStart);

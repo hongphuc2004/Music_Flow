@@ -448,7 +448,14 @@ class ONNXCTCModelManager:
         if not os.path.exists(model_path):
             raise CTCModelLoadError(f"ONNX_MODEL_NOT_FOUND: Không tìm thấy model ONNX INT8 tại {model_path}")
 
-        logger.info(f"[ONNXCTCModelManager] Loading ONNX INT8 Model from {model_path}...")
+        model_file_size = os.path.getsize(model_path)
+        if model_file_size < 10 * 1024 * 1024:
+            raise CTCModelLoadError(
+                f"ONNX_MODEL_LFS_POINTER: File {model_path} chỉ có dung lượng {model_file_size} bytes "
+                f"(con trỏ Git LFS thay vì file nhị phân 122MB thực tế). Vui lòng cấu hình git-lfs pull."
+            )
+
+        logger.info(f"[ONNXCTCModelManager] Loading ONNX INT8 Model from {model_path} ({model_file_size / (1024*1024):.1f} MB)...")
         try:
             import onnxruntime as ort
             sess_options = ort.SessionOptions()

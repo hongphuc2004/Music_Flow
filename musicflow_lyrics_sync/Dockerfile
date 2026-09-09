@@ -7,11 +7,12 @@ ENV TEMP_STORAGE_DIR=/tmp/musicflow_alignment
 ENV WORKER_DEVICE=cpu
 ENV ALLOW_CPU_FALLBACK=true
 
-# Install system dependencies (ffmpeg for audio decoding, libsndfile for librosa/soundfile)
+# Install system dependencies (ffmpeg for audio decoding, libsndfile for librosa/soundfile, git-lfs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
     git \
+    git-lfs \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -26,6 +27,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source code
 COPY . .
+
+# Ensure Git LFS model is pulled if model_quantized.onnx is just an LFS pointer
+RUN git lfs install --skip-repo || true && \
+    if [ -f "models/wav2vec2_onnx_int8/model_quantized.onnx" ] && [ $(stat -c%s "models/wav2vec2_onnx_int8/model_quantized.onnx") -lt 1000000 ]; then \
+        echo "Detected Git LFS pointer for ONNX INT8 model. Pulling binary asset..." && \
+        (git lfs pull || true); \
+    fi
 
 # Create temporary working directory with full read/write permissions
 RUN mkdir -p /tmp/musicflow_alignment && chmod -R 777 /tmp/musicflow_alignment /app

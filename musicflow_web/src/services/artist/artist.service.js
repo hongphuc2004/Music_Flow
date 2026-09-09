@@ -25,5 +25,6 @@ export const artistApi = {
   publishLyrics: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/publish`, payload),
   unpublishLyrics: (songId) => api.post(`/artist/songs/${songId}/lyrics/unpublish`),
   triggerLyricsAlignment: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/alignment`, payload),
+  cancelLyricsAlignment: (songId) => api.post(`/artist/songs/${songId}/lyrics/alignment/cancel`),
   getLyricsAlignmentStatus: (songId) => api.get(`/artist/songs/${songId}/lyrics/alignment/status`),
 };

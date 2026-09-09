@@ -29,19 +29,26 @@ def download_audio_from_url(
     if not audio_url:
         raise AudioValidationError("AUDIO_NOT_FOUND", "URL âm thanh không hợp lệ hoặc trống")
 
-    # 1. Download audio stream
+    # 1. Download or copy audio stream
     try:
-        response = requests.get(audio_url, stream=True, timeout=30)
-        if response.status_code != 200:
-            raise AudioValidationError(
-                "AUDIO_DOWNLOAD_FAILED",
-                f"Tải tệp âm thanh thất bại (HTTP {response.status_code})"
-            )
+        if os.path.exists(audio_url):
+            import shutil
+            shutil.copyfile(audio_url, destination_path)
+        elif audio_url.startswith("http://") or audio_url.startswith("https://"):
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            response = requests.get(audio_url, stream=True, timeout=60, headers=headers)
+            if response.status_code != 200:
+                raise AudioValidationError(
+                    "AUDIO_DOWNLOAD_FAILED",
+                    f"Tải tệp âm thanh thất bại (HTTP {response.status_code})"
+                )
 
-        with open(destination_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=65536):
-                if chunk:
-                    f.write(chunk)
+            with open(destination_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=65536):
+                    if chunk:
+                        f.write(chunk)
+        else:
+            raise AudioValidationError("AUDIO_INVALID_SOURCE", f"Đường dẫn âm thanh không hợp lệ: {audio_url}")
     except requests.RequestException as e:
         raise AudioValidationError("AUDIO_DOWNLOAD_FAILED", f"Lỗi kết nối khi tải âm thanh: {str(e)}")
 

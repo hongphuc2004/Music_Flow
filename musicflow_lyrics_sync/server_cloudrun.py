@@ -60,11 +60,21 @@ def align_lyrics_endpoint(req: AlignmentRequest):
 
     temp_dir = tempfile.mkdtemp(prefix="align_")
     t_start = time.time()
+    
+    print("\n" + "=" * 65, flush=True)
+    print("🎵 [MusicFlow AI Aligner] Nhận yêu cầu tạo nhịp lời bài hát mới!", flush=True)
+    print(f" • Lời bài hát: {len(req.plainLyrics.strip().splitlines())} dòng, {len(req.plainLyrics.strip())} ký tự", flush=True)
+    print(f" • Audio Source: {req.audioUrl[:80]}...", flush=True)
+    print("=" * 65, flush=True)
+
     try:
         # 1. Download Audio
+        print("[1/5] 📥 Đang tải và kiểm tra tệp âm thanh...", flush=True)
         raw_audio_path, duration_sec = download_audio_from_url(req.audioUrl, temp_dir)
+        print(f"      ✅ Tải thành công! Thời lượng: {duration_sec:.1f}s ({duration_sec/60:.1f} phút)", flush=True)
 
         # 2. Preprocess 16kHz mono with Zero-Phase HighPass & Peak Normalization
+        print(f"[2/5] 🎚️ Đang chuẩn hóa âm thanh (16kHz Mono, HighPass {config.AUDIO_HIGH_PASS_HZ}Hz, Peak Norm)...", flush=True)
         wav_16k_path = os.path.join(temp_dir, "input_16k.wav")
         convert_to_16k_mono(
             raw_audio_path,
@@ -73,16 +83,22 @@ def align_lyrics_endpoint(req: AlignmentRequest):
             high_pass_hz=config.AUDIO_HIGH_PASS_HZ,
             normalize_enabled=config.AUDIO_NORMALIZE_ENABLED,
         )
+        print("      ✅ Chuẩn hóa âm thanh hoàn tất!", flush=True)
 
         # 3. Global Single-Pass Wav2Vec2 CTC Alignment
+        print(f"[3/5] 🧠 Đang chạy mô hình Wav2Vec2 CTC + Trellis DP + Viterbi (ONNX INT8)...", flush=True)
+        t_align = time.time()
         raw_words, _ = align_lyrics(
             wav_16k_path,
             req.plainLyrics,
             model_name=config.CTC_MODEL_NAME,
             device="cpu",
         )
+        align_elapsed = time.time() - t_align
+        print(f"      ✅ Bắt nhịp âm học hoàn tất trong {align_elapsed:.2f}s! ({len(raw_words)} từ)", flush=True)
 
         # 4. Onset Snapping
+        print("[4/5] ⚡ Đang tinh chỉnh điểm onset & năng lượng đuôi âm thanh (Energy Tail)...", flush=True)
         try:
             raw_words = snap_word_onsets(wav_16k_path, raw_words)
         except Exception:
@@ -99,12 +115,17 @@ def align_lyrics_endpoint(req: AlignmentRequest):
 
         synced_lines, lrc_data = compile_line_and_word_lyrics(processed_words, req.plainLyrics)
         quality_status, quality_notes = validate_alignment_quality(
-            processed_words,
+            synced_lines,
             req.plainLyrics,
             duration_sec,
         )
 
         total_elapsed = round(time.time() - t_start, 2)
+        print(f"[5/5] 🎉 ĐÃ HOÀN TẤT CĂN NHỊP TOÀN BỘ BÀI HÁT!", flush=True)
+        print(f" • Tổng thời gian: {total_elapsed}s", flush=True)
+        print(f" • Số câu đồng bộ: {len(synced_lines)} dòng", flush=True)
+        print(f" • Chất lượng đánh giá: {quality_status}", flush=True)
+        print("=" * 65 + "\n", flush=True)
 
         return {
             "success": True,
@@ -117,6 +138,9 @@ def align_lyrics_endpoint(req: AlignmentRequest):
             "lrcData": lrc_data,
         }
     except Exception as e:
+        print(f"\n❌ [ERROR] Lỗi căn nhịp: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi căn nhịp: {str(e)}")
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -125,4 +149,4 @@ def align_lyrics_endpoint(req: AlignmentRequest):
 if __name__ == "__main__":
     import uvicorn  # type: ignore
     port = int(os.getenv("PORT", "8000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("server_cloudrun:app", host="0.0.0.0", port=port, reload=True)

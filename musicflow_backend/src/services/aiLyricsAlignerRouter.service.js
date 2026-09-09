@@ -1,9 +1,21 @@
 /**
  * aiLyricsAlignerRouter.service.js
- * Multi-Provider High-Availability Cascading Router for MusicFlow AI Lyrics Alignment.
- * Tier 0: Local CPU Service (Dev)
- * Tier 1: Modal Serverless Webhook (5GB RAM, Scales to 0)
- * Tier 2: Google Gemini Audio API (Free $0 fallback)
+ * Fallback Guardian for MusicFlow AI Lyrics Alignment.
+ * 
+ * CORE PRINCIPLE:
+ * Worker (Wav2Vec2 CTC ONNX INT8) is the SOLE authority to claim jobs:
+ *   pending -> Worker claim -> processing -> succeeded
+ * 
+ * Guardian NEVER eagerly changes status from pending to processing.
+ * Guardian only observes the job and activates fallback when:
+ * 1. Worker does not claim the job after grace period (~20s), OR
+ * 2. Worker claims job but crashes / heartbeats stop (>60s timeout), OR
+ * 3. Worker marks job as failed.
+ * 
+ * Fallback cascade order:
+ * Tier 0: LOCAL_ALIGNMENT_URL (only when configured in dev/docker)
+ * Tier 1: MODAL_ALIGNMENT_URL (serverless webhook, if configured)
+ * Tier 2: Google Gemini Audio API (emergency fallback of last resort)
  */
 
 const axios = require("axios");
@@ -12,8 +24,13 @@ const LyricsAlignmentJob = require("../models/lyrics-alignment-job.model");
 const SongLyrics = require("../models/song-lyrics.model");
 const Song = require("../models/song.model");
 
-const DEFAULT_MODAL_URL = process.env.MODAL_ALIGNMENT_URL || null; // Tắt Modal mặc định để ưu tiên Render/Local
+const DEFAULT_MODAL_URL = process.env.MODAL_ALIGNMENT_URL || null;
 const GEMINI_SAFE_MODELS = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest", "gemini-2.0-flash-exp"];
+
+const GRACE_PERIOD_MS = 20000;          // 20s for Worker to claim pending job
+const HEARTBEAT_TIMEOUT_MS = 60000;     // 60s of silence before considering Worker dead
+const MONITOR_INTERVAL_MS = 10000;      // 10s polling interval for Guardian watch loop
+const MAX_TOTAL_MONITOR_MS = 360000;    // 6 minutes maximum tracking time for very long tracks
 
 function formatLrcTimestamp(seconds) {
   if (typeof seconds !== "number" || isNaN(seconds) || seconds < 0) {
@@ -24,11 +41,119 @@ function formatLrcTimestamp(seconds) {
   return `[${String(mins).padStart(2, "0")}:${secs.padStart(5, "0")}]`;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
- * Executes alignment with automatic fallback across all providers
+ * Schedules fallback monitoring for a newly created alignment job.
+ * Allows the dedicated ONNX INT8 worker to claim and process the job naturally.
+ * @param {string} jobId
+ */
+async function scheduleAlignmentFallback(jobId) {
+  // Run asynchronously in the background
+  setImmediate(async () => {
+    try {
+      await runFallbackGuardian(jobId);
+    } catch (err) {
+      console.error(`[FallbackGuardian] Unexpected error watching job ${jobId}:`, err);
+    }
+  });
+}
+
+/**
+ * Guardian loop: Monitors worker lifecycle and triggers fallback only when worker fails.
  * @param {string} jobId 
  */
-async function processAlignmentWithFallback(jobId) {
+async function runFallbackGuardian(jobId) {
+  console.log(`[FallbackGuardian] Started monitoring job ${jobId}. Waiting ${GRACE_PERIOD_MS / 1000}s grace period for Worker...`);
+
+  // Phase 1: Grace Period — Give Worker time to claim from MongoDB queue
+  await sleep(GRACE_PERIOD_MS);
+
+  let job = await LyricsAlignmentJob.findById(jobId);
+  if (!job) {
+    console.log(`[FallbackGuardian] Job ${jobId} not found. Stopping guardian.`);
+    return;
+  }
+
+  // If worker finished already during grace period
+  if (job.status === "succeeded") {
+    console.log(`[FallbackGuardian] ✅ Job ${jobId} completed successfully by Worker ${job.workerId || "native"}. No fallback needed.`);
+    return;
+  }
+
+  // Phase 2: If job is STILL "pending" after grace period -> Worker did not claim job!
+  if (job.status === "pending") {
+    console.warn(`[FallbackGuardian] ⚠️ Job ${jobId} is still pending after ${GRACE_PERIOD_MS / 1000}s. No Worker claimed the job. Activating Fallback Cascade...`);
+    await executeFallbackCascade(jobId, "WORKER_UNAVAILABLE_OR_OFFLINE");
+    return;
+  }
+
+  // Phase 3: If job was explicitly marked failed by worker
+  if (job.status === "failed") {
+    console.warn(`[FallbackGuardian] ⚠️ Job ${jobId} was marked failed by worker (${job.errorMessage || "Unknown"}). Activating Fallback Cascade...`);
+    await executeFallbackCascade(jobId, "WORKER_REPORTED_FAILURE");
+    return;
+  }
+
+  // Phase 4: Job is "processing" with active workerId -> Worker is processing!
+  // Monitor heartbeats until completion or crash. DO NOT abort just because it takes time.
+  const guardianStartTime = Date.now();
+  console.log(`[FallbackGuardian] 🔍 Job ${jobId} is being processed by Worker (${job.workerId}). Monitoring heartbeats...`);
+
+  while (true) {
+    await sleep(MONITOR_INTERVAL_MS);
+
+    job = await LyricsAlignmentJob.findById(jobId);
+    if (!job) return;
+
+    if (job.status === "succeeded") {
+      console.log(`[FallbackGuardian] ✅ Job ${jobId} finished successfully by Worker (${job.workerId}). Guardian exiting cleanly.`);
+      return;
+    }
+
+    if (job.status === "failed") {
+      console.warn(`[FallbackGuardian] ⚠️ Job ${jobId} failed during worker execution. Activating Fallback Cascade...`);
+      await executeFallbackCascade(jobId, "WORKER_PROCESSING_FAILED");
+      return;
+    }
+
+    if (job.status === "cancelled") {
+      console.log(`[FallbackGuardian] Job ${jobId} was cancelled. Stopping guardian.`);
+      return;
+    }
+
+    // Check Worker Heartbeat
+    const lastHeartbeat = job.lastHeartbeatAt ? new Date(job.lastHeartbeatAt).getTime() : new Date(job.processingStartedAt || job.createdAt).getTime();
+    const timeSinceHeartbeat = Date.now() - lastHeartbeat;
+
+    if (timeSinceHeartbeat > HEARTBEAT_TIMEOUT_MS) {
+      console.error(`[FallbackGuardian] 🚨 Worker (${job.workerId}) stopped sending heartbeats for ${Math.round(timeSinceHeartbeat / 1000)}s (> ${HEARTBEAT_TIMEOUT_MS / 1000}s). Worker crashed! Activating Fallback Cascade...`);
+      await executeFallbackCascade(jobId, "WORKER_HEARTBEAT_TIMEOUT");
+      return;
+    }
+
+    // Safety guard against infinite loops
+    if (Date.now() - guardianStartTime > MAX_TOTAL_MONITOR_MS) {
+      console.error(`[FallbackGuardian] 🚨 Maximum total monitoring time exceeded (${MAX_TOTAL_MONITOR_MS / 1000}s) for job ${jobId}.`);
+      await executeFallbackCascade(jobId, "GLOBAL_ALIGNMENT_TIMEOUT");
+      return;
+    }
+
+    // Worker is alive, keep monitoring quietly
+  }
+}
+
+/**
+ * Fallback Cascade: Only invoked when Worker is dead, offline, or failed.
+ * Tier 0: LOCAL_ALIGNMENT_URL (if configured)
+ * Tier 1: Modal Serverless Webhook (if configured)
+ * Tier 2: Google Gemini Audio API (last resort emergency fallback)
+ * @param {string} jobId
+ * @param {string} triggerReason
+ */
+async function executeFallbackCascade(jobId, triggerReason) {
   const job = await LyricsAlignmentJob.findById(jobId);
   if (!job || job.status === "succeeded") return;
 
@@ -36,6 +161,7 @@ async function processAlignmentWithFallback(jobId) {
   if (!song || !song.audioUrl) {
     job.status = "failed";
     job.errorMessage = "Không tìm thấy tệp âm thanh của bài hát";
+    job.failedAt = new Date();
     await job.save();
     return;
   }
@@ -45,15 +171,17 @@ async function processAlignmentWithFallback(jobId) {
   if (!plainLyrics.trim()) {
     job.status = "failed";
     job.errorMessage = "Không tìm thấy nội dung lời bài hát";
+    job.failedAt = new Date();
     await job.save();
     return;
   }
 
+  // Now taking over job for Fallback execution
   job.status = "processing";
   job.stage = "PREPROCESSING";
-  job.progressPercent = 25;
-  job.progressMessage = "Đang nạp và chuẩn bị âm thanh...";
-  job.processingStartedAt = new Date();
+  job.progressPercent = 35;
+  job.progressMessage = "Đang chuyển tiếp sang bộ xử lý dự phòng...";
+  job.workerId = `fallback-guardian-${triggerReason.toLowerCase()}`;
   job.lastHeartbeatAt = new Date();
   await job.save();
 
@@ -61,29 +189,20 @@ async function processAlignmentWithFallback(jobId) {
   let usedProvider = null;
   let errors = [];
 
-  const isDev = process.env.NODE_ENV !== "production";
-
   // ==========================================
-  // TIER 0: Local CPU Service (Chạy trực tiếp máy local trên port 8000 hoặc 8080)
+  // TIER 0: Local/Docker HTTP Service (chỉ chạy khi LOCAL_ALIGNMENT_URL được cấu hình)
   // ==========================================
-  if (isDev) {
+  if (process.env.LOCAL_ALIGNMENT_URL) {
     const candidateUrls = [
       process.env.LOCAL_ALIGNMENT_URL,
-      "http://127.0.0.1:8000/align",
-      "http://127.0.0.1:8080/align",
-      "http://localhost:8000/align",
-      "http://localhost:8080/align",
     ].filter(Boolean);
 
-    // Lọc bỏ URL trùng lặp
-    const uniqueUrls = [...new Set(candidateUrls)];
-
-    for (const url of uniqueUrls) {
+    for (const url of candidateUrls) {
       if (alignmentResult) break;
       try {
-        console.log(`[AlignRouter] [Tier 0 Local] Checking local CPU service: ${url}...`);
+        console.log(`[FallbackGuardian] [Tier 0 Local/Docker] Trying HTTP service: ${url}...`);
         job.stage = "ALIGNING";
-        job.progressMessage = "Đang xử lý căn nhịp trực tiếp bằng CPU máy...";
+        job.progressMessage = "Đang xử lý qua cổng dự phòng nội bộ...";
         job.progressPercent = 45;
         await job.save();
 
@@ -98,12 +217,12 @@ async function processAlignmentWithFallback(jobId) {
 
         if (localRes.data && localRes.data.success && localRes.data.syncedLines?.length > 0) {
           alignmentResult = localRes.data;
-          usedProvider = "local_cpu";
-          console.log(`[AlignRouter] ✅ Local CPU alignment succeeded on ${url} in ${localRes.data.elapsedSeconds || "?"}s!`);
+          usedProvider = "local_http";
+          console.log(`[FallbackGuardian] ✅ Local HTTP fallback succeeded on ${url}!`);
           break;
         }
       } catch (err) {
-        errors.push(`Local CPU (${url}): ${err.message}`);
+        errors.push(`Local HTTP (${url}): ${err.message}`);
       }
     }
   }
@@ -282,22 +401,25 @@ Return ONLY JSON:
       await songLyrics.save();
     }
 
-    console.log(`[AlignRouter] 🎉 Song ${song._id} aligned successfully via provider: ${usedProvider}`);
+    console.log(`[FallbackGuardian] 🎉 Song ${song._id} aligned successfully via fallback provider: ${usedProvider}`);
   } else {
+    const isDev = process.env.NODE_ENV !== "production";
     job.status = "failed";
     job.stage = "FAILED";
     job.progressPercent = 100;
     job.progressMessage = "Không thể hoàn tất căn nhịp lúc này";
     job.errorCode = "ALL_ALIGNMENT_PROVIDERS_FAILED";
     job.errorMessage = isDev 
-      ? "Chưa bật service căn nhịp local hoặc kiểm tra kết nối mạng tới dịch vụ AI."
+      ? "Worker AI chưa bật và các cổng fallback không khả dụng."
       : "Không thể kết nối dịch vụ AI căn nhịp lúc này. Vui lòng thử lại sau giây lát.";
     job.failedAt = new Date();
     await job.save();
-    console.error(`[AlignRouter] ❌ Job ${jobId} failed across all providers:`, errors);
+    console.error(`[FallbackGuardian] ❌ Job ${jobId} failed across all fallback providers:`, errors);
   }
 }
 
 module.exports = {
-  processAlignmentWithFallback,
+  scheduleAlignmentFallback,
+  processAlignmentWithFallback: scheduleAlignmentFallback, // backwards-compatible alias
+  executeFallbackCascade,
 };

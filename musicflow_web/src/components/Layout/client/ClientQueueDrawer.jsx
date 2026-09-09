@@ -8,8 +8,10 @@ import {
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
 
-function ClientQueueDrawer({ open, onClose }) {
+function ClientQueueDrawer({ open, onClose, fallbackQueue = [] }) {
   const { currentSong, queue, isPlaying, playSong } = useClientPlayer();
+
+  const displayQueue = Array.isArray(queue) && queue.length > 0 ? queue : (Array.isArray(fallbackQueue) ? fallbackQueue : []);
 
   const formatDuration = (seconds) => {
     const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -19,7 +21,7 @@ function ClientQueueDrawer({ open, onClose }) {
   };
 
   const handlePlaySong = (song) => {
-    playSong(song, { queue });
+    playSong(song, { queue: displayQueue });
   };
 
   return (
@@ -52,7 +54,7 @@ function ClientQueueDrawer({ open, onClose }) {
           <Stack direction="row" spacing={1} alignItems="center">
             <QueueMusicIcon sx={{ color: '#14b8a6' }} />
             <Typography variant="h6" fontWeight={700} color="#fff">
-              Danh sách phát ({queue.length})
+              Danh sách phát ({displayQueue.length})
             </Typography>
           </Stack>
           <IconButton onClick={onClose} sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
@@ -75,14 +77,14 @@ function ClientQueueDrawer({ open, onClose }) {
           '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255, 255, 255, 0.12)', borderRadius: 10 },
         }}
       >
-        {queue.length === 0 ? (
+        {displayQueue.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8, px: 2 }}>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.45)' }}>
               Danh sách phát trống. Hãy chọn một bài hát để bắt đầu!
             </Typography>
           </Box>
         ) : (
-          queue.map((song, index) => {
+          displayQueue.map((song, index) => {
             const isCurrent = currentSong?._id === song._id;
 
             return (

@@ -116,3 +116,22 @@ exports.getAlignmentStatus = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/artist/songs/:id/lyrics/alignment/cancel
+ */
+exports.cancelAlignment = async (req, res) => {
+  try {
+    const data = await lyricsService.cancelAlignmentJob(
+      req.params.id,
+      req.userId,
+      req.userRole
+    );
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Không thể hủy tác vụ AI căn nhịp");
+  }
+};
+

@@ -83,8 +83,9 @@ function ClientHome() {
     lyricsLines,
     activeLyricIndex,
     activeWordIndex,
-    hasSyncedLyrics,
-    lyricsLoading,
+    playPrevious,
+    playNext,
+    queue,
     handleNext,
     handlePrevious,
   } = useClientPlayer();
@@ -194,6 +195,22 @@ function ClientHome() {
     }
   };
 
+  const handlePreviousTrack = async () => {
+    const success = await (playPrevious || handlePrevious)();
+    if (!success) {
+      // If at beginning or queue has only 1 song, restart current song
+      seekTo(0);
+      showToast({ severity: 'info', title: 'Thông báo', message: 'Đã phát lại từ đầu bài hát.' });
+    }
+  };
+
+  const handleNextTrack = async () => {
+    const success = await (playNext || handleNext)();
+    if (!success) {
+      showToast({ severity: 'info', title: 'Danh sách phát', message: 'Đã đến bài hát cuối cùng trong danh sách.' });
+    }
+  };
+
   const handleDownloadHero = async () => {
     if (!activeHeroSong?._id) return;
     if (!isLoggedIn) {
@@ -202,11 +219,53 @@ function ClientHome() {
       return;
     }
     try {
-      await clientSongsApi.requestDownload(activeHeroSong._id);
-      showToast({ severity: 'success', title: 'Đã tải xuống', message: 'Bài hát đã được thêm vào danh sách tải xuống.' });
+      showToast({ severity: 'info', title: 'Đang chuẩn bị', message: 'Đang lấy liên kết tải nhạc...' });
+      const res = await clientSongsApi.requestDownload(activeHeroSong._id);
+      const downloadUrl = res.data?.audioUrl || activeHeroSong.audioUrl;
+      const songTitle = res.data?.title || activeHeroSong.title || 'MusicFlow_Song';
+
+      if (!downloadUrl) {
+        throw new Error('Không tìm thấy liên kết tệp âm thanh.');
+      }
+
+      // Perform real file download in browser
+      try {
+        const fileResponse = await fetch(downloadUrl);
+        if (!fileResponse.ok) throw new Error('Không thể tải tệp từ máy chủ lưu trữ.');
+        const blob = await fileResponse.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${songTitle.replace(/[/\\?%*:|"<>]/g, '_')}.mp3`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (fetchErr) {
+        // Fallback for CORS restricted origins: trigger browser direct download/tab
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${songTitle.replace(/[/\\?%*:|"<>]/g, '_')}.mp3`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      showToast({ severity: 'success', title: 'Tải thành công', message: `Đã tải xuống bài hát "${songTitle}".` });
     } catch (error) {
-      showToast({ severity: 'error', title: 'Không thể tải', message: error.response?.data?.message || 'Vui lòng thử lại sau.' });
+      showToast({ severity: 'error', title: 'Không thể tải', message: error.response?.data?.message || error.message || 'Vui lòng thử lại sau.' });
     }
+  };
+
+  const handleAiDjClick = () => {
+    if (!isLoggedIn) {
+      showToast({ severity: 'info', title: 'AI DJ', message: 'Vui lòng đăng nhập để trải nghiệm AI DJ tạo danh sách theo tâm trạng.' });
+      navigate('/?auth=login');
+      return;
+    }
+    navigate('/ai-mood');
   };
 
   const handleLoadMoreSongs = async () => {
@@ -635,12 +694,16 @@ function ClientHome() {
 
                     {currentSong && (
                       <Stack direction="row" spacing={0.5} alignItems="center">
-                        <IconButton size="small" onClick={handlePrevious} sx={{ color: '#fff', '&:hover': { transform: 'scale(1.15)' } }}>
-                          <PrevIcon sx={{ fontSize: 22 }} />
-                        </IconButton>
-                        <IconButton size="small" onClick={handleNext} sx={{ color: '#fff', '&:hover': { transform: 'scale(1.15)' } }}>
-                          <NextIcon sx={{ fontSize: 22 }} />
-                        </IconButton>
+                        <Tooltip title="Bài trước" arrow>
+                          <IconButton size="small" onClick={handlePreviousTrack} sx={{ color: '#fff', '&:hover': { transform: 'scale(1.15)', color: '#00e5ff' } }}>
+                            <PrevIcon sx={{ fontSize: 22 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Bài kế tiếp" arrow>
+                          <IconButton size="small" onClick={handleNextTrack} sx={{ color: '#fff', '&:hover': { transform: 'scale(1.15)', color: '#00e5ff' } }}>
+                            <NextIcon sx={{ fontSize: 22 }} />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
                     )}
 
@@ -737,7 +800,7 @@ function ClientHome() {
 
                     <Button
                       variant="outlined"
-                      onClick={() => navigate('/ai-mood')}
+                      onClick={handleAiDjClick}
                       startIcon={<SparklesIcon sx={{ fontSize: 16 }} />}
                       sx={{
                         borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -1552,7 +1615,7 @@ function ClientHome() {
         </Box>
       </Stack>
 
-      <ClientQueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} />
+      <ClientQueueDrawer open={queueOpen} onClose={() => setQueueOpen(false)} fallbackQueue={songs} />
       <ShareSongModal open={shareOpen} onClose={() => setShareOpen(false)} song={activeHeroSong} />
     </ClientLayout>
   );

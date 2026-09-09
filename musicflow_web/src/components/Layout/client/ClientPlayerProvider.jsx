@@ -589,12 +589,16 @@ export function ClientPlayerProvider({ children }) {
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio || !currentSong) return;
+    if (!audio.src || audio.src === window.location.href) {
+      playSong(currentSong, { queue: queueRef.current });
+      return;
+    }
     if (audio.paused) {
       try { await audio.play(); } catch { setIsPlaying(false); }
     } else {
       audio.pause();
     }
-  }, [currentSong]);
+  }, [currentSong, playSong]);
 
   const seekTo = useCallback((nextTime) => {
     const audio = audioRef.current;
@@ -738,6 +742,10 @@ export function ClientPlayerProvider({ children }) {
     playSong,
     playPrevious,
     playNext,
+    handlePrevious: playPrevious,
+    handleNext: playNext,
+    previousSong: playPrevious,
+    nextSong: playNext,
     toggleShuffle,
     cycleRepeatMode,
     togglePlay,

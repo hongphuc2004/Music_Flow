@@ -467,13 +467,9 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
       },
     });
 
-    // Trigger Multi-Provider Alignment Router in background (Modal -> Gemini Fallback)
-    const { processAlignmentWithFallback } = require("./aiLyricsAlignerRouter.service");
-    setImmediate(() => {
-      processAlignmentWithFallback(newJob._id).catch((err) => {
-        console.error("[LyricsService] Alignment router execution error:", err);
-      });
-    });
+    // Start Fallback Guardian in background (Worker has exclusive claim authority; Guardian only activates on worker failure)
+    const { scheduleAlignmentFallback } = require("./aiLyricsAlignerRouter.service");
+    scheduleAlignmentFallback(newJob._id);
 
     return {
       jobId: newJob._id,
@@ -612,6 +608,33 @@ async function getPublishedLyricsForClient(songId) {
   };
 }
 
+/**
+ * Cancel Alignment Job
+ * @param {string} songId 
+ * @param {string} userId 
+ * @param {string} userRole 
+ * @returns {Promise<object>}
+ */
+async function cancelAlignmentJob(songId, userId, userRole) {
+  const { song } = await resolveSongAndOwnership(songId, userId, userRole);
+
+  const job = await LyricsAlignmentJob.findOne({
+    songId: song._id,
+    status: { $in: ["pending", "processing"] },
+  }).sort({ createdAt: -1 });
+
+  if (job) {
+    job.status = "failed";
+    job.stage = "FAILED";
+    job.errorCode = "USER_CANCELLED";
+    job.errorMessage = "Tác vụ đã được dừng bởi nghệ sĩ";
+    job.failedAt = new Date();
+    await job.save();
+  }
+
+  return { success: true, message: "Đã dừng tác vụ AI căn nhịp" };
+}
+
 module.exports = {
   getSongLyricsForArtist,
   saveDraftLyrics,
@@ -620,4 +643,5 @@ module.exports = {
   getPublishedLyricsForClient,
   triggerAlignmentJob,
   getAlignmentJobStatus,
+  cancelAlignmentJob,
 };

@@ -96,7 +96,7 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
     (songId) => {
       stopPolling();
       let pollCount = 0;
-      const MAX_POLL_CYCLES = 60; // Max 4 minutes
+      const MAX_POLL_CYCLES = 120; // Tối đa 8 phút cho các bài hát dài
 
       const poll = async () => {
         if (!isMountedRef.current) return;
@@ -306,6 +306,33 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
       });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // Cancel / Stop ongoing AI alignment job
+  const handleCancelAlignment = async () => {
+    if (!song?._id) return;
+    try {
+      setActionLoading('cancel_alignment');
+      stopPolling();
+      await artistApi.cancelLyricsAlignment(song._id);
+      setAlignmentState('IDLE');
+      setAlignmentJob(null);
+      showToast({
+        severity: 'info',
+        title: 'Đã dừng tác vụ',
+        message: 'Đã dừng tiến trình AI căn nhịp theo yêu cầu của bạn.',
+      });
+      await fetchLyrics(true);
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      showToast({
+        severity: 'error',
+        title: 'Lỗi',
+        message: err.response?.data?.message || 'Không thể dừng tác vụ AI.',
+      });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -612,24 +639,51 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
 
     if (isProcessing) {
       const pVal = alignmentJob?.progressPercent || 25;
+      const isCancelling = actionLoading === 'cancel_alignment';
       return (
-        <Button
-          size="small"
-          variant="contained"
-          disabled
-          startIcon={<CircularProgress size={15} sx={{ color: '#00e5ff' }} />}
-          sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 850,
-            fontSize: 12.5,
-            bgcolor: 'rgba(108, 99, 255, 0.4) !important',
-            color: '#00e5ff !important',
-            border: '1px solid rgba(0, 229, 255, 0.3)',
-          }}
-        >
-          ⚡ Đang xử lý AI ({pVal}%)
-        </Button>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            size="small"
+            variant="contained"
+            disabled
+            startIcon={<CircularProgress size={15} sx={{ color: '#00e5ff' }} />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 850,
+              fontSize: 12.5,
+              bgcolor: 'rgba(108, 99, 255, 0.4) !important',
+              color: '#00e5ff !important',
+              border: '1px solid rgba(0, 229, 255, 0.3)',
+            }}
+          >
+            ⚡ Đang xử lý AI ({pVal}%)
+          </Button>
+          <Tooltip title="Dừng và hủy tiến trình AI căn nhịp">
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              onClick={handleCancelAlignment}
+              disabled={isCancelling}
+              startIcon={isCancelling ? <CircularProgress size={14} color="inherit" /> : <CloseIcon sx={{ fontSize: 16 }} />}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 750,
+                fontSize: 12,
+                borderColor: 'rgba(244, 67, 54, 0.5)',
+                color: '#ff5252',
+                '&:hover': {
+                  borderColor: '#ff5252',
+                  bgcolor: 'rgba(244, 67, 54, 0.1)',
+                },
+              }}
+            >
+              {isCancelling ? 'Đang dừng...' : 'Dừng lại'}
+            </Button>
+          </Tooltip>
+        </Stack>
       );
     }
 
@@ -1214,6 +1268,37 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
                           },
                         }}
                       />
+
+                      {/* Cancel / Stop AI Alignment Button */}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={handleCancelAlignment}
+                        disabled={actionLoading === 'cancel_alignment'}
+                        startIcon={
+                          actionLoading === 'cancel_alignment' ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : (
+                            <CloseIcon sx={{ fontSize: 16 }} />
+                          )
+                        }
+                        sx={{
+                          mt: 2.5,
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 750,
+                          fontSize: 12,
+                          borderColor: 'rgba(244, 67, 54, 0.4)',
+                          color: '#ff5252',
+                          '&:hover': {
+                            borderColor: '#ff5252',
+                            bgcolor: 'rgba(244, 67, 54, 0.1)',
+                          },
+                        }}
+                      >
+                        {actionLoading === 'cancel_alignment' ? 'Đang dừng...' : 'Dừng tạo nhịp AI'}
+                      </Button>
                     </Box>
                   ) : tabIndex === 1 ? (
                     parsedLrc.lines.length === 0 ? (

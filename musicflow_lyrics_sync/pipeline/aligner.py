@@ -453,7 +453,10 @@ class ONNXCTCModelManager:
             import onnxruntime as ort
             sess_options = ort.SessionOptions()
             sess_options.enable_cpu_mem_arena = False
-            sess_options.intra_op_num_threads = 1
+            
+            # Dynamic multi-threading: utilizes all available physical/logical CPU cores (up to 8)
+            num_threads = int(os.getenv("ORT_NUM_THREADS", str(min(os.cpu_count() or 4, 8))))
+            sess_options.intra_op_num_threads = num_threads
             sess_options.inter_op_num_threads = 1
             sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
             sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -488,12 +491,17 @@ def _extract_emissions_onnx_chunked(
     overlap_samples = int(overlap_sec * sr)
     input_name = session.get_inputs()[0].name
 
+    total_chunks = int(np.ceil(total_samples / step_samples)) if step_samples > 0 else 1
     emissions_list = []
     ptr = 0
+    chunk_idx = 0
 
     while ptr < total_samples:
+        chunk_idx += 1
         seg_start = ptr
         seg_end = min(ptr + step_samples, total_samples)
+
+        print(f"      • Đang phân tích âm học đoạn {chunk_idx}/{total_chunks} ({seg_start/sr:.0f}s - {seg_end/sr:.0f}s)...", flush=True)
 
         left_pad = min(seg_start, overlap_samples)
         right_pad = min(total_samples - seg_end, overlap_samples)
@@ -737,63 +745,78 @@ def align_lyrics_onnx_int8(
         token_ids.pop()
         token_to_word_map.pop()
 
-    # 3. Trellis Dynamic Programming (Pure NumPy)
+    # 3. Dynamic Programming Viterbi Alignment (torchaudio.functional.forced_align)
     T = emissions_np.shape[0]
     N = len(token_ids)
     blank_id = tokenizer.pad_token_id
 
-    trellis = np.full((T, N + 1), -np.inf, dtype=np.float32)
-    trellis[0, 0] = emissions_np[0, blank_id]
-    if N > 0:
+    token_spans: List[Dict[str, Any]] = []
+    try:
+        import torch
+        import torchaudio.functional as F
+        if T >= N and N > 0:
+            emissions_tensor = torch.from_numpy(emissions_np).unsqueeze(0)
+            targets = torch.tensor([token_ids], dtype=torch.int64)
+            aligned_tokens, scores = F.forced_align(emissions_tensor, targets, blank=blank_id)
+            spans = F.merge_tokens(aligned_tokens[0], scores[0], blank=blank_id)
+            for s_idx, span in enumerate(spans):
+                token_spans.append({
+                    "token_seq_idx": s_idx,
+                    "token_id": int(span.token),
+                    "start_frame": int(span.start),
+                    "end_frame": int(span.end),
+                    "log_prob": float(span.score)
+                })
+    except Exception as e:
+        logger.warning(f"[AlignLyrics] torchaudio forced_align unavailable or failed ({e}), falling back to numpy trellis.")
+        token_spans = []
+
+    if not token_spans and T >= N and N > 0:
+        trellis = np.full((T, N + 1), -np.inf, dtype=np.float32)
+        trellis[0, 0] = emissions_np[0, blank_id]
         trellis[0, 1] = emissions_np[0, token_ids[0]]
 
-    for t in range(1, T):
-        trellis[t, 0] = trellis[t - 1, 0] + emissions_np[t, blank_id]
-        for j in range(1, N + 1):
+        for t in range(1, T):
+            trellis[t, 0] = trellis[t - 1, 0] + emissions_np[t, blank_id]
+            for j in range(1, N + 1):
+                target_token = token_ids[j - 1]
+                stay_prob = trellis[t - 1, j] + emissions_np[t, blank_id]
+                move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
+                trellis[t, j] = max(stay_prob, move_prob)
+
+        t = T - 1
+        j = N
+        current_token_end = t
+
+        while t > 0 and j > 0:
             target_token = token_ids[j - 1]
-            stay_prob = trellis[t - 1, j] + emissions_np[t, target_token]
+            stay_prob = trellis[t - 1, j] + emissions_np[t, blank_id]
             move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
-            trellis[t, j] = max(stay_prob, move_prob)
+            if move_prob >= stay_prob:
+                token_spans.append({
+                    "token_seq_idx": j - 1,
+                    "token_id": target_token,
+                    "start_frame": t,
+                    "end_frame": current_token_end + 1,
+                    "log_prob": float(np.mean(emissions_np[t:current_token_end + 1, target_token]))
+                })
+                j -= 1
+                current_token_end = t - 1
+            t -= 1
 
-    # 4. Viterbi Backtracking
-    j = N
-    valid_terminal_frames = np.where(~np.isneginf(trellis[:, N]))[0]
-    if len(valid_terminal_frames) > 0:
-        t = int(valid_terminal_frames[np.argmax(trellis[valid_terminal_frames, N])])
-    else:
-        raise CTCAlignmentError("CTC_ALIGNMENT_FAILED: Không thể tìm thấy đường đi Viterbi hợp lệ")
-
-    token_spans: List[Dict[str, Any]] = []
-    current_token_end = t
-
-    while t > 0 and j > 0:
-        target_token = token_ids[j - 1]
-        stay_prob = trellis[t - 1, j] + emissions_np[t, target_token]
-        move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
-        if move_prob >= stay_prob:
+        if j == 1:
             token_spans.append({
-                "token_seq_idx": j - 1,
-                "token_id": target_token,
-                "start_frame": t,
+                "token_seq_idx": 0,
+                "token_id": token_ids[0],
+                "start_frame": 0,
                 "end_frame": current_token_end + 1,
-                "log_prob": float(np.mean(emissions_np[t:current_token_end + 1, target_token]))
+                "log_prob": float(np.mean(emissions_np[0:current_token_end + 1, token_ids[0]]))
             })
-            j -= 1
-            current_token_end = t - 1
-        t -= 1
+        token_spans.reverse()
+        del trellis
 
-    if j == 1:
-        token_spans.append({
-            "token_seq_idx": 0,
-            "token_id": token_ids[0],
-            "start_frame": 0,
-            "end_frame": current_token_end + 1,
-            "log_prob": float(np.mean(emissions_np[0:current_token_end + 1, token_ids[0]]))
-        })
-    token_spans.reverse()
-
-    # Free Trellis and emissions matrices
-    del trellis, emissions_np
+    # Free emissions matrix
+    del emissions_np
     gc.collect()
 
     # 5. Map Token Spans to Words

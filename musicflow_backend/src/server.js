@@ -44,6 +44,9 @@ const { startSongIntelligenceJob } = require("./jobs/songIntelligence.job");
 
 const app = express();
 
+// Trust proxy for reverse proxy platforms (Render, Cloudflare, etc.)
+app.set("trust proxy", 1);
+
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:3000")
   .split(",")
   .map((origin) => origin.trim())

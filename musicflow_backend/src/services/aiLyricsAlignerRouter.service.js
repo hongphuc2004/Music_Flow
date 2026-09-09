@@ -24,18 +24,17 @@ const LyricsAlignmentJob = require("../models/lyrics-alignment-job.model");
 const SongLyrics = require("../models/song-lyrics.model");
 const Song = require("../models/song.model");
 
-const DEFAULT_MODAL_URL = process.env.MODAL_ALIGNMENT_URL || null;
 const GEMINI_SAFE_MODELS = [
-  "gemini-1.5-flash",
   "gemini-2.0-flash",
+  "gemini-1.5-flash-latest",
   "gemini-2.5-flash",
-  "gemini-1.5-pro",
+  "gemini-1.5-pro-latest",
 ];
 
 const GRACE_PERIOD_MS = 20000;          // 20s for Worker to claim pending job
 const HEARTBEAT_TIMEOUT_MS = 60000;     // 60s of silence before considering Worker dead
 const MONITOR_INTERVAL_MS = 10000;      // 10s polling interval for Guardian watch loop
-const MAX_TOTAL_MONITOR_MS = 360000;    // 6 minutes maximum tracking time for very long tracks
+const MAX_TOTAL_MONITOR_MS = 600000;    // 10 minutes maximum tracking time for long tracks
 
 function formatLrcTimestamp(seconds) {
   if (typeof seconds !== "number" || isNaN(seconds) || seconds < 0) {

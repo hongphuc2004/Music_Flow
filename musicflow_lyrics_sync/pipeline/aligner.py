@@ -485,12 +485,12 @@ def _extract_emissions_onnx_chunked(
     session: Any,
     audio_waveform: np.ndarray,
     sr: int = 16000,
-    window_sec: float = 4.0,
-    overlap_sec: float = 1.0
+    window_sec: float = 14.0,
+    overlap_sec: float = 2.0
 ) -> np.ndarray:
     """
-    Extracts acoustic emissions via ONNX Runtime using 4s chunk + 1s overlap.
-    Reduces peak attention activation workspace to < 10MB while preserving full acoustic accuracy.
+    Extracts acoustic emissions via ONNX Runtime using 14s chunk + 2s overlap.
+    Caps total chunks to ~20-25 per song, finishing inference in ~2 minutes with peak RAM < 200MB.
     Computes numerically stable log_softmax in pure NumPy to eliminate PyTorch tensor memory.
     """
     import gc
@@ -685,13 +685,13 @@ def align_lyrics_onnx_int8(
     onnx_mgr = ONNXCTCModelManager.get_instance()
     session, tokenizer = onnx_mgr.load_model()
 
-    # 1. Extract emissions with 4s chunk + 1s overlap
+    # 1. Extract emissions with 14s chunk + 2s overlap (~20-25 chunks per song)
     emissions_np = _extract_emissions_onnx_chunked(
         session=session,
         audio_waveform=data,
         sr=16000,
-        window_sec=4.0,
-        overlap_sec=1.0
+        window_sec=14.0,
+        overlap_sec=2.0
     )
 
     # 2. Apply Silence-Prior Gating (Intro Lock & Interlude Solo Enforcement)

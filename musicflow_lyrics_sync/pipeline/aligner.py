@@ -461,12 +461,12 @@ class ONNXCTCModelManager:
             sess_options = ort.SessionOptions()
             sess_options.enable_cpu_mem_arena = False
             
-            # Dynamic multi-threading: utilizes all available physical/logical CPU cores (up to 8)
-            num_threads = int(os.getenv("ORT_NUM_THREADS", str(min(os.cpu_count() or 4, 8))))
+            # Use 1 or 2 threads to keep C++ working buffer under ~30MB (avoids 512MB RAM spikes on Render)
+            num_threads = int(os.getenv("ORT_NUM_THREADS", "1"))
             sess_options.intra_op_num_threads = num_threads
             sess_options.inter_op_num_threads = 1
             sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-            sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
 
             session = ort.InferenceSession(model_path, sess_options, providers=["CPUExecutionProvider"])
             tokenizer = StandaloneCTCTokenizer(vocab_path)
@@ -474,7 +474,7 @@ class ONNXCTCModelManager:
             self.session = session
             self.tokenizer = tokenizer
             self.model_path = model_path
-            logger.info("✅ Successfully loaded ONNX INT8 model with memory arena disabled.")
+            logger.info(f"✅ Successfully loaded ONNX INT8 model (threads={num_threads}, mem_arena=disabled).")
             return session, tokenizer
         except Exception as e:
             logger.error(f"[ONNXCTCModelManager] Failed to load ONNX INT8 model: {e}")
@@ -535,6 +535,7 @@ def _extract_emissions_onnx_chunked(
         valid_emissions = chunk_emissions_np[left_frames:end_frame_idx]
         emissions_list.append(valid_emissions)
         del chunk_emissions_np
+        gc.collect()
 
         ptr += step_samples
 

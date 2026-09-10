@@ -24,6 +24,7 @@ const LyricsAlignmentJob = require("../models/lyrics-alignment-job.model");
 const SongLyrics = require("../models/song-lyrics.model");
 const Song = require("../models/song.model");
 
+const DEFAULT_MODAL_URL = process.env.MODAL_ALIGNMENT_URL || null;
 const GEMINI_SAFE_MODELS = [
   "gemini-2.0-flash",
   "gemini-1.5-flash-latest",
@@ -31,7 +32,7 @@ const GEMINI_SAFE_MODELS = [
   "gemini-1.5-pro-latest",
 ];
 
-const GRACE_PERIOD_MS = 20000;          // 20s for Worker to claim pending job
+const GRACE_PERIOD_MS = 60000;          // 60s for Worker to wake up from Render sleep and claim job
 const HEARTBEAT_TIMEOUT_MS = 60000;     // 60s of silence before considering Worker dead
 const MONITOR_INTERVAL_MS = 10000;      // 10s polling interval for Guardian watch loop
 const MAX_TOTAL_MONITOR_MS = 600000;    // 10 minutes maximum tracking time for long tracks
@@ -55,6 +56,10 @@ function sleep(ms) {
  * @param {string} jobId
  */
 async function scheduleAlignmentFallback(jobId) {
+  // Proactively wake up Worker instance if running on Render free tier (which spins down on idle)
+  const workerWakeupUrl = process.env.LOCAL_ALIGNMENT_URL || process.env.LYRICS_SYNC_WORKER_URL || "https://musicflow-lyrics-sync.onrender.com";
+  axios.get(workerWakeupUrl, { timeout: 45000 }).catch(() => {});
+
   // Run asynchronously in the background
   setImmediate(async () => {
     try {
@@ -70,16 +75,26 @@ async function scheduleAlignmentFallback(jobId) {
  * @param {string} jobId 
  */
 async function runFallbackGuardian(jobId) {
-  console.log(`[FallbackGuardian] Started monitoring job ${jobId}. Waiting ${GRACE_PERIOD_MS / 1000}s grace period for Worker...`);
+  console.log(`[FallbackGuardian] Started monitoring job ${jobId}. Waiting up to ${GRACE_PERIOD_MS / 1000}s grace period for Worker...`);
 
-  // Phase 1: Grace Period — Give Worker time to claim from MongoDB queue
-  await sleep(GRACE_PERIOD_MS);
-
-  let job = await LyricsAlignmentJob.findById(jobId);
-  if (!job) {
-    console.log(`[FallbackGuardian] Job ${jobId} not found. Stopping guardian.`);
-    return;
+  // Phase 1: Grace Period — Give Worker time to wake up and claim from MongoDB queue (checks every 3s)
+  const graceStart = Date.now();
+  let job = null;
+  while (Date.now() - graceStart < GRACE_PERIOD_MS) {
+    await sleep(3000);
+    job = await LyricsAlignmentJob.findById(jobId);
+    if (!job) {
+      console.log(`[FallbackGuardian] Job ${jobId} not found. Stopping guardian.`);
+      return;
+    }
+    // As soon as worker claims the job or completes it, exit grace wait immediately
+    if (job.status === "processing" || job.status === "succeeded" || job.status === "failed") {
+      break;
+    }
   }
+
+  job = await LyricsAlignmentJob.findById(jobId);
+  if (!job) return;
 
   // If worker finished already during grace period
   if (job.status === "succeeded") {
@@ -158,32 +173,34 @@ async function runFallbackGuardian(jobId) {
  * @param {string} triggerReason
  */
 async function executeFallbackCascade(jobId, triggerReason) {
-  const job = await LyricsAlignmentJob.findById(jobId);
-  if (!job || job.status === "succeeded") return;
+  let job = null;
+  try {
+    job = await LyricsAlignmentJob.findById(jobId);
+    if (!job || job.status === "succeeded") return;
 
-  const song = await Song.findById(job.songId);
-  if (!song || !song.audioUrl) {
-    job.status = "failed";
-    job.errorMessage = "Không tìm thấy tệp âm thanh của bài hát";
-    job.failedAt = new Date();
-    await job.save();
-    return;
-  }
+    const song = await Song.findById(job.songId);
+    if (!song || !song.audioUrl) {
+      job.status = "failed";
+      job.errorMessage = "Không tìm thấy tệp âm thanh của bài hát";
+      job.failedAt = new Date();
+      await job.save();
+      return;
+    }
 
-  const songLyrics = await SongLyrics.findOne({ songId: song._id });
-  const plainLyrics = songLyrics?.plainLyrics || song.lyrics || "";
-  if (!plainLyrics.trim()) {
-    job.status = "failed";
-    job.errorMessage = "Không tìm thấy nội dung lời bài hát";
-    job.failedAt = new Date();
-    await job.save();
-    return;
-  }
+    const songLyrics = await SongLyrics.findOne({ songId: song._id });
+    const plainLyrics = songLyrics?.plainLyrics || song.lyrics || "";
+    if (!plainLyrics.trim()) {
+      job.status = "failed";
+      job.errorMessage = "Không tìm thấy nội dung lời bài hát";
+      job.failedAt = new Date();
+      await job.save();
+      return;
+    }
 
-  // Now taking over job for Fallback execution
-  job.status = "processing";
-  job.stage = "PREPROCESSING";
-  job.progressPercent = 35;
+    // Now taking over job for Fallback execution
+    job.status = "processing";
+    job.stage = "PREPROCESSING";
+    job.progressPercent = 35;
   job.progressMessage = "Đang chuyển tiếp sang bộ xử lý dự phòng...";
   job.workerId = `fallback-guardian-${triggerReason.toLowerCase()}`;
   job.lastHeartbeatAt = new Date();
@@ -419,6 +436,19 @@ Return ONLY JSON:
     job.failedAt = new Date();
     await job.save();
     console.error(`[FallbackGuardian] ❌ Job ${jobId} failed across all fallback providers:`, errors);
+  }
+  } catch (fatalError) {
+    console.error(`[FallbackGuardian] Fatal error in fallback cascade for job ${jobId}:`, fatalError);
+    if (job) {
+      job.status = "failed";
+      job.stage = "FAILED";
+      job.progressPercent = 100;
+      job.progressMessage = "Không thể hoàn tất căn nhịp lúc này";
+      job.errorCode = "FALLBACK_CASCADE_FATAL";
+      job.errorMessage = fatalError.message || "Lỗi xử lý căn nhịp dự phòng";
+      job.failedAt = new Date();
+      await job.save().catch(() => {});
+    }
   }
 }
 

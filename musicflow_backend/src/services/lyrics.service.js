@@ -467,9 +467,13 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
       },
     });
 
-    // Start Fallback Guardian in background (Worker has exclusive claim authority; Guardian only activates on worker failure)
-    const { scheduleAlignmentFallback } = require("./aiLyricsAlignerRouter.service");
-    scheduleAlignmentFallback(newJob._id);
+    // Trigger Multi-Provider Alignment Router in background (Modal 5GB RAM -> Gemini Fallback)
+    const { processAlignmentWithFallback } = require("./aiLyricsAlignerRouter.service");
+    setImmediate(() => {
+      processAlignmentWithFallback(newJob._id).catch((err) => {
+        console.error("[LyricsService] Alignment router execution error:", err);
+      });
+    });
 
     return {
       jobId: newJob._id,

@@ -109,9 +109,11 @@ async function processAlignmentWithFallback(jobId) {
     }
 
     // ==========================================
-    // TIER 1: Modal Serverless Webhook (5GB RAM)
+    // TIER 1: Modal Serverless Webhook (5GB RAM) - Production Only
     // ==========================================
-    if (!alignmentResult && DEFAULT_MODAL_URL) {
+    const isProduction = process.env.NODE_ENV === "production";
+    const allowModal = isProduction || process.env.FORCE_MODAL_IN_DEV === "true";
+    if (!alignmentResult && DEFAULT_MODAL_URL && allowModal) {
       try {
         console.log(`[AlignRouter] [Tier 1 Modal] Calling Modal Serverless: ${DEFAULT_MODAL_URL}...`);
         job.stage = "ALIGNING";

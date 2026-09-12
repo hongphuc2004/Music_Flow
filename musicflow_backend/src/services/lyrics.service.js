@@ -467,13 +467,19 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
       },
     });
 
-    // Trigger Multi-Provider Alignment Router in background (Modal 5GB RAM -> Gemini Fallback)
-    const { processAlignmentWithFallback } = require("./aiLyricsAlignerRouter.service");
-    setImmediate(() => {
-      processAlignmentWithFallback(newJob._id).catch((err) => {
-        console.error("[LyricsService] Alignment router execution error:", err);
+    // In Production: Trigger Modal Serverless (5GB RAM) to avoid Render 512MB RAM limits
+    // In Development (Local): Let local Docker worker (musicflow_lyrics_sync_dev) claim and process via MongoDB natively
+    const isProduction = process.env.NODE_ENV === "production";
+    if (isProduction) {
+      const { processAlignmentWithFallback } = require("./aiLyricsAlignerRouter.service");
+      setImmediate(() => {
+        processAlignmentWithFallback(newJob._id).catch((err) => {
+          console.error("[LyricsService] Alignment router execution error:", err);
+        });
       });
-    });
+    } else {
+      console.log(`[LyricsService] 🏠 Local Dev mode: Job ${newJob._id} assigned to local worker (musicflow_lyrics_sync_dev).`);
+    }
 
     return {
       jobId: newJob._id,

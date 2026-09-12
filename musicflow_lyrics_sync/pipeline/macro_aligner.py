@@ -5,10 +5,13 @@ Provides structural anchoring for long audio tracks (3–5 minutes) and isolates
 
 import difflib
 import logging
-import os
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
-import soundfile as sf
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 logger = logging.getLogger("AlignmentWorker.MacroAligner")
 
@@ -126,6 +129,9 @@ class MacroAligner:
         """
         if len(audio_chunk) < 1600:
             return ""
+        if torch is None:
+            logger.warning("[MacroAligner] PyTorch is not available.")
+            return ""
         try:
             # Subsample or limit to 60s for fast macro transcription
             sample = audio_chunk[:min(len(audio_chunk), 16000 * 60)]
@@ -158,7 +164,7 @@ class MacroAligner:
             audio_data = np.mean(audio_data, axis=1)
 
         total_dur = float(len(audio_data)) / float(sr)
-        if total_dur < 15.0 or model is None or processor is None:
+        if total_dur < 15.0 or model is None or processor is None or torch is None:
             return [{"start_sec": 0.0, "end_sec": total_dur, "duration": total_dur, "text": "", "word_count": 0}]
 
         chunk_len = sr * 30

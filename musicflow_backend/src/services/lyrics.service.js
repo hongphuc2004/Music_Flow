@@ -470,7 +470,7 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
     // In Production: Trigger Modal Serverless (5GB RAM) to avoid Render 512MB RAM limits
     // In Development (Local): Let local Docker worker (musicflow_lyrics_sync_dev) claim and process via MongoDB natively
     const isProduction = process.env.NODE_ENV === "production";
-    if (isProduction) {
+    if (false) {
       const { processAlignmentWithFallback } = require("./aiLyricsAlignerRouter.service");
       setImmediate(() => {
         processAlignmentWithFallback(newJob._id).catch((err) => {

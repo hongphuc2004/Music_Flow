@@ -209,8 +209,14 @@ class CTCEmissionExtractor:
 
 class TrellisDynamicProgramming:
     """
-    Builds the Trellis dynamic programming matrix in Log-Space.
-    Supports blank self-transitions, token self-transitions, and token-to-token transitions.
+    Standard CTC Viterbi trellis.
+
+    State sequence:
+        blank, token_0, blank, token_1, blank, ...
+
+    Each token is separated by a blank state. This allows the final
+    token to finish before the end of the audio, with trailing silence
+    being consumed by the final blank state.
     """
 
     @staticmethod
@@ -219,49 +225,100 @@ class TrellisDynamicProgramming:
         token_ids: List[int],
         blank_id: int = 0
     ) -> np.ndarray:
-        """
-        emissions: Tensor [T, V] or NumPy array [T, V] in log-space
-        token_ids: List of integer token IDs [N]
-        Returns: trellis matrix of shape [T, N + 1] in float32 log-space.
-        """
-        emissions_np = emissions.numpy() if hasattr(emissions, "numpy") else np.asarray(emissions, dtype=np.float32)
-        T = emissions_np.shape[0]
+        emissions_np = (
+            emissions.numpy()
+            if hasattr(emissions, "numpy")
+            else np.asarray(emissions, dtype=np.float32)
+        )
+
+        T, V = emissions_np.shape
         N = len(token_ids)
+
+        if N == 0:
+            raise CTCAlignmentError(
+                "CTC_ALIGNMENT_FAILED: Chuỗi token rỗng"
+            )
+
+        # CTC expanded sequence:
+        #
+        #   blank, token0, blank, token1, blank, ...
+        #
+        # Number of states = 2*N + 1
+        S = 2 * N + 1
 
         if T < N:
             raise CTCAlignmentError(
-                f"CTC_ALIGNMENT_FAILED: Thời lượng âm thanh quá ngắn ({T} frames) cho chuỗi {N} tokens"
+                f"CTC_ALIGNMENT_FAILED: Thời lượng âm thanh quá ngắn "
+                f"({T} frames) cho chuỗi {N} tokens"
             )
 
-        emissions_np = emissions.numpy()
-        # Initialize Trellis matrix with -inf
-        trellis = np.full((T, N + 1), -np.inf, dtype=np.float32)
+        states = np.full(S, blank_id, dtype=np.int32)
+        states[1::2] = np.asarray(token_ids, dtype=np.int32)
 
-        # Base case at frame 0
+        trellis = np.full(
+            (T, S),
+            -np.inf,
+            dtype=np.float32
+        )
+
+        # ---------------------------------------------------------
+        # Initial frame
+        # ---------------------------------------------------------
         trellis[0, 0] = emissions_np[0, blank_id]
-        if N > 0:
-            trellis[0, 1] = emissions_np[0, token_ids[0]]
 
-        # Dynamic Programming Forward Pass
+        if S > 1:
+            trellis[0, 1] = emissions_np[0, states[1]]
+
+        # ---------------------------------------------------------
+        # Forward Viterbi
+        # ---------------------------------------------------------
         for t in range(1, T):
-            # Staying at blank
-            trellis[t, 0] = trellis[t - 1, 0] + emissions_np[t, blank_id]
+            prev = trellis[t - 1]
 
-            for j in range(1, N + 1):
-                target_token = token_ids[j - 1]
-                # Option 1: Stay at current token
-                stay_prob = trellis[t - 1, j] + emissions_np[t, target_token]
-                # Option 2: Transition from previous token/blank
-                move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
+            for s in range(S):
+                state_token = int(states[s])
 
-                trellis[t, j] = max(stay_prob, move_prob)
+                # Stay at current state.
+                stay = prev[s]
+
+                # Move from previous state.
+                move = (
+                    prev[s - 1]
+                    if s > 0
+                    else -np.inf
+                )
+
+                # Skip blank:
+                #
+                # blank -> token
+                # token -> blank
+                #
+                # For token -> token skip, CTC only permits it when
+                # the token is different from the token two states back.
+                skip = -np.inf
+
+                if s >= 2 and state_token != blank_id:
+                    previous_token = int(states[s - 2])
+
+                    if state_token != previous_token:
+                        skip = prev[s - 2]
+
+                best_previous = max(stay, move, skip)
+
+                if np.isfinite(best_previous):
+                    trellis[t, s] = (
+                        best_previous
+                        + emissions_np[t, state_token]
+                    )
 
         return trellis
 
 
 class ViterbiBacktracker:
     """
-    Backtracks through Trellis matrix to extract optimal frame spans and acoustic confidence.
+    Backtrack a standard CTC expanded-state trellis.
+
+    Returns only actual token states. Blank states are not returned.
     """
 
     @staticmethod
@@ -271,60 +328,227 @@ class ViterbiBacktracker:
         token_ids: List[int],
         blank_id: int = 0
     ) -> List[Dict[str, Any]]:
-        """
-        Traces path from (T-1, N) back to (0, 0).
-        Returns list of token alignments: [{'token_idx', 'token_id', 'start_frame', 'end_frame', 'confidence'}]
-        """
-        T, N_plus_1 = trellis.shape
-        N = N_plus_1 - 1
-        emissions_np = emissions.numpy() if hasattr(emissions, "numpy") else np.asarray(emissions, dtype=np.float32)
 
-        # Standard CTC Forced Alignment terminal state selection:
-        # Find the frame t that maximizes the probability of completing the entire token sequence
-        j = N
-        valid_terminal_frames = np.where(~np.isneginf(trellis[:, N]))[0]
-        if len(valid_terminal_frames) > 0:
-            t = int(valid_terminal_frames[np.argmax(trellis[valid_terminal_frames, N])])
-        else:
-            raise CTCAlignmentError("CTC_ALIGNMENT_FAILED: Không thể tìm thấy đường đi Viterbi hợp lệ trong ma trận Trellis")
+        T, S = trellis.shape
+        N = len(token_ids)
 
-        token_spans: List[Dict[str, Any]] = []
-        current_token_end = t
+        emissions_np = (
+            emissions.numpy()
+            if hasattr(emissions, "numpy")
+            else np.asarray(emissions, dtype=np.float32)
+        )
 
-        while t > 0 and j > 0:
-            target_token = token_ids[j - 1]
-            stay_prob = trellis[t - 1, j] + emissions_np[t, target_token]
-            move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
+        if N == 0:
+            return []
 
-            if move_prob >= stay_prob:
-                # Token boundary transition
-                token_spans.append({
-                    "token_seq_idx": j - 1,
-                    "token_id": target_token,
-                    "start_frame": t,
-                    "end_frame": current_token_end + 1,
-                    "log_prob": float(emissions_np[t:current_token_end + 1, target_token].mean())
-                })
-                j -= 1
-                current_token_end = t - 1
+        # ---------------------------------------------------------
+        # Expanded CTC states
+        #
+        #   0 blank
+        #   1 token0
+        #   2 blank
+        #   3 token1
+        #   ...
+        #   2N-1 tokenN-1
+        #   2N blank
+        # ---------------------------------------------------------
+        states = np.full(
+            S,
+            blank_id,
+            dtype=np.int32
+        )
+        states[1::2] = np.asarray(token_ids, dtype=np.int32)
 
-            t -= 1
+        # ---------------------------------------------------------
+        # Terminal state
+        #
+        # The complete CTC sequence may finish in either:
+        #
+        #   final token state
+        #   OR
+        #   final blank state
+        #
+        # Prefer the final blank when available. This is important
+        # because trailing silence must NOT become part of the final
+        # lyric token.
+        # ---------------------------------------------------------
+        final_token_state = 2 * N - 1
+        final_blank_state = 2 * N
 
-        # Handle remaining first token if reached t=0
-        if j == 1:
-            token_spans.append({
-                "token_seq_idx": 0,
-                "token_id": token_ids[0],
-                "start_frame": 0,
-                "end_frame": current_token_end + 1,
-                "log_prob": float(emissions_np[0:current_token_end + 1, token_ids[0]].mean())
-            })
+        candidates = []
 
-        # Reverse spans to chronological order
-        token_spans.reverse()
+        if final_blank_state < S:
+            candidates.append(
+                (
+                    float(trellis[T - 1, final_blank_state]),
+                    final_blank_state
+                )
+            )
+
+        candidates.append(
+            (
+                float(trellis[T - 1, final_token_state]),
+                final_token_state
+            )
+        )
+
+        finite_candidates = [
+            (score, state)
+            for score, state in candidates
+            if np.isfinite(score)
+        ]
+
+        if not finite_candidates:
+            raise CTCAlignmentError(
+                "CTC_ALIGNMENT_FAILED: Không tìm thấy đường đi "
+                "Viterbi hợp lệ tới cuối audio"
+            )
+
+        _, state = max(
+            finite_candidates,
+            key=lambda x: x[0]
+        )
+
+        # ---------------------------------------------------------
+        # Backtrack state path
+        # ---------------------------------------------------------
+        state_path = []
+
+        for t in range(T - 1, 0, -1):
+            state_path.append((t, state))
+
+            current_token = int(states[state])
+
+            # Stay
+            stay = trellis[t - 1, state]
+
+            # Move from s-1
+            move = (
+                trellis[t - 1, state - 1]
+                if state > 0
+                else -np.inf
+            )
+
+            # Skip from s-2
+            skip = -np.inf
+
+            if state >= 2 and current_token != blank_id:
+                previous_token = int(states[state - 2])
+
+                if current_token != previous_token:
+                    skip = trellis[t - 1, state - 2]
+
+            best = max(stay, move, skip)
+
+            if best == stay:
+                # Stay in same state.
+                pass
+
+            elif best == move:
+                state -= 1
+
+            elif best == skip:
+                state -= 2
+
+            else:
+                raise CTCAlignmentError(
+                    "CTC_ALIGNMENT_FAILED: Không thể backtrack "
+                    "đường đi Viterbi"
+                )
+
+        state_path.append((0, state))
+        state_path.reverse()
+
+        # ---------------------------------------------------------
+        # Convert state path -> token spans
+        # ---------------------------------------------------------
+        token_spans = []
+
+        active_token_state = None
+        active_start = None
+
+        def close_token(end_frame: int):
+            nonlocal active_token_state
+            nonlocal active_start
+
+            if active_token_state is None:
+                return
+
+            if active_start is None:
+                return
+
+            token_seq_idx = (
+                active_token_state - 1
+            ) // 2
+
+            if 0 <= token_seq_idx < N:
+                token_id = int(
+                    token_ids[token_seq_idx]
+                )
+
+                start_frame = int(active_start)
+                end_frame_int = int(end_frame)
+
+                if end_frame_int > start_frame:
+                    token_emissions = emissions_np[
+                        start_frame:end_frame_int,
+                        token_id
+                    ]
+
+                    if len(token_emissions) > 0:
+                        log_prob = float(
+                            np.mean(token_emissions)
+                        )
+                    else:
+                        log_prob = float("-inf")
+
+                    token_spans.append({
+                        "token_seq_idx": token_seq_idx,
+                        "token_id": token_id,
+                        "start_frame": start_frame,
+                        "end_frame": end_frame_int,
+                        "log_prob": log_prob
+                    })
+
+            active_token_state = None
+            active_start = None
+
+        # State path consists of one state per frame.
+        for idx, (frame, current_state) in enumerate(state_path):
+
+            is_token_state = (
+                current_state % 2 == 1
+            )
+
+            if is_token_state:
+                if active_token_state is None:
+                    active_token_state = current_state
+                    active_start = frame
+
+                elif current_state != active_token_state:
+                    close_token(frame)
+
+                    active_token_state = current_state
+                    active_start = frame
+
+            else:
+                # Entering blank closes previous token.
+                if active_token_state is not None:
+                    close_token(frame)
+
+        # Close final token if path ends directly on token.
+        if active_token_state is not None:
+            close_token(T)
+
+        # ---------------------------------------------------------
+        # Ensure chronological token order
+        # ---------------------------------------------------------
+        token_spans.sort(
+            key=lambda x: x["token_seq_idx"]
+        )
+
         return token_spans
-
-
+        
 def extract_vocal_active_regions(
     audio_data: np.ndarray,
     sr: int = 16000,
@@ -764,58 +988,358 @@ def align_lyrics_onnx_int8(
         token_ids.pop()
         token_to_word_map.pop()
 
-    # 3. Dynamic Programming Viterbi Alignment (Pure NumPy Log-Space Trellis, Zero Torch RAM)
+        # 3. CTC Forced Alignment - Standard Trellis / Viterbi
+    #
+    # Expanded CTC states:
+    #
+    #   blank, token0, blank, token1, blank, ..., tokenN-1, blank
+    #
+    # We first compute the optimal state path and then derive token
+    # spans directly from the frames occupied by each token state.
+    #
+    # This is important because trailing silence must stay in the final
+    # blank state instead of being assigned to the final lyric token.
+
     T = emissions_np.shape[0]
     N = len(token_ids)
-    blank_id = tokenizer.pad_token_id
 
     token_spans: List[Dict[str, Any]] = []
+
     if T >= N and N > 0:
-        trellis = np.full((T, N + 1), -np.inf, dtype=np.float32)
+
+        # ---------------------------------------------------------
+        # Build expanded CTC state sequence
+        # ---------------------------------------------------------
+        S = 2 * N + 1
+
+        states = np.full(
+            S,
+            blank_id,
+            dtype=np.int32
+        )
+
+        states[1::2] = np.asarray(
+            token_ids,
+            dtype=np.int32
+        )
+
+        # ---------------------------------------------------------
+        # Trellis
+        # ---------------------------------------------------------
+        trellis = np.full(
+            (T, S),
+            -np.inf,
+            dtype=np.float32
+        )
+
+        # Initial frame.
         trellis[0, 0] = emissions_np[0, blank_id]
-        trellis[0, 1] = emissions_np[0, token_ids[0]]
 
+        if S > 1:
+            trellis[0, 1] = emissions_np[
+                0,
+                int(states[1])
+            ]
+
+        # ---------------------------------------------------------
+        # Forward Viterbi
+        # ---------------------------------------------------------
         for t in range(1, T):
-            trellis[t, 0] = trellis[t - 1, 0] + emissions_np[t, blank_id]
-            for j in range(1, N + 1):
-                target_token = token_ids[j - 1]
-                stay_prob = trellis[t - 1, j] + emissions_np[t, blank_id]
-                move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
-                trellis[t, j] = max(stay_prob, move_prob)
 
-        t = T - 1
-        j = N
-        current_token_end = t
+            for s in range(S):
 
-        while t > 0 and j > 0:
-            target_token = token_ids[j - 1]
-            stay_prob = trellis[t - 1, j] + emissions_np[t, blank_id]
-            move_prob = trellis[t - 1, j - 1] + emissions_np[t, target_token]
-            if move_prob >= stay_prob:
-                token_spans.append({
-                    "token_seq_idx": j - 1,
-                    "token_id": target_token,
-                    "start_frame": t,
-                    "end_frame": current_token_end + 1,
-                    "log_prob": float(np.mean(emissions_np[t:current_token_end + 1, target_token]))
-                })
-                j -= 1
-                current_token_end = t - 1
-            t -= 1
+                current_token = int(states[s])
 
-        if j == 1:
-            token_spans.append({
-                "token_seq_idx": 0,
-                "token_id": token_ids[0],
-                "start_frame": 0,
-                "end_frame": current_token_end + 1,
-                "log_prob": float(np.mean(emissions_np[0:current_token_end + 1, token_ids[0]]))
-            })
-        token_spans.reverse()
+                # 1. Stay in current state.
+                best_prev = trellis[t - 1, s]
+
+                # 2. Move from previous state.
+                if s >= 1:
+                    candidate = trellis[t - 1, s - 1]
+
+                    if candidate > best_prev:
+                        best_prev = candidate
+
+                # 3. CTC skip over blank.
+                #
+                # blank -> token_i can skip the intermediate blank
+                # when token_i differs from token_{i-1}.
+                if s >= 2 and current_token != blank_id:
+
+                    previous_token = int(states[s - 2])
+
+                    if current_token != previous_token:
+
+                        candidate = trellis[t - 1, s - 2]
+
+                        if candidate > best_prev:
+                            best_prev = candidate
+
+                if np.isfinite(best_prev):
+                    trellis[t, s] = (
+                        best_prev
+                        + emissions_np[t, current_token]
+                    )
+
+        # ---------------------------------------------------------
+        # Find terminal state
+        #
+        # Prefer final blank because it allows trailing silence.
+        # ---------------------------------------------------------
+        final_token_state = 2 * N - 1
+        final_blank_state = 2 * N
+
+        if np.isfinite(
+            trellis[T - 1, final_blank_state]
+        ):
+            terminal_state = final_blank_state
+
+        elif np.isfinite(
+            trellis[T - 1, final_token_state]
+        ):
+            terminal_state = final_token_state
+
+        else:
+            raise CTCAlignmentError(
+                "No valid CTC path reaches the end of the acoustic timeline"
+            )
+
+        # ---------------------------------------------------------
+        # Backtrack complete state path
+        # ---------------------------------------------------------
+        state_path = np.full(
+            T,
+            -1,
+            dtype=np.int32
+        )
+
+        s = terminal_state
+
+        state_path[T - 1] = s
+
+        for t in range(T - 1, 0, -1):
+
+            current_token = int(states[s])
+
+            # Stay.
+            best_prob = trellis[t - 1, s]
+            best_state = s
+
+            # Move from s-1.
+            if s >= 1:
+
+                candidate = trellis[t - 1, s - 1]
+
+                if candidate > best_prob:
+
+                    best_prob = candidate
+                    best_state = s - 1
+
+            # Skip from s-2.
+            if s >= 2 and current_token != blank_id:
+
+                previous_token = int(states[s - 2])
+
+                if current_token != previous_token:
+
+                    candidate = trellis[t - 1, s - 2]
+
+                    if candidate > best_prob:
+
+                        best_prob = candidate
+                        best_state = s - 2
+
+            if not np.isfinite(best_prob):
+                raise CTCAlignmentError(
+                    f"Cannot backtrack CTC path at frame {t}, state {s}"
+                )
+
+            s = best_state
+            state_path[t - 1] = s
+
+        # ---------------------------------------------------------
+        # Convert state path -> token spans
+        # ---------------------------------------------------------
+        #
+        # Every odd state is an actual lyric token.
+        # Blank states are ignored.
+        #
+        # IMPORTANT:
+        # A token span ends at the FIRST frame where the path leaves
+        # that token state. Therefore trailing blank frames cannot be
+        # accidentally assigned to the last token.
+        # ---------------------------------------------------------
+
+        current_token_state = -1
+        token_start_frame = -1
+
+        for frame_idx in range(T):
+
+            current_state = int(
+                state_path[frame_idx]
+            )
+
+            is_token_state = (
+                current_state > 0
+                and current_state % 2 == 1
+            )
+
+            if is_token_state:
+
+                # Start a new token.
+                if current_token_state == -1:
+
+                    current_token_state = current_state
+                    token_start_frame = frame_idx
+
+                # Transitioned directly from one token to another.
+                elif current_state != current_token_state:
+
+                    token_seq_idx = (
+                        current_token_state - 1
+                    ) // 2
+
+                    if (
+                        0 <= token_seq_idx < N
+                        and token_start_frame >= 0
+                    ):
+
+                        end_frame = frame_idx
+
+                        if end_frame > token_start_frame:
+
+                            token_id = int(
+                                token_ids[token_seq_idx]
+                            )
+
+                            token_log_probs = emissions_np[
+                                token_start_frame:end_frame,
+                                token_id
+                            ]
+
+                            token_spans.append({
+                                "token_seq_idx": token_seq_idx,
+                                "token_id": token_id,
+                                "start_frame": token_start_frame,
+                                "end_frame": end_frame,
+                                "log_prob": float(
+                                    np.mean(token_log_probs)
+                                )
+                            })
+
+                    current_token_state = current_state
+                    token_start_frame = frame_idx
+
+            else:
+
+                # We entered a blank state.
+                #
+                # Close the previous token exactly here.
+                if current_token_state != -1:
+
+                    token_seq_idx = (
+                        current_token_state - 1
+                    ) // 2
+
+                    if (
+                        0 <= token_seq_idx < N
+                        and token_start_frame >= 0
+                    ):
+
+                        end_frame = frame_idx
+
+                        if end_frame > token_start_frame:
+
+                            token_id = int(
+                                token_ids[token_seq_idx]
+                            )
+
+                            token_log_probs = emissions_np[
+                                token_start_frame:end_frame,
+                                token_id
+                            ]
+
+                            token_spans.append({
+                                "token_seq_idx": token_seq_idx,
+                                "token_id": token_id,
+                                "start_frame": token_start_frame,
+                                "end_frame": end_frame,
+                                "log_prob": float(
+                                    np.mean(token_log_probs)
+                                )
+                            })
+
+                    current_token_state = -1
+                    token_start_frame = -1
+
+        # ---------------------------------------------------------
+        # If the path finishes directly on a token state
+        # ---------------------------------------------------------
+        if current_token_state != -1:
+
+            token_seq_idx = (
+                current_token_state - 1
+            ) // 2
+
+            if (
+                0 <= token_seq_idx < N
+                and token_start_frame >= 0
+            ):
+
+                end_frame = T
+
+                if end_frame > token_start_frame:
+
+                    token_id = int(
+                        token_ids[token_seq_idx]
+                    )
+
+                    token_log_probs = emissions_np[
+                        token_start_frame:end_frame,
+                        token_id
+                    ]
+
+                    token_spans.append({
+                        "token_seq_idx": token_seq_idx,
+                        "token_id": token_id,
+                        "start_frame": token_start_frame,
+                        "end_frame": end_frame,
+                        "log_prob": float(
+                            np.mean(token_log_probs)
+                        )
+                    })
+
+        # ---------------------------------------------------------
+        # Sort and deduplicate token spans
+        # ---------------------------------------------------------
+        token_spans.sort(
+            key=lambda x: x["token_seq_idx"]
+        )
+
+        # Keep one span per token sequence index.
+        cleaned_token_spans = []
+
+        seen_token_indices = set()
+
+        for span in token_spans:
+
+            idx = span["token_seq_idx"]
+
+            if idx in seen_token_indices:
+                continue
+
+            seen_token_indices.add(idx)
+            cleaned_token_spans.append(span)
+
+        token_spans = cleaned_token_spans
+
+        del state_path
+        del states
         del trellis
 
     # Free emissions matrix
-    del emissions_np
+    if "emissions_np" in locals():
+        del emissions_np
     gc.collect()
 
     # 5. Map Token Spans to Words

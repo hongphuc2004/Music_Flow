@@ -510,32 +510,110 @@ class AlignmentWorker:
                 self.client.close()
             except Exception:
                 pass
+    def run(self, job_id=None):
+        """Run one specific job or keep the legacy polling worker."""
+        if job_id:
+            logger.info(f"[Worker] One-shot mode: processing job {job_id}")
 
-    def run(self):
-        """Main polling loop."""
+            try:
+                from bson import ObjectId
+
+                try:
+                    mongo_job_id = ObjectId(job_id)
+                except Exception:
+                    mongo_job_id = job_id
+
+                job = self.db.lyricsalignmentjobs.find_one({
+                    "_id": mongo_job_id,
+                    "status": "pending"
+                })
+
+                if not job:
+                    logger.error(
+                        f"[Worker] Job {job_id} not found or is not pending."
+                    )
+                    return 1
+
+                # Claim đúng job này, tránh worker khác xử lý trùng
+                claimed = self.db.lyricsalignmentjobs.find_one_and_update(
+                    {
+                        "_id": mongo_job_id,
+                        "status": "pending",
+                        "attemptCount": {"$lt": config.MAX_JOB_ATTEMPTS}
+                    },
+                    {
+                        "$set": {
+                            "status": "processing",
+                            "workerId": self.worker_id,
+                            "processingStartedAt": get_utc_now(),
+                            "lastHeartbeatAt": get_utc_now()
+                        },
+                        "$inc": {"attemptCount": 1}
+                    },
+                    return_document=ReturnDocument.AFTER
+                )
+
+                if not claimed:
+                    logger.error(
+                        f"[Worker] Job {job_id} could not be claimed."
+                    )
+                    return 1
+
+                self.process_job(claimed)
+
+                # process_job tự mark succeeded/failed
+                final_job = self.db.lyricsalignmentjobs.find_one(
+                    {"_id": mongo_job_id}
+                )
+
+                if final_job and final_job.get("status") == "succeeded":
+                    logger.info(f"[Worker] One-shot job {job_id} completed.")
+                    return 0
+
+                logger.error(f"[Worker] One-shot job {job_id} failed.")
+                return 1
+
+            except Exception as e:
+                logger.error(
+                    f"[Worker] One-shot execution error: {e}",
+                    exc_info=True
+                )
+                return 1
+
+            finally:
+                self.close()
+
+        # Legacy polling mode
         logger.info("Worker polling loop started. Waiting for jobs...")
+
         while self.running:
             try:
-                # 1. Reclaim any stale locks
                 self.reclaim_stale_locks()
 
-                # 2. Claim next pending job
                 job = self.claim_next_job()
+
                 if job:
                     self.process_job(job)
                 else:
                     time.sleep(config.POLL_INTERVAL_SEC)
+
             except PyMongoError as e:
-                logger.error(f"MongoDB connection error: {e}. Retrying in 5s...")
+                logger.error(
+                    f"MongoDB connection error: {e}. Retrying in 5s..."
+                )
                 time.sleep(5.0)
+
             except KeyboardInterrupt:
                 logger.info("Worker stopped by user.")
                 self.close()
                 break
-            except Exception as e:
-                logger.error(f"Unexpected worker loop error: {e}", exc_info=True)
-                time.sleep(config.POLL_INTERVAL_SEC)
 
+            except Exception as e:
+                logger.error(
+                    f"Unexpected worker loop error: {e}",
+                    exc_info=True
+                )
+                time.sleep(config.POLL_INTERVAL_SEC)
 def start_health_server():
     """Lightweight HTTP health check server for Render / Cloud Web Service."""
     port_env = os.getenv("PORT", "10000")
@@ -560,6 +638,23 @@ def start_health_server():
         logger.warning(f"[Worker] Could not start health check HTTP server on port {port_env}: {e}")
 
 if __name__ == "__main__":
-    start_health_server()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--job-id",
+        type=str,
+        default=None,
+        help="Process one specific MongoDB alignment job and exit."
+    )
+
+    args = parser.parse_args()
+
+    # Health server chỉ cần cho legacy polling mode
+    if not args.job_id:
+        start_health_server()
+
     worker = AlignmentWorker()
-    worker.run()
+    exit_code = worker.run(job_id=args.job_id)
+
+    sys.exit(exit_code)

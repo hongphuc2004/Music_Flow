@@ -33,6 +33,7 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import { getArtistPath } from '../../utils/shareUtil';
 
 const PERIODS = ['Today', 'This Week', 'This Month'];
 const PERIOD_VALUES = ['today', 'week', 'month'];
@@ -630,7 +631,7 @@ export default function ClientRankings() {
                     <Paper
                       key={artist._id}
                       elevation={0}
-                      onClick={() => navigate(`/artists/${artist._id}`)}
+                      onClick={() => navigate(getArtistPath(artist))}
 
                       sx={{
                         p: 1.5,

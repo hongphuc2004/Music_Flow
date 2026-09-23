@@ -1,4 +1,4 @@
-import { useMemo, useState, useContext, useEffect, useCallback, useRef } from 'react';
+﻿import { useMemo, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -39,17 +39,27 @@ import {
   HistoryRounded as HistoryIcon,
   CloseRounded as CloseIcon,
   ClearRounded as ClearIcon,
+  TrendingUpRounded as TrendingIcon,
 } from '@mui/icons-material';
 import useAppToast from '../../../components/common/useAppToast';
 import { ColorModeContext } from '../../../context/ColorModeContext';
 import useClientSession from '../../../hooks/useClientSession';
 import { logout } from '../../../services/api';
 import { useClientPlayer } from './ClientPlayerProvider';
+import ClientSongMoreMenu from './ClientSongMoreMenu';
 import { clientSongsApi, clientNotificationsApi } from '../../../services/client/client.service';
 import { getOptimizedImageUrl } from '../../../utils/imageUtil';
 
 const SEARCH_HISTORY_STORAGE_KEY = 'musicflow_search_history';
 const MAX_SEARCH_HISTORY = 5;
+const DEFAULT_SUGGESTIONS = [
+  'Đến khi nào',
+  'Kẻ say tình 2',
+  'Ngược lối yêu',
+  'Tình hà say hi',
+  'Anh trai vượt ngàn chông gai',
+  '#musicflowchart',
+];
 
 const readSearchHistory = () => {
   try {
@@ -265,10 +275,30 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
     navigate('/artist/dashboard?auth=login');
   };
 
-  const submitSearch = () => {
-    const trimmed = searchValue.trim();
+  const relatedKeywords = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+    if (!query) return [];
+    const list = [];
+    const songs = Array.isArray(searchResults?.songs) ? searchResults.songs : [];
+    songs.forEach((s) => {
+      if (s.title && !list.some(item => item.toLowerCase() === s.title.toLowerCase())) {
+        list.push(s.title);
+      }
+    });
+    const playlists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
+    playlists.forEach((p) => {
+      if (p.name && !list.some(item => item.toLowerCase() === p.name.toLowerCase())) {
+        list.push(p.name);
+      }
+    });
+    return list.slice(0, 4);
+  }, [searchValue, searchResults]);
+
+  const submitSearch = (customQuery) => {
+    const trimmed = (customQuery !== undefined ? customQuery : searchValue).trim();
     if (trimmed) {
       saveHistory(trimmed);
+      setSearchValue(trimmed);
     }
     if (searchResults.songs.length > 0) {
       playSong(searchResults.songs[0], { queue: searchResults.songs });
@@ -352,7 +382,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                 <SearchIcon sx={{ color: '#8c85ff', mr: 1, fontSize: 20 }} />
                 <InputBase
                   inputRef={searchInputRef}
-                  placeholder="Tìm kiếm bài hát, nghệ sĩ, album, playlist..."
+                  placeholder="Tìm kiếm bài hát, nghệ sĩ, lời bài hát..."
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
                   onFocus={() => setShowResults(true)}
@@ -378,7 +408,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                 )}
               </Box>
 
-              {/* Floating Autocomplete & Search History Dropdown */}
+              {/* Floating Autocomplete & Search History Dropdown (ZingMP3 Style) */}
               {showResults && (
                 <Paper
                   elevation={12}
@@ -388,37 +418,85 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                     left: 0,
                     right: 0,
                     zIndex: 1400,
-                    borderRadius: 3,
+                    borderRadius: '16px',
                     overflow: 'hidden',
-                    maxHeight: 380,
+                    maxHeight: 520,
                     overflowY: 'auto',
                     border: '1px solid',
                     borderColor: 'divider',
-                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.96)' : 'rgba(255, 255, 255, 0.98)',
                     backdropFilter: 'blur(16px)',
+                    boxShadow: (theme) => theme.palette.mode === 'dark'
+                      ? '0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06)'
+                      : '0 12px 36px rgba(0, 0, 0, 0.12)',
+                    '&::-webkit-scrollbar': { width: 5 },
+                    '&::-webkit-scrollbar-thumb': {
+                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)',
+                      borderRadius: 4,
+                    },
                   }}
                 >
-                  {/* TRƯỜNG HỢP 1: Chưa nhập chữ -> Hiển thị Lịch sử tìm kiếm (Tối đa 5 mục gần nhất) */}
+                  {/* TRƯỜNG HỢP 1: Chưa nhập chữ -> Hiển thị "Đề xuất cho bạn" & "Tìm kiếm gần đây" */}
                   {!searchValue.trim() ? (
-                    searchHistory.length > 0 ? (
-                      <Box sx={{ py: 1 }}>
-                        <Box sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider' }}>
-                          <Stack direction="row" spacing={0.8} alignItems="center">
-                            <HistoryIcon sx={{ fontSize: 16, color: '#8c85ff' }} />
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                              Tìm kiếm gần đây
+                    <Box sx={{ py: 1 }}>
+                      {/* Section 1: Đề xuất cho bạn */}
+                      <Box sx={{ px: 2, pt: 0.5, pb: 0.8 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 12 }}>
+                          Đề xuất cho bạn
+                        </Typography>
+                      </Box>
+                      <List disablePadding sx={{ pb: 0.5 }}>
+                        {DEFAULT_SUGGESTIONS.map((suggestion) => (
+                          <ListItemButton
+                            key={suggestion}
+                            onClick={() => handleSelectHistoryItem(suggestion)}
+                            sx={{
+                              py: 0.85,
+                              px: 2,
+                              borderRadius: '8px',
+                              mx: 1,
+                              '&:hover': {
+                                backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.08)' : 'rgba(108, 99, 255, 0.04)',
+                              },
+                            }}
+                          >
+                            <TrendingIcon sx={{ fontSize: 18, color: '#8c85ff', mr: 1.5, flexShrink: 0 }} />
+                            <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 600, color: 'text.primary' }} noWrap>
+                              {suggestion}
                             </Typography>
-                          </Stack>
+                          </ListItemButton>
+                        ))}
+                      </List>
+
+                      {/* Phân cách giữa Đề xuất & Tìm kiếm gần đây */}
+                      <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', my: 1 }} />
+
+                      {/* Section 2: Tìm kiếm gần đây */}
+                      <Box sx={{ px: 2, pt: 0.5, pb: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 12 }}>
+                          Tìm kiếm gần đây
+                        </Typography>
+                        {searchHistory.length > 0 && (
                           <Button
                             size="small"
                             variant="text"
                             onClick={handleClearAllHistory}
-                            sx={{ fontSize: 11, fontWeight: 700, p: 0, minWidth: 0, textTransform: 'none', color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                            sx={{
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              p: 0,
+                              minWidth: 0,
+                              textTransform: 'uppercase',
+                              color: '#8c85ff',
+                              '&:hover': { color: 'error.main' },
+                            }}
                           >
-                            Xóa tất cả
+                            Xóa
                           </Button>
-                        </Box>
-                        <List disablePadding sx={{ py: 0.5 }}>
+                        )}
+                      </Box>
+                      {searchHistory.length > 0 ? (
+                        <List disablePadding sx={{ pb: 0.5 }}>
                           {searchHistory.slice(0, MAX_SEARCH_HISTORY).map((queryText) => (
                             <ListItemButton
                               key={queryText}
@@ -426,6 +504,8 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                               sx={{
                                 py: 0.85,
                                 px: 2,
+                                borderRadius: '8px',
+                                mx: 1,
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
@@ -436,7 +516,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                             >
                               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flexGrow: 1, mr: 1 }}>
                                 <HistoryIcon sx={{ fontSize: 18, color: 'text.disabled', flexShrink: 0 }} />
-                                <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600, color: 'text.primary' }} noWrap>
+                                <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 600, color: 'text.primary' }} noWrap>
                                   {queryText}
                                 </Typography>
                               </Stack>
@@ -457,10 +537,16 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                             </ListItemButton>
                           ))}
                         </List>
-                      </Box>
-                    ) : null
+                      ) : (
+                        <Box sx={{ px: 2, py: 1 }}>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: 12.5, fontStyle: 'italic' }}>
+                            Chưa có lịch sử tìm kiếm.
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
                   ) : (
-                    /* TRƯỜNG HỢP 2: Đang nhập từ khóa tìm kiếm */
+                    /* TRƯỜNG HỢP 2: Đang nhập từ khóa tìm kiếm (như ZingMP3) */
                     searchLoading ? (
                       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
                         <CircularProgress size={24} sx={{ color: 'primary.main' }} />
@@ -470,116 +556,194 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                       const foundPlaylists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
                       const hasResults = foundSongs.length > 0 || foundPlaylists.length > 0;
 
-                      if (!hasResults) {
-                        return (
-                          <Box sx={{ py: 3, px: 2, textAlign: 'center' }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                              Không tìm thấy bài hát hoặc playlist nào phù hợp.
+                      return (
+                        <Box sx={{ py: 1 }}>
+                          {/* Section 1: Từ khóa liên quan */}
+                          <Box sx={{ px: 2, pt: 0.5, pb: 0.8 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 12 }}>
+                              Từ khóa liên quan
                             </Typography>
                           </Box>
-                        );
-                      }
-
-                      return (
-                        <List disablePadding sx={{ py: 0.5 }}>
-                          {foundSongs.length > 0 && (
-                            <>
-                              <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                  Bài hát ({foundSongs.length})
+                          <List disablePadding sx={{ pb: 0.5 }}>
+                            {relatedKeywords.map((keyword) => (
+                              <ListItemButton
+                                key={keyword}
+                                onClick={() => {
+                                  handleSelectHistoryItem(keyword);
+                                }}
+                                sx={{
+                                  py: 0.85,
+                                  px: 2,
+                                  borderRadius: '8px',
+                                  mx: 1,
+                                  '&:hover': {
+                                    backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.08)' : 'rgba(108, 99, 255, 0.04)',
+                                  },
+                                }}
+                              >
+                                <SearchIcon sx={{ fontSize: 18, color: 'text.secondary', mr: 1.5, flexShrink: 0 }} />
+                                <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 600, color: 'text.primary' }} noWrap>
+                                  {keyword}
                                 </Typography>
-                              </Box>
-                              {foundSongs.map((song) => (
-                                <ListItemButton
-                                  key={song._id || song.id}
-                                  onClick={() => {
-                                    saveHistory(searchValue.trim());
-                                    playSong(song, { queue: foundSongs });
-                                    setShowResults(false);
-                                  }}
-                                  sx={{
-                                    py: 1,
-                                    px: 1.5,
-                                    '&:hover': {
-                                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                                    },
-                                  }}
-                                >
-                                  <ListItemAvatar sx={{ minWidth: 44 }}>
-                                    <Avatar
-                                      variant="rounded"
-                                      src={getOptimizedImageUrl(song.imageUrl, 'song_thumb')}
-                                      sx={{ width: 34, height: 34, borderRadius: 1.5 }}
-                                    />
-                                  </ListItemAvatar>
-                                  <ListItemText
-                                    primary={song.title}
-                                    secondary={(song.artists || []).map(a => typeof a === 'string' ? a : a?.name).filter(Boolean).join(', ')}
-                                    primaryTypographyProps={{
-                                      fontSize: 13.5,
-                                      fontWeight: 700,
-                                      noWrap: true,
-                                    }}
-                                    secondaryTypographyProps={{
-                                      fontSize: 11,
-                                      noWrap: true,
-                                    }}
-                                  />
-                                </ListItemButton>
-                              ))}
-                            </>
-                          )}
+                              </ListItemButton>
+                            ))}
+                            {/* Dòng tìm kiếm chính từ khóa đang gõ */}
+                            <ListItemButton
+                              onClick={() => submitSearch()}
+                              sx={{
+                                py: 0.85,
+                                px: 2,
+                                borderRadius: '8px',
+                                mx: 1,
+                                '&:hover': {
+                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.12)' : 'rgba(108, 99, 255, 0.06)',
+                                },
+                              }}
+                            >
+                              <SearchIcon sx={{ fontSize: 18, color: '#8c85ff', mr: 1.5, flexShrink: 0 }} />
+                              <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 600, color: '#8c85ff' }} noWrap>
+                                Tìm kiếm "{searchValue.trim()}"
+                              </Typography>
+                            </ListItemButton>
+                          </List>
 
-                          {foundPlaylists.length > 0 && (
-                            <>
-                              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                  Danh sách phát ({foundPlaylists.length})
-                                </Typography>
-                              </Box>
-                              {foundPlaylists.map((playlist) => (
-                                <ListItemButton
-                                  key={playlist._id || playlist.id}
-                                  onClick={() => {
-                                    saveHistory(searchValue.trim());
-                                    navigate(`/playlists/${playlist._id || playlist.id}`);
-                                    setShowResults(false);
-                                  }}
-                                  sx={{
-                                    py: 1,
-                                    px: 1.5,
-                                    '&:hover': {
-                                      backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.1)' : 'rgba(108, 99, 255, 0.05)',
-                                    },
-                                  }}
-                                >
-                                  <ListItemAvatar sx={{ minWidth: 44 }}>
-                                    <Avatar
-                                      variant="rounded"
-                                      src={getOptimizedImageUrl(playlist.coverImage, 'song_thumb')}
-                                      sx={{ width: 34, height: 34, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.15)', color: 'primary.main' }}
+                          {/* Phân cách giữa Từ khóa liên quan & Gợi ý kết quả */}
+                          <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', my: 1 }} />
+
+                          {/* Section 2: Gợi ý kết quả */}
+                          <Box sx={{ px: 2, pt: 0.5, pb: 0.8 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 12 }}>
+                              Gợi ý kết quả
+                            </Typography>
+                          </Box>
+
+                          {!hasResults ? (
+                            <Box sx={{ py: 2.5, px: 2, textAlign: 'center' }}>
+                              <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: 13 }}>
+                                Không tìm thấy bài hát hoặc playlist nào phù hợp.
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <List disablePadding sx={{ pb: 0.5 }}>
+                              {foundSongs.length > 0 && (
+                                <>
+                                  {foundSongs.map((song) => (
+                                    <ListItemButton
+                                      key={song._id || song.id}
+                                      onClick={() => {
+                                        saveHistory(searchValue.trim());
+                                        playSong(song, { queue: foundSongs });
+                                        setShowResults(false);
+                                      }}
+                                      sx={{
+                                        py: 0.85,
+                                        px: 1.5,
+                                        borderRadius: '8px',
+                                        mx: 1,
+                                        my: 0.25,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        '&:hover': {
+                                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                                        },
+                                      }}
                                     >
-                                      <PlaylistIcon sx={{ fontSize: 18 }} />
-                                    </Avatar>
-                                  </ListItemAvatar>
-                                  <ListItemText
-                                    primary={playlist.name}
-                                    secondary={`${playlist.ownerName || 'Playlist'} • ${playlist.songCount || 0} bài hát`}
-                                    primaryTypographyProps={{
-                                      fontSize: 13.5,
-                                      fontWeight: 700,
-                                      noWrap: true,
-                                    }}
-                                    secondaryTypographyProps={{
-                                      fontSize: 11,
-                                      noWrap: true,
-                                    }}
-                                  />
-                                </ListItemButton>
-                              ))}
-                            </>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flexGrow: 1, mr: 1 }}>
+                                        <ListItemAvatar sx={{ minWidth: 46 }}>
+                                          <Avatar
+                                            variant="rounded"
+                                            src={getOptimizedImageUrl(song.imageUrl, 'song_thumb')}
+                                            sx={{ width: 38, height: 38, borderRadius: 1.5 }}
+                                          />
+                                        </ListItemAvatar>
+                                        <ListItemText
+                                          primary={song.title}
+                                          secondary={(song.artists || []).map(a => typeof a === 'string' ? a : a?.name).filter(Boolean).join(', ')}
+                                          primaryTypographyProps={{
+                                            fontSize: 13.5,
+                                            fontWeight: 700,
+                                            noWrap: true,
+                                          }}
+                                          secondaryTypographyProps={{
+                                            fontSize: 11.5,
+                                            noWrap: true,
+                                          }}
+                                        />
+                                      </Box>
+                                      <Box onClick={(e) => e.stopPropagation()} sx={{ flexShrink: 0 }}>
+                                        <ClientSongMoreMenu
+                                          song={song}
+                                          buttonSx={{
+                                            color: 'text.secondary',
+                                            p: 0.4,
+                                            '&:hover': {
+                                              color: 'text.primary',
+                                              backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+                                            }
+                                          }}
+                                        />
+                                      </Box>
+                                    </ListItemButton>
+                                  ))}
+                                </>
+                              )}
+
+                              {foundPlaylists.length > 0 && (
+                                <>
+                                  <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 11.5 }}>
+                                      Danh sách phát ({foundPlaylists.length})
+                                    </Typography>
+                                  </Box>
+                                  {foundPlaylists.map((playlist) => (
+                                    <ListItemButton
+                                      key={playlist._id || playlist.id}
+                                      onClick={() => {
+                                        saveHistory(searchValue.trim());
+                                        navigate(`/playlists/${playlist._id || playlist.id}`);
+                                        setShowResults(false);
+                                      }}
+                                      sx={{
+                                        py: 0.85,
+                                        px: 1.5,
+                                        borderRadius: '8px',
+                                        mx: 1,
+                                        my: 0.25,
+                                        '&:hover': {
+                                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.1)' : 'rgba(108, 99, 255, 0.05)',
+                                        },
+                                      }}
+                                    >
+                                      <ListItemAvatar sx={{ minWidth: 46 }}>
+                                        <Avatar
+                                          variant="rounded"
+                                          src={getOptimizedImageUrl(playlist.coverImage, 'song_thumb')}
+                                          sx={{ width: 38, height: 38, borderRadius: 1.5, bgcolor: 'rgba(108, 99, 255, 0.15)', color: 'primary.main' }}
+                                        >
+                                          <PlaylistIcon sx={{ fontSize: 18 }} />
+                                        </Avatar>
+                                      </ListItemAvatar>
+                                      <ListItemText
+                                        primary={playlist.name}
+                                        secondary={`${playlist.ownerName || 'Playlist'} • ${playlist.songCount || 0} bài hát`}
+                                        primaryTypographyProps={{
+                                          fontSize: 13.5,
+                                          fontWeight: 700,
+                                          noWrap: true,
+                                        }}
+                                        secondaryTypographyProps={{
+                                          fontSize: 11.5,
+                                          noWrap: true,
+                                        }}
+                                      />
+                                    </ListItemButton>
+                                  ))}
+                                </>
+                              )}
+                            </List>
                           )}
-                        </List>
+                        </Box>
                       );
                     })()
                   )}

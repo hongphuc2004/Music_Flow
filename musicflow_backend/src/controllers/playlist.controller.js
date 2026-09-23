@@ -119,7 +119,7 @@ exports.getSystemPlaylistById = async (req, res) => {
         path: "songs",
         match: { isPublic: true },
         select: PLAYLIST_SONG_SELECT,
-        populate: { path: "artists", select: "name avatar" },
+        populate: { path: "artists", select: "name avatar followersCount" },
       })
       .lean();
 

@@ -9,6 +9,7 @@
  *   5. Instant Fallback: Falls back gracefully to standard keyword search on AI timeout/failure.
  */
 
+const mongoose = require("mongoose");
 const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
 const Playlist = require("../models/playlist.model");
@@ -16,6 +17,7 @@ const PlaylistSong = require("../models/playlist-song.model");
 const aiDataLoader = require("../ai/aiDataLoader.service");
 const geminiRouter = require("./geminiRouter.service");
 const { buildSearchRegexes, normalizeText, extractCleanLyrics } = require("../utils/string.util");
+const { findArtistBySlugOrId } = require("../utils/artist.util");
 const { SONG_PUBLIC_SELECT, ARTIST_POPULATE, TOPIC_POPULATE } = require("../repositories/song.repository");
 
 // ---------------------------------------------------------------------------
@@ -468,7 +470,15 @@ const searchSongs = async ({
     }
   }
 
-  if (artistId) conditions.push({ artists: artistId });
+  if (artistId) {
+    const matchedArtist = await findArtistBySlugOrId(artistId);
+    if (matchedArtist) {
+      conditions.push({ artists: matchedArtist._id });
+    } else {
+      // Artist was specified but not found -> return zero songs, never return the whole database!
+      conditions.push({ artists: new mongoose.Types.ObjectId() });
+    }
+  }
   if (topicId) conditions.push({ topicIds: topicId });
   if (letter) conditions.push({ title: new RegExp(`^${letter}`, "i") });
 

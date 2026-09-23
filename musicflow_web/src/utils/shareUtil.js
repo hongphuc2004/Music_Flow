@@ -218,3 +218,145 @@ export function getQrCodeImageUrl(text, size = 300) {
   const enc = encodeURIComponent(text);
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${enc}&qzone=2&color=000000&bgcolor=FFFFFF`;
 }
+
+/**
+ * Chuyển tên nghệ sĩ thành ZingMP3-style URL slug (ví dụ: "Khánh Phương" -> "Khanh-Phuong").
+ * @param {string} name
+ * @returns {string}
+ */
+export function toZingArtistSlug(name = '') {
+  if (!name) return 'artist';
+  const noAccents = String(name)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, (m) => (m === 'Đ' ? 'D' : 'd'))
+    .trim();
+
+  const words = noAccents.split(/[\s_-]+/).filter(Boolean);
+  if (!words.length) return 'artist';
+
+  const slug = words
+    .map((w) => {
+      if (w === w.toUpperCase() && w.length > 1) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    })
+    .join('-');
+
+  return slug.replace(/[^a-zA-Z0-9-]/g, '') || 'artist';
+}
+
+/**
+ * Trả về route path chuẩn ZingMP3 cho nghệ sĩ (ví dụ: /Da-LAB hoặc /Khanh-Phuong).
+ * @param {object|string} artist
+ * @returns {string}
+ */
+export function getArtistPath(artist) {
+  if (!artist) return '/';
+  if (typeof artist === 'string') {
+    if (/^[0-9a-fA-F]{24}$/.test(artist)) {
+      return `/artists/${artist}`;
+    }
+    return `/${toZingArtistSlug(artist)}`;
+  }
+  if (artist.slug) return `/${artist.slug}`;
+  if (artist.name) return `/${toZingArtistSlug(artist.name)}`;
+  if (artist._id || artist.id) return `/artists/${artist._id || artist.id}`;
+  return '/';
+}
+
+/**
+ * Trả về route path chuẩn cho Tuyển tập của nghệ sĩ (ví dụ: /playlists/artist-MIN-best_songs).
+ * @param {object|string} artist
+ * @param {string} [collectionId='best_songs']
+ * @returns {string}
+ */
+export function getArtistCollectionPath(artist, collectionId = 'best_songs') {
+  if (!artist) return `/playlists/artist-unknown-${collectionId}`;
+  let slug = '';
+  if (typeof artist === 'string') {
+    slug = /^[0-9a-fA-F]{24}$/.test(artist) ? artist : toZingArtistSlug(artist);
+  } else if (artist.slug) {
+    slug = artist.slug;
+  } else if (artist.name) {
+    slug = toZingArtistSlug(artist.name);
+  } else {
+    slug = artist._id || artist.id || 'artist';
+  }
+  return `/playlists/artist-${slug}-${collectionId}`;
+}
+
+/**
+ * Creates the share URL for an artist page with ZingMP3-style clean slug, UTM and tracking params.
+ * Example: https://musicflow.vn/Khanh-Phuong
+ * @param {object|string} artistOrId
+ * @param {object} [options]
+ * @returns {string}
+ */
+export function createArtistShareUrl(artistOrId, options = {}) {
+  if (!artistOrId) return typeof window !== 'undefined' ? window.location.href : '';
+
+  let artistSlug = '';
+  if (typeof artistOrId === 'object' && artistOrId !== null) {
+    if (artistOrId.slug) {
+      artistSlug = artistOrId.slug;
+    } else if (artistOrId.name) {
+      artistSlug = toZingArtistSlug(artistOrId.name);
+    } else {
+      artistSlug = artistOrId._id || artistOrId.id;
+    }
+  } else if (typeof artistOrId === 'string') {
+    artistSlug = artistOrId;
+  }
+
+  // Prevent collisions with system root paths
+  const reservedRoutes = [
+    'admin', 'artist', 'client', 'songs', 'playlists', 'collections',
+    'discover', 'genres', 'rankings', 'library', 'favorites', 'profile',
+    'premium', 'accountlogin', 'adminlogin', 'artistlogin', 'home',
+  ];
+  if (reservedRoutes.includes(String(artistSlug).toLowerCase())) {
+    artistSlug = `artists/${artistSlug}`;
+  }
+
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.hostname.startsWith('10.')
+  );
+
+  const origin = import.meta.env.VITE_APP_URL
+    || (!isLocalhost && typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://music-flow-bay.vercel.app');
+
+  const {
+    source = 'clipboard',
+    medium = 'share',
+    campaign = 'artist_sharing',
+    si = generateShareInstanceId(),
+    withUtm = true,
+  } = options;
+
+  const path = `/${artistSlug}`;
+  const url = new URL(path, origin);
+
+  if (withUtm) {
+    if (source) url.searchParams.set('utm_source', source);
+    if (medium) url.searchParams.set('utm_medium', medium);
+    if (campaign) url.searchParams.set('utm_campaign', campaign);
+    if (si) url.searchParams.set('si', si);
+  }
+
+  return url.toString();
+}
+
+/**
+ * Formats a dynamic share message for an artist.
+ * @param {object} artist
+ * @returns {string}
+ */
+export function createArtistShareText(artist) {
+  if (!artist) return 'Khám phá âm nhạc chất lượng cao trên MusicFlow 🎵';
+  const name = artist.name || 'Nghệ sĩ';
+  return `Khám phá các ca khúc tuyệt vời của ${name} trên MusicFlow 🎵`;
+}
+

@@ -40,6 +40,7 @@ import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../..
 import { useClientPlayerActions } from './ClientPlayerProvider';
 import useAppToast from '../../../components/common/useAppToast';
 import ShareSongModal from '../../common/ShareSongModal';
+import { getArtistPath } from '../../../utils/shareUtil';
 
 
 function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
@@ -71,10 +72,12 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
   );
 
   const songId = useMemo(() => song?._id || song?.id || '', [song?._id, song?.id]);
-  const primaryArtistId = useMemo(() => {
-    const firstArtist = Array.isArray(song?.artists) ? song.artists[0] : null;
-    return firstArtist?._id || firstArtist?.id || '';
+  const primaryArtist = useMemo(() => {
+    return Array.isArray(song?.artists) ? song.artists[0] : null;
   }, [song?.artists]);
+  const primaryArtistId = useMemo(() => {
+    return primaryArtist?._id || primaryArtist?.id || '';
+  }, [primaryArtist]);
 
   const handleOpen = async (event) => {
     event.stopPropagation();
@@ -135,7 +138,9 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
 
   const handleViewArtist = (event) => {
     event.stopPropagation();
-    if (primaryArtistId) {
+    if (primaryArtist) {
+      navigate(getArtistPath(primaryArtist));
+    } else if (primaryArtistId) {
       navigate(`/artists/${primaryArtistId}`);
     }
     handleClose(event);

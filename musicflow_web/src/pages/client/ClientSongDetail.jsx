@@ -33,6 +33,7 @@ import ShareSongModal from '../../components/common/ShareSongModal';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 import useAppToast from '../../components/common/useAppToast';
 import { parseLyrics } from '../../utils/lyrics';
+import { getArtistPath } from '../../utils/shareUtil';
 
 
 function formatDuration(seconds) {
@@ -419,8 +420,8 @@ export default function ClientSongDetail() {
                   {artistList.map((artist) => (
                     <Stack
                       key={artist._id || artist.name}
-                      component={artist._id ? Link : 'div'}
-                      to={artist._id ? `/artists/${artist._id}` : undefined}
+                      component={Link}
+                      to={getArtistPath(artist)}
                       direction="row"
                       spacing={1}
                       alignItems="center"

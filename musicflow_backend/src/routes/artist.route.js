@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const multer = require("multer");
 const fs = require("fs");
 const artistController = require("../controllers/artist.controller");
@@ -12,6 +13,7 @@ const User = require("../models/user.model");
 const authMiddleware = require("../middleware/auth.middleware");
 const cloudinary = require("../config/cloudinary");
 const { cloudinaryFolder } = require("../config/cloudinaryFolders");
+const { findArtistBySlugOrId, toZingArtistSlug } = require("../utils/artist.util");
 
 const upload = multer({ dest: "uploads/" });
 
@@ -159,21 +161,16 @@ router.put("/profile", authMiddleware, upload.single("avatarFile"), async (req, 
 router.get("/profile", async (req, res) => {
   try {
     const { id, name } = req.query;
+    const targetKey = id || name;
 
-    const query = id
-      ? { _id: id }
-      : name
-        ? { name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") } }
-        : null;
-
-    if (!query) {
+    if (!targetKey) {
       return res.status(400).json({
         success: false,
         message: "Missing artist id or name",
       });
     }
 
-    const artist = await Artist.findOne(query).select("-password");
+    const artist = await findArtistBySlugOrId(targetKey);
     if (!artist) {
       return res.status(404).json({
         success: false,
@@ -210,6 +207,7 @@ router.get("/profile", async (req, res) => {
       artist: {
         _id: artist._id,
         name: artist.name,
+        slug: artist.slug || (artist.name ? toZingArtistSlug(artist.name) : ""),
         avatar: artist.avatar || "",
         coverUrl: artist.avatar || "",
         bio: artist.bio || "",

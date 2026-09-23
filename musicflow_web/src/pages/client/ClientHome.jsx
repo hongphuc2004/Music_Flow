@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientArtistApi, clientPlaylistsApi, clientSongsApi, clientFavoritesApi } from '../../services/client/client.service';
+import { getArtistPath } from '../../utils/shareUtil';
 import ClientQueueDrawer from '../../components/Layout/client/ClientQueueDrawer';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
@@ -1479,7 +1480,7 @@ function ClientHome() {
                           transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                           '&:hover': { transform: 'scale(1.08)' },
                         }}
-                        onClick={() => navigate(`/artists/${artist._id}`)}
+                        onClick={() => navigate(getArtistPath(artist))}
                       >
                         {artist.name.charAt(0)}
                       </Avatar>
@@ -1495,7 +1496,7 @@ function ClientHome() {
                         fontSize: 14,
                         '&:hover': { color: '#00e5ff' },
                       }}
-                      onClick={() => navigate(`/artists/${artist._id}`)}
+                      onClick={() => navigate(getArtistPath(artist))}
                     >
                       {artist.name}
                     </Typography>

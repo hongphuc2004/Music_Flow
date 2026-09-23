@@ -584,6 +584,16 @@ function App() {
                       }
                     />
 
+                    {/* ZingMP3-Style Artist Clean URL Route (e.g. /Khanh-Phuong, /erik) */}
+                    <Route
+                      path="/:artistSlug"
+                      element={
+                        <ClientRoute>
+                          <ClientArtist />
+                        </ClientRoute>
+                      }
+                    />
+
                     {/* 404 Fallback */}
                     <Route path="*" element={<HomeRedirect />} />
                   </Routes>

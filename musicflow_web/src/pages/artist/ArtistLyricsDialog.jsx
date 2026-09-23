@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Alert,
+  AlertTitle,
   Box,
   Button,
   Chip,
@@ -51,6 +52,100 @@ function formatTime(seconds) {
   const secs = Math.floor(total % 60);
   const frac = Math.floor((total % 1) * 10);
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${frac}`;
+}
+
+function formatAiQualityGuidance(qualityNotes) {
+  if (!Array.isArray(qualityNotes) || qualityNotes.length === 0) return null;
+
+  const longWords = [];
+  const shortWords = [];
+  let hasNonMonotonic = false;
+  let hasLowConfidence = false;
+  let hasLowCoverage = false;
+  const otherNotes = [];
+
+  qualityNotes.forEach((note) => {
+    if (typeof note !== 'string') return;
+    if (
+      note.includes('DRAFT_MODIFIED_DURING_ALIGNMENT') ||
+      note.includes('RECLAIMED_FROM_STALE_LOCK') ||
+      note.startsWith('Căn nhịp bằng AI') ||
+      note.startsWith('Xử lý thành công')
+    ) {
+      return;
+    }
+
+    if (note.includes('ABNORMAL_LONG_WORD')) {
+      const match = note.match(/Từ\s+'([^']+)'/i);
+      if (match && match[1]) {
+        if (!longWords.includes(match[1])) longWords.push(match[1]);
+      } else {
+        longWords.push('một số từ');
+      }
+      return;
+    }
+
+    if (note.includes('ABNORMAL_SHORT_WORD')) {
+      const match = note.match(/Từ\s+'([^']+)'/i);
+      if (match && match[1]) {
+        if (!shortWords.includes(match[1])) shortWords.push(match[1]);
+      }
+      return;
+    }
+
+    if (note.includes('WORD_NON_MONOTONIC') || note.includes('CUMULATIVE_DRIFT')) {
+      hasNonMonotonic = true;
+      return;
+    }
+
+    if (note.includes('LOW_ACOUSTIC_CONFIDENCE')) {
+      hasLowConfidence = true;
+      return;
+    }
+
+    if (note.includes('LOW_LYRICS_COVERAGE')) {
+      hasLowCoverage = true;
+      return;
+    }
+
+    const clean = note.replace(/^[A-Z_]+:\s*/, '').trim();
+    if (clean && !otherNotes.includes(clean)) otherNotes.push(clean);
+  });
+
+  const issues = [];
+
+  if (longWords.length > 0) {
+    issues.push(
+      `Phát hiện từ bị ngân dài bất thường (thường do ca sĩ luyến láy ngân giọng hoặc khoảng dạo nhạc dài giữa 2 câu): ${longWords.map((w) => `"${w}"`).join(', ')}.`
+    );
+  }
+
+  if (hasNonMonotonic) {
+    issues.push('Một số câu hoặc từ có mốc thời gian bị đảo lộn (nhảy nhịp ngược về trước).');
+  }
+
+  if (shortWords.length > 0) {
+    issues.push(`Một số từ lướt qua quá nhanh: ${shortWords.map((w) => `"${w}"`).join(', ')}.`);
+  }
+
+  if (hasLowConfidence) {
+    issues.push('Độ rõ âm học ở một vài đoạn chưa cao (do nhạc nền lấn tiếng hát hoặc ca sĩ hát nhanh).');
+  }
+
+  if (hasLowCoverage) {
+    issues.push('AI chưa nhận diện trọn vẹn toàn bộ lời bài hát.');
+  }
+
+  if (issues.length === 0 && otherNotes.length > 0) {
+    issues.push(...otherNotes);
+  }
+
+  if (issues.length === 0) return null;
+
+  return {
+    issues,
+    advice: 'Bạn vui lòng nhấn nút Play ở khung "Studio Audio Sync Previewer" bên phải để nghe kiểm tra lại các đoạn trên và chỉnh lại số giây [mm:ss.xx] ở khung bên trái nếu cần trước khi xuất bản.',
+  };
 }
 
 export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
@@ -459,6 +554,11 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
     }
     return -1;
   }, [activeIndex, parsedLrc, currentTime]);
+
+  // Parse & format AI quality notes into artist-friendly guidance
+  const qualityGuidance = useMemo(() => {
+    return formatAiQualityGuidance(alignmentJob?.qualityNotes);
+  }, [alignmentJob?.qualityNotes]);
 
   // Auto-scroll active lyric line into view
   useEffect(() => {
@@ -874,9 +974,34 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
         )}
 
         {/* Quality Warning Notes Banner */}
-        {alignmentState === 'WARNING' && alignmentJob?.qualityNotes?.length > 0 && !draftConflictNote && (
-          <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2.5, fontWeight: 600 }}>
-            Lưu ý chất lượng từ AI: {alignmentJob.qualityNotes.join(' • ')}
+        {alignmentState === 'WARNING' && qualityGuidance && !draftConflictNote && (
+          <Alert
+            severity="warning"
+            sx={{
+              mb: 2.5,
+              borderRadius: 2.5,
+              fontWeight: 500,
+              bgcolor: 'rgba(237, 108, 2, 0.1)',
+              border: '1px solid rgba(237, 108, 2, 0.35)',
+              color: '#ffe0b2',
+              '& .MuiAlert-icon': { color: '#ffa726' },
+            }}
+          >
+            <AlertTitle sx={{ fontWeight: 800, fontSize: 13.5, mb: 0.5, color: '#ffb74d' }}>
+              Lưu ý kiểm tra nhịp từ AI (Đề xuất kiểm tra trước khi xuất bản)
+            </AlertTitle>
+            <Box component="ul" sx={{ m: 0, pl: 2.5, mb: 1, fontSize: 13, lineHeight: 1.6 }}>
+              {qualityGuidance.issues.map((issue, idx) => (
+                <li key={idx}>
+                  <Typography variant="body2" sx={{ fontSize: 12.5, color: 'rgba(255, 255, 255, 0.9)' }}>
+                    {issue}
+                  </Typography>
+                </li>
+              ))}
+            </Box>
+            <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 700, color: '#00e5ff' }}>
+              💡 {qualityGuidance.advice}
+            </Typography>
           </Alert>
         )}
 

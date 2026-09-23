@@ -43,6 +43,7 @@ import useAppToast from '../../components/common/useAppToast';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
+import { getArtistPath } from '../../utils/shareUtil';
 
 const CAROUSEL_SLIDES = [
   {
@@ -1607,7 +1608,7 @@ function ClientGenres() {
                                         direction="row"
                                         spacing={1.5}
                                         alignItems="center"
-                                        onClick={() => navigate(`/artists/${artist._id}`)}
+                                        onClick={() => navigate(getArtistPath(artist))}
                                         sx={{ cursor: 'pointer', minWidth: 0, flexGrow: 1 }}
                                       >
                                         <Avatar src={artist.avatar} sx={{ width: 42, height: 42 }} />
@@ -1757,7 +1758,7 @@ function ClientGenres() {
                           return (
                             <Grid size={{ xs: 6, sm: 4, md: 2 }} key={artist._id}>
                               <Box
-                                onClick={() => navigate(`/artists/${artist._id}`)}
+                                onClick={() => navigate(getArtistPath(artist))}
                                 sx={{
                                   p: 2,
                                   borderRadius: '24px',

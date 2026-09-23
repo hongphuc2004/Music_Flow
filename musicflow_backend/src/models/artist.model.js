@@ -65,8 +65,22 @@ const artistSchema = new mongoose.Schema(
   }
 );
 
-// Hash password trước khi save
+// Auto-slug & Hash password trước khi save
 artistSchema.pre("save", async function () {
+  if (!this.slug || this.isModified("name")) {
+    const noAccents = String(this.name || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[đĐ]/g, (m) => (m === "Đ" ? "D" : "d"))
+      .trim();
+    const words = noAccents.split(/[\s._-]+/).filter(Boolean);
+    if (words.length) {
+      this.slug = words
+        .map((w) => (w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+        .join("-")
+        .replace(/[^a-zA-Z0-9-]/g, "");
+    }
+  }
   if (!this.password || !this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);

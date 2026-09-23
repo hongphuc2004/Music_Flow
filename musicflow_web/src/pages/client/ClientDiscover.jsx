@@ -28,6 +28,7 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import { getArtistPath } from '../../utils/shareUtil';
 
 const toSlug = (str) => {
   if (!str) return '';
@@ -774,7 +775,7 @@ function ClientDiscover() {
               {artistMixCards.map((artist) => (
                 <Grid size={{ xs: 6, sm: 4, md: 2 }} key={`planet-${artist.id}`}>
                   <Box
-                    onClick={() => navigate(`/artists/${artist.id}`)}
+                    onClick={() => navigate(getArtistPath(artist))}
                     sx={{
                       p: 2,
                       borderRadius: '24px',

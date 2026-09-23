@@ -27,6 +27,7 @@ const ClientSongItem = ({
   moreMenuButtonSx = undefined,
   index = null,
   showDuration = false,
+  sx = {},
 }) => {
   const hasImage = song.imageUrl && song.imageUrl.trim() !== '' && !song.imageUrl.includes('tgdfbp3zivuqoxqxpltj');
 
@@ -45,8 +46,8 @@ const ClientSongItem = ({
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        p: 1.5,
-        borderRadius: 3,
+        p: 1.25,
+        borderRadius: 1.5,
         cursor: 'pointer',
         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         bgcolor: (theme) => isCurrent
@@ -78,6 +79,7 @@ const ClientSongItem = ({
         '&:hover .song-row-num': {
           display: 'none',
         },
+        ...sx,
       }}
     >
       {/* Optional Index / Hover Play */}

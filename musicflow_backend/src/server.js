@@ -93,6 +93,15 @@ app.use(
   })
 );
 
+const forgotPasswordRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Bạn đã gửi quá nhiều yêu cầu từ địa chỉ IP này. Vui lòng thử lại sau 15 phút." },
+});
+
+app.use("/api/auth/forgot-password", forgotPasswordRateLimiter);
 app.use("/api/auth", authRateLimiter);
 app.use("/api/admin/auth/login", authRateLimiter);
 app.use("/api/artist/login", authRateLimiter);

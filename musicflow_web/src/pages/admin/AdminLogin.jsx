@@ -206,15 +206,26 @@ function AdminLogin() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 68,
-                height: 68,
-                borderRadius: 2,
-                background: 'linear-gradient(135deg, #35d0df 0%, #6c63ff 58%, #9b5cff 100%)',
-                boxShadow: '0 16px 34px rgba(108, 99, 255, 0.32)',
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                p: 0.85,
+                bgcolor: 'rgba(108, 99, 255, 0.08)',
+                border: '1px solid rgba(108, 99, 255, 0.25)',
+                boxShadow: '0 12px 30px rgba(108, 99, 255, 0.22)',
                 mb: 2.5,
               }}
             >
-              <MusicNoteIcon sx={{ fontSize: 36, color: '#fff' }} />
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                }}
+              />
             </Box>
             <Typography variant="h4" fontWeight={800} gutterBottom sx={{ color: '#0f172a', textAlign: 'center' }}>
               MusicFlow Admin

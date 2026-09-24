@@ -35,6 +35,7 @@ import useAppToast from '../../components/common/useAppToast';
 import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import { notifyClientSessionChanged } from '../../hooks/useClientSession';
 import { useNavigate } from 'react-router-dom';
+import ChangePasswordCard from '../../components/auth/ChangePasswordCard';
 
 function ClientProfile() {
   const { showToast } = useAppToast();
@@ -739,6 +740,9 @@ function ClientProfile() {
                     </Button>
                   </Stack>
                 </Paper>
+
+                {/* Security & Password Change */}
+                <ChangePasswordCard hasPassword={user?.hasPassword} role="user" />
               </Stack>
             </Grid>
 

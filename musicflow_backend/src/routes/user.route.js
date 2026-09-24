@@ -33,9 +33,12 @@ router.get("/me", authMiddleware, async (req, res) => {
       await user.save();
     }
 
+    const userObj = user.toJSON();
+    userObj.hasPassword = Boolean(user.password);
+
     return res.json({
       success: true,
-      user,
+      user: userObj,
     });
   } catch (error) {
     console.error("Get current user error:", error);

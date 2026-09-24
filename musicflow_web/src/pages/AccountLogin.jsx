@@ -27,6 +27,8 @@ import {
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../services/api';
 import { notifyClientSessionChanged } from '../hooks/useClientSession';
+import ForgotPasswordDialog from '../components/auth/ForgotPasswordDialog';
+import FloatingTextField from '../components/common/FloatingTextField';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -65,6 +67,7 @@ function AccountLogin() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
@@ -198,7 +201,7 @@ function AccountLogin() {
   const fieldSx = {
     mb: 2,
     '& .MuiOutlinedInput-root': {
-      borderRadius: 2,
+      borderRadius: '16px',
       bgcolor: '#f7f8fb',
       '& input': {
         color: '#0f172a',
@@ -213,16 +216,11 @@ function AccountLogin() {
         borderColor: 'rgba(15, 23, 42, 0.15)',
       },
       '&:hover .MuiOutlinedInput-notchedOutline': {
-        borderColor: 'rgba(15, 23, 42, 0.3)',
+        borderColor: '#6c63ff',
       },
       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
         borderColor: '#6c63ff',
-      },
-    },
-    '& .MuiInputLabel-root': {
-      color: '#475569',
-      '&.Mui-focused': {
-        color: '#6c63ff',
+        borderWidth: '1.5px',
       },
     },
   };
@@ -298,8 +296,31 @@ function AccountLogin() {
 
         <Paper elevation={0} sx={{ p: { xs: 3, sm: 4.5 }, width: '100%', maxWidth: 470, mx: 'auto', borderRadius: 4, bgcolor: 'rgba(255,255,255,0.94)', border: '1px solid rgba(255,255,255,0.74)', boxShadow: '0 26px 80px rgba(37, 47, 74, 0.18)' }}>
           <Box sx={{ textAlign: 'center', mb: 3.5 }}>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 68, height: 68, borderRadius: 3, background: 'linear-gradient(135deg, #35d0df 0%, #6c63ff 62%, #ff6b81 100%)', boxShadow: '0 16px 34px rgba(108, 99, 255, 0.24)', mb: 2.5 }}>
-              <MusicNoteIcon sx={{ fontSize: 36, color: '#fff' }} />
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                p: 0.85,
+                bgcolor: 'rgba(108, 99, 255, 0.08)',
+                border: '1px solid rgba(108, 99, 255, 0.22)',
+                boxShadow: '0 12px 30px rgba(108, 99, 255, 0.2)',
+                mb: 2.5,
+              }}
+            >
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                }}
+              />
             </Box>
             <Typography variant="h4" fontWeight={850} gutterBottom>
               Chào mừng trở lại
@@ -312,8 +333,17 @@ function AccountLogin() {
           {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
           <form onSubmit={handleSubmit} noValidate>
-            <TextField fullWidth label="Email" type="email" value={formData.email} onChange={handleChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-            <TextField
+            <FloatingTextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange('email')}
+              sx={fieldSx}
+              required
+              InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }}
+            />
+            <FloatingTextField
               fullWidth
               label="Mật khẩu"
               type={showPassword ? 'text' : 'password'}
@@ -332,6 +362,27 @@ function AccountLogin() {
                 ),
               }}
             />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: -1.5, mb: 2.5 }}>
+              <Button
+                type="button"
+                variant="text"
+                onClick={() => setForgotOpen(true)}
+                sx={{
+                  color: '#6c63ff',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  p: 0,
+                  minWidth: 'auto',
+                  '&:hover': {
+                    color: '#5b52e5',
+                    background: 'transparent',
+                  },
+                }}
+              >
+                Quên mật khẩu?
+              </Button>
+            </Box>
             <Button type="submit" fullWidth variant="contained" size="large" disabled={loading} sx={{ py: 1.55, borderRadius: 2, fontSize: 16, background: 'linear-gradient(135deg, #35d0df 0%, #6c63ff 70%)', boxShadow: '0 14px 28px rgba(108, 99, 255, 0.25)', '&:hover': { background: 'linear-gradient(135deg, #24c0d0 0%, #5f57f4 70%)' } }}>
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
@@ -361,6 +412,14 @@ function AccountLogin() {
           </Box>
         </Paper>
       </Box>
+
+      <ForgotPasswordDialog
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        role="user"
+        initialEmail={formData.email}
+        onSuccess={() => setForgotOpen(false)}
+      />
     </Box>
   );
 }

@@ -29,6 +29,8 @@ import {
 import api, { setAccessToken } from '../../../services/api';
 import useAppToast from '../../../components/common/useAppToast';
 import { notifyClientSessionChanged } from '../../../hooks/useClientSession';
+import ForgotPasswordDialog from '../../auth/ForgotPasswordDialog';
+import FloatingTextField from '../../common/FloatingTextField';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -116,6 +118,7 @@ function ClientAuthDialog() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -287,35 +290,33 @@ function ClientAuthDialog() {
 
   const fieldSx = {
     '& .MuiOutlinedInput-root': {
-      borderRadius: 2.5,
-      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      borderRadius: '16px',
+      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc'),
       '& input': {
-        color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#0f172a',
+        color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#0f172a'),
         '&:-webkit-autofill': {
-          WebkitBoxShadow: (theme) => theme.palette.mode === 'dark'
-            ? '0 0 0 1000px #1e293b inset !important'
-            : '0 0 0 1000px #f8fafc inset !important',
-          WebkitTextFillColor: (theme) => theme.palette.mode === 'dark' ? '#fff !important' : '#0f172a !important',
+          WebkitBoxShadow: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '0 0 0 1000px #1e293b inset !important'
+              : '0 0 0 1000px #f8fafc inset !important',
+          WebkitTextFillColor: (theme) =>
+            theme.palette.mode === 'dark' ? '#fff !important' : '#0f172a !important',
           transition: 'background-color 5000s ease-in-out 0s',
         },
       },
       '& textarea': {
-        color: (theme) => theme.palette.mode === 'dark' ? '#fff' : '#0f172a',
+        color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#0f172a'),
       },
       '& .MuiOutlinedInput-notchedOutline': {
-        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.12)',
+        borderColor: (theme) =>
+          theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.14)',
       },
       '&:hover .MuiOutlinedInput-notchedOutline': {
-        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.25)',
+        borderColor: '#6c63ff',
       },
       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
         borderColor: '#6c63ff',
-      },
-    },
-    '& .MuiInputLabel-root': {
-      color: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : '#475569',
-      '&.Mui-focused': {
-        color: '#6c63ff',
+        borderWidth: '1.5px',
       },
     },
   };
@@ -339,7 +340,8 @@ function ClientAuthDialog() {
   const isGoogleVisible = !isRegister && !isArtistRegister;
 
   return (
-    <Dialog
+    <>
+      <Dialog
       open={open}
       onClose={closeDialog}
       maxWidth="xs"
@@ -379,8 +381,38 @@ function ClientAuthDialog() {
 
         <Stack spacing={2.25}>
           <Box sx={{ textAlign: 'center', pt: 1 }}>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 58, height: 58, borderRadius: 3, background: 'linear-gradient(135deg, #35d0df 0%, #6c63ff 62%, #ff6b81 100%)', boxShadow: '0 14px 30px rgba(108, 99, 255, 0.24)', mb: 1.5 }}>
-              <MusicNoteIcon sx={{ fontSize: 32, color: '#fff' }} />
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                p: 0.75,
+                bgcolor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(108, 99, 255, 0.16)'
+                    : 'rgba(108, 99, 255, 0.08)',
+                border: '1px solid',
+                borderColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(108, 99, 255, 0.35)'
+                    : 'rgba(108, 99, 255, 0.22)',
+                boxShadow: '0 10px 28px rgba(108, 99, 255, 0.22)',
+                mb: 1.5,
+              }}
+            >
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                }}
+              />
             </Box>
             <Typography variant="h5" fontWeight={850}>
               {titleText}
@@ -395,9 +427,28 @@ function ClientAuthDialog() {
           {isArtistRegister ? (
             <Box component="form" onSubmit={handleRegisterSubmit}>
               <Stack spacing={1.6}>
-                <TextField name="name" label="Tên nghệ sĩ" fullWidth sx={fieldSx} value={artistRegisterForm.name} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, name: e.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField name="email" label="Email" type="email" fullWidth sx={fieldSx} value={artistRegisterForm.email} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, email: e.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField
+                <FloatingTextField
+                  name="name"
+                  label="Tên nghệ sĩ"
+                  fullWidth
+                  sx={fieldSx}
+                  value={artistRegisterForm.name}
+                  onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                  InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }}
+                />
+                <FloatingTextField
+                  name="email"
+                  label="Email"
+                  type="email"
+                  fullWidth
+                  sx={fieldSx}
+                  value={artistRegisterForm.email}
+                  onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, email: e.target.value }))}
+                  required
+                  InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }}
+                />
+                <FloatingTextField
                   name="password"
                   label="Mật khẩu"
                   type={showPassword ? 'text' : 'password'}
@@ -418,8 +469,26 @@ function ClientAuthDialog() {
                     ),
                   }}
                 />
-                <TextField name="avatar" label="Avatar URL (Tùy chọn)" fullWidth sx={fieldSx} value={artistRegisterForm.avatar} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, avatar: e.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start"><ImageOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField name="bio" label="Giới thiệu (Tùy chọn)" fullWidth multiline minRows={2} sx={fieldSx} value={artistRegisterForm.bio} onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, bio: e.target.value }))} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}><BioIcon sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+                <FloatingTextField
+                  name="avatar"
+                  label="Avatar URL (Tùy chọn)"
+                  fullWidth
+                  sx={fieldSx}
+                  value={artistRegisterForm.avatar}
+                  onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, avatar: e.target.value }))}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><ImageOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }}
+                />
+                <FloatingTextField
+                  name="bio"
+                  label="Giới thiệu (Tùy chọn)"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  sx={fieldSx}
+                  value={artistRegisterForm.bio}
+                  onChange={(e) => setArtistRegisterForm((prev) => ({ ...prev, bio: e.target.value }))}
+                  InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}><BioIcon sx={{ color: '#7c8597' }} /></InputAdornment> }}
+                />
                 <Button type="submit" fullWidth variant="contained" disabled={loading} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 76%)' }}>
                   {loading ? 'Đang đăng ký...' : 'Đăng ký'}
                 </Button>
@@ -428,9 +497,28 @@ function ClientAuthDialog() {
           ) : isRegister ? (
             <Box component="form" onSubmit={handleRegisterSubmit}>
               <Stack spacing={1.6}>
-                <TextField name="name" label="Tên người dùng" fullWidth sx={fieldSx} value={registerForm.name} onChange={(event) => setRegisterForm((prev) => ({ ...prev, name: event.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField name="email" label="Email" type="email" fullWidth sx={fieldSx} value={registerForm.email} onChange={(event) => setRegisterForm((prev) => ({ ...prev, email: event.target.value }))} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField
+                <FloatingTextField
+                  name="name"
+                  label="Tên người dùng"
+                  fullWidth
+                  sx={fieldSx}
+                  value={registerForm.name}
+                  onChange={(event) => setRegisterForm((prev) => ({ ...prev, name: event.target.value }))}
+                  required
+                  InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }}
+                />
+                <FloatingTextField
+                  name="email"
+                  label="Email"
+                  type="email"
+                  fullWidth
+                  sx={fieldSx}
+                  value={registerForm.email}
+                  onChange={(event) => setRegisterForm((prev) => ({ ...prev, email: event.target.value }))}
+                  required
+                  InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }}
+                />
+                <FloatingTextField
                   name="password"
                   label="Mật khẩu"
                   type={showPassword ? 'text' : 'password'}
@@ -459,8 +547,23 @@ function ClientAuthDialog() {
           ) : (
             <Box component="form" onSubmit={handleLoginSubmit}>
               <Stack spacing={1.6}>
-                <TextField fullWidth label="Email" type="email" value={loginForm.email} onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField
+                <FloatingTextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
+                  sx={fieldSx}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlined sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <FloatingTextField
                   fullWidth
                   label="Mật khẩu"
                   type={showPassword ? 'text' : 'password'}
@@ -469,7 +572,11 @@ function ClientAuthDialog() {
                   sx={fieldSx}
                   required
                   InputProps={{
-                    startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlined sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
@@ -479,6 +586,27 @@ function ClientAuthDialog() {
                     ),
                   }}
                 />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: -0.5, mb: 0.5 }}>
+                  <Button
+                    type="button"
+                    variant="text"
+                    onClick={() => setForgotOpen(true)}
+                    sx={{
+                      color: '#6c63ff',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.825rem',
+                      p: 0,
+                      minWidth: 'auto',
+                      '&:hover': {
+                        color: '#5b52e5',
+                        background: 'transparent',
+                      },
+                    }}
+                  >
+                    Quên mật khẩu?
+                  </Button>
+                </Box>
                 <Button type="submit" fullWidth variant="contained" disabled={loading} sx={{ py: 1.35, borderRadius: 2, background: isArtistLogin ? 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 76%)' : 'linear-gradient(135deg, #35d0df 0%, #6c63ff 70%)' }}>
                   {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </Button>
@@ -556,7 +684,16 @@ function ClientAuthDialog() {
           </Box>
         </Stack>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      <ForgotPasswordDialog
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        role={isArtistLogin ? 'artist' : 'user'}
+        initialEmail={loginForm.email}
+        onSuccess={() => setForgotOpen(false)}
+      />
+    </>
   );
 }
 

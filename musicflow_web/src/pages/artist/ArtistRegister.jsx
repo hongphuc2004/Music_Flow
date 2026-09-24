@@ -26,6 +26,7 @@ import {
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
+import FloatingTextField from '../../components/common/FloatingTextField';
 
 const ArtistRegister = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '', avatar: '', bio: '' });
@@ -61,9 +62,12 @@ const ArtistRegister = () => {
   const fieldSx = {
     mb: 2,
     '& .MuiOutlinedInput-root': {
-      borderRadius: 2,
+      borderRadius: '16px',
       bgcolor: '#f7f8fb',
       '& input': {
+        color: '#0f172a',
+      },
+      '& textarea': {
         color: '#0f172a',
       },
       '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
@@ -76,17 +80,18 @@ const ArtistRegister = () => {
         borderColor: 'rgba(15, 23, 42, 0.15)',
       },
       '&:hover .MuiOutlinedInput-notchedOutline': {
-        borderColor: 'rgba(15, 23, 42, 0.3)',
+        borderColor: '#00bcd4',
       },
       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
         borderColor: '#00bcd4',
+        borderWidth: '1.5px',
       },
     },
-    '& .MuiInputLabel-root': {
-      color: '#475569',
-      '&.Mui-focused': {
-        color: '#00bcd4',
-      },
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: '#00bcd4 !important',
+    },
+    '&:hover .MuiInputLabel-shrink': {
+      color: '#00bcd4 !important',
     },
   };
 
@@ -95,8 +100,31 @@ const ArtistRegister = () => {
       <Box sx={{ width: '100%', maxWidth: 1120, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '0.95fr 1.05fr' }, gap: { xs: 3, md: 5 }, alignItems: 'center' }}>
         <Paper elevation={0} sx={{ p: { xs: 3, sm: 4.5 }, width: '100%', maxWidth: 520, mx: 'auto', borderRadius: 4, bgcolor: 'rgba(255,255,255,0.96)', border: '1px solid rgba(255,255,255,0.74)', boxShadow: '0 26px 80px rgba(37, 47, 74, 0.18)' }}>
           <Box sx={{ textAlign: 'center', mb: 3.5 }}>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 68, height: 68, borderRadius: 3, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)', boxShadow: '0 16px 34px rgba(0, 188, 212, 0.25)', mb: 2.5 }}>
-              <MusicNoteIcon sx={{ fontSize: 36, color: '#fff' }} />
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                p: 0.85,
+                bgcolor: 'rgba(0, 188, 212, 0.08)',
+                border: '1px solid rgba(0, 188, 212, 0.25)',
+                boxShadow: '0 12px 30px rgba(0, 188, 212, 0.22)',
+                mb: 2.5,
+              }}
+            >
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                }}
+              />
             </Box>
             <Typography variant="h4" fontWeight={850} gutterBottom sx={{ color: '#0f172a' }}>
               Đăng ký Artist
@@ -110,9 +138,40 @@ const ArtistRegister = () => {
           {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
           <form onSubmit={handleSubmit}>
-            <TextField name="name" label="Tên nghệ sĩ" fullWidth sx={fieldSx} value={form.name} onChange={handleChange} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-            <TextField name="email" label="Email" type="email" fullWidth sx={fieldSx} value={form.email} onChange={handleChange} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-            <TextField
+            <FloatingTextField
+              name="name"
+              label="Tên nghệ sĩ"
+              fullWidth
+              sx={fieldSx}
+              value={form.name}
+              onChange={handleChange}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PersonOutline sx={{ color: '#7c8597' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <FloatingTextField
+              name="email"
+              label="Email"
+              type="email"
+              fullWidth
+              sx={fieldSx}
+              value={form.email}
+              onChange={handleChange}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailOutlined sx={{ color: '#7c8597' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <FloatingTextField
               name="password"
               label="Mật khẩu"
               type={showPassword ? 'text' : 'password'}
@@ -123,7 +182,11 @@ const ArtistRegister = () => {
               required
               inputProps={{ minLength: 6 }}
               InputProps={{
-                startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlined sx={{ color: '#7c8597' }} />
+                  </InputAdornment>
+                ),
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
@@ -133,8 +196,38 @@ const ArtistRegister = () => {
                 ),
               }}
             />
-            <TextField name="avatar" label="Avatar (URL)" fullWidth sx={fieldSx} value={form.avatar} onChange={handleChange} InputProps={{ startAdornment: <InputAdornment position="start"><ImageOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-            <TextField name="bio" label="Giới thiệu" fullWidth multiline minRows={3} sx={{ ...fieldSx, mb: 3 }} value={form.bio} onChange={handleChange} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}><AlternateEmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
+            <FloatingTextField
+              name="avatar"
+              label="Avatar (URL)"
+              fullWidth
+              sx={fieldSx}
+              value={form.avatar}
+              onChange={handleChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <ImageOutlined sx={{ color: '#7c8597' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <FloatingTextField
+              name="bio"
+              label="Giới thiệu"
+              fullWidth
+              multiline
+              minRows={3}
+              sx={{ ...fieldSx, mb: 3 }}
+              value={form.bio}
+              onChange={handleChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}>
+                    <AlternateEmailOutlined sx={{ color: '#7c8597' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
             <Button type="submit" fullWidth variant="contained" size="large" disabled={loading} sx={{ py: 1.55, borderRadius: 2, fontSize: 16, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 76%)', boxShadow: '0 14px 28px rgba(0, 188, 212, 0.24)', '&:hover': { background: 'linear-gradient(135deg, #00a9bd 0%, #5f57f4 76%)' } }}>
               {loading ? 'Đang đăng ký...' : 'Đăng ký'}
             </Button>

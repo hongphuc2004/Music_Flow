@@ -28,6 +28,7 @@ import { artistApi } from '../../services/artist/artist.service';
 import { syncArtistSession } from '../../utils/artistSession';
 import { buildArtistProfilePayload, createArtistProfileForm } from '../../utils/artistProfile';
 import useAppToast from '../../components/common/useAppToast';
+import ChangePasswordCard from '../../components/auth/ChangePasswordCard';
 
 function ArtistProfile() {
   const { showToast } = useAppToast();
@@ -400,6 +401,11 @@ function ArtistProfile() {
                   </Stack>
                 </CardContent>
               </Card>
+
+              {/* Security & Password Change */}
+              <Box sx={{ mt: 3 }}>
+                <ChangePasswordCard hasPassword={artist?.hasPassword} role="artist" />
+              </Box>
             </Grid>
 
             {/* Listener Mock Preview Card */}

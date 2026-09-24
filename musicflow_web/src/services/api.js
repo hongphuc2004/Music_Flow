@@ -199,6 +199,9 @@ api.interceptors.response.use(
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/register') ||
       requestUrl.includes('/auth/google') ||
+      requestUrl.includes('/auth/forgot-password') ||
+      requestUrl.includes('/auth/verify-otp') ||
+      requestUrl.includes('/auth/reset-password') ||
       requestUrl.includes('/artist/login') ||
       requestUrl.includes('/artist/google');
 
@@ -216,6 +219,35 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Password Management API
+export const changePassword = async ({ currentPassword, newPassword, confirmPassword }) => {
+  const res = await api.put('/auth/change-password', {
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
+  return res.data;
+};
+
+export const forgotPassword = async (email, role = 'user') => {
+  const res = await api.post('/auth/forgot-password', { email, role });
+  return res.data;
+};
+
+export const verifyOtp = async (email, otp) => {
+  const res = await api.post('/auth/verify-otp', { email, otp });
+  return res.data;
+};
+
+export const resetPassword = async ({ resetToken, newPassword, confirmPassword }) => {
+  const res = await api.post('/auth/reset-password', {
+    resetToken,
+    newPassword,
+    confirmPassword,
+  });
+  return res.data;
+};
 
 // Re-export services for backwards compatibility
 export { authApi, statsApi, accountsApi, songsApi, playlistsApi, topicsApi } from './admin/admin.service';

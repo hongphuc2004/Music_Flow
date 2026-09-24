@@ -29,6 +29,8 @@ import {
 import api, { setAccessToken } from '../../../services/api';
 import { syncArtistSession } from '../../../utils/artistSession';
 import useAppToast from '../../../components/common/useAppToast';
+import FloatingTextField from '../../common/FloatingTextField';
+import ForgotPasswordDialog from '../../auth/ForgotPasswordDialog';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -113,6 +115,7 @@ function ArtistAuthDialog() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -242,8 +245,31 @@ function ArtistAuthDialog() {
 
   const fieldSx = {
     '& .MuiOutlinedInput-root': {
-      borderRadius: 2.5,
-      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+      borderRadius: '16px',
+      bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc'),
+      '& input': {
+        color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#0f172a'),
+      },
+      '& textarea': {
+        color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#0f172a'),
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: (theme) =>
+          theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.14)',
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#00bcd4',
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#00bcd4',
+        borderWidth: '1.5px',
+      },
+    },
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: '#00bcd4 !important',
+    },
+    '&:hover .MuiInputLabel-shrink': {
+      color: '#00bcd4 !important',
     },
   };
 
@@ -284,8 +310,31 @@ function ArtistAuthDialog() {
 
         <Stack spacing={2.25}>
           <Box sx={{ textAlign: 'center', pt: 1 }}>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 58, height: 58, borderRadius: 3, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 72%)', boxShadow: '0 14px 30px rgba(108, 99, 255, 0.24)', mb: 1.5 }}>
-              <MusicNoteIcon sx={{ fontSize: 32, color: '#fff' }} />
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                p: 0.75,
+                bgcolor: 'rgba(0, 188, 212, 0.1)',
+                border: '1px solid rgba(0, 188, 212, 0.3)',
+                boxShadow: '0 10px 28px rgba(0, 188, 212, 0.22)',
+                mb: 1.5,
+              }}
+            >
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="MusicFlow Logo"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                }}
+              />
             </Box>
             <Typography variant="h5" fontWeight={850}>
               {isRegister ? 'Đăng ký Artist' : 'Artist Studio'}
@@ -300,9 +349,38 @@ function ArtistAuthDialog() {
           {isRegister ? (
             <Box component="form" onSubmit={handleRegisterSubmit}>
               <Stack spacing={1.6}>
-                <TextField fullWidth label="Tên nghệ sĩ" value={registerForm.name} onChange={handleRegisterChange('name')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutline sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField fullWidth label="Email" type="email" value={registerForm.email} onChange={handleRegisterChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField
+                <FloatingTextField
+                  fullWidth
+                  label="Tên nghệ sĩ"
+                  value={registerForm.name}
+                  onChange={handleRegisterChange('name')}
+                  sx={fieldSx}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonOutline sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <FloatingTextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  value={registerForm.email}
+                  onChange={handleRegisterChange('email')}
+                  sx={fieldSx}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlined sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <FloatingTextField
                   fullWidth
                   label="Mật khẩu"
                   type={showPassword ? 'text' : 'password'}
@@ -312,7 +390,11 @@ function ArtistAuthDialog() {
                   required
                   inputProps={{ minLength: 6 }}
                   InputProps={{
-                    startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlined sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
@@ -322,9 +404,49 @@ function ArtistAuthDialog() {
                     ),
                   }}
                 />
-                <TextField fullWidth label="Avatar (URL)" value={registerForm.avatar} onChange={handleRegisterChange('avatar')} sx={fieldSx} InputProps={{ startAdornment: <InputAdornment position="start"><ImageOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <TextField fullWidth label="Giới thiệu" multiline minRows={3} value={registerForm.bio} onChange={handleRegisterChange('bio')} sx={fieldSx} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}><AlternateEmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                <Button type="submit" fullWidth variant="contained" disabled={loading} startIcon={<MicExternalOnOutlined />} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)' }}>
+                <FloatingTextField
+                  fullWidth
+                  label="Avatar (URL)"
+                  value={registerForm.avatar}
+                  onChange={handleRegisterChange('avatar')}
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <ImageOutlined sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <FloatingTextField
+                  fullWidth
+                  label="Giới thiệu"
+                  multiline
+                  minRows={3}
+                  value={registerForm.bio}
+                  onChange={handleRegisterChange('bio')}
+                  sx={fieldSx}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}>
+                        <AlternateEmailOutlined sx={{ color: '#7c8597' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  disabled={loading}
+                  startIcon={<MicExternalOnOutlined />}
+                  sx={{
+                    py: 1.35,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)',
+                    fontWeight: 700,
+                  }}
+                >
                   {loading ? 'Đang đăng ký nghệ sĩ...' : 'Đăng ký Artist'}
                 </Button>
               </Stack>
@@ -333,17 +455,36 @@ function ArtistAuthDialog() {
             <>
               <Box component="form" onSubmit={handleSubmit}>
                 <Stack spacing={1.6}>
-                  <TextField fullWidth label="Email" type="email" value={formData.email} onChange={handleLoginChange('email')} sx={fieldSx} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined sx={{ color: '#7c8597' }} /></InputAdornment> }} />
-                  <TextField
+                  <FloatingTextField
                     fullWidth
-                    label="Mat khau"
+                    label="Email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleLoginChange('email')}
+                    sx={fieldSx}
+                    required
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailOutlined sx={{ color: '#7c8597' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <FloatingTextField
+                    fullWidth
+                    label="Mật khẩu"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleLoginChange('password')}
                     sx={fieldSx}
                     required
                     InputProps={{
-                      startAdornment: <InputAdornment position="start"><LockOutlined sx={{ color: '#7c8597' }} /></InputAdornment>,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockOutlined sx={{ color: '#7c8597' }} />
+                        </InputAdornment>
+                      ),
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end">
@@ -353,13 +494,46 @@ function ArtistAuthDialog() {
                       ),
                     }}
                   />
-                  <Button type="submit" fullWidth variant="contained" disabled={loading} startIcon={<MicExternalOnOutlined />} sx={{ py: 1.35, borderRadius: 2, background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: -0.5 }}>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => setForgotOpen(true)}
+                      sx={{
+                        color: '#00bcd4',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        p: 0,
+                        minWidth: 0,
+                        '&:hover': {
+                          bgcolor: 'transparent',
+                          textDecoration: 'underline',
+                        },
+                      }}
+                    >
+                      Quên mật khẩu?
+                    </Button>
+                  </Box>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    disabled={loading}
+                    startIcon={<MicExternalOnOutlined />}
+                    sx={{
+                      py: 1.35,
+                      borderRadius: 2,
+                      background: 'linear-gradient(135deg, #00bcd4 0%, #6c63ff 70%)',
+                      fontWeight: 700,
+                    }}
+                  >
                     {loading ? 'Đang đăng nhập...' : 'Đăng nhập Artist'}
                   </Button>
                 </Stack>
               </Box>
 
-              <Divider>Hoac</Divider>
+              <Divider>Hoặc</Divider>
               {GOOGLE_CLIENT_ID ? (
                 <Button type="button" fullWidth variant="outlined" startIcon={<GoogleIcon />} disabled={googleLoading || !googleReady} onClick={handleGoogleLogin} sx={{ py: 1.1, borderRadius: 2, borderColor: '#d8dce6', color: '#db4437', fontWeight: 700 }}>
                   {googleLoading ? 'Đang xử lý...' : 'Đăng nhập Artist bằng Google'}
@@ -384,6 +558,13 @@ function ArtistAuthDialog() {
           </Box>
         </Stack>
       </DialogContent>
+      <ForgotPasswordDialog
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        role="artist"
+        initialEmail={formData.email}
+        onSuccess={() => setForgotOpen(false)}
+      />
     </Dialog>
   );
 }

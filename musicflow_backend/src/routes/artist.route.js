@@ -36,7 +36,7 @@ router.post("/google", artistController.googleLogin);
 
 router.get("/me", authMiddleware, async (req, res) => {
   try {
-    const artist = await Artist.findById(req.userId).select("-password");
+    const artist = await Artist.findById(req.userId);
 
     if (!artist) {
       return res.status(404).json({
@@ -45,9 +45,12 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
+    const artistObj = artist.toJSON();
+    artistObj.hasPassword = Boolean(artist.password);
+
     return res.json({
       success: true,
-      artist,
+      artist: artistObj,
     });
   } catch (error) {
     return res.status(500).json({

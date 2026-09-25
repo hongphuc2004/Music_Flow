@@ -11,7 +11,6 @@ const { cloudinaryFolder, defaultSongImageUrl } = require("../config/cloudinaryF
 const User = require("../models/user.model");
 const Song = require("../models/song.model");
 const Playlist = require("../models/playlist.model");
-const PlaylistSong = require("../models/playlist-song.model");
 const Topic = require("../models/topic.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
@@ -1190,17 +1189,17 @@ router.get("/playlists", authMiddleware, requireAdmin, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const query = search
-      ? { name: { $regex: search, $options: "i" } }
-      : {};
+      ? { isSystem: true, name: { $regex: search, $options: "i" } }
+      : { isSystem: true };
 
     const [playlists, total] = await Promise.all([
-      PlaylistSong.find(query)
+      Playlist.find(query)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("createdBy", "name email")
+        .populate("userId", "name email")
         .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } }),
-      PlaylistSong.countDocuments(query),
+      Playlist.countDocuments(query),
     ]);
 
     res.json({
@@ -1220,8 +1219,8 @@ router.get("/playlists", authMiddleware, requireAdmin, async (req, res) => {
 // Get single system playlist
 router.get("/playlists/:id", authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const playlist = await PlaylistSong.findById(req.params.id)
-      .populate("createdBy", "name email")
+    const playlist = await Playlist.findOne({ _id: req.params.id, isSystem: true })
+      .populate("userId", "name email")
       .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
     if (!playlist) {
@@ -1263,17 +1262,19 @@ router.post("/playlists", authMiddleware, requireAdmin, upload.single("coverImag
       }
     }
 
-    const playlist = await PlaylistSong.create({
+    const playlist = await Playlist.create({
       name: String(name).trim(),
       description: description ? String(description).trim() : "",
       isPublic: isPublic === true || isPublic === "true",
+      isSystem: true,
       coverImage: finalCoverImage,
+      coverSource: "upload",
       songs: parseSongsField(songs),
-      createdBy: req.userId,
+      userId: req.userId,
     });
 
-    const populatedPlaylist = await PlaylistSong.findById(playlist._id)
-      .populate("createdBy", "name email")
+    const populatedPlaylist = await Playlist.findById(playlist._id)
+      .populate("userId", "name email")
       .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
     cache.invalidate("system_playlists");
@@ -1331,12 +1332,12 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
       updateData.isPublic = isPublic === true || isPublic === "true";
     }
 
-    const playlist = await PlaylistSong.findByIdAndUpdate(
-      req.params.id,
+    const playlist = await Playlist.findOneAndUpdate(
+      { _id: req.params.id, isSystem: true },
       updateData,
       { new: true }
     )
-      .populate("createdBy", "name email")
+      .populate("userId", "name email")
       .populate({ path: "songs", select: "title artists imageUrl", populate: { path: "artists", select: "name" } });
 
     if (!playlist) {
@@ -1356,7 +1357,7 @@ router.put("/playlists/:id", authMiddleware, requireAdmin, upload.single("coverI
 // Delete system playlist
 router.delete("/playlists/:id", authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const playlist = await PlaylistSong.findByIdAndDelete(req.params.id);
+    const playlist = await Playlist.findOneAndDelete({ _id: req.params.id, isSystem: true });
     if (!playlist) {
       return res.status(404).json({ message: "Playlist not found" });
     }

@@ -735,7 +735,9 @@ export default function AssistantHost() {
           </Typography>
           
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-            Tài khoản của bạn đã sử dụng hết số lượt yêu cầu trợ lý AI trong ngày. Nâng cấp các gói cước Premium để mở rộng hạn mức và trò chuyện AI không giới hạn!
+            {localStorage.getItem('role') === 'artist'
+              ? 'Tài khoản Nghệ sĩ của bạn đã đạt giới hạn yêu cầu trợ lý AI Studio trong 24 giờ. Nâng cấp Artist Studio Pro để nhận 150 lượt/24h và mở rộng kho lưu trữ 5GB!'
+              : 'Tài khoản của bạn đã sử dụng hết số lượt yêu cầu trợ lý AI trong ngày. Nâng cấp các gói cước Premium để mở rộng hạn mức và trò chuyện AI không giới hạn!'}
           </Typography>
 
           <Stack spacing={1}>
@@ -745,7 +747,11 @@ export default function AssistantHost() {
               onClick={() => {
                 setUpgradeDialogOpen(false);
                 setIsOpen(false);
-                navigate('/premium');
+                if (localStorage.getItem('role') === 'artist') {
+                  navigate('/artist/pro');
+                } else {
+                  navigate('/premium');
+                }
               }}
               sx={{
                 bgcolor: '#6c63ff',
@@ -756,7 +762,7 @@ export default function AssistantHost() {
                 textTransform: 'none',
               }}
             >
-              Nâng cấp tài khoản ngay
+              {localStorage.getItem('role') === 'artist' ? 'Nâng cấp Artist Studio Pro' : 'Nâng cấp tài khoản ngay'}
             </Button>
             <Button
               variant="text"

@@ -7,7 +7,7 @@ const songController = require("../controllers/song.controller");
 // ================= MULTER CONFIG =================
 const upload = multer({
   dest: "uploads/",
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max per single audio file upload
+  limits: { fileSize: 150 * 1024 * 1024 }, // 150MB max absolute upload limit; business limits enforced in song.service.js
 });
 
 // 📋 GET SONGS BY ARTIST NAME (PUBLIC + ADMIN UPLOAD)

@@ -25,6 +25,7 @@ const ArtistAnalytics = createLazyRoute('/artist/analytics');
 const ArtistDashboard = createLazyRoute('/artist/dashboard');
 const ArtistLogin = createLazyRoute('/artistlogin');
 const ArtistProfile = createLazyRoute('/artist/profile');
+const ArtistPro = createLazyRoute('/artist/pro');
 const ArtistSong = createLazyRoute('/artist/songs');
 const ArtistRegister = createLazyRoute('/artist/register');
 
@@ -147,6 +148,7 @@ function RouteProviders({ children }) {
     '/artist/songs',
     '/artist/analytics',
     '/artist/profile',
+    '/artist/pro',
     '/artist/register',
     '/adminlogin',
     '/artistlogin',
@@ -428,6 +430,14 @@ function App() {
                       element={
                         <ProtectedRoute role="artist">
                           <ArtistProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/artist/pro"
+                      element={
+                        <ProtectedRoute role="artist">
+                          <ArtistPro />
                         </ProtectedRoute>
                       }
                     />

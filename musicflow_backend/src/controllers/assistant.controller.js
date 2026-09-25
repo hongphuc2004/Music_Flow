@@ -225,8 +225,48 @@ exports.confirmAction = async (req, res) => {
 exports.getQuota = async (req, res) => {
   try {
     const actorId = req.userId;
+    const actorRole = req.userRole || "user";
     const aiQuotaService = require("../services/aiQuota.service");
-    const quotaInfo = await aiQuotaService.checkQuota(actorId);
+
+    if (actorRole === "admin") {
+      return res.json({
+        success: true,
+        data: {
+          role: "admin",
+          unlimited: true,
+          used24h: 0,
+          remaining: null,
+          limit: null,
+          planLabel: "Quản trị viên (Không giới hạn)",
+        },
+      });
+    }
+
+    if (actorRole === "artist") {
+      const quotaInfo = await aiQuotaService.checkArtistQuota(actorId).catch((err) => {
+        if (err.status === 403) {
+          const limit = err.isPro ? 150 : 30;
+          return {
+            role: "artist",
+            isPro: Boolean(err.isPro),
+            unlimited: false,
+            used24h: limit,
+            remaining: 0,
+            limit: limit,
+            isExhausted: true,
+            planLabel: err.isPro ? "Artist Studio Pro" : "Artist Studio (Free)",
+          };
+        }
+        throw err;
+      });
+
+      return res.json({
+        success: true,
+        data: quotaInfo,
+      });
+    }
+
+    const quotaInfo = await aiQuotaService.checkQuota(actorId, actorRole);
     return res.json({
       success: true,
       data: quotaInfo,
@@ -235,7 +275,13 @@ exports.getQuota = async (req, res) => {
     if (error.status === 403) {
       return res.json({
         success: true,
-        data: { remaining: 0, limit: 5, isExhausted: true },
+        data: {
+          role: req.userRole || "user",
+          unlimited: false,
+          remaining: 0,
+          limit: 5,
+          isExhausted: true,
+        },
       });
     }
     return res.status(error.status || 500).json({

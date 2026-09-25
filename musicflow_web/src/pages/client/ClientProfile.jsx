@@ -168,10 +168,11 @@ function ClientProfile() {
         try {
           const [subRes, plansRes] = await Promise.all([
             clientSubscriptionApi.getCurrent(),
-            clientPlansApi.getActive(),
+            clientPlansApi.getActive({ targetRole: 'user' }),
           ]);
           setActiveSub(subRes.data?.data?.activeSubscription || null);
-          setPlans(plansRes.data?.data || []);
+          const userPlans = (plansRes.data?.data || []).filter((p) => p.targetRole !== 'artist');
+          setPlans(userPlans);
         } catch {
           // ignore if non-critical
         }

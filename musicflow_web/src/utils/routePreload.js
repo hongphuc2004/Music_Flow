@@ -17,6 +17,7 @@ const routeLoaders = {
   '/artist/songs': () => import('../pages/artist/ArtistSong'),
   '/artist/analytics': () => import('../pages/artist/ArtistAnalytics'),
   '/artist/profile': () => import('../pages/artist/ArtistProfile'),
+  '/artist/pro': () => import('../pages/artist/ArtistPro'),
   '/artistlogin': () => import('../pages/artist/ArtistLogin'),
   '/artist/register': () => import('../pages/artist/ArtistRegister'),
 

@@ -22,6 +22,16 @@ const planSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    targetRole: {
+      type: String,
+      enum: ["user", "artist"],
+      default: "user",
+      index: true,
+    },
+    aiLimitPerDay: {
+      type: Number,
+      default: 30,
+    },
     isActive: {
       type: Boolean,
       default: true,

@@ -11,6 +11,7 @@ import {
   Box,
   Stack,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import {
   DarkModeRounded as DarkModeIcon,
@@ -30,12 +31,14 @@ function ArtistHeader({ title, desktopSidebarOpen = true }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [artistName, setArtistName] = useState(localStorage.getItem('artistName') || 'Artist');
   const [artistAvatar, setArtistAvatar] = useState(localStorage.getItem('artistAvatar') || '');
+  const [isPro, setIsPro] = useState(localStorage.getItem('artistIsPro') === 'true');
   const artistInitial = useMemo(() => artistName.charAt(0).toUpperCase(), [artistName]);
 
   useEffect(() => {
     const syncArtist = () => {
       setArtistName(localStorage.getItem('artistName') || 'Artist');
       setArtistAvatar(localStorage.getItem('artistAvatar') || '');
+      setIsPro(localStorage.getItem('artistIsPro') === 'true');
     };
 
     window.addEventListener('artist-profile-updated', syncArtist);
@@ -105,21 +108,39 @@ function ArtistHeader({ title, desktopSidebarOpen = true }) {
             </IconButton>
           </Tooltip>
           <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
-            <Typography variant="body2" fontWeight={700}>
-              {artistName}
-            </Typography>
+            <Stack direction="row" spacing={0.8} alignItems="center" justifyContent="flex-end">
+              <Typography variant="body2" fontWeight={700}>
+                {artistName}
+              </Typography>
+              {isPro && (
+                <Chip
+                  label="PRO"
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.5px',
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
+                  }}
+                />
+              )}
+            </Stack>
             <Typography variant="caption" color="text.secondary">
-              Artist workspace
+              {isPro ? 'Artist Studio Pro' : 'Artist workspace'}
             </Typography>
           </Box>
           <IconButton onClick={handleMenu} color="inherit" sx={{ p: 0.5 }}>
-            <Avatar src={artistAvatar} sx={{ bgcolor: '#0ea5e9', color: '#fff' }}>
+            <Avatar src={artistAvatar} sx={{ bgcolor: isPro ? '#f59e0b' : '#0ea5e9', color: '#fff' }}>
               {artistAvatar ? null : artistInitial}
             </Avatar>
           </IconButton>
         </Stack>
         <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
           <MenuItem onClick={() => { handleClose(); navigate('/artist/profile'); }}>Profile</MenuItem>
+          <MenuItem onClick={() => { handleClose(); navigate('/artist/pro'); }}>Artist Studio Pro</MenuItem>
           <MenuItem onClick={handleLogout}>Logout</MenuItem>
         </Menu>
       </Toolbar>

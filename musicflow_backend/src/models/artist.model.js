@@ -51,6 +51,20 @@ const artistSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isPro: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    proPlan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Plan",
+      default: null,
+    },
+    proExpiry: {
+      type: Date,
+      default: null,
+    },
     followersCount: {
       type: Number,
       default: 0,

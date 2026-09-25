@@ -495,6 +495,15 @@ const uploadSong = async (body, files, userId, userRole) => {
 
   // Kiểm tra hạn mức Upload theo gói cước
   if (userRole === "user") {
+    const newFileSize = audioFile.size || 0;
+    if (newFileSize > 100 * 1024 * 1024) {
+      safeUnlink(audioFile.path);
+      if (imageFile) safeUnlink(imageFile.path);
+      const err = new Error("Tệp âm thanh vượt quá giới hạn 100MB cho tài khoản người dùng.");
+      err.status = 400;
+      throw err;
+    }
+
     const user = await User.findById(userId).populate("premiumPlan");
     const { hasPremiumAccess } = require("../utils/premium.util");
     
@@ -517,7 +526,6 @@ const uploadSong = async (body, files, userId, userRole) => {
 
     const userSongs = await Song.find({ uploadedBy: userId, source: "user" }).select("fileSize");
     const totalUploadedBytes = userSongs.reduce((sum, s) => sum + (s.fileSize && s.fileSize > 0 ? s.fileSize : 4.8 * 1024 * 1024), 0); // Fallback 4.8MB
-    const newFileSize = audioFile.size || 0;
     
     if (totalUploadedBytes + newFileSize > uploadLimitBytes) {
       // Dọn dẹp các tệp tạm thời multer
@@ -528,6 +536,43 @@ const uploadSong = async (body, files, userId, userRole) => {
         ? `${(uploadLimitBytes / (1024 * 1024 * 1024)).toFixed(0)}GB`
         : `${(uploadLimitBytes / (1024 * 1024)).toFixed(0)}MB`;
       const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải lên. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp tải lên mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải thêm.`);
+      err.status = 403;
+      throw err;
+    }
+  }
+
+  if (userRole === "artist") {
+    const artist = await Artist.findById(userId);
+    const isPro = Boolean(artist && artist.isPro && artist.proExpiry && new Date(artist.proExpiry) > new Date());
+    const maxSongSizeBytes = isPro ? 150 * 1024 * 1024 : 50 * 1024 * 1024;
+    const maxStorageBytes = isPro ? 5 * 1024 * 1024 * 1024 : 500 * 1024 * 1024;
+    const newFileSize = audioFile.size || 0;
+
+    if (newFileSize > maxSongSizeBytes) {
+      safeUnlink(audioFile.path);
+      if (imageFile) safeUnlink(imageFile.path);
+      const limitMb = Math.round(maxSongSizeBytes / (1024 * 1024));
+      const err = new Error(
+        isPro
+          ? `Tệp âm thanh vượt quá giới hạn ${limitMb}MB cho tài khoản Artist Studio Pro.`
+          : `Tệp âm thanh vượt quá giới hạn ${limitMb}MB cho tài khoản Artist Free. Vui lòng nâng cấp Artist Studio Pro để tải lên tệp tối đa 150MB.`
+      );
+      err.status = 400;
+      throw err;
+    }
+
+    const artistSongs = await Song.find({ uploadedBy: userId, source: "artist" }).select("fileSize");
+    const totalUploadedBytes = artistSongs.reduce((sum, s) => sum + (s.fileSize && s.fileSize > 0 ? s.fileSize : 4.8 * 1024 * 1024), 0);
+
+    if (totalUploadedBytes + newFileSize > maxStorageBytes) {
+      safeUnlink(audioFile.path);
+      if (imageFile) safeUnlink(imageFile.path);
+      const limitStr = isPro ? "5GB" : "500MB";
+      const err = new Error(
+        isPro
+          ? `Tài khoản Artist Studio Pro đã sử dụng hết hạn mức lưu trữ ${limitStr}. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB.`
+          : `Tài khoản Artist Free đã sử dụng hết hạn mức lưu trữ ${limitStr}. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp Artist Studio Pro để nhận 5GB lưu trữ.`
+      );
       err.status = 403;
       throw err;
     }

@@ -1,5 +1,4 @@
 const Playlist = require("../models/playlist.model");
-const PlaylistSong = require("../models/playlist-song.model");
 const User = require("../models/user.model");
 const axios = require("axios");
 const cloudinary = require("../config/cloudinary");
@@ -62,12 +61,12 @@ exports.getSystemPlaylists = async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
     const skip = (page - 1) * limit;
-    const filter = { isPublic: true };
+    const filter = { isSystem: true, isPublic: true };
     const cacheKey = `system_playlists:${page}:${limit}`;
 
     const data = await cache.wrap(cacheKey, CACHE_TTL.SYSTEM_PLAYLISTS, async () => {
       const [playlists, total] = await Promise.all([
-        PlaylistSong.aggregate([
+        Playlist.aggregate([
           { $match: filter },
           { $sort: { createdAt: -1 } },
           { $skip: skip },
@@ -78,14 +77,16 @@ exports.getSystemPlaylists = async (req, res) => {
               description: 1,
               coverImage: 1,
               isPublic: 1,
-              createdBy: 1,
+              isSystem: 1,
+              userId: 1,
+              createdBy: "$userId",
               createdAt: 1,
               updatedAt: 1,
               songCount: { $size: { $ifNull: ["$songs", []] } },
             },
           },
         ]),
-        PlaylistSong.countDocuments(filter),
+        Playlist.countDocuments(filter),
       ]);
 
       return {
@@ -114,13 +115,17 @@ exports.getSystemPlaylists = async (req, res) => {
 // ================= GET SINGLE SYSTEM PLAYLIST (public) =================
 exports.getSystemPlaylistById = async (req, res) => {
   try {
-    const playlist = await PlaylistSong.findById(req.params.id)
+    const playlist = await Playlist.findOne({
+      _id: req.params.id,
+      isSystem: true,
+    })
       .populate({
         path: "songs",
         match: { isPublic: true },
         select: PLAYLIST_SONG_SELECT,
         populate: { path: "artists", select: "name avatar followersCount" },
       })
+      .populate("userId", "name email avatar")
       .lean();
 
     if (!playlist || !playlist.isPublic) {
@@ -132,7 +137,10 @@ exports.getSystemPlaylistById = async (req, res) => {
 
     res.json({
       success: true,
-      playlist,
+      playlist: {
+        ...playlist,
+        createdBy: playlist.userId,
+      },
     });
   } catch (error) {
     console.error("Get system playlist error:", error);

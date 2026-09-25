@@ -65,11 +65,16 @@ export const AssistantProvider = ({ children }) => {
     try {
       const res = await clientAssistantApi.getQuota();
       if (res.data?.success) {
-        const remaining = res.data.data?.remaining ?? 5;
+        const data = res.data.data;
+        if (data?.unlimited) {
+          setUpgradeDialogOpen(false);
+          return data;
+        }
+        const remaining = data?.remaining ?? 5;
         if (remaining > 0) {
           setUpgradeDialogOpen(false);
         }
-        return res.data.data;
+        return data;
       }
     } catch (err) {
       console.warn('Failed to check user quota:', err);

@@ -45,6 +45,12 @@ const playlistSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Playlist do hệ thống/admin phát hành hay người dùng tạo
+    isSystem: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -53,7 +59,12 @@ const playlistSchema = new mongoose.Schema(
 
 // Virtual để lấy số lượng bài hát
 playlistSchema.virtual("songCount").get(function() {
-  return this.songs.length;
+  return Array.isArray(this.songs) ? this.songs.length : 0;
+});
+
+// Virtual alias createdBy trỏ về userId để tương thích ngược với code admin cũ
+playlistSchema.virtual("createdBy").get(function() {
+  return this.userId;
 });
 
 // Đảm bảo virtuals được include trong JSON
@@ -62,5 +73,6 @@ playlistSchema.set("toObject", { virtuals: true });
 
 playlistSchema.index({ userId: 1, createdAt: -1 });
 playlistSchema.index({ isPublic: 1, createdAt: -1 });
+playlistSchema.index({ isSystem: 1, isPublic: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Playlist", playlistSchema);

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -280,14 +280,26 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
     if (!query) return [];
     const list = [];
     const songs = Array.isArray(searchResults?.songs) ? searchResults.songs : [];
+
+    // Prioritize songs whose title contains the query
     songs.forEach((s) => {
-      if (s.title && !list.some(item => item.toLowerCase() === s.title.toLowerCase())) {
+      if (s.title && s.title.toLowerCase().includes(query)) {
+        if (!list.some((item) => item.toLowerCase() === s.title.toLowerCase())) {
+          list.push(s.title);
+        }
+      }
+    });
+
+    // Then other songs from results
+    songs.forEach((s) => {
+      if (s.title && !list.some((item) => item.toLowerCase() === s.title.toLowerCase())) {
         list.push(s.title);
       }
     });
+
     const playlists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
     playlists.forEach((p) => {
-      if (p.name && !list.some(item => item.toLowerCase() === p.name.toLowerCase())) {
+      if (p.name && !list.some((item) => item.toLowerCase() === p.name.toLowerCase())) {
         list.push(p.name);
       }
     });

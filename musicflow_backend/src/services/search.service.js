@@ -13,10 +13,9 @@ const mongoose = require("mongoose");
 const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
 const Playlist = require("../models/playlist.model");
-const PlaylistSong = require("../models/playlist-song.model");
 const aiDataLoader = require("../ai/aiDataLoader.service");
 const geminiRouter = require("./geminiRouter.service");
-const { buildSearchRegexes, normalizeText, extractCleanLyrics } = require("../utils/string.util");
+const { buildSearchRegexes, normalizeText, extractCleanLyrics, escapeRegex } = require("../utils/string.util");
 const { findArtistBySlugOrId } = require("../utils/artist.util");
 const { SONG_PUBLIC_SELECT, ARTIST_POPULATE, TOPIC_POPULATE } = require("../repositories/song.repository");
 
@@ -187,58 +186,125 @@ function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], e
   let score = 0;
   const songTitleNorm = normalizeText(song.title || "");
   const queryNorm = normalizeText(query || "");
+  const rawTitle = String(song.title || "").trim().toLowerCase();
+  const rawQuery = String(query || "").trim().toLowerCase();
 
   const artistsList = Array.isArray(song.artists) ? song.artists : [];
   const songArtistIds = artistsList.map((a) => String(typeof a === "object" ? a._id || a.id || "" : a)).filter(Boolean);
   const matchedArtistIdSet = new Set(matchedArtists.map((a) => String(a._id || a.id || "")));
-
   const isSongByMatchedArtist = matchedArtists.length > 0 && songArtistIds.some((id) => matchedArtistIdSet.has(id));
 
-  if (matchedArtists.length > 0) {
-    if (isSongByMatchedArtist) {
-      score += 150; // Strong boost for target artist
+  // =========================================================================
+  // 1. TITLE MATCHING (TIER 1 - HIGHEST PRIORITY)
+  // =========================================================================
+  const isFullWordPrefix = songTitleNorm.startsWith(queryNorm) &&
+    (songTitleNorm.length === queryNorm.length || songTitleNorm[queryNorm.length] === " ");
 
-      // If title matches extra title keyword (e.g. "khóc")
-      if (extraTitleRegexes.length > 0) {
-        for (const regex of extraTitleRegexes) {
-          if (regex.test(song.title || "")) {
-            score += 120; // High score for title keyword by target artist
-            break;
-          }
-        }
-      }
-    } else {
-      // If user specifically searched for an artist, penalize unrelated artists
-      score -= 100;
-    }
-  }
-
-  // 1. Keyword Matches (Title & Artist)
   if (songTitleNorm === queryNorm) {
-    score += 150; // Exact full title match
+    // Exact full title match (e.g. "Ai Đợi Mình Được Mãi" === "Ai Đợi Mình Được Mãi")
+    score += 650;
+  } else if (isFullWordPrefix) {
+    // Direct whole-word prefix match (e.g. "Ai Đợi Mình Được Mãi" starts with "ai đợi mình ")
+    score += 500;
+    // Extra bonus if Vietnamese accents match exactly
+    if (rawTitle.startsWith(rawQuery)) {
+      score += 50;
+    }
+  } else if (songTitleNorm.startsWith(queryNorm)) {
+    // Partial-word prefix match
+    score += 320;
+  } else if (new RegExp(`(^|\\s)${escapeRegex(queryNorm)}(\\s|$)`, "i").test(songTitleNorm)) {
+    // Word-boundary substring match (e.g. "Ai Đợi Mình Được Mãi" contains "đợi mình" as whole words)
+    score += 350;
   } else if (songTitleNorm.includes(queryNorm) && queryNorm.length > 2) {
-    score += 80;
+    // General substring match
+    score += 240;
   } else if (regexes.length > 0) {
     for (const regex of regexes) {
       if (regex.test(song.title || "")) {
-        score += 40;
+        score += 160;
         break;
       }
     }
   }
 
-  // Artist matches
-  for (const artist of artistsList) {
-    const artistName = typeof artist === "object" ? artist?.name : String(artist || "");
-    const artistNameNorm = normalizeText(artistName);
-    if (artistNameNorm === queryNorm) {
-      score += 100;
-    } else if (artistNameNorm.includes(queryNorm) && queryNorm.length > 2) {
-      score += 50;
+  // Token-level title match
+  const queryTokens = queryNorm.split(" ").filter((t) => t.length > 0);
+  const titleTokens = songTitleNorm.split(" ").filter((t) => t.length > 0);
+  if (queryTokens.length > 1 && titleTokens.length > 0) {
+    let matchedTokenCount = 0;
+    let lastFoundIndex = -1;
+    let inOrder = true;
+
+    for (const qToken of queryTokens) {
+      const idx = titleTokens.indexOf(qToken);
+      if (idx !== -1) {
+        matchedTokenCount++;
+        if (idx < lastFoundIndex) {
+          inOrder = false;
+        }
+        lastFoundIndex = idx;
+      }
+    }
+
+    if (matchedTokenCount === queryTokens.length) {
+      // All query tokens appear in the title
+      score += inOrder ? 220 : 150;
+    } else if (matchedTokenCount > 0) {
+      score += Math.round((matchedTokenCount / queryTokens.length) * 100);
     }
   }
 
-  // 2. Semantic Intent Matches (Moods, Themes, Energy, Genre, Tags)
+  // =========================================================================
+  // 2. ARTIST MATCHING (TIER 2)
+  // =========================================================================
+  // Direct artist name match from song.artists list
+  for (const artist of artistsList) {
+    const artistName = typeof artist === "object" ? artist?.name : String(artist || "");
+    const artistNameNorm = normalizeText(artistName);
+
+    if (artistNameNorm === queryNorm) {
+      // User typed the exact artist name (e.g. "MIN", "Thanh Hưng")
+      score += 400;
+      break;
+    } else if (artistNameNorm.startsWith(queryNorm) && queryNorm.length >= 2) {
+      score += 220;
+      break;
+    } else if (artistNameNorm.includes(queryNorm) && queryNorm.length >= 3) {
+      score += 140;
+      break;
+    }
+  }
+
+  // Boost for songs by matched artist (when detected in multi-word queries like "Sơn Tùng Lạc Trôi")
+  if (isSongByMatchedArtist) {
+    if (extraTitleRegexes.length > 0) {
+      for (const regex of extraTitleRegexes) {
+        if (regex.test(song.title || "")) {
+          score += 250;
+          break;
+        }
+      }
+    } else {
+      score += 60;
+    }
+  }
+
+  // =========================================================================
+  // 3. LYRICS & CONTENT MATCHING (TIER 3)
+  // =========================================================================
+  const cleanLyricsNorm = normalizeText(extractCleanLyrics(song.lyrics || ""));
+  if (cleanLyricsNorm && queryNorm.length >= 4) {
+    if (cleanLyricsNorm.includes(queryNorm)) {
+      score += 80;
+    } else if (regexes.some((r) => r.test(song.lyrics || ""))) {
+      score += 40;
+    }
+  }
+
+  // =========================================================================
+  // 4. SEMANTIC INTENT MATCHES (Moods, Themes, Genre)
+  // =========================================================================
   if (intent && intent.isNaturalQuery) {
     const aiAnalysis = song.aiAnalysis || {};
     const songMoods = (aiAnalysis.moodTags || []).map((m) => String(m).toLowerCase());
@@ -246,59 +312,38 @@ function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], e
     const songTags = (aiAnalysis.tags || []).map((t) => String(t).toLowerCase());
     const songGenre = String(aiAnalysis.genre || "").toLowerCase();
 
-    // Mood overlap
     for (const mood of intent.targetMoods || []) {
-      if (songMoods.includes(mood)) score += 30;
-      if (songTags.includes(mood)) score += 15;
+      if (songMoods.includes(mood)) score += 20;
+      if (songTags.includes(mood)) score += 10;
     }
 
-    // Theme overlap
     for (const theme of intent.targetThemes || []) {
-      if (songThemes.includes(theme)) score += 25;
-      if (songTags.includes(theme)) score += 15;
-      if (songTitleNorm.includes(theme)) score += 20;
+      if (songThemes.includes(theme)) score += 20;
+      if (songTags.includes(theme)) score += 10;
+      if (songTitleNorm.includes(theme)) score += 15;
     }
 
-    // Genre overlap
     for (const g of intent.targetGenres || []) {
       const gNorm = g.toLowerCase();
-      if (songGenre.includes(gNorm) || songTags.includes(gNorm)) score += 20;
+      if (songGenre.includes(gNorm) || songTags.includes(gNorm)) score += 15;
     }
 
-    // Energy match
-    if (aiAnalysis.energyLevel && aiAnalysis.energyLevel === intent.targetEnergy) {
-      score += 10;
-    }
-
-    // 3. Lyrics & Story Content Match (Handles both with and without lyrics)
-    const cleanLyrics = extractCleanLyrics(song.lyrics || "").toLowerCase();
     const storySummary = String(aiAnalysis.storySummary || "").toLowerCase();
-
     for (const kw of intent.semanticKeywords || []) {
       if (kw.length >= 2) {
-        if (cleanLyrics && cleanLyrics.includes(kw)) score += 25;
-        if (storySummary.includes(kw)) score += 20;
-        if (songTitleNorm.includes(kw)) score += 15;
+        if (cleanLyricsNorm && cleanLyricsNorm.includes(kw)) score += 15;
+        if (storySummary.includes(kw)) score += 15;
       }
     }
   }
 
-  // Direct lyrics keyword match
-  const cleanLyricsNorm = normalizeText(extractCleanLyrics(song.lyrics || ""));
-  if (cleanLyricsNorm && queryNorm.length >= 4) {
-    if (cleanLyricsNorm.includes(queryNorm)) {
-      score += 130;
-    } else if (regexes.some((r) => r.test(song.lyrics || ""))) {
-      score += 60;
-    }
-  }
-
-
-  // 4. Popularity Baseline
+  // =========================================================================
+  // 5. POPULARITY (TIE-BREAKER ONLY)
+  // =========================================================================
   const playCount = Number(song.playCount || 0);
   const likeCount = Number(song.likeCount || 0);
   const popularityBonus = Math.log10(1 + playCount) * 2 + Math.log10(1 + likeCount) * 1.5;
-  score += popularityBonus;
+  score += Math.min(25, popularityBonus);
 
   return Math.max(0, Math.round(score * 10) / 10);
 }
@@ -348,29 +393,46 @@ const searchSongs = async ({
         .limit(12)
         .lean();
 
-      // If exact regex did not match artist, check if query contains artist's name (e.g. "Khánh Phương khóc", "Hoàn Lâm cô đơn")
+      // If exact regex did not match artist, check if query contains artist's name AS WHOLE WORDS (preventing "min" matching "minh")
       if (matchedArtists.length === 0) {
         const allArtists = await Artist.find({}).select("_id name avatar isVerified followersCount").lean();
         const normQuery = normalizeText(rawQuery);
-        const normQueryAlt = normQuery.replace(/ng(?=\s|$)/g, "n");
+
         matchedArtists = allArtists.filter((a) => {
           const normArtist = normalizeText(a.name);
-          const normArtistAlt = normArtist.replace(/ng(?=\s|$)/g, "n");
-          if (normArtist && normArtist.length >= 2) {
-            if (normQuery.includes(normArtist) || (normArtistAlt.length >= 3 && normQueryAlt.includes(normArtistAlt))) {
-              return true;
-            }
+          if (!normArtist || normArtist.length < 2) return false;
+
+          // Short artist name (<= 3 chars, e.g. "MIN", "AI", "AN", "VU"):
+          // Must ONLY match if query is an exact match to prevent false positives
+          if (normArtist.length <= 3) {
+            return normQuery === normArtist;
           }
-          return false;
+
+          const artistWords = normArtist.split(" ").filter(Boolean);
+          const artistPhrase = artistWords.join(" ");
+          const wordBoundaryRegex = new RegExp(`(^|\\s)${escapeRegex(artistPhrase)}(\\s|$)`, "i");
+          return wordBoundaryRegex.test(normQuery);
         });
       }
 
-      // If artist matched, extract remaining query for title keywords
+      // If artist matched, sort by relevance (exact match first) and extract remaining query for title keywords
       if (matchedArtists.length > 0) {
         const normQuery = normalizeText(rawQuery);
+        matchedArtists.sort((a, b) => {
+          const aNorm = normalizeText(a.name);
+          const bNorm = normalizeText(b.name);
+          const aExact = aNorm === normQuery ? 1 : 0;
+          const bExact = bNorm === normQuery ? 1 : 0;
+          if (aExact !== bExact) return bExact - aExact;
+          const aStarts = aNorm.startsWith(normQuery) ? 1 : 0;
+          const bStarts = bNorm.startsWith(normQuery) ? 1 : 0;
+          if (aStarts !== bStarts) return bStarts - aStarts;
+          return (b.followersCount || 0) - (a.followersCount || 0);
+        });
+
         for (const a of matchedArtists) {
           const normArtist = normalizeText(a.name);
-          const remaining = normQuery.replace(normArtist, "").replace(normArtist.replace(/ng(?=\s|$)/g, "n"), "").trim();
+          const remaining = normQuery.replace(new RegExp(`(^|\\s)${escapeRegex(normArtist)}(\\s|$)`, "i"), " ").trim();
           if (remaining.length >= 2) {
             extraTitleRegexes.push(...buildSearchRegexes(remaining));
           }
@@ -385,41 +447,22 @@ const searchSongs = async ({
           { description: regex },
         ]);
 
-        const [userPlaylists, systemPlaylists] = await Promise.all([
-          Playlist.find({
-            isPublic: true,
-            $or: playlistOrConditions,
-          })
-            .select("_id name description coverImage songs userId createdAt")
-            .populate("userId", "name avatar")
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .lean(),
-          PlaylistSong.find({
-            isPublic: true,
-            $or: playlistOrConditions,
-          })
-            .select("_id name description coverImage songs createdBy createdAt")
-            .populate("createdBy", "name avatar")
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .lean(),
-        ]);
+        const playlists = await Playlist.find({
+          isPublic: true,
+          $or: playlistOrConditions,
+        })
+          .select("_id name description coverImage songs userId isSystem createdAt")
+          .populate("userId", "name avatar")
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .lean();
 
-        matchedPlaylists = [
-          ...userPlaylists.map((p) => ({
-            ...p,
-            isSystem: false,
-            songCount: Array.isArray(p.songs) ? p.songs.length : 0,
-            ownerName: p.userId?.name || "Người dùng",
-          })),
-          ...systemPlaylists.map((p) => ({
-            ...p,
-            isSystem: true,
-            songCount: Array.isArray(p.songs) ? p.songs.length : 0,
-            ownerName: "MusicFlow",
-          })),
-        ].slice(0, 10);
+        matchedPlaylists = playlists.map((p) => ({
+          ...p,
+          isSystem: !!p.isSystem,
+          songCount: Array.isArray(p.songs) ? p.songs.length : 0,
+          ownerName: p.isSystem ? "MusicFlow" : (p.userId?.name || "Người dùng"),
+        }));
       }
     }
 

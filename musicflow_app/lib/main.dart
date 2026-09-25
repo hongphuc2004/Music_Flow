@@ -16,6 +16,7 @@ import 'package:musicflow_app/core/config/api_config.dart';
 
 import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/core/services/app_settings_service.dart';
+import 'package:musicflow_app/core/services/app_tab_service.dart';
 import 'package:musicflow_app/presentation/widgets/music_flow_floating_nav_bar.dart';
 import 'package:musicflow_app/presentation/widgets/music_flow_backdrop.dart';
 import 'package:musicflow_app/presentation/widgets/ai_floating_assistant_orb.dart';
@@ -79,6 +80,41 @@ class MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _tabCache[0] = _buildTab(0);
+    AppTabService().addListener(_onTabServiceChanged);
+  }
+
+  @override
+  void dispose() {
+    AppTabService().removeListener(_onTabServiceChanged);
+    super.dispose();
+  }
+
+  void _onTabServiceChanged() {
+    final tab = AppTabService().currentTab;
+    if (_currentIndex != tab && mounted) {
+      _handleTabTap(tab);
+    }
+  }
+
+  void _handleTabTap(int index) {
+    if (_tabCache[index] == null) {
+      setState(() {
+        _tabCache[index] = _buildTab(index);
+      });
+    }
+
+    setState(() {
+      _currentIndex = index;
+      if (index == 1) {
+        _flowchartRefreshTrigger++;
+        _tabCache[1] = _buildTab(1);
+      }
+    });
+    AppTabService().setTab(index);
+    // Refresh Library khi chuyển sang tab Library
+    if (index == 4) {
+      _libraryKey.currentState?.refreshFavorites();
+    }
   }
 
   Widget _buildTab(int index) {
@@ -175,25 +211,7 @@ class MainScreenState extends State<MainScreen> {
                   // Custom Floating Navigation Bar
                   MusicFlowFloatingNavBar(
                     currentIndex: _currentIndex,
-                    onTap: (index) {
-                      if (_tabCache[index] == null) {
-                        setState(() {
-                          _tabCache[index] = _buildTab(index);
-                        });
-                      }
-
-                      setState(() {
-                        _currentIndex = index;
-                        if (index == 1) {
-                          _flowchartRefreshTrigger++;
-                          _tabCache[1] = _buildTab(1);
-                        }
-                      });
-                      // Refresh Library khi chuyển sang tab Library
-                      if (index == 4) {
-                        _libraryKey.currentState?.refreshFavorites();
-                      }
-                    },
+                    onTap: _handleTabTap,
                     items: const [
                       FloatingNavBarItem(
                         icon: Icons.home_outlined,

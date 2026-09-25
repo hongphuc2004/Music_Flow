@@ -5,7 +5,19 @@ const subscriptionSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+      index: true,
+    },
+    artist: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Artist",
+      default: null,
+      index: true,
+    },
+    subscriberType: {
+      type: String,
+      enum: ["User", "Artist"],
+      default: "User",
       index: true,
     },
     plan: {

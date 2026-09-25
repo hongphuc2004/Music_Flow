@@ -42,12 +42,21 @@ function ClientPaymentReturn() {
 
         if (response.data?.success) {
           setSuccess(true);
-          setMessage('Tài khoản của bạn đã được nâng cấp lên gói Premium thành công!');
+          const isArtist = Boolean(response.data.data?.artist || localStorage.getItem('role') === 'artist');
+          setMessage(isArtist 
+            ? 'Tài khoản của bạn đã được nâng cấp lên Artist Studio Pro thành công!' 
+            : 'Tài khoản của bạn đã được nâng cấp lên gói Premium thành công!');
           setTransaction(response.data.data?.transaction);
+          
+          if (response.data.data?.artist) {
+            const { syncArtistSession } = await import('../../utils/artistSession');
+            syncArtistSession(response.data.data.artist);
+          }
+
           showToast({
             severity: 'success',
             title: 'Thanh toán thành công',
-            message: 'Chúc mừng bạn đã nâng cấp Premium thành công!',
+            message: isArtist ? 'Chúc mừng bạn đã nâng cấp Artist Studio Pro!' : 'Chúc mừng bạn đã nâng cấp Premium thành công!',
           });
         } else {
           setSuccess(false);
@@ -175,15 +184,15 @@ function ClientPaymentReturn() {
                 <Button
                   variant="outlined"
                   fullWidth
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate(localStorage.getItem('role') === 'artist' ? '/artist/dashboard' : '/')}
                   sx={{ py: 1.2, borderRadius: 3, fontWeight: 700, textTransform: 'none', borderColor: 'divider', color: 'text.secondary' }}
                 >
-                  Về trang chủ
+                  {localStorage.getItem('role') === 'artist' ? 'Về Studio' : 'Về trang chủ'}
                 </Button>
                 <Button
                   variant="contained"
                   fullWidth
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigate(localStorage.getItem('role') === 'artist' ? '/artist/pro' : '/profile')}
                   sx={{
                     py: 1.2,
                     borderRadius: 3,
@@ -198,7 +207,7 @@ function ClientPaymentReturn() {
                       : '0 4px 14px rgba(108, 99, 255, 0.2)',
                   }}
                 >
-                  Xem Profile
+                  {localStorage.getItem('role') === 'artist' ? 'Xem gói Pro' : 'Xem Profile'}
                 </Button>
               </Stack>
             </Stack>

@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const SongPlayEvent = require("../models/song-play-event.model");
 const Favorite = require("../models/favorite.model");
-const SongLike = require("../models/song-like.model");
 const User = require("../models/user.model");
 const Song = require("../models/song.model");
 
@@ -59,7 +58,7 @@ async function getUserMusicProfile(userId, options = {}) {
     const windowDate = new Date(now - windowDays * 24 * 60 * 60 * 1000);
 
     // 2. Execute parallel queries on existing models
-    const [playEvents, favorites, likes, userDoc] = await Promise.all([
+    const [playEvents, favorites, userDoc] = await Promise.all([
       SongPlayEvent.find({ userId: userObjId, playedAt: { $gte: windowDate } })
         .sort({ playedAt: -1 })
         .limit(100)
@@ -69,7 +68,6 @@ async function getUserMusicProfile(userId, options = {}) {
         })
         .lean(),
       Favorite.find({ userId: userObjId }).select("songId").lean(),
-      SongLike.find({ userId: userObjId }).select("songId").lean(),
       User.findById(userObjId).select("favoriteSongs followedArtists aiMemory").lean(),
     ]);
 
@@ -99,13 +97,12 @@ async function getUserMusicProfile(userId, options = {}) {
     const completedSongIds = Array.from(completedSongSet);
 
 
-    // Collect all favorite & liked song IDs
+    // Collect all favorite song IDs
     const favSet = new Set();
     if (userDoc?.favoriteSongs) {
       userDoc.favoriteSongs.forEach((id) => favSet.add(id.toString()));
     }
     favorites.forEach((f) => favSet.add(f.songId.toString()));
-    likes.forEach((l) => favSet.add(l.songId.toString()));
     const favoriteSongIds = Array.from(favSet);
 
     // Topic & Artist frequency scoring counters

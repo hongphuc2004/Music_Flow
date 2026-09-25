@@ -3,6 +3,7 @@ const vnpayUtil = require("../utils/vnpay.util");
 const Transaction = require("../models/transaction.model");
 const Subscription = require("../models/subscription.model");
 const User = require("../models/user.model");
+const Artist = require("../models/artist.model");
 
 /**
  * Khởi tạo yêu cầu thanh toán (Checkout)
@@ -12,6 +13,7 @@ exports.checkout = async (req, res) => {
   try {
     const { planId, paymentMethod } = req.body;
     const userId = req.userId;
+    const userRole = req.userRole || "user";
     const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
     if (!planId || !paymentMethod) {
@@ -32,6 +34,7 @@ exports.checkout = async (req, res) => {
       planId,
       paymentMethod,
       userId,
+      userRole,
       ipAddress,
     });
 
@@ -53,6 +56,7 @@ exports.mockConfirm = async (req, res) => {
   try {
     const { transactionRef } = req.body;
     const userId = req.userId;
+    const isArtist = req.userRole === "artist";
 
     if (!transactionRef) {
       return res.status(400).json({
@@ -61,8 +65,12 @@ exports.mockConfirm = async (req, res) => {
       });
     }
 
-    // Kiểm tra giao dịch thuộc sở hữu của user và đang ở trạng thái pending
-    const transaction = await Transaction.findOne({ transactionRef, user: userId });
+    // Kiểm tra giao dịch thuộc sở hữu của user/artist và đang ở trạng thái pending
+    const query = isArtist
+      ? { transactionRef, artist: userId, subscriberType: "Artist" }
+      : { transactionRef, user: userId };
+
+    const transaction = await Transaction.findOne(query);
     if (!transaction) {
       return res.status(404).json({
         success: false,
@@ -76,16 +84,23 @@ exports.mockConfirm = async (req, res) => {
       new Date()
     );
 
-    // Lấy thông tin user mới nhất
-    const user = await User.findById(userId).select("-password");
+    let accountUser = null;
+    let accountArtist = null;
+
+    if (isArtist) {
+      accountArtist = await Artist.findById(userId).select("-password");
+    } else {
+      accountUser = await User.findById(userId).select("-password");
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Nâng cấp tài khoản Premium thành công",
+      message: isArtist ? "Nâng cấp tài khoản Artist Studio Pro thành công" : "Nâng cấp tài khoản Premium thành công",
       data: {
         transaction: result.transaction,
         subscription: result.subscription,
-        user,
+        user: accountUser,
+        artist: accountArtist,
       },
     });
   } catch (error) {
@@ -157,14 +172,22 @@ exports.vnpayReturn = async (req, res) => {
 
     // 4. Lấy trạng thái giao dịch mới nhất sau cập nhật
     const updatedTx = await Transaction.findOne({ transactionRef }).populate("plan");
-    const user = await User.findById(updatedTx.user).select("-password");
+    let accountUser = null;
+    let accountArtist = null;
+
+    if (updatedTx.subscriberType === "Artist") {
+      accountArtist = await Artist.findById(updatedTx.artist).select("-password");
+    } else {
+      accountUser = await User.findById(updatedTx.user).select("-password");
+    }
 
     return res.status(200).json({
       success: updatedTx.status === "success",
       message: updatedTx.status === "success" ? "Thanh toán thành công" : "Thanh toán thất bại hoặc đã hủy",
       data: {
         transaction: updatedTx,
-        user,
+        user: accountUser,
+        artist: accountArtist,
       },
     });
   } catch (error) {
@@ -237,8 +260,13 @@ exports.getTransactionStatus = async (req, res) => {
   try {
     const { ref } = req.params;
     const userId = req.userId;
+    const isArtist = req.userRole === "artist";
 
-    const transaction = await Transaction.findOne({ transactionRef: ref, user: userId }).populate("plan");
+    const query = isArtist
+      ? { transactionRef: ref, artist: userId }
+      : { transactionRef: ref, user: userId };
+
+    const transaction = await Transaction.findOne(query).populate("plan");
     if (!transaction) {
       return res.status(404).json({
         success: false,
@@ -262,25 +290,30 @@ exports.getTransactionStatus = async (req, res) => {
 };
 
 /**
- * Lấy thông tin đăng ký gói hiện tại của người dùng
+ * Lấy thông tin đăng ký gói hiện tại của người dùng / nghệ sĩ
  * GET /api/subscriptions/current
  */
 exports.getCurrentSubscription = async (req, res) => {
   try {
     const userId = req.userId;
+    const isArtist = req.userRole === "artist";
 
     // Tìm Subscription đang hoạt động
-    const activeSub = await Subscription.findOne({
-      user: userId,
-      status: "active",
-      endDate: { $gt: new Date() },
-    })
+    const subQuery = isArtist
+      ? { artist: userId, subscriberType: "Artist", status: "active", endDate: { $gt: new Date() } }
+      : { user: userId, status: "active", endDate: { $gt: new Date() } };
+
+    const txQuery = isArtist
+      ? { artist: userId, subscriberType: "Artist" }
+      : { user: userId };
+
+    const activeSub = await Subscription.findOne(subQuery)
       .populate("plan")
       .populate("transaction")
       .sort({ endDate: -1 });
 
     // Lấy lịch sử giao dịch thanh toán
-    const history = await Transaction.find({ user: userId })
+    const history = await Transaction.find(txQuery)
       .populate("plan")
       .sort({ createdAt: -1 })
       .limit(10);

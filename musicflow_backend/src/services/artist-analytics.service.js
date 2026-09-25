@@ -1,9 +1,8 @@
 const mongoose = require("mongoose");
 const Song = require("../models/song.model");
 const SongPlayEvent = require("../models/song-play-event.model");
-const SongLike = require("../models/song-like.model");
 const Favorite = require("../models/favorite.model");
-const PlaylistSong = require("../models/playlist-song.model");
+const Playlist = require("../models/playlist.model");
 const User = require("../models/user.model");
 
 /**
@@ -120,11 +119,11 @@ async function getSummary(artistId, timeRange = "30d") {
 
   // B. Likes
   const [currLikes, prevLikes] = await Promise.all([
-    SongLike.countDocuments({
+    Favorite.countDocuments({
       songId: { $in: songIds },
       createdAt: { $gte: currentStart, $lte: currentEnd },
     }),
-    SongLike.countDocuments({
+    Favorite.countDocuments({
       songId: { $in: songIds },
       createdAt: { $gte: prevStart, $lte: prevEnd },
     }),
@@ -140,12 +139,12 @@ async function getSummary(artistId, timeRange = "30d") {
       songId: { $in: songIds },
       createdAt: { $gte: prevStart, $lte: prevEnd },
     }),
-    PlaylistSong.countDocuments({
-      songId: { $in: songIds },
+    Playlist.countDocuments({
+      songs: { $in: songIds },
       createdAt: { $gte: currentStart, $lte: currentEnd },
     }),
-    PlaylistSong.countDocuments({
-      songId: { $in: songIds },
+    Playlist.countDocuments({
+      songs: { $in: songIds },
       createdAt: { $gte: prevStart, $lte: prevEnd },
     }),
   ]);
@@ -250,7 +249,7 @@ async function getTimeseries(artistId, timeRange = "30d", interval = "daily") {
     { $sort: { date: 1 } },
   ]);
 
-  const rawLikes = await SongLike.aggregate([
+  const rawLikes = await Favorite.aggregate([
     {
       $match: {
         songId: { $in: songIds },
@@ -338,7 +337,7 @@ async function getTopSongs(artistId, options = {}) {
     },
   ]);
 
-  const currLikesAgg = await SongLike.aggregate([
+  const currLikesAgg = await Favorite.aggregate([
     {
       $match: {
         songId: { $in: songIds },

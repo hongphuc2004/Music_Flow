@@ -12,6 +12,7 @@ import {
   Stack,
   Typography,
   Paper,
+  Chip,
 } from '@mui/material';
 import {
   AlternateEmailRounded as EmailIcon,
@@ -21,6 +22,7 @@ import {
   VerifiedRounded as VerifiedIcon,
   PeopleRounded as PeopleIcon,
   TrendingUpRounded as TrendingIcon,
+  WorkspacePremiumRounded as WorkspacePremiumIcon,
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import ArtistProfileDialog from './ArtistProfileDialog';
@@ -218,11 +220,29 @@ function ArtistProfile() {
               </Avatar>
 
               <Stack spacing={1} sx={{ flexGrow: 1 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <VerifiedIcon sx={{ color: '#00bcd4', fontSize: { xs: 20, md: 24 } }} />
-                  <Typography variant="caption" sx={{ letterSpacing: 1.5, fontWeight: 900, textTransform: 'uppercase', color: '#00bcd4' }}>
-                    Verified Artist
-                  </Typography>
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <VerifiedIcon sx={{ color: '#00bcd4', fontSize: { xs: 20, md: 24 } }} />
+                    <Typography variant="caption" sx={{ letterSpacing: 1.5, fontWeight: 900, textTransform: 'uppercase', color: '#00bcd4' }}>
+                      Verified Artist
+                    </Typography>
+                  </Stack>
+                  {Boolean(artist?.isPro && artist?.proExpiry && new Date(artist.proExpiry) > new Date()) && (
+                    <Chip
+                      icon={<WorkspacePremiumIcon sx={{ color: '#fff !important', fontSize: '15px !important' }} />}
+                      label="PRO"
+                      size="small"
+                      sx={{
+                        height: 22,
+                        fontSize: '0.7rem',
+                        fontWeight: 900,
+                        letterSpacing: '0.6px',
+                        color: '#fff',
+                        background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                        boxShadow: '0 2px 10px rgba(245, 158, 11, 0.4)',
+                      }}
+                    />
+                  )}
                 </Stack>
                 <Typography variant="h2" fontWeight={900} sx={{ letterSpacing: '-1.5px', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
                   {artist?.name || 'Artist'}

@@ -35,6 +35,14 @@ exports.aiPlaylist = async (req, res) => {
   try {
     const { prompt, conversationId, model: preferredModel } = req.body;
     const userId = req.userId;
+    const userRole = req.userRole || "user";
+
+    if (userRole === "artist") {
+      return res.status(403).json({
+        success: false,
+        message: "Tính năng AI DJ tạo danh sách phát chỉ dành cho người nghe (User). Tài khoản Nghệ sĩ (Artist) vui lòng sử dụng Trợ lý Studio.",
+      });
+    }
 
     if (!prompt || !prompt.trim()) {
       return res.status(400).json({
@@ -48,7 +56,7 @@ exports.aiPlaylist = async (req, res) => {
       conversationId,
       actorId: userId,
       actorType: "User",
-      actorRole: req.userRole || "user",
+      actorRole: userRole,
       scope: "mood",
       preferredModel,
     });

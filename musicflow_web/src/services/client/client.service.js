@@ -105,7 +105,7 @@ export const clientUserApi = {
 
 // Client Plans API
 export const clientPlansApi = {
-  getActive: () => api.get('/plans'),
+  getActive: (params) => api.get('/plans', { params }),
 };
 
 // Client Subscription API

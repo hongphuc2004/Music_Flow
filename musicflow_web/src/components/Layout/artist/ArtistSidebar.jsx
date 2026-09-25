@@ -25,6 +25,7 @@ import {
   Headphones as HeadphonesIcon,
   ViewSidebarRounded as SidebarIcon,
   MusicNote as MusicNoteIcon,
+  WorkspacePremiumRounded as WorkspacePremiumIcon,
 } from '@mui/icons-material';
 import useAppToast from '../../common/useAppToast';
 import { logout } from '../../../services/api';
@@ -41,6 +42,7 @@ const menuGroups = [
       { text: 'Bài Hát Của Tôi', icon: <MusicNoteIcon />, path: '/artist/songs' },
       { text: 'Phân Tích', icon: <BarChartIcon />, path: '/artist/analytics' },
       { text: 'Hồ Sơ Nghệ Sĩ', icon: <PersonIcon />, path: '/artist/profile' },
+      { text: 'Gói Studio Pro', icon: <WorkspacePremiumIcon sx={{ color: '#f59e0b' }} />, path: '/artist/pro' },
     ],
   },
 ];

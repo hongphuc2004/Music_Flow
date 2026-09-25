@@ -709,22 +709,6 @@ function getToolsForRole(actorRole) {
       },
     },
     {
-      name: "create_mood_playlist",
-      description: "Tạo danh sách phát nhạc (playlist) dựa trên cảm xúc, tâm trạng (sad, happy, chill, focus, energetic, romantic, sleep, party, angry) hoặc ca sĩ.",
-      parameters: {
-        type: "OBJECT",
-        properties: {
-          mood: {
-            type: "STRING",
-            description: "Tâm trạng hoặc cảm xúc của người dùng.",
-            enum: ["sad", "happy", "chill", "focus", "energetic", "romantic", "sleep", "party", "angry"],
-          },
-          artist: { type: "STRING", description: "Tên ca sĩ chỉ định (nếu có)." },
-        },
-        required: ["mood"],
-      },
-    },
-    {
       name: "get_song_story",
       description: "Giải thích ý nghĩa, câu chuyện hoặc thông điệp của một bài hát cụ thể (hoặc bài đang phát / bài trong hội thoại).",
       parameters: {
@@ -778,6 +762,26 @@ function getToolsForRole(actorRole) {
       },
     },
   ];
+
+  // AI DJ (Mood Playlist) chỉ dành riêng cho User và Admin, KHÔNG cấp cho Artist
+  if (actorRole !== "artist") {
+    declarations.push({
+      name: "create_mood_playlist",
+      description: "Tạo danh sách phát nhạc (playlist) dựa trên cảm xúc, tâm trạng (sad, happy, chill, focus, energetic, romantic, sleep, party, angry) hoặc ca sĩ.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          mood: {
+            type: "STRING",
+            description: "Tâm trạng hoặc cảm xúc của người dùng.",
+            enum: ["sad", "happy", "chill", "focus", "energetic", "romantic", "sleep", "party", "angry"],
+          },
+          artist: { type: "STRING", description: "Tên ca sĩ chỉ định (nếu có)." },
+        },
+        required: ["mood"],
+      },
+    });
+  }
 
   if (actorRole === "artist") {
     declarations.push(
@@ -840,12 +844,24 @@ class AssistantService {
       throw new Error("Prompt is empty");
     }
 
-    // Kiểm tra cước AIDJ / Assistant nếu là tài khoản User
-    if (actorType === "User") {
-      const aiQuotaService = require("./aiQuota.service");
-      aiQuotaService.acquireLock(actorId);
+    // Quota & Concurrency handling by role
+    const aiQuotaService = require("./aiQuota.service");
+    if (actorRole === "admin") {
+      // Admin: Bypass toàn bộ quota nội bộ của MusicFlow và không áp dụng user lock 15s
+    } else if (actorRole === "artist") {
+      // Artist: Áp dụng lock và kiểm tra Artist Quota (30 requests / 24h)
+      aiQuotaService.acquireLock(actorId, actorRole);
       try {
-        await aiQuotaService.checkQuota(actorId);
+        await aiQuotaService.checkArtistQuota(actorId);
+      } catch (err) {
+        aiQuotaService.releaseLock(actorId);
+        throw err;
+      }
+    } else {
+      // User: Áp dụng lock và kiểm tra User Quota theo gói cước (Free: 5, GO: 10, PLUS: 15, PREMIUM: 20)
+      aiQuotaService.acquireLock(actorId, actorRole);
+      try {
+        await aiQuotaService.checkQuota(actorId, actorRole);
       } catch (err) {
         aiQuotaService.releaseLock(actorId);
         throw err;
@@ -893,6 +909,10 @@ class AssistantService {
         const userDoc = await User.findById(actorId).populate("premiumPlan").lean();
         userTier = aiQuotaService.getUserTier(userDoc);
         userProfile = await personalizationService.getUserMusicProfile(actorId);
+      } else if (actorType === "Artist" && actorId) {
+        const artistDoc = await Artist.findById(actorId).lean();
+        const isPro = Boolean(artistDoc && artistDoc.isPro && artistDoc.proExpiry && new Date(artistDoc.proExpiry) > new Date());
+        userTier = isPro ? "premium" : "basic";
       }
 
       // Prepare context summary string
@@ -952,26 +972,31 @@ class AssistantService {
                   const hasPlaylistKeyword = /(playlist|danh sach|nhac|bai hat|goi y|de xuat)/i.test(normalizedPrompt);
 
                   if (hasPlaylistKeyword && !hasExplicitImageKeyword) {
-                    const resObj = await this.generatePlaylistInternal({
-                      prompt: cleanPrompt,
-                      userId: actorId,
-                      conversationId: conversation._id,
-                      activeModelName: modelName,
-                      userTier,
-                    });
-                    playlist = resObj.playlist;
-                    songs = resObj.songs;
-                    assistantText = resObj.assistantText;
-                    clientActions.push({
-                      type: "LOAD_PLAYLIST",
-                      payload: { playlistId: playlist._id, playlist, songs },
-                    });
-                    metadata = {
-                      type: "create_mood_playlist",
-                      playlistId: playlist._id,
-                      matchStatus: resObj.matchStatus,
-                      songs: songs,
-                    };
+                    if (actorRole === "artist") {
+                      assistantText = "Tính năng tạo danh sách phát (AI DJ) chỉ dành riêng cho tài khoản người nghe. Với vai trò Nghệ sĩ, bạn có thể yêu cầu mình phân tích số liệu bài hát, gợi ý ý tưởng sáng tác, hoặc tra cứu thông tin trong Studio nhé! 🎨";
+                      metadata = { type: "artist_forbidden_ai_dj" };
+                    } else {
+                      const resObj = await this.generatePlaylistInternal({
+                        prompt: cleanPrompt,
+                        userId: actorId,
+                        conversationId: conversation._id,
+                        activeModelName: modelName,
+                        userTier,
+                      });
+                      playlist = resObj.playlist;
+                      songs = resObj.songs;
+                      assistantText = resObj.assistantText;
+                      clientActions.push({
+                        type: "LOAD_PLAYLIST",
+                        payload: { playlistId: playlist._id, playlist, songs },
+                      });
+                      metadata = {
+                        type: "create_mood_playlist",
+                        playlistId: playlist._id,
+                        matchStatus: resObj.matchStatus,
+                        songs: songs,
+                      };
+                    }
                   } else {
                     const imageService = require("./imageGenerator.service");
                     const imgRes = await imageService.generateImage({
@@ -1126,30 +1151,35 @@ class AssistantService {
                     assistantText = "Xin lỗi, bạn không có quyền truy cập vào màn hình này.";
                   }
                 } else if (name === "create_mood_playlist") {
-                  const resObj = await this.generatePlaylistInternal({
-                    prompt: cleanPrompt,
-                    mood: args.mood,
-                    artistHint: args.artist,
-                    userId: actorId,
-                    conversationId: conversation._id,
-                    activeModelName: modelName,
-                    userTier,
-                  });
+                  if (actorRole === "artist") {
+                    assistantText = "Tính năng tạo danh sách phát (AI DJ) chỉ dành riêng cho tài khoản người nghe. Với vai trò Nghệ sĩ, bạn có thể yêu cầu mình phân tích số liệu bài hát, gợi ý ý tưởng sáng tác, hoặc tra cứu thông tin trong Studio nhé! 🎨";
+                    metadata = { type: "artist_forbidden_ai_dj" };
+                  } else {
+                    const resObj = await this.generatePlaylistInternal({
+                      prompt: cleanPrompt,
+                      mood: args.mood,
+                      artistHint: args.artist,
+                      userId: actorId,
+                      conversationId: conversation._id,
+                      activeModelName: modelName,
+                      userTier,
+                    });
 
-                  playlist = resObj.playlist;
-                  songs = resObj.songs;
-                  assistantText = resObj.assistantText;
-                  clientActions.push({
-                    type: "LOAD_PLAYLIST",
-                    payload: { playlistId: playlist._id, playlist, songs },
-                  });
-                  metadata = {
-                    type: "create_mood_playlist",
-                    playlistId: playlist._id,
-                    mood: args.mood,
-                    matchStatus: resObj.matchStatus,
-                    songs: songs,
-                  };
+                    playlist = resObj.playlist;
+                    songs = resObj.songs;
+                    assistantText = resObj.assistantText;
+                    clientActions.push({
+                      type: "LOAD_PLAYLIST",
+                      payload: { playlistId: playlist._id, playlist, songs },
+                    });
+                    metadata = {
+                      type: "create_mood_playlist",
+                      playlistId: playlist._id,
+                      mood: args.mood,
+                      matchStatus: resObj.matchStatus,
+                      songs: songs,
+                    };
+                  }
                 } else if (name === "get_song_story") {
                   let songTitle = args.title;
                   if (!songTitle || songTitle === "bài này" || songTitle === "nó") {

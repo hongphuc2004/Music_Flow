@@ -62,9 +62,10 @@ function ClientPremium() {
         setLoading(true);
         setError('');
         
-        // 1. Tải danh sách gói cước hoạt động từ DB
-        const plansRes = await clientPlansApi.getActive();
-        setPlans(plansRes.data?.data || []);
+        // 1. Tải danh sách gói cước hoạt động từ DB (chỉ lấy gói dành cho User)
+        const plansRes = await clientPlansApi.getActive({ targetRole: 'user' });
+        const userPlans = (plansRes.data?.data || []).filter((p) => p.targetRole !== 'artist');
+        setPlans(userPlans);
 
         // 2. Tải thông tin cước hiện tại của user & user profile
         try {
@@ -541,9 +542,9 @@ function ClientPremium() {
                   <TableRow hover>
                     <TableCell sx={{ fontWeight: 750, pl: { xs: 3, md: 27 }, py: 2 }}>Trò chuyện & Tạo Playlist AI</TableCell>
                     <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 600, py: 2 }}>5 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>10 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>15 yêu cầu / 24 giờ</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>20 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>20 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 750, py: 2 }}>50 yêu cầu / 24 giờ</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, color: '#00bcd4', py: 2 }}>100 yêu cầu / 24 giờ</TableCell>
                   </TableRow>
                   
                   {/* Chất lượng âm thanh */}

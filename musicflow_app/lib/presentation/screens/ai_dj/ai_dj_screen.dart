@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/config/api_config.dart';
 import '../../../data/models/song_model.dart';
 import '../../../data/services/auth_service.dart';
+import '../../widgets/music_flow_backdrop.dart';
 import '../../widgets/song_options_menu.dart';
 import '../../widgets/voice_ai_dj_sheet.dart';
 import '../library/favorites_screen.dart';
@@ -487,18 +488,25 @@ class _AiDjScreenState extends State<AiDjScreen> {
       ),
       title: Text(
         song.title,
-        style: theme.textTheme.titleMedium?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
         song.artists.join(', '),
-        style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 12),
+        style: TextStyle(
+          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          fontSize: 12,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: IconButton(
-        icon: Icon(Icons.more_vert_rounded, color: isDark ? Colors.white30 : Colors.black38),
+        icon: Icon(Icons.more_vert_rounded, color: isDark ? Colors.white54 : Colors.black45),
         onPressed: () {
           showModalBottomSheet(
             context: context,
@@ -551,8 +559,8 @@ class _AiDjScreenState extends State<AiDjScreen> {
               size: 16,
               color: selected ? Colors.white : (isDark ? Colors.white54 : Colors.black45),
             ),
-            selectedColor: AppColors.secondary.withValues(alpha: 0.3),
-            backgroundColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+            selectedColor: AppColors.secondary.withValues(alpha: 0.35),
+            backgroundColor: isDark ? const Color(0xFF1B162E) : Colors.white,
             labelStyle: TextStyle(
               color: selected
                   ? (isDark ? Colors.white : AppColors.lightTextPrimary)
@@ -562,7 +570,7 @@ class _AiDjScreenState extends State<AiDjScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: selected ? AppColors.secondary : Colors.transparent,
+                color: selected ? AppColors.secondary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
               ),
             ),
           );
@@ -686,13 +694,13 @@ class _AiDjScreenState extends State<AiDjScreen> {
         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
           ),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
           decoration: BoxDecoration(
             color: isUser
                 ? AppColors.primary
-                : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
+                : (isDark ? const Color(0xFF1B162E) : Colors.white),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),
@@ -704,11 +712,18 @@ class _AiDjScreenState extends State<AiDjScreen> {
                 : Border.all(
                     color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                   ),
+            boxShadow: [
+              BoxShadow(
+                color: (isUser ? AppColors.primary : Colors.black).withValues(alpha: isDark ? 0.25 : 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Text(
             message.content,
             style: TextStyle(
-              color: isUser ? Colors.white : (isDark ? Colors.white : AppColors.lightTextPrimary),
+              color: isUser ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
               fontSize: 14,
               height: 1.4,
             ),
@@ -727,13 +742,20 @@ class _AiDjScreenState extends State<AiDjScreen> {
       margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01),
+        color: isDark ? const Color(0xFF1B162E) : Colors.white,
         borderRadius: AppRadius.mediumBorder,
         border: Border.all(
           color: isFallback
-              ? Colors.amber.withValues(alpha: 0.3)
-              : AppColors.primary.withValues(alpha: 0.3),
+              ? Colors.amber.withValues(alpha: 0.4)
+              : AppColors.primary.withValues(alpha: 0.35),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: (isFallback ? Colors.amber : AppColors.primary).withValues(alpha: isDark ? 0.15 : 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,14 +771,17 @@ class _AiDjScreenState extends State<AiDjScreen> {
               Expanded(
                 child: Text(
                   playlist.title,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  ),
                 ),
               ),
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     colors: [AppColors.primary, AppColors.secondary],
                   ),
                   shape: BoxShape.circle,
@@ -799,96 +824,110 @@ class _AiDjScreenState extends State<AiDjScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: Text(
-          'AI Music Assistant',
-          style: theme.textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w900),
-        ),
+    return MusicFlowBackdrop(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        child: Column(
-          children: [
-            _buildConversationChips(),
-            const SizedBox(height: AppSpacing.sm),
-            _buildBody(),
-            const SizedBox(height: AppSpacing.xs),
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: _isLoading ? null : AppShadows.neonGlow(AppColors.primary),
-                      ),
-                      child: TextField(
-                        controller: _promptController,
-                        enabled: !_isLoading,
-                        style: TextStyle(color: isDark ? Colors.white : AppColors.lightTextPrimary, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Nhập tin nhắn hoặc yêu cầu phát nhạc...',
-                          hintStyle: TextStyle(
-                            color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.6) : AppColors.lightTextSecondary.withValues(alpha: 0.6),
-                          ),
-                          filled: true,
-                          fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                            ),
-                          ),
-                          disabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: const BorderSide(
-                              color: AppColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
-                          suffixIcon: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.mic_rounded,
-                                  color: AppColors.secondary,
-                                ),
-                                tooltip: 'Trợ lý giọng nói AI',
-                                onPressed: _isLoading ? null : _openVoiceAiDjModal,
-                              ),
-
-                              IconButton(
-                                icon: Icon(
-                                  _isLoading ? Icons.hourglass_empty_rounded : Icons.send_rounded,
-                                  color: _isLoading ? AppColors.darkTextSecondary : AppColors.primary,
-                                ),
-                                onPressed: _isLoading ? null : _fetchAiPlaylist,
-                              ),
-                            ],
-                          ),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'AI Music Assistant',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Column(
+            children: [
+              _buildConversationChips(),
+              const SizedBox(height: AppSpacing.sm),
+              _buildBody(),
+              const SizedBox(height: AppSpacing.xs),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: _isLoading ? null : AppShadows.neonGlow(AppColors.primary),
                         ),
-                        onSubmitted: (_) => _isLoading ? null : _fetchAiPlaylist(),
+                        child: TextField(
+                          controller: _promptController,
+                          enabled: !_isLoading,
+                          style: TextStyle(color: isDark ? Colors.white : AppColors.lightTextPrimary, fontSize: 14),
+                          decoration: InputDecoration(
+                            hintText: 'Nhập tin nhắn hoặc yêu cầu phát nhạc...',
+                            hintStyle: TextStyle(
+                              color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.6) : AppColors.lightTextSecondary.withValues(alpha: 0.6),
+                            ),
+                            filled: true,
+                            fillColor: isDark ? const Color(0xFF1B162E) : Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide(
+                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                              ),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide(
+                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.mic_rounded,
+                                    color: AppColors.secondary,
+                                  ),
+                                  tooltip: 'Trợ lý giọng nói AI',
+                                  onPressed: _isLoading ? null : _openVoiceAiDjModal,
+                                ),
+
+                                IconButton(
+                                  icon: Icon(
+                                    _isLoading ? Icons.hourglass_empty_rounded : Icons.send_rounded,
+                                    color: _isLoading ? AppColors.darkTextSecondary : AppColors.primary,
+                                  ),
+                                  onPressed: _isLoading ? null : _fetchAiPlaylist,
+                                ),
+                              ],
+                            ),
+                          ),
+                          onSubmitted: (_) => _isLoading ? null : _fetchAiPlaylist(),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

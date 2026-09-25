@@ -2,14 +2,19 @@ const express = require("express");
 const router = express.Router();
 
 const Song = require("../models/song.model");
+const Favorite = require("../models/favorite.model");
 const authMiddleware = require("../middleware/auth.middleware");
 
-// Lấy tổng like cho bài hát (isLiked không lưu DB, quản lý phía client)
+// Lấy tổng like và trạng thái đã like cho bài hát (Hỗ trợ Mobile Flutter)
 router.get("/status/:songId", authMiddleware, async (req, res) => {
   try {
     const { songId } = req.params;
 
-    const song = await Song.findById(songId).select("_id likeCount");
+    const [song, existingFav] = await Promise.all([
+      Song.findById(songId).select("_id likeCount"),
+      Favorite.findOne({ userId: req.userId, songId }),
+    ]);
+
     if (!song) {
       return res.status(404).json({
         success: false,
@@ -19,7 +24,7 @@ router.get("/status/:songId", authMiddleware, async (req, res) => {
 
     res.json({
       success: true,
-      isLiked: false,
+      isLiked: !!existingFav,
       likeCount: song.likeCount || 0,
     });
   } catch (error) {
@@ -32,7 +37,7 @@ router.get("/status/:songId", authMiddleware, async (req, res) => {
   }
 });
 
-// Tăng/giảm likeCount trực tiếp trên Song (liked: true = thích, false = bỏ thích)
+// Toggle trạng thái like (Đồng bộ trực tiếp với Favorite collection cho Mobile Flutter)
 router.post("/toggle/:songId", authMiddleware, async (req, res) => {
   try {
     const { songId } = req.params;
@@ -46,19 +51,40 @@ router.post("/toggle/:songId", authMiddleware, async (req, res) => {
       });
     }
 
-    if (liked) {
-      song.likeCount = (song.likeCount || 0) + 1;
+    const existingFav = await Favorite.findOne({ userId: req.userId, songId });
+    let isLikedNow;
+
+    if (typeof liked === "boolean") {
+      isLikedNow = liked;
+      if (liked) {
+        await Favorite.updateOne(
+          { userId: req.userId, songId },
+          { $setOnInsert: { userId: req.userId, songId } },
+          { upsert: true }
+        );
+      } else {
+        await Favorite.deleteOne({ userId: req.userId, songId });
+      }
     } else {
-      song.likeCount = Math.max(0, (song.likeCount || 0) - 1);
+      // Nếu client không gửi liked boolean, tự toggle theo trạng thái hiện tại
+      if (existingFav) {
+        await Favorite.deleteOne({ userId: req.userId, songId });
+        isLikedNow = false;
+      } else {
+        await Favorite.create({ userId: req.userId, songId });
+        isLikedNow = true;
+      }
     }
 
-    await song.save();
+    // Đồng bộ lại likeCount tuyệt đối cho bài hát
+    const exactLikeCount = await Favorite.countDocuments({ songId });
+    await Song.updateOne({ _id: songId }, { $set: { likeCount: exactLikeCount } });
 
     res.json({
       success: true,
-      isLiked: !!liked,
-      likeCount: song.likeCount,
-      message: liked ? "Da thich bai hat" : "Da bo thich bai hat",
+      isLiked: isLikedNow,
+      likeCount: exactLikeCount,
+      message: isLikedNow ? "Da thich bai hat" : "Da bo thich bai hat",
     });
   } catch (error) {
     console.error("Toggle like error:", error);

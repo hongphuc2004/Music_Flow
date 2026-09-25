@@ -2,6 +2,7 @@ const Transaction = require("../models/transaction.model");
 const Subscription = require("../models/subscription.model");
 const Plan = require("../models/plan.model");
 const User = require("../models/user.model");
+const Artist = require("../models/artist.model");
 const vnpayUtil = require("../utils/vnpay.util");
 
 /**
@@ -16,16 +17,8 @@ function getVNPayCreateDate() {
 /**
  * Khởi tạo yêu cầu thanh toán (Checkout)
  */
-async function checkout({ planId, paymentMethod, userId, ipAddress }) {
-  // 1. Kiểm tra tài khoản người dùng
-  const user = await User.findById(userId);
-  if (!user) {
-    const err = new Error("Người dùng không tồn tại");
-    err.status = 404;
-    throw err;
-  }
-
-  // 2. Lấy thông tin gói từ Database để đảm bảo tính an toàn dữ liệu (không tin giá gửi từ Client)
+async function checkout({ planId, paymentMethod, userId, userRole = "user", ipAddress }) {
+  // 1. Lấy thông tin gói từ Database để đảm bảo tính an toàn dữ liệu (không tin giá gửi từ Client)
   const plan = await Plan.findById(planId);
   if (!plan || !plan.isActive) {
     const err = new Error("Gói cước không khả dụng hoặc đã bị tắt");
@@ -33,27 +26,70 @@ async function checkout({ planId, paymentMethod, userId, ipAddress }) {
     throw err;
   }
 
+  const isArtist = userRole === "artist";
+  const targetRole = plan.targetRole || "user";
+
+  if (isArtist && targetRole !== "artist") {
+    const err = new Error("Gói cước này không dành cho nghệ sĩ");
+    err.status = 400;
+    throw err;
+  }
+  if (!isArtist && targetRole === "artist") {
+    const err = new Error("Gói cước này chỉ dành cho nghệ sĩ");
+    err.status = 400;
+    throw err;
+  }
+
+  // 2. Kiểm tra tài khoản người dùng / nghệ sĩ
+  if (isArtist) {
+    const artist = await Artist.findById(userId);
+    if (!artist) {
+      const err = new Error("Nghệ sĩ không tồn tại");
+      err.status = 404;
+      throw err;
+    }
+  } else {
+    const user = await User.findById(userId);
+    if (!user) {
+      const err = new Error("Người dùng không tồn tại");
+      err.status = 404;
+      throw err;
+    }
+  }
+
   // 3. Tạo mã tham chiếu giao dịch độc nhất (vnp_TxnRef hoặc Mock Transaction ID)
   // Định dạng: timestamp_6 ký tự cuối của userId
   const transactionRef = `${Date.now()}_${String(userId).slice(-6)}`;
 
   // 4. Tạo Transaction ở trạng thái pending
-  const transaction = await Transaction.create({
-    user: userId,
+  const transactionData = {
     plan: plan._id,
     amount: plan.price,
     paymentMethod,
     transactionRef,
     status: "pending",
-  });
+    subscriberType: isArtist ? "Artist" : "User",
+  };
+  if (isArtist) {
+    transactionData.artist = userId;
+  } else {
+    transactionData.user = userId;
+  }
+  const transaction = await Transaction.create(transactionData);
 
   // 5. Tạo Subscription ở trạng thái pending để ánh xạ 1-1 với Transaction
-  const subscription = await Subscription.create({
-    user: userId,
+  const subscriptionData = {
     plan: plan._id,
     status: "pending",
     transaction: transaction._id,
-  });
+    subscriberType: isArtist ? "Artist" : "User",
+  };
+  if (isArtist) {
+    subscriptionData.artist = userId;
+  } else {
+    subscriptionData.user = userId;
+  }
+  const subscription = await Subscription.create(subscriptionData);
 
   // 6. Xử lý theo phương thức thanh toán
   if (paymentMethod === "vnpay") {
@@ -68,6 +104,10 @@ async function checkout({ planId, paymentMethod, userId, ipAddress }) {
       throw err;
     }
 
+    const orderDesc = isArtist
+      ? `Thanh toán Studio Pro ${plan.name}`
+      : `Thanh toán gói cước premium ${plan.name}`;
+
     const paymentUrl = vnpayUtil.createPaymentUrl({
       tmnCode,
       hashSecret,
@@ -76,7 +116,7 @@ async function checkout({ planId, paymentMethod, userId, ipAddress }) {
       ipAddress,
       amount: plan.price,
       txnRef: transactionRef,
-      orderInfo: `Thanh toan goi cuoc premium ${plan.name}`,
+      orderInfo: orderDesc,
       createDate: getVNPayCreateDate(),
     });
 
@@ -98,7 +138,7 @@ async function checkout({ planId, paymentMethod, userId, ipAddress }) {
 }
 
 /**
- * Kích hoạt trạng thái Premium (Thành công) - Đảm bảo Idempotency nguyên tử
+ * Kích hoạt trạng thái Premium / Pro (Thành công) - Đảm bảo Idempotency nguyên tử
  */
 async function activateSubscription(transactionRef, gatewayResponse, paidAt) {
   // 1. Cập nhật Transaction từ pending -> success một cách nguyên tử
@@ -135,7 +175,49 @@ async function activateSubscription(transactionRef, gatewayResponse, paidAt) {
     throw err;
   }
 
-  // 4. Tìm và cập nhật thông tin người dùng
+  // 4. Phân nhánh xử lý theo subscriberType: Artist vs User
+  if (transaction.subscriberType === "Artist") {
+    const artist = await Artist.findById(transaction.artist);
+    if (!artist) {
+      const err = new Error("Không tìm thấy nghệ sĩ sở hữu giao dịch");
+      err.status = 404;
+      throw err;
+    }
+
+    let startDate = new Date();
+    const isRenewal = Boolean(artist.isPro && artist.proExpiry && artist.proExpiry > new Date());
+    if (isRenewal) {
+      startDate = new Date(artist.proExpiry);
+    }
+
+    let durationInDays = transaction.plan.durationInDays || 30;
+    if (transaction.paymentMethod === "mock") {
+      durationInDays = 1;
+    }
+    const endDate = new Date(startDate.getTime() + durationInDays * 24 * 60 * 60 * 1000);
+
+    // Cập nhật Subscription thành active
+    subscription.startDate = startDate;
+    subscription.endDate = endDate;
+    subscription.status = "active";
+    await subscription.save();
+
+    // Cập nhật Artist thành Pro (Tuyệt đối không sửa isVerified)
+    artist.isPro = true;
+    artist.proExpiry = endDate;
+    artist.proPlan = transaction.plan._id;
+    await artist.save();
+
+    return {
+      success: true,
+      alreadyActivated: false,
+      transaction,
+      subscription,
+      artist,
+    };
+  }
+
+  // 5. Cập nhật thông tin User thông thường
   const user = await User.findById(transaction.user);
   if (!user) {
     const err = new Error("Không tìm thấy người dùng sở hữu giao dịch");
@@ -159,19 +241,19 @@ async function activateSubscription(transactionRef, gatewayResponse, paidAt) {
   }
   const endDate = new Date(startDate.getTime() + durationInDays * 24 * 60 * 60 * 1000);
 
-  // 5. Cập nhật Subscription thành active
+  // Cập nhật Subscription thành active
   subscription.startDate = startDate;
   subscription.endDate = endDate;
   subscription.status = "active";
   await subscription.save();
 
-  // 6. Cập nhật User thành Premium
+  // Cập nhật User thành Premium
   user.isPremium = true;
   user.premiumExpiry = endDate;
   user.premiumPlan = transaction.plan._id;
   await user.save();
 
-  // 7. Trigger subscription notification (purchase vs renewal)
+  // Trigger subscription notification (purchase vs renewal)
   const notificationTriggerService = require("./notificationTrigger.service");
   notificationTriggerService.triggerSubscriptionNotification({
     userId: user._id,
@@ -185,6 +267,7 @@ async function activateSubscription(transactionRef, gatewayResponse, paidAt) {
     alreadyActivated: false,
     transaction,
     subscription,
+    user,
   };
 }
 

@@ -20,7 +20,7 @@ const moodPlaylistSchema = new mongoose.Schema(
   {
     conversationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "MoodConversation",
+      ref: "AssistantConversation",
       required: true,
       index: true,
     },

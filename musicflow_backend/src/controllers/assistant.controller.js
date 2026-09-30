@@ -7,7 +7,7 @@ const MoodPlaylist = require("../models/mood-playlist.model");
 
 exports.sendMessage = async (req, res) => {
   try {
-    const { prompt, conversationId, scope = "global", model } = req.body;
+    const { prompt, conversationId, scope = "global", model, mode } = req.body;
     const actorId = req.userId;
     const actorRole = req.userRole || "user";
     const actorType = actorRole === "artist" ? "Artist" : "User";
@@ -27,6 +27,7 @@ exports.sendMessage = async (req, res) => {
       actorRole,
       scope,
       preferredModel: model,
+      mode,
     });
 
     return res.json({

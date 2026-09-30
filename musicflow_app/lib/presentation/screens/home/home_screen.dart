@@ -460,7 +460,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       VoiceAiDjSheet.show(
                         context,
                         onExecuteActions: (actions, songs) {
-                          if (songs.isNotEmpty) {
+                          if (actions == null || actions.isEmpty) return;
+                          final hasPlay = actions.any((a) {
+                            final type = (a is Map ? a['type'] : null)?.toString().toUpperCase();
+                            return type == 'PLAY_SONG' || type == 'LOAD_PLAYLIST' || type == 'PLAY_PLAYLIST';
+                          });
+                          if (hasPlay && songs.isNotEmpty) {
                             widget.onPlayAll?.call(songs, startIndex: 0);
                           }
                         },

@@ -750,6 +750,7 @@ export function ClientPlayerProvider({ children }) {
     toggleShuffle,
     cycleRepeatMode,
     togglePlay,
+    togglePlayPause: togglePlay,
     seekTo,
     toggleAutoplay,
     setAudioQuality,

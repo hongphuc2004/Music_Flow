@@ -601,6 +601,17 @@ function resolveContextualReference(prompt = "", context = {}) {
     }
   }
 
+  // Affirmative confirmations: "có", "bật đi", "phát đi", "mở đi", "ừ", "ok", "được", "nghe đi", "phát luôn đi", "bật luôn đi"
+  const isAffirmative = /\b(co|bat di|phat di|mo di|u|ok|duoc|nghe di|phat luon di|bat luon di|mo luon)\b/.test(text);
+  if (isAffirmative) {
+    if (context.lastSong && context.lastSong.title) {
+      return { type: "song", song: context.lastSong };
+    }
+    if (context.recentSongs && context.recentSongs.length > 0) {
+      return { type: "song", song: context.recentSongs[0] };
+    }
+  }
+
   return null;
 }
 
@@ -670,8 +681,8 @@ function buildGeminiHistory(messages = []) {
 }
 
 // System instructions built dynamically via PromptBuilder Service
-function buildSystemInstruction(actorRole) {
-  return promptBuilder.buildSystemInstruction(actorRole);
+function buildSystemInstruction(actorRole, options = {}) {
+  return promptBuilder.buildSystemInstruction(actorRole, options);
 }
 
 // Define Tools (Function Declarations) dynamically for Gemini based on role
@@ -837,6 +848,7 @@ class AssistantService {
     actorRole,
     scope = "global",
     preferredModel = null,
+    mode = "chat",
   }) {
     const rawPrompt = typeof prompt === "string" ? prompt.trim() : "";
     const cleanPrompt = rawPrompt;
@@ -931,7 +943,10 @@ class AssistantService {
       if (process.env.GEMINI_API_KEY) {
         const geminiRouter = require("./geminiRouter.service");
         const aiOrchestrator = require("./aiOrchestrator.service");
-        const systemInstruction = buildSystemInstruction(actorRole, { aiMemory: userProfile?.aiMemory });
+        const systemInstruction = buildSystemInstruction(actorRole, {
+          aiMemory: userProfile?.aiMemory,
+          mode,
+        });
 
         // Preprocess prompt via Orchestrator (Bypass / Mistral Enricher / Fallback)
         const orchestration = await aiOrchestrator.processUserRequest({ userPrompt: cleanPrompt });
@@ -1445,13 +1460,29 @@ class AssistantService {
             if (matchedArtistsList.length > 0 || songsList.length > 0) {
               const artistNameStr = matchedArtistsList.map((a) => a.name).join(", ");
               const songTitles = songsList.slice(0, 5).map((s, idx) => `${idx + 1}. ${s.title}`).join("\n");
-              assistantText = `Trong thư viện MusicFlow hiện có ${matchedArtistsList.length > 0 ? `ca sĩ ${artistNameStr} cùng ` : ""}${songsList.length} bài hát nổi bật:\n${songTitles}\n\nBạn có muốn mình bật phát bài nào không?`;
-              clientActions.push({
-                type: "SHOW_SEARCH_RESULTS",
-                payload: { query: cleanPrompt, songs: songsList },
-              });
-              songs = songsList;
-              metadata = { type: "search_music", query: cleanPrompt, songs: songsList, count: songsList.length };
+
+              if (mode === "voice" || songsList.length === 1) {
+                // When in Voice AI DJ mode or single song match: directly play the song without redundant asking!
+                const firstSong = songsList[0];
+                const artistStr = (firstSong.artists || []).map((a) => typeof a === "object" ? a.name : a).filter(Boolean).join(", ");
+                assistantText = songsList.length === 1
+                  ? `Được rồi, mình đang phát bài "${firstSong.title}"${artistStr ? ` của ${artistStr}` : ""} cho bạn nhé! 🎵`
+                  : `Đang phát các ca khúc nổi bật${artistNameStr ? ` của ${artistNameStr}` : ""} cho bạn thưởng thức nhé! 🎵`;
+                clientActions.push({
+                  type: "PLAY_SONG",
+                  payload: { songId: firstSong._id, song: firstSong, songs: songsList },
+                });
+                songs = songsList;
+                metadata = { type: "play_song", songId: firstSong._id, song: firstSong, songs: songsList };
+              } else {
+                assistantText = `Trong thư viện MusicFlow hiện có ${matchedArtistsList.length > 0 ? `ca sĩ ${artistNameStr} cùng ` : ""}${songsList.length} bài hát nổi bật:\n${songTitles}\n\nBạn muốn nghe bài nào trong các bài này?`;
+                clientActions.push({
+                  type: "SHOW_SEARCH_RESULTS",
+                  payload: { query: cleanPrompt, songs: songsList },
+                });
+                songs = songsList;
+                metadata = { type: "search_music", query: cleanPrompt, songs: songsList, count: songsList.length };
+              }
             } else {
               assistantText = "Mình là Trợ lý AI MusicFlow. Bạn có muốn mình tìm bài hát, ca sĩ hay tạo playlist nhạc theo cảm xúc giúp bạn không? 🎵";
               metadata = { type: "chat_only" };

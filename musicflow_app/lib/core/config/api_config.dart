@@ -83,6 +83,9 @@ class ApiConfig {
   static String get subscriptionsEndpoint => "$baseUrl/api/subscriptions";
   static String songStreamUrl(String songId) => "$songsEndpoint/$songId/stream";
 
+  static String ttsUrl(String text, {String lang = 'vi'}) =>
+      "$baseUrl/api/ai/tts?lang=$lang&text=${Uri.encodeComponent(text)}";
+
   static String artistProfileUrlByName(String artistName) =>
       "$artistEndpoint/profile?name=${Uri.encodeComponent(artistName)}";
 

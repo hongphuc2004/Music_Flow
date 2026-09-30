@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/voice_search_sheet.dart';
 import '../../../data/services/song_api_service.dart';
 import '../../../data/services/topic_api_service.dart';
 import '../../../data/models/song_model.dart';
@@ -24,7 +22,6 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final SpeechToText _speechToText = SpeechToText();
 
   List<Song> _searchResults = [];
   List<SearchArtist> _artistResults = [];
@@ -41,8 +38,6 @@ class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounceTimer;
   bool _hasSearched = false;
   bool _isSearchFocused = false;
-  bool _isListening = false;
-  bool _isSpeechAvailable = false;
   Topic? _selectedTopic;
 
   @override
@@ -50,7 +45,6 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _loadSearchHistory();
     _loadTopics();
-    _initSpeech();
     _searchFocusNode.addListener(_onFocusChange);
   }
 
@@ -60,88 +54,25 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
     _debounceTimer?.cancel();
-    _speechToText.cancel();
     super.dispose();
   }
 
-  Future<void> _initSpeech() async {
-    final available = await _speechToText.initialize(
-      onStatus: (status) {
-        if (!mounted) return;
-        setState(() {
-          _isListening = status == 'listening';
-        });
-      },
-      onError: (_) {
-        if (!mounted) return;
-        setState(() {
-          _isListening = false;
-        });
-      },
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _isSpeechAvailable = available;
-    });
-  }
-
   Future<void> _toggleVoiceSearch() async {
-    if (!_isSpeechAvailable) {
-      await _initSpeech();
-      if (!_isSpeechAvailable && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thiết bị chưa hỗ trợ tìm kiếm giọng nói'),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (_isListening) {
-      await _speechToText.stop();
-      if (!mounted) return;
-      setState(() {
-        _isListening = false;
-      });
-      return;
-    }
-
     _searchFocusNode.unfocus();
-    setState(() {
-      _isSearchFocused = true;
-      _selectedTopic = null;
-      _topicSongs = [];
-    });
-
-    await _speechToText.listen(
-      onResult: _onSpeechResult,
-      listenMode: ListenMode.search,
-      partialResults: true,
-      cancelOnError: true,
-      localeId: 'vi_VN',
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _isListening = true;
-    });
-  }
-
-  void _onSpeechResult(SpeechRecognitionResult result) {
-    final words = result.recognizedWords.trim();
-    if (words.isEmpty) return;
-
-    _searchController.value = TextEditingValue(
-      text: words,
-      selection: TextSelection.collapsed(offset: words.length),
-    );
-
-    _onSearch(words);
-
-    if (result.finalResult) {
-      _performSearch(words);
+    final query = await VoiceSearchSheet.show(context);
+    if (query != null && query.trim().isNotEmpty) {
+      final cleanQuery = query.trim();
+      _searchController.value = TextEditingValue(
+        text: cleanQuery,
+        selection: TextSelection.collapsed(offset: cleanQuery.length),
+      );
+      setState(() {
+        _isSearchFocused = true;
+        _hasSearched = true;
+        _selectedTopic = null;
+        _topicSongs = [];
+      });
+      _performSearch(cleanQuery);
     }
   }
 
@@ -340,7 +271,6 @@ class _SearchScreenState extends State<SearchScreen> {
                   Expanded(child: _buildContent()),
                 ],
               ),
-              if (_isListening) _buildVoiceSearchOverlay(),
             ],
           ),
         ),
@@ -402,9 +332,9 @@ class _SearchScreenState extends State<SearchScreen> {
                           },
                         ),
                       IconButton(
-                        icon: Icon(
-                          _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-                          color: _isListening ? AppColors.secondary : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                        icon: const Icon(
+                          Icons.mic_rounded,
+                          color: AppColors.primary,
                         ),
                         tooltip: 'Tìm bằng giọng nói',
                         onPressed: _toggleVoiceSearch,
@@ -1021,159 +951,5 @@ class _SearchScreenState extends State<SearchScreen> {
     final int minutes = totalSeconds ~/ 60;
     final int seconds = totalSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  Widget _buildVoiceSearchOverlay() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Positioned.fill(
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-          child: Container(
-            color: (isDark ? AppColors.darkBackground : AppColors.lightBackground).withOpacity(0.85),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                    boxShadow: AppShadows.neonGlow(AppColors.secondary),
-                  ),
-                  child: const Icon(
-                    Icons.mic_rounded,
-                    size: 48,
-                    color: AppColors.secondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Đang lắng nghe...',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                  child: Text(
-                    _searchController.text.isNotEmpty
-                        ? '"${_searchController.text}"'
-                        : 'Hãy nói tên bài hát hoặc nghệ sĩ',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontStyle: _searchController.text.isEmpty ? FontStyle.italic : FontStyle.normal,
-                      color: _searchController.text.isNotEmpty
-                          ? (isDark ? Colors.white : AppColors.lightTextPrimary)
-                          : theme.hintColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 48),
-                // Audio Wave animation
-                SizedBox(
-                  height: 40,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return _VoiceWaveBar(index: index);
-                    }),
-                  ),
-                ),
-                const SizedBox(height: 60),
-                // Cancel button
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: AppRadius.badgeBorder,
-                    border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                    ),
-                  ),
-                  child: TextButton.icon(
-                    onPressed: () async {
-                      await _speechToText.stop();
-                      setState(() {
-                        _isListening = false;
-                      });
-                    },
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                    ),
-                    label: Text(
-                      'Hủy bỏ',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : AppColors.lightTextPrimary,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _VoiceWaveBar extends StatefulWidget {
-  final int index;
-  const _VoiceWaveBar({required this.index});
-
-  @override
-  State<_VoiceWaveBar> createState() => _VoiceWaveBarState();
-}
-
-class _VoiceWaveBarState extends State<_VoiceWaveBar> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 300 + widget.index * 80),
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(begin: 8.0, end: 32.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: 5,
-          height: _animation.value,
-          margin: const EdgeInsets.symmetric(horizontal: 2.5),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.secondary],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.circular(2.5),
-          ),
-        );
-      },
-    );
   }
 }

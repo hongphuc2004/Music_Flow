@@ -83,8 +83,8 @@ class LyricsApiService {
       return LyricsResult(
         success: false,
         message: response.statusCode == 404
-            ? 'Bài hát chưa có lời bài hát'
-            : 'Không thể tải lyrics (${response.statusCode})',
+            ? 'Bài này chưa có lời bài hát'
+            : 'Không thể tải lời bài hát (${response.statusCode})',
       );
     } on NetworkException catch (_) {
       if (fallbackLyrics.trim().isNotEmpty) {
@@ -96,7 +96,7 @@ class LyricsApiService {
           syncedLines: parsed,
         );
       }
-      return LyricsResult(success: false, message: 'Bài hát chưa có lời bài hát');
+      return LyricsResult(success: false, message: 'Bài này chưa có lời bài hát');
     } catch (e) {
       debugPrint('[LyricsApiService] Error fetching lyrics: $e');
       if (fallbackLyrics.trim().isNotEmpty) {
@@ -108,7 +108,7 @@ class LyricsApiService {
           syncedLines: parsed,
         );
       }
-      return LyricsResult(success: false, message: 'Bài hát chưa có lời bài hát');
+      return LyricsResult(success: false, message: 'Bài này chưa có lời bài hát');
     }
   }
 }

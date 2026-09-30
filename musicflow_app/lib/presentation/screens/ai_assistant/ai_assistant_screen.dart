@@ -229,15 +229,18 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       context,
       conversationId: _activeConversationId,
       onExecuteActions: (actions, songs) {
-        if (songs.isNotEmpty) {
-          if (actions != null && actions.isNotEmpty) {
-            final firstAction = actions.first;
-            final type = firstAction is Map ? firstAction['type']?.toString() : null;
-            if (type == 'play_playlist') {
-              _playAllSongs(songs);
-            } else {
-              _playSong(songs.first);
-            }
+        if (actions == null || actions.isEmpty) return;
+        final hasPlay = actions.any((a) {
+          final type = (a is Map ? a['type'] : null)?.toString().toUpperCase();
+          return type == 'PLAY_SONG' || type == 'LOAD_PLAYLIST' || type == 'PLAY_PLAYLIST';
+        });
+        if (hasPlay && songs.isNotEmpty) {
+          final isPlaylist = actions.any((a) {
+            final type = (a is Map ? a['type'] : null)?.toString().toUpperCase();
+            return type == 'LOAD_PLAYLIST' || type == 'PLAY_PLAYLIST';
+          });
+          if (isPlaylist) {
+            _playAllSongs(songs);
           } else {
             _playSong(songs.first);
           }

@@ -78,6 +78,18 @@ function buildSystemInstruction(actorRole = "user", options = {}) {
 
   if (safety) sections.push(safety);
 
+  // Voice Mode Specific Directives (High Priority)
+  if (options.mode === "voice") {
+    sections.push(
+      "## QUY TẮC BẮT BUỘC CHO CHẾ ĐỘ GIỌNG NÓI (VOICE MODE):\n" +
+      "- Người dùng đang nói chuyện với bạn qua MICROPHONE (Voice conversation).\n" +
+      "- Phản hồi của bạn sẽ được chuyển thành GIỌNG NÓI (Text-to-Speech) để phát ra loa.\n" +
+      "- BẮT BUỘC trả lời cực kỳ NGẮN GỌN (1 đến 2 câu, tối đa 25-30 từ), tự nhiên như DJ trò chuyện.\n" +
+      "- Tuyệt đối KHÔNG sử dụng ký tự Markdown như *, **, #, gạch đầu dòng (-).\n" +
+      "- Tuyệt đối KHÔNG đọc danh sách dài dằng dặc. Nếu tìm thấy nhiều bài, chỉ cần nói: 'Mình đã chọn cho bạn một số bài hát phù hợp, cùng thưởng thức nhé!'."
+    );
+  }
+
   return sections.filter(Boolean).join("\n\n");
 }
 

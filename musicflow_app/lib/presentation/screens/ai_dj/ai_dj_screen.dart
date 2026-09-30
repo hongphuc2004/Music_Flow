@@ -940,8 +940,6 @@ class _AiDjScreenState extends State<AiDjScreen> {
       onExecuteActions: (actions, songs) {
         if (actions != null && actions.isNotEmpty) {
           _executeClientActions(actions);
-        } else if (songs.isNotEmpty) {
-          widget.onPlayAll(songs, startIndex: 0);
         }
         _loadHistory();
       },

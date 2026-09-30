@@ -1123,7 +1123,13 @@ function ClientHome() {
                 return (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`quick-flow-${song._id}`}>
                     <Box
-                      onClick={() => playSong(song, { queue: quickListenSongs })}
+                      onClick={() => {
+                        if (isCurrent) {
+                          togglePlay();
+                        } else {
+                          playSong(song, { queue: quickListenSongs });
+                        }
+                      }}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1205,6 +1211,15 @@ function ClientHome() {
                       <IconButton
                         className="flow-play-btn"
                         size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isCurrent) {
+                            togglePlay();
+                          } else {
+                            playSong(song, { queue: quickListenSongs });
+                          }
+                        }}
+                        aria-label={isCurrent && isPlaying ? 'Tạm dừng' : 'Phát'}
                         sx={{
                           opacity: isCurrent ? 1 : 0,
                           transform: isCurrent ? 'scale(1)' : 'scale(0.8)',
@@ -1253,7 +1268,13 @@ function ClientHome() {
               {/* Podium #02 (Silver Cyan - Left) */}
               <Grid size={{ xs: 12, md: 4 }}>
                 <Box
-                  onClick={() => playSong(top3Podium[1], { queue: topSongs })}
+                  onClick={() => {
+                    if (currentSong?._id === top3Podium[1]?._id) {
+                      togglePlay();
+                    } else {
+                      playSong(top3Podium[1], { queue: topSongs });
+                    }
+                  }}
                   className="podium-silver"
                   sx={{
                     p: 3,
@@ -1288,7 +1309,13 @@ function ClientHome() {
               {/* Podium #01 (Gold Neon - Center Tallest) */}
               <Grid size={{ xs: 12, md: 4 }}>
                 <Box
-                  onClick={() => playSong(top3Podium[0], { queue: topSongs })}
+                  onClick={() => {
+                    if (currentSong?._id === top3Podium[0]?._id) {
+                      togglePlay();
+                    } else {
+                      playSong(top3Podium[0], { queue: topSongs });
+                    }
+                  }}
                   className="podium-gold"
                   sx={{
                     p: 3.5,
@@ -1323,7 +1350,13 @@ function ClientHome() {
               {/* Podium #03 (Bronze Purple - Right) */}
               <Grid size={{ xs: 12, md: 4 }}>
                 <Box
-                  onClick={() => playSong(top3Podium[2], { queue: topSongs })}
+                  onClick={() => {
+                    if (currentSong?._id === top3Podium[2]?._id) {
+                      togglePlay();
+                    } else {
+                      playSong(top3Podium[2], { queue: topSongs });
+                    }
+                  }}
                   className="podium-bronze"
                   sx={{
                     p: 3,
@@ -1365,7 +1398,13 @@ function ClientHome() {
                     index={index + 4}
                     isCurrent={currentSong?._id === song._id}
                     isPlaying={isPlaying}
-                    onPlay={() => playSong(song, { queue: topSongs })}
+                    onPlay={() => {
+                      if (currentSong?._id === song._id) {
+                        togglePlay();
+                      } else {
+                        playSong(song, { queue: topSongs });
+                      }
+                    }}
                   />
                 </Grid>
               ))}
@@ -1584,7 +1623,13 @@ function ClientHome() {
                     song={song}
                     isCurrent={currentSong?._id === song._id}
                     isPlaying={isPlaying}
-                    onPlay={() => playSong(song, { queue: recommendedSongs })}
+                    onPlay={() => {
+                      if (currentSong?._id === song._id) {
+                        togglePlay();
+                      } else {
+                        playSong(song, { queue: recommendedSongs });
+                      }
+                    }}
                   />
                 </Grid>
               ))}

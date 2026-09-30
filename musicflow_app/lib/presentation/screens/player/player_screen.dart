@@ -208,7 +208,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _isLyricsSynced = false;
         _isEstimatedLyrics = false;
         _lyricsLines = plainLines;
-        _lyricsError = plainLines.isEmpty ? 'Bài hát chưa có lyrics.' : null;
+        _lyricsError = plainLines.isEmpty ? 'Bài này chưa có lời bài hát.' : null;
       });
       return;
     }
@@ -218,7 +218,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       _isLyricsSynced = false;
       _isEstimatedLyrics = false;
       _lyricsLines = const [];
-      _lyricsError = 'Bài hát chưa có lyrics.';
+      _lyricsError = 'Bài này chưa có lời bài hát.';
     });
   }
 

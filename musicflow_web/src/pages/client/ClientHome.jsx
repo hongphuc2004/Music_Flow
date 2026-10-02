@@ -88,7 +88,6 @@ function ClientHome() {
     activeWordIndex,
     playPrevious,
     playNext,
-    queue,
     handleNext,
     handlePrevious,
   } = useClientPlayer();
@@ -244,7 +243,7 @@ function ClientHome() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(blobUrl);
-      } catch (fetchErr) {
+      } catch {
         // Fallback for CORS restricted origins: trigger browser direct download/tab
         const link = document.createElement('a');
         link.href = downloadUrl;

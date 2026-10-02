@@ -566,7 +566,7 @@ export default function ClientSongDetail() {
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
                 <SparklesIcon sx={{ color: '#6c63ff', fontSize: 20 }} />
                 <Typography variant="h6" fontWeight={800} fontSize="1.1rem">
-                  Lời bài hát (Lyrics)
+                  Lời bài hát
                 </Typography>
               </Stack>
               <Divider sx={{ mb: 2.5 }} />

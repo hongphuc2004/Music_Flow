@@ -106,6 +106,8 @@ __tests__/
 model_cache/
 *.pt
 musicflow_lyrics_sync/models/wav2vec2_onnx/
+temp_bench/
+musicflow_lyrics_sync/temp_bench/
 
 # Ignore all dot-directories (IDE/editor configs, agent folders, etc.)
 .*/

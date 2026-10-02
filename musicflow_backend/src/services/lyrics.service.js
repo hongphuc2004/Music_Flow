@@ -1,4 +1,6 @@
+const crypto = require("crypto");
 const mongoose = require("mongoose");
+const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
 const SongLyrics = require("../models/song-lyrics.model");
 const { parseLrc, lrcToPlainText } = require("../utils/lrc-parser.util");
@@ -514,7 +516,10 @@ async function triggerAlignmentJob(songId, userId, userRole, payload = {}) {
 async function getAlignmentJobStatus(songId, userId, userRole) {
   const { song } = await resolveSongAndOwnership(songId, userId, userRole);
 
-  const job = await LyricsAlignmentJob.findOne({ songId: song._id })
+  const job = await LyricsAlignmentJob.findOne({
+    songId: song._id,
+    pipelineMode: { $ne: "auto_transcribe" },
+  })
     .sort({ createdAt: -1 })
     .lean();
 
@@ -634,6 +639,135 @@ async function cancelAlignmentJob(songId, userId, userRole) {
   return { success: true, message: "Đã dừng tác vụ AI căn nhịp" };
 }
 
+/**
+ * Trigger Faster-Whisper Auto-Transcription Job for Artist
+ * @param {string} songId
+ * @param {string} userId
+ * @param {string} userRole
+ * @param {object} options
+ */
+async function triggerTranscriptionJob(songId, userId, userRole, options = {}) {
+  const { song, artistId } = await resolveSongAndOwnership(songId, userId, userRole);
+
+  const audioPublicId = song.audioPublicId || song.audioUrl;
+  if (!audioPublicId) {
+    const err = new Error("Bài hát chưa có tệp âm thanh");
+    err.status = 400;
+    throw err;
+  }
+
+  // 1. Prevent duplicate active job (pending or processing)
+  const activeJob = await LyricsAlignmentJob.findOne({
+    songId: song._id,
+    pipelineMode: "auto_transcribe",
+    status: { $in: ["pending", "processing"] },
+  }).sort({ createdAt: -1 });
+
+  if (activeJob) {
+    return {
+      jobId: activeJob._id,
+      songId: song._id,
+      status: activeJob.status,
+      stage: activeJob.stage || "PROCESSING",
+      progressPercent: activeJob.progressPercent || 20,
+      progressMessage: activeJob.progressMessage || "Tác vụ nhận diện lời đang được xử lý",
+      isCached: false,
+      message: "Tác vụ nhận diện lời đang được xử lý",
+      createdAt: activeJob.createdAt,
+    };
+  }
+
+  // 2. Create New Transcription Job in MongoDB Queue (Always fresh, no stale cache)
+
+  // 3. Create New Transcription Job in MongoDB Queue
+  const preferredProvider = process.env.GEMINI_API_KEY ? "gemini-flash" : "faster-whisper";
+  const targetModel = options?.modelSize || (process.env.GEMINI_API_KEY ? "gemini-2.5-flash" : "medium");
+  const targetLang = options?.language || "vi";
+  const inputFingerprint = crypto
+    .createHash("sha256")
+    .update(`${song._id}:${audioPublicId}:auto_transcribe:${targetModel}:${targetLang}`)
+    .digest("hex");
+  const combinedFingerprint = crypto
+    .createHash("sha256")
+    .update(`${inputFingerprint}:${preferredProvider}`)
+    .digest("hex");
+
+  const newJob = await LyricsAlignmentJob.create({
+    songId: song._id,
+    artistId,
+    status: "pending",
+    stage: "PENDING",
+    pipelineMode: "auto_transcribe",
+    transcriptionProvider: preferredProvider,
+    transcriptionModel: targetModel,
+    language: targetLang,
+    audioPublicId,
+    plainLyricsHash: "",
+    inputFingerprint,
+    pipelineFingerprint: `${preferredProvider}-wav2vec2`,
+    fingerprint: combinedFingerprint,
+    expectedDraftVersion: 1,
+  });
+
+  return {
+    jobId: newJob._id,
+    songId: song._id,
+    status: newJob.status,
+    fingerprint: newJob.fingerprint,
+    isCached: false,
+    message: "Khởi tạo tác vụ nhận diện lời từ audio thành công",
+    createdAt: newJob.createdAt,
+  };
+}
+
+/**
+ * Get Transcription Job Status for Artist Polling
+ * @param {string} songId
+ * @param {string} userId
+ * @param {string} userRole
+ */
+async function getTranscriptionJobStatus(songId, userId, userRole) {
+  const { song } = await resolveSongAndOwnership(songId, userId, userRole);
+
+  const job = await LyricsAlignmentJob.findOne({
+    songId: song._id,
+    pipelineMode: "auto_transcribe",
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!job) {
+    return {
+      hasJob: false,
+      songId: song._id,
+      status: "none",
+    };
+  }
+
+  return {
+    hasJob: true,
+    jobId: job._id,
+    songId: job.songId,
+    status: job.status,
+    stage: job.stage || (job.status === "succeeded" ? "COMPLETED" : "PROCESSING"),
+    progressPercent: typeof job.progressPercent === "number" ? job.progressPercent : (job.status === "succeeded" ? 100 : 30),
+    progressMessage: job.progressMessage || (job.status === "succeeded" ? "Hoàn tất nhận diện lời" : "Đang xử lý nhận diện..."),
+    rawTranscript: job.rawTranscript || "",
+    normalizedTranscript: job.normalizedTranscript || "",
+    transcriptionSegments: job.transcriptionSegments || [],
+    lrcData: job.lrcData || job.result?.lrcData || "",
+    syncedLines: job.syncedLines || job.result?.syncedLines || [],
+    transcriptionModel: job.transcriptionModel,
+    transcriptionConfidence: job.transcriptionConfidence,
+    result: job.result,
+    errorCode: job.errorCode,
+    errorMessage: job.errorMessage,
+    createdAt: job.createdAt,
+    completedAt: job.completedAt,
+    failedAt: job.failedAt,
+  };
+}
+
 module.exports = {
   getSongLyricsForArtist,
   saveDraftLyrics,
@@ -643,4 +777,6 @@ module.exports = {
   triggerAlignmentJob,
   getAlignmentJobStatus,
   cancelAlignmentJob,
+  triggerTranscriptionJob,
+  getTranscriptionJobStatus,
 };

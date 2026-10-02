@@ -568,7 +568,7 @@ function ClientGenres() {
         try {
           const response = await clientTopicsApi.getSongsByTopic(targetIdOrSlug);
           fetchedSongs = Array.isArray(response.data) ? response.data : [];
-        } catch (e) {
+        } catch {
           fetchedSongs = [];
         }
       }
@@ -580,7 +580,7 @@ function ClientGenres() {
           try {
             const response = await clientTopicsApi.getSongsByTopic(dbTopic._id);
             fetchedSongs = Array.isArray(response.data) ? response.data : [];
-          } catch (e) {
+          } catch {
             fetchedSongs = [];
           }
         }

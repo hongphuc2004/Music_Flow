@@ -151,7 +151,7 @@ async function checkArtistQuota(artistId) {
   // Kiem tra trang thai Artist Studio Pro
   const artist = await Artist.findById(artistId).populate("proPlan").lean();
   const isPro = Boolean(artist && artist.isPro && artist.proExpiry && new Date(artist.proExpiry) > new Date());
-  const limit = isPro ? (artist.proPlan?.aiLimitPerDay || 150) : 30;
+  const limit = isPro ? (artist.proPlan?.aiLimitPerDay || 70) : 10;
   const planLabel = isPro ? "Artist Studio Pro" : "Artist Studio (Free)";
 
   const conversations = await AssistantConversation.find({
@@ -183,11 +183,12 @@ async function checkArtistQuota(artistId) {
     const error = new Error(
       isPro
         ? `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong 24 giờ của gói Artist Studio Pro. Vui lòng quay lại sau.`
-        : `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong 24 giờ dành cho Nghệ sĩ miễn phí. Vui lòng nâng cấp gói Artist Studio Pro để nhận 150 lượt/24h.`
+        : `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong 24 giờ dành cho Nghệ sĩ miễn phí. Vui lòng nâng cấp gói Artist Studio Pro để nhận 70 lượt/24h.`
     );
     error.status = 403;
     error.code = "QUOTA_EXCEEDED";
     error.isPro = isPro;
+    error.limit = limit;
     throw error;
   }
 

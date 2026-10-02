@@ -329,11 +329,8 @@ function ArtistDashboard() {
                           }}
                         />
                       </Stack>
-                      <Typography variant="h3" sx={{ fontWeight: 900, letterSpacing: -1.2, color: '#fff', mb: 1 }}>
+                      <Typography variant="h3" sx={{ fontWeight: 900, letterSpacing: -1.2, color: '#fff', mb: 0.5 }}>
                         {artist?.name || 'Artist'}
-                      </Typography>
-                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.76)', maxWidth: 640, fontSize: 15, fontWeight: 500, lineHeight: 1.45 }}>
-                        {artist?.bio || 'Introduce your style, project news, and upcoming work to your monthly audience.'}
                       </Typography>
                     </Box>
                   </Stack>

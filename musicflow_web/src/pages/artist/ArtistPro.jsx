@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -45,7 +45,6 @@ import { syncArtistSession } from '../../utils/artistSession';
 
 function ArtistPro() {
   const { showToast } = useAppToast();
-  const [plans, setPlans] = useState([]);
   const [proPlan, setProPlan] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
   const [history, setHistory] = useState([]);
@@ -56,14 +55,13 @@ function ArtistPro() {
 
   const isProActive = Boolean(activeSub && activeSub.status === 'active' && new Date(activeSub.endDate) > new Date());
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       // 1. Fetch plans with targetRole = 'artist'
       const plansRes = await clientPlansApi.getActive({ targetRole: 'artist' });
       if (plansRes.data?.success) {
         const artistPlans = plansRes.data.data || [];
-        setPlans(artistPlans);
         const pro = artistPlans.find((p) => p.name === 'Artist Studio Pro') || artistPlans[0] || null;
         setProPlan(pro);
       }
@@ -84,11 +82,11 @@ function ArtistPro() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleOpenCheckout = () => {
     setPaymentMethod('vnpay');
@@ -208,7 +206,7 @@ function ArtistPro() {
                 Nâng Tầm Không Gian Sáng Tác Âm Nhạc
               </Typography>
               <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.6 }}>
-                Gói đặc quyền chuyên biệt dành cho Nghệ sĩ: Tăng 5x hạn mức Trợ lý AI Studio (150 lượt/ngày), tải lên bài hát dung lượng lớn 150MB, kho lưu trữ 5GB và gắn huy hiệu PRO chuyên nghiệp.
+                Gói đặc quyền chuyên biệt dành cho Nghệ sĩ: Tăng 7x hạn mức Trợ lý AI Studio (70 lượt/ngày), tải lên bài hát dung lượng lớn 150MB, kho lưu trữ 5GB và gắn huy hiệu PRO chuyên nghiệp.
               </Typography>
             </Box>
 
@@ -318,7 +316,7 @@ function ArtistPro() {
                     <Stack direction="row" spacing={1.5} alignItems="center">
                       <SparklesIcon sx={{ color: '#f59e0b', fontSize: 22 }} />
                       <Typography variant="body2" fontWeight={650}>
-                        150 yêu cầu Trợ lý AI Studio / 24h
+                        70 yêu cầu Trợ lý AI Studio / 24h
                       </Typography>
                     </Stack>
                     <Stack direction="row" spacing={1.5} alignItems="center">
@@ -398,9 +396,9 @@ function ArtistPro() {
                     <TableBody>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 600 }}>Lượt dùng Trợ lý AI Studio</TableCell>
-                        <TableCell align="center">30 req / 24h</TableCell>
+                        <TableCell align="center">10 req / 24h</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 750, color: '#f59e0b' }}>
-                          150 req / 24h
+                          70 req / 24h
                         </TableCell>
                       </TableRow>
                       <TableRow>

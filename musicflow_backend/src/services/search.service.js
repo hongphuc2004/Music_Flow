@@ -13,8 +13,10 @@ const mongoose = require("mongoose");
 const Artist = require("../models/artist.model");
 const Song = require("../models/song.model");
 const Playlist = require("../models/playlist.model");
+const Topic = require("../models/topic.model");
 const aiDataLoader = require("../ai/aiDataLoader.service");
 const geminiRouter = require("./geminiRouter.service");
+const geminiEmbedding = require("./geminiEmbedding.service");
 const { buildSearchRegexes, normalizeText, extractCleanLyrics, escapeRegex } = require("../utils/string.util");
 const { findArtistBySlugOrId } = require("../utils/artist.util");
 const { SONG_PUBLIC_SELECT, ARTIST_POPULATE, TOPIC_POPULATE } = require("../repositories/song.repository");
@@ -49,19 +51,17 @@ function setCachedIntent(key, data) {
 // ---------------------------------------------------------------------------
 
 const NATURAL_INTENT_PATTERNS = [
-  /\b(nhac|bai hat|ca khuc|giai dieu)\b/i,
-  /\b(ve|cam giac|tam trang|nghe|luc|khi|ban|dem|ngay|mua|nang)\b/i,
-  /\b(buon|chill|lofi|tam trang|chia tay|nho|khoc|co don|lang man|thu gian|nhe nhang|soi dong|nang luong|vibe)\b/i,
+  /\b(nhac|bai hat|ca khuc|giai dieu)\s+(ve|cho|de|luc|khi)\b/i,
+  /\b(cam giac|tam trang|vibe|tuyet vong|healing|chua lanh|suy nghi)\b/i,
+  /\b(nghe luc|nghe khi|nghe vao|khi dang|luc dang|di xe|dem khuya)\b/i,
 ];
 
 function isNaturalLanguageQuery(query = "") {
   const norm = normalizeText(query);
   const words = norm.split(" ").filter(Boolean);
-  if (words.length >= 3) {
+  // Requires at least 4 words and matched natural intent patterns to be considered a conversational prompt
+  if (words.length >= 4) {
     return NATURAL_INTENT_PATTERNS.some((pattern) => pattern.test(norm));
-  }
-  if (words.length >= 2) {
-    return /(buon|chill|lofi|chia tay|tam trang|nhe nhang|soi dong|co don|nho)/i.test(norm);
   }
   return false;
 }
@@ -110,7 +110,8 @@ function heuristicExtractIntent(query = "") {
 }
 
 /**
- * Extract semantic search intent from natural language query.
+ * Extract semantic search intent from query using fast local heuristic parser.
+ * Runs in < 0.1ms, 0 tokens, 0 API calls (preserves 100% Gemini LLM quota for Artist Studio & AI DJ).
  * @param {string} query
  * @returns {Promise<object>}
  */
@@ -122,67 +123,16 @@ async function extractSemanticSearchIntent(query = "") {
   const cached = getCachedIntent(cacheKey);
   if (cached) return cached;
 
-  if (!isNaturalLanguageQuery(trimmed)) {
-    const fastIntent = heuristicExtractIntent(trimmed);
-    setCachedIntent(cacheKey, fastIntent);
-    return fastIntent;
-  }
-
-  const systemPrompt = aiDataLoader.getPrompt("search-intent");
-  const fullPrompt = `${systemPrompt}\n\nCÂU TÌM KIẾM CỦA NGƯỜI DÙNG: "${trimmed}"`;
-
-  try {
-    const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-    const responseText = await geminiRouter.executeWithModelRouter({
-      userTier: "basic",
-      requiresTools: false,
-      task: async (modelName) => {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: "You are a specialized music search intent parser. Output 100% valid JSON matching the requested schema without markdown wrapping.",
-        });
-
-        const result = await model.generateContent(fullPrompt);
-        return result?.response?.text?.() || "";
-      },
-    });
-
-    if (!responseText || !responseText.trim()) {
-      throw new Error("Empty response from Search Intent Router");
-    }
-
-    let cleanJsonStr = responseText.trim();
-    if (cleanJsonStr.startsWith("```")) {
-      cleanJsonStr = cleanJsonStr.replace(/^```(json)?/i, "").replace(/```$/, "").trim();
-    }
-
-    const parsed = JSON.parse(cleanJsonStr);
-    const intentResult = {
-      isNaturalQuery: true,
-      targetMoods: Array.isArray(parsed.targetMoods) ? parsed.targetMoods.map((s) => String(s).toLowerCase().trim()).filter(Boolean) : [],
-      targetThemes: Array.isArray(parsed.targetThemes) ? parsed.targetThemes.map((s) => String(s).toLowerCase().trim()).filter(Boolean) : [],
-      targetGenres: Array.isArray(parsed.targetGenres) ? parsed.targetGenres.map((s) => String(s).trim()).filter(Boolean) : [],
-      targetEnergy: String(parsed.targetEnergy || "medium").toLowerCase(),
-      semanticKeywords: Array.isArray(parsed.semanticKeywords) ? parsed.semanticKeywords.map((s) => String(s).toLowerCase().trim()).filter(Boolean) : [],
-    };
-
-    setCachedIntent(cacheKey, intentResult);
-    return intentResult;
-  } catch (error) {
-    console.warn(`[SearchService] AI intent extraction failed (${error.message}). Using heuristic intent.`);
-    const fallbackIntent = heuristicExtractIntent(trimmed);
-    setCachedIntent(cacheKey, fallbackIntent);
-    return fallbackIntent;
-  }
+  const intentResult = heuristicExtractIntent(trimmed);
+  setCachedIntent(cacheKey, intentResult);
+  return intentResult;
 }
 
 // ---------------------------------------------------------------------------
 // Hybrid Scoring & Ranking Logic
 // ---------------------------------------------------------------------------
 
-function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], extraTitleRegexes = []) {
+function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], extraTitleRegexes = [], queryVector = null) {
   let score = 0;
   const songTitleNorm = normalizeText(song.title || "");
   const queryNorm = normalizeText(query || "");
@@ -338,7 +288,17 @@ function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], e
   }
 
   // =========================================================================
-  // 5. POPULARITY (TIE-BREAKER ONLY)
+  // 5. VECTOR EMBEDDING SEMANTIC SIMILARITY (GEMINI EMBEDDING 1 / 2)
+  // =========================================================================
+  if (queryVector && Array.isArray(song.embedding?.values) && song.embedding.values.length > 0) {
+    const sim = geminiEmbedding.cosineSimilarity(queryVector, song.embedding.values);
+    if (sim > 0.60) {
+      score += Math.round((sim - 0.60) * 125);
+    }
+  }
+
+  // =========================================================================
+  // 6. POPULARITY (TIE-BREAKER ONLY)
   // =========================================================================
   const playCount = Number(song.playCount || 0);
   const likeCount = Number(song.likeCount || 0);
@@ -466,14 +426,9 @@ const searchSongs = async ({
       }
     }
 
-    // 3. Extract Semantic Intent if enabled and query has content
+    // 3. Extract Semantic Intent using ultra-fast local heuristics (0 tokens)
     if (enableSemantic) {
-      try {
-        intent = await extractSemanticSearchIntent(rawQuery);
-      } catch (err) {
-        console.warn("[SearchService] Semantic extraction fallback:", err.message);
-        intent = heuristicExtractIntent(rawQuery);
-      }
+      intent = await extractSemanticSearchIntent(rawQuery);
     }
   }
 
@@ -483,7 +438,6 @@ const searchSongs = async ({
     const lyricsConditions = regexes.map((regex) => ({ lyrics: regex }));
     const extraTitleConditions = extraTitleRegexes.map((regex) => ({ title: regex }));
     const queryOrConditions = [...titleConditions, ...lyricsConditions, ...extraTitleConditions];
-
 
     if (matchedArtists.length > 0) {
       queryOrConditions.push({
@@ -527,17 +481,69 @@ const searchSongs = async ({
 
   const filter = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
+  // 1. Fast Keyword Search (0 Tokens, 5ms)
   const candidateSongs = await Song.find(filter)
-    .select(SONG_PUBLIC_SELECT + " aiAnalysis moderation lyrics playCount likeCount")
+    .select(SONG_PUBLIC_SELECT + " aiAnalysis moderation lyrics playCount likeCount +embedding.values")
     .populate(ARTIST_POPULATE)
     .populate(TOPIC_POPULATE)
     .lean();
 
+  // ---------------------------------------------------------------------------
+  // 2. SMART ON-DEMAND GEMINI EMBEDDING (Zero-Waste Strategy)
+  // ONLY trigger Gemini Embedding if:
+  // - Keyword search found fewer than 3 songs (candidateSongs.length < 3), AND
+  // - User entered a natural conversational query with >= 4 words and length >= 8.
+  // Standard searches (title, artist, short keywords) consume 0 TOKENS!
+  // ---------------------------------------------------------------------------
+  let queryVector = null;
+  const needVectorHelp = candidateSongs.length < 3 && rawQuery && rawQuery.trim().length >= 8 && isNaturalLanguageQuery(rawQuery);
+
+  if (needVectorHelp) {
+    try {
+      const embedResult = await geminiEmbedding.getEmbedding(rawQuery);
+      queryVector = embedResult?.vector || null;
+    } catch {
+      queryVector = null;
+    }
+  }
+
+  // If candidate count is low and queryVector is available, expand with high-similarity vector candidates
+  if (queryVector && candidateSongs.length < 10) {
+    try {
+      const existingIds = new Set(candidateSongs.map((s) => s._id.toString()));
+      const vectorCandidates = await Song.find({
+        _id: { $nin: Array.from(existingIds) },
+        isPublic: true,
+        "embedding.values": { $exists: true, $ne: [] },
+      })
+        .select(SONG_PUBLIC_SELECT + " aiAnalysis moderation lyrics playCount likeCount +embedding.values")
+        .populate(ARTIST_POPULATE)
+        .populate(TOPIC_POPULATE)
+        .limit(30)
+        .lean();
+
+      for (const vc of vectorCandidates) {
+        if (Array.isArray(vc.embedding?.values)) {
+          const sim = geminiEmbedding.cosineSimilarity(queryVector, vc.embedding.values);
+          if (sim >= 0.70) {
+            candidateSongs.push(vc);
+          }
+        }
+      }
+    } catch {
+      // Non-critical fallback
+    }
+  }
+
   // Score & Rank Candidates
-  const scoredSongs = candidateSongs.map((song) => ({
-    song,
-    score: scoreSongRelevance(song, rawQuery, regexes, intent, matchedArtists, extraTitleRegexes),
-  }));
+  const scoredSongs = candidateSongs.map((song) => {
+    const s = { ...song };
+    if (s.embedding) delete s.embedding; // Strip large embedding values from output payload
+    return {
+      song: s,
+      score: scoreSongRelevance(song, rawQuery, regexes, intent, matchedArtists, extraTitleRegexes, queryVector),
+    };
+  });
 
   // Sort descending by Hybrid score
   scoredSongs.sort((a, b) => b.score - a.score);

@@ -170,6 +170,20 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
   const pollingRef = useRef(null);
   const isMountedRef = useRef(true);
 
+  // AI Audio Transcription State Machine
+  const [_transcriptionState, setTranscriptionState] = useState('IDLE'); // 'IDLE' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED'
+  const [confirmOverwriteOpen, setConfirmOverwriteOpen] = useState(false);
+  const [transcriptionProgress, setTranscriptionProgress] = useState({ percent: 0, message: '' });
+  const transcribePollingRef = useRef(null);
+
+  // Cleanup transcribe polling timer
+  const stopTranscribePolling = useCallback(() => {
+    if (transcribePollingRef.current) {
+      clearInterval(transcribePollingRef.current);
+      transcribePollingRef.current = null;
+    }
+  }, []);
+
   // Audio Preview Player State
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -429,6 +443,115 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
     }
   };
 
+  // 🎙️ Auto-Transcription: Handle user click on "Nhận diện lời từ audio"
+  const handleStartTranscriptionClick = () => {
+    if (plainText && plainText.trim().length > 0) {
+      setConfirmOverwriteOpen(true);
+      return;
+    }
+    executeTranscription();
+  };
+
+  const executeTranscription = async (options = {}) => {
+    setConfirmOverwriteOpen(false);
+    try {
+      setActionLoading('transcribe');
+      setTranscriptionState('PROCESSING');
+      const apiCall = artistApi.startLyricsTranscription || artistApi.triggerLyricsTranscription;
+      await apiCall(song._id, { ...options, force: true });
+
+      showToast({
+        severity: 'info',
+        title: 'Đang nhận diện lời bài hát',
+        message: 'Hệ thống đang lắng nghe, bóc tách toàn bộ ca từ và tự động tạo mốc thời gian...',
+      });
+      startTranscribePolling(song._id);
+    } catch (err) {
+      console.error('[LyricsTranscription] Error starting transcription:', err);
+      setTranscriptionState('FAILED');
+      setActionLoading(null);
+      const msg = err.response?.data?.message || err.message || 'Không thể khởi tạo tác vụ nhận diện lời từ audio.';
+      showToast({
+        severity: 'error',
+        title: 'Lỗi nhận diện lời',
+        message: msg,
+      });
+    }
+  };
+
+  // 🎙️ Auto-Transcription: Polling status implementation
+  const startTranscribePolling = useCallback(
+    (songId) => {
+      stopTranscribePolling();
+      let pollCount = 0;
+      const MAX_POLL = 240; // 10 phút (đủ thời gian cho các bài dài và mô hình Medium + Wav2Vec2)
+
+      const poll = async () => {
+        if (!isMountedRef.current) return;
+        pollCount++;
+
+        if (pollCount > MAX_POLL) {
+          stopTranscribePolling();
+          setTranscriptionState('FAILED');
+          setActionLoading(null);
+          showToast({
+            severity: 'error',
+            title: 'Hết thời gian chờ',
+            message: 'Tác vụ nhận diện lời mất nhiều thời gian hơn dự kiến. Vui lòng thử lại sau.',
+          });
+          return;
+        }
+
+        try {
+          const res = await artistApi.getLyricsTranscriptionStatus(songId);
+          const job = res.data?.data;
+          if (!job || !job.hasJob) return;
+
+          if (job.progressMessage || job.progressPercent) {
+            setTranscriptionProgress({
+              percent: job.progressPercent || 0,
+              message: 'AI đang xử lý...',
+            });
+          }
+
+          if (job.status === 'succeeded') {
+            stopTranscribePolling();
+            setTranscriptionState('SUCCEEDED');
+            setActionLoading(null);
+            const text = job.normalizedTranscript || job.rawTranscript || '';
+            if (text) {
+              setPlainText(text);
+            }
+            if (job.lrcData) {
+              setLrcText(job.lrcData);
+              setTabIndex(1);
+            }
+            showToast({
+              severity: 'success',
+              title: 'Nhận diện & Căn nhịp thành công!',
+              message: 'Đã nhận diện lời và tự động căn mốc thời gian hoàn tất!',
+            });
+          } else if (job.status === 'failed') {
+            stopTranscribePolling();
+            setTranscriptionState('FAILED');
+            setActionLoading(null);
+            showToast({
+              severity: 'error',
+              title: 'Nhận diện thất bại',
+              message: job.errorMessage || 'Không thể nhận diện lời bài hát từ tệp âm thanh này.',
+            });
+          }
+        } catch {
+          // Bỏ qua lỗi mạng chớp nhoáng khi polling
+        }
+      };
+
+      transcribePollingRef.current = setInterval(poll, 2500);
+      poll();
+    },
+    [stopTranscribePolling, showToast]
+  );
+
   // Clear synced LRC lyrics while preserving plain text lyrics
   const handleClearAllLyrics = async () => {
     try {
@@ -500,8 +623,9 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
     return () => {
       isMountedRef.current = false;
       stopPolling();
+      stopTranscribePolling();
     };
-  }, [open, song?._id, fetchLyrics, stopPolling]);
+  }, [open, song?._id, fetchLyrics, stopPolling, stopTranscribePolling]);
 
   // Audio Event Listeners
   const handleTimeUpdate = () => {
@@ -1045,6 +1169,40 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
                   </Tabs>
 
                   <Stack direction="row" spacing={1} alignItems="center">
+                    {/* 🎙️ Auto-Transcription Action Button (Plain Tab only) */}
+                    {tabIndex === 0 && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={
+                          actionLoading === 'transcribe' ? (
+                            <CircularProgress size={15} color="inherit" />
+                          ) : (
+                            <AiIcon sx={{ fontSize: 16, color: '#00e5ff' }} />
+                          )
+                        }
+                        onClick={handleStartTranscriptionClick}
+                        disabled={Boolean(actionLoading) || alignmentState === 'PROCESSING'}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 800,
+                          fontSize: 12,
+                          color: '#00e5ff',
+                          borderColor: 'rgba(0, 229, 255, 0.4)',
+                          bgcolor: 'rgba(0, 229, 255, 0.08)',
+                          '&:hover': {
+                            borderColor: '#00e5ff',
+                            bgcolor: 'rgba(0, 229, 255, 0.16)',
+                          },
+                        }}
+                      >
+                        {actionLoading === 'transcribe'
+                          ? (transcriptionProgress.percent > 0 ? `AI đang xử lý (${transcriptionProgress.percent}%)...` : 'AI đang xử lý...')
+                          : '✨ Nhận diện lời từ audio'}
+                      </Button>
+                    )}
+
                     {/* ✨ AI Alignment Action Button */}
                     {renderAiAlignmentButton()}
 
@@ -1604,6 +1762,50 @@ export default function ArtistLyricsDialog({ open, onClose, song, onUpdated }) {
           </Button>
         </Stack>
       </DialogActions>
+
+      {/* ⚠️ Confirm Overwrite Dialog when Plain Text already contains content */}
+      <Dialog
+        open={confirmOverwriteOpen}
+        onClose={() => setConfirmOverwriteOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            bgcolor: 'background.paper',
+            p: 1,
+            maxWidth: 440,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, fontSize: 16 }}>
+          Xác nhận nhận diện lời từ audio
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+            Nội dung lời bài hát hiện tại trong ô nhập liệu sẽ được thay thế bằng kết quả AI nhận diện từ tệp âm thanh gốc. Bạn có chắc chắn muốn tiếp tục?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmOverwriteOpen(false)}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+            color="inherit"
+          >
+            Hủy bỏ
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => executeTranscription({ force: true })}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 800,
+              bgcolor: '#6c63ff',
+              '&:hover': { bgcolor: '#534bae' },
+            }}
+          >
+            Tiếp tục nhận diện
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }

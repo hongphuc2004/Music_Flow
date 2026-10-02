@@ -135,3 +135,42 @@ exports.cancelAlignment = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/artist/songs/:id/lyrics/transcribe
+ */
+exports.triggerTranscription = async (req, res) => {
+  try {
+    const data = await lyricsService.triggerTranscriptionJob(
+      req.params.id,
+      req.userId,
+      req.userRole,
+      req.body
+    );
+    return res.status(data.isCached ? 200 : 202).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Không thể khởi tạo tác vụ nhận diện lời từ audio");
+  }
+};
+
+/**
+ * GET /api/artist/songs/:id/lyrics/transcription/status
+ */
+exports.getTranscriptionStatus = async (req, res) => {
+  try {
+    const data = await lyricsService.getTranscriptionJobStatus(
+      req.params.id,
+      req.userId,
+      req.userRole
+    );
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "Không thể kiểm tra trạng thái nhận diện lời");
+  }
+};
+

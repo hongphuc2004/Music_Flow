@@ -399,5 +399,7 @@ router.post("/songs/:id/lyrics/unpublish", authMiddleware, lyricsController.unpu
 router.post("/songs/:id/lyrics/alignment", authMiddleware, lyricsController.triggerAlignment);
 router.post("/songs/:id/lyrics/alignment/cancel", authMiddleware, lyricsController.cancelAlignment);
 router.get("/songs/:id/lyrics/alignment/status", authMiddleware, lyricsController.getAlignmentStatus);
+router.post("/songs/:id/lyrics/transcribe", authMiddleware, lyricsController.triggerTranscription);
+router.get("/songs/:id/lyrics/transcription/status", authMiddleware, lyricsController.getTranscriptionStatus);
 
 module.exports = router;

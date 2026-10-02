@@ -27,4 +27,7 @@ export const artistApi = {
   triggerLyricsAlignment: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/alignment`, payload),
   cancelLyricsAlignment: (songId) => api.post(`/artist/songs/${songId}/lyrics/alignment/cancel`),
   getLyricsAlignmentStatus: (songId) => api.get(`/artist/songs/${songId}/lyrics/alignment/status`),
+  triggerLyricsTranscription: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/transcribe`, payload),
+  startLyricsTranscription: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/transcribe`, payload),
+  getLyricsTranscriptionStatus: (songId) => api.get(`/artist/songs/${songId}/lyrics/transcription/status`),
 };

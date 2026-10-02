@@ -178,6 +178,7 @@ function ClientPlaylist() {
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistId, isLoggedIn]);
 
   // Extract all participating artists across all songs in this playlist

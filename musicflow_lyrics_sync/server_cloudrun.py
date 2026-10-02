@@ -10,6 +10,7 @@ import sys
 import shutil
 import tempfile
 import time
+from typing import Optional
 from fastapi import FastAPI, HTTPException  # type: ignore
 from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from pydantic import BaseModel, Field  # type: ignore
@@ -41,6 +42,12 @@ app.add_middleware(
 class AlignmentRequest(BaseModel):
     audioUrl: str = Field(..., description="Public audio stream or Cloudinary URL")
     plainLyrics: str = Field(..., description="Plain lyrics text")
+
+
+class TranscribeRequest(BaseModel):
+    audioUrl: str = Field(..., description="Public audio stream or Cloudinary URL")
+    modelSize: Optional[str] = Field(None, description="Whisper model size: base, small, medium")
+    language: Optional[str] = Field("vi", description="Target language code")
 
 
 @app.get("/")
@@ -142,6 +149,57 @@ def align_lyrics_endpoint(req: AlignmentRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi căn nhịp: {str(e)}")
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@app.post("/transcribe")
+def transcribe_lyrics_endpoint(req: TranscribeRequest):
+    if not req.audioUrl:
+        raise HTTPException(status_code=400, detail="Thiếu audioUrl hợp lệ")
+
+    temp_dir = tempfile.mkdtemp(prefix="transcribe_")
+    t_start = time.time()
+
+    print("\n" + "=" * 65, flush=True)
+    print("🎙️ [MusicFlow Faster-Whisper] Nhận yêu cầu bóc tách lời bài hát!", flush=True)
+    print(f" • Audio Source: {req.audioUrl[:80]}...", flush=True)
+    print(f" • Model: {req.modelSize or config.WHISPER_MODEL_SIZE}, Lang: {req.language or config.WHISPER_LANGUAGE}", flush=True)
+    print("=" * 65, flush=True)
+
+    try:
+        # 1. Download Audio
+        raw_audio_path, duration_sec = download_audio_from_url(req.audioUrl, temp_dir)
+
+        # 2. Preprocess 16kHz mono
+        wav_16k_path = os.path.join(temp_dir, "input_16k.wav")
+        convert_to_16k_mono(raw_audio_path, wav_16k_path, high_pass_enabled=False, normalize_enabled=True)
+
+        # 3. Transcribe with Faster-Whisper
+        from pipeline.transcriber import transcribe_audio
+        result = transcribe_audio(
+            audio_path=wav_16k_path,
+            model_size=req.modelSize,
+            language=req.language or "vi",
+            beam_size=config.WHISPER_BEAM_SIZE,
+            word_timestamps=config.WHISPER_WORD_TIMESTAMPS,
+            vad_filter=config.WHISPER_VAD_FILTER,
+            min_silence_duration_ms=config.WHISPER_VAD_MIN_SILENCE_MS,
+        )
+
+        total_elapsed = round(time.time() - t_start, 2)
+        print(f"🎉 Bóc tách lời thành công trong {total_elapsed}s!", flush=True)
+
+        return {
+            "success": True,
+            "provider": "faster-whisper",
+            "duration": duration_sec,
+            "elapsedSeconds": total_elapsed,
+            **result,
+        }
+    except Exception as e:
+        print(f"\n❌ [ERROR] Lỗi bóc tách lời: {e}", flush=True)
+        raise HTTPException(status_code=500, detail=f"Lỗi bóc tách lời: {str(e)}")
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

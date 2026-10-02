@@ -23,16 +23,22 @@ exports.getActivePlans = async (req, res) => {
         price: 99000,
         durationInDays: 30,
         description: [
-          "Trợ lý AI Studio nâng cấp (150 yêu cầu / 24 giờ)",
+          "Trợ lý AI Studio nâng cấp (70 yêu cầu / 24 giờ)",
           "Tải lên bài hát tối đa 150MB / bài",
           "Kho lưu trữ nhạc Studio mở rộng 5GB",
           "Huy hiệu PRO dành riêng cho Nghệ sĩ chuyên nghiệp",
           "Ưu tiên tài nguyên AI phản hồi nhanh"
         ],
         targetRole: "artist",
-        aiLimitPerDay: 150,
+        aiLimitPerDay: 70,
         isActive: true,
       });
+    } else if (artistPlanExists.aiLimitPerDay !== 70) {
+      artistPlanExists.aiLimitPerDay = 70;
+      artistPlanExists.description = artistPlanExists.description.map((d) =>
+        d.includes("yêu cầu / 24") ? "Trợ lý AI Studio nâng cấp (70 yêu cầu / 24 giờ)" : d
+      );
+      await artistPlanExists.save();
     }
 
     // Tự động seed gói User mặc định nếu DB trống gói User

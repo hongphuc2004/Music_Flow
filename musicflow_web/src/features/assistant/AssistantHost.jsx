@@ -736,7 +736,7 @@ export default function AssistantHost() {
           
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
             {localStorage.getItem('role') === 'artist'
-              ? 'Tài khoản Nghệ sĩ của bạn đã đạt giới hạn yêu cầu trợ lý AI Studio trong 24 giờ. Nâng cấp Artist Studio Pro để nhận 150 lượt/24h và mở rộng kho lưu trữ 5GB!'
+              ? 'Tài khoản Nghệ sĩ của bạn đã đạt giới hạn yêu cầu trợ lý AI Studio trong 24 giờ. Nâng cấp Artist Studio Pro để nhận 70 lượt/24h và mở rộng kho lưu trữ 5GB!'
               : 'Tài khoản của bạn đã sử dụng hết số lượt yêu cầu trợ lý AI trong ngày. Nâng cấp các gói cước Premium để mở rộng hạn mức và trò chuyện AI không giới hạn!'}
           </Typography>
 

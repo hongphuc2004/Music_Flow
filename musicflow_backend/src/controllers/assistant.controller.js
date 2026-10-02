@@ -246,7 +246,7 @@ exports.getQuota = async (req, res) => {
     if (actorRole === "artist") {
       const quotaInfo = await aiQuotaService.checkArtistQuota(actorId).catch((err) => {
         if (err.status === 403) {
-          const limit = err.isPro ? 150 : 30;
+          const limit = err.isPro ? 70 : 10;
           return {
             role: "artist",
             isPro: Boolean(err.isPro),

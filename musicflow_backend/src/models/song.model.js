@@ -191,6 +191,27 @@ const songSchema = new mongoose.Schema(
       },
     },
 
+    // 🧠 AI VECTOR EMBEDDING (GEMINI EMBEDDING 1 / 2)
+    embedding: {
+      values: {
+        type: [Number],
+        default: undefined,
+        select: false,
+      },
+      model: {
+        type: String,
+        default: null,
+      },
+      dimension: {
+        type: Number,
+        default: 768,
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
     // 🛡️ AI CONTENT MODERATION (PHASE 7)
     moderation: {
       status: {

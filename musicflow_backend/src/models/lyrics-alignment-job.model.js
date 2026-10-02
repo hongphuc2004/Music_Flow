@@ -95,6 +95,19 @@ const lyricsAlignmentJobSchema = new mongoose.Schema(
       type: Number,
       default: 1.0,
     },
+    transcriptionSegments: {
+      type: Array,
+      default: [],
+    },
+    audioHash: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    language: {
+      type: String,
+      default: "vi",
+    },
 
     // Input Snapshot & Idempotency
     audioPublicId: {
@@ -103,7 +116,7 @@ const lyricsAlignmentJobSchema = new mongoose.Schema(
     },
     plainLyricsHash: {
       type: String,
-      required: true,
+      default: "",
     },
     inputFingerprint: {
       type: String,

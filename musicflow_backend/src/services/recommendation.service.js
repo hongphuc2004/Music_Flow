@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 const Song = require("../models/song.model");
+const Artist = require("../models/artist.model");
+const Topic = require("../models/topic.model");
 
 const aiDataLoader = require("../ai/aiDataLoader.service");
 
@@ -249,13 +251,26 @@ async function getPersonalizedCandidates({
 // ---------------------------------------------------------------------------
 
 const songRepo = require("../repositories/song.repository");
+const geminiEmbedding = require("./geminiEmbedding.service");
 
 /**
  * Return `limit` songs that are similar to the target song.
+ * Uses Gemini Embedding Cosine Similarity when available, with automatic fallback to topic/artist logic.
  */
 const getSimilarSongs = async (songId, limit = 12) => {
   const clampedLimit = Math.min(Math.max(Number(limit) || 12, 1), 50);
 
+  // 1. Try Gemini Embedding Vector Similarity
+  try {
+    const vectorSimilar = await geminiEmbedding.findSimilarSongs(songId, clampedLimit);
+    if (Array.isArray(vectorSimilar) && vectorSimilar.length >= Math.min(clampedLimit, 3)) {
+      return vectorSimilar.map((item) => item.song);
+    }
+  } catch {
+    // Fallback to traditional metadata matching
+  }
+
+  // 2. Traditional Metadata Matching (Topic + Artist Fallback)
   const targetSong = await songRepo.findByIdLean(songId);
   if (!targetSong) {
     const err = new Error("Không tìm thấy bài hát gốc");

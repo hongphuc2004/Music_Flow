@@ -1205,6 +1205,149 @@ const resolveStreamUrlByTicket = async (songId, ticket) => {
 };
 
 /**
+ * Lấy danh sách bài hát liên quan thông minh (Intelligent Related Songs).
+ * Ưu tiên cao:
+ * 1. Cùng nghệ sĩ (Same artist) - bảo đảm người nghe nhận diện được các tác phẩm khác của cùng ca sĩ/nhạc sĩ.
+ * 2. Cùng chủ đề/thể loại (Shared topics) - sắp xếp theo số lượng topic trùng lặp nhiều nhất.
+ * 3. Điểm cộng đặc biệt cho bài hát vừa cùng nghệ sĩ vừa cùng topic.
+ * 4. Lượt nghe (playCount) chỉ đóng vai trò phân định thứ hạng (tie-breaker), không lấn át độ liên quan thực tế.
+ */
+const fetchIntelligentRelatedSongs = async (targetSong, limit = 6) => {
+  if (!targetSong) return [];
+
+  const targetId = targetSong._id ? targetSong._id.toString() : targetSong.id?.toString();
+
+  const artistIds = Array.isArray(targetSong.artists)
+    ? targetSong.artists.map((a) => (a?._id || a).toString()).filter(Boolean)
+    : [];
+  const topicIds = Array.isArray(targetSong.topicIds)
+    ? targetSong.topicIds.map((t) => (t?._id || t).toString()).filter(Boolean)
+    : [];
+
+  const targetArtistSet = new Set(artistIds);
+  const targetTopicSet = new Set(topicIds);
+
+  const orConditions = [];
+  if (artistIds.length > 0) {
+    orConditions.push({ artists: { $in: artistIds } });
+  }
+  if (topicIds.length > 0) {
+    orConditions.push({ topicIds: { $in: topicIds } });
+  }
+
+  const baseFilter = {
+    _id: { $ne: targetSong._id },
+    isPublic: true,
+    "moderation.status": { $ne: "BLOCK" },
+  };
+
+  let candidateFilter = { ...baseFilter };
+  if (orConditions.length > 0) {
+    candidateFilter.$or = orConditions;
+  }
+
+  // Fetch candidate pool (up to 40 candidates for scoring)
+  let candidates = await Song.find(candidateFilter)
+    .populate("artists", "name avatar bio slug")
+    .populate("topicIds", "name")
+    .limit(40)
+    .lean();
+
+  // If candidate pool has fewer than limit, supplement with top public songs
+  if (candidates.length < limit) {
+    const existingIds = new Set([targetId, ...candidates.map((c) => c._id.toString())]);
+    const fallbackSongs = await Song.find({
+      ...baseFilter,
+      _id: { $nin: Array.from(existingIds) },
+    })
+      .populate("artists", "name avatar bio slug")
+      .populate("topicIds", "name")
+      .sort({ playCount: -1, createdAt: -1 })
+      .limit(limit - candidates.length)
+      .lean();
+    candidates = candidates.concat(fallbackSongs);
+  }
+
+  // Score candidate songs
+  const scoredCandidates = candidates.map((candidate) => {
+    let score = 0;
+    const cArtistIds = Array.isArray(candidate.artists)
+      ? candidate.artists.map((a) => (a?._id || a).toString())
+      : [];
+    const cTopicIds = Array.isArray(candidate.topicIds)
+      ? candidate.topicIds.map((t) => (t?._id || t).toString())
+      : [];
+
+    const matchingArtists = cArtistIds.filter((id) => targetArtistSet.has(id));
+    const matchingTopics = cTopicIds.filter((id) => targetTopicSet.has(id));
+
+    const isSameArtist = matchingArtists.length > 0;
+    const matchTopicCount = matchingTopics.length;
+
+    // 1. Same artist bonus
+    if (isSameArtist) {
+      score += 100;
+    }
+
+    // 2. Shared topics score (25 pts per shared topic)
+    score += matchTopicCount * 25;
+
+    // 3. Overlap ratio bonus
+    if (targetTopicSet.size > 0) {
+      const overlapRatio = matchTopicCount / targetTopicSet.size;
+      score += overlapRatio * 20;
+    }
+
+    // 4. Bonus if both same artist and matching topic
+    if (isSameArtist && matchTopicCount > 0) {
+      score += 40;
+    }
+
+    // 5. Popularity tie-breaker (capped at 10 pts to never override relevance)
+    const playScore = Math.min(10, Math.log10((candidate.playCount || 0) + 1) * 3);
+    score += playScore;
+
+    return {
+      candidate,
+      score,
+      isSameArtist,
+      matchTopicCount,
+    };
+  });
+
+  // Sort by score descending
+  scoredCandidates.sort((a, b) => b.score - a.score);
+
+  // Balanced selection:
+  // If we have same-artist songs AND topic-matching songs, balance them nicely
+  const sameArtistPool = scoredCandidates.filter((s) => s.isSameArtist);
+  const otherTopicPool = scoredCandidates.filter((s) => !s.isSameArtist && s.matchTopicCount > 0);
+
+  const selected = [];
+  const selectedIds = new Set();
+
+  const addSong = (item) => {
+    if (!item || !item.candidate) return;
+    const id = item.candidate._id.toString();
+    if (!selectedIds.has(id) && selected.length < limit) {
+      selectedIds.add(id);
+      selected.push(item.candidate);
+    }
+  };
+
+  // If there are same-artist songs and topic matches, take up to 3 same-artist first, then 3 topic matches
+  if (sameArtistPool.length > 0 && otherTopicPool.length > 0) {
+    sameArtistPool.slice(0, 3).forEach(addSong);
+    otherTopicPool.slice(0, 3).forEach(addSong);
+  }
+
+  // Fill remaining slots from the highest-scoring candidates
+  scoredCandidates.forEach(addSong);
+
+  return selected;
+};
+
+/**
  * Lấy chi tiết bài hát công khai theo ID (bao gồm thông tin artist, topic và relatedSongs).
  */
 const getSongById = async (songId) => {
@@ -1239,30 +1382,10 @@ const getSongById = async (songId) => {
     throw error;
   }
 
-  // Fetch up to 6 related songs (from same artist or same topics)
+  // Fetch up to 6 related songs with intelligent relevance scoring
   let relatedSongs = [];
   try {
-    const artistIds = Array.isArray(song.artists)
-      ? song.artists.map((a) => a?._id || a).filter(Boolean)
-      : [];
-    const topicIds = Array.isArray(song.topicIds)
-      ? song.topicIds.map((t) => t?._id || t).filter(Boolean)
-      : [];
-
-    relatedSongs = await Song.find({
-      _id: { $ne: song._id },
-      isPublic: true,
-      "moderation.status": { $ne: "BLOCK" },
-      $or: [
-        { artists: { $in: artistIds } },
-        { topicIds: { $in: topicIds } },
-      ],
-    })
-      .populate("artists", "name avatar")
-      .populate("topicIds", "name")
-      .sort({ playCount: -1, createdAt: -1 })
-      .limit(6)
-      .lean();
+    relatedSongs = await fetchIntelligentRelatedSongs(song, 6);
   } catch (err) {
     console.warn("Failed to fetch related songs for song detail:", err.message);
   }
@@ -1343,35 +1466,10 @@ const getSongBySlug = async (artistSlug, songSlug) => {
     throw error;
   }
 
-  // Fetch related songs
+  // Fetch related songs with intelligent relevance scoring
   let relatedSongs = [];
   try {
-    const matchedArtistIds = Array.isArray(matchedSong.artists)
-      ? matchedSong.artists.map((a) => a?._id || a).filter(Boolean)
-      : [];
-    const topicIds = Array.isArray(matchedSong.topicIds)
-      ? matchedSong.topicIds.map((t) => t?._id || t).filter(Boolean)
-      : [];
-
-    const conditions = [];
-    if (matchedArtistIds.length > 0) conditions.push({ artists: { $in: matchedArtistIds } });
-    if (topicIds.length > 0) conditions.push({ topicIds: { $in: topicIds } });
-
-    const relatedFilter = {
-      _id: { $ne: matchedSong._id },
-      isPublic: true,
-      "moderation.status": { $ne: "BLOCK" },
-    };
-    if (conditions.length > 0) {
-      relatedFilter.$or = conditions;
-    }
-
-    relatedSongs = await Song.find(relatedFilter)
-      .populate("artists", "name avatar slug")
-      .populate("topicIds", "name")
-      .sort({ playCount: -1, createdAt: -1 })
-      .limit(6)
-      .lean();
+    relatedSongs = await fetchIntelligentRelatedSongs(matchedSong, 6);
   } catch (err) {
     console.warn("Failed to fetch related songs for slug:", err.message);
   }
@@ -1413,6 +1511,7 @@ const recordShareEvent = async ({ songId, source, medium, campaign, si, userId, 
 // ---------------------------------------------------------------------------
 
 module.exports = {
+  fetchIntelligentRelatedSongs,
   getSongById,
   getSongBySlug,
   recordShareEvent,

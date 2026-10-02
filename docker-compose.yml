@@ -86,6 +86,8 @@ services:
       MONGODB_URI: "${MONGO_URI:-mongodb://mongo:27017/musicflow_db}"
       WORKER_DEVICE: "cpu"
       ALLOW_CPU_FALLBACK: "true"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
 
   lyrics_sync_dev:
     container_name: musicflow_lyrics_sync_dev
@@ -97,6 +99,8 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
+    env_file:
+      - ./musicflow_lyrics_sync/.env
     environment:
       RUNNING_IN_DOCKER: "true"
       MONGODB_URI: "mongodb://mongo:27017/musicflow_db"

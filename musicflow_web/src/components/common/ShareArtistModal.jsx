@@ -91,8 +91,6 @@ export default function ShareArtistModal({ open, onClose, artist }) {
   const [currentTab, setCurrentTab] = useState(0);
   const [qrLoading, setQrLoading] = useState(true);
 
-  const artistId = artist?._id || artist?.id;
-
   const clipboardShareUrl = useMemo(() => {
     if (!artist) return '';
     return createArtistShareUrl(artist, { source: 'clipboard', medium: 'share' });

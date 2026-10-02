@@ -31,8 +31,6 @@ const TIER_MODEL_POOLS = {
   basic: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
 };
 
-
-
 // Safe fallback pool for offline/emergency fallback
 const SAFE_FALLBACK_POOL = [
   "gemini-2.5-flash",

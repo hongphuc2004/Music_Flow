@@ -45,8 +45,10 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
+    const isGoogle = artist.provider === "google" || Boolean(artist.googleId);
     const artistObj = artist.toJSON();
-    artistObj.hasPassword = Boolean(artist.password);
+    artistObj.isGoogle = isGoogle;
+    artistObj.hasPassword = Boolean(artist.password) && !isGoogle;
 
     return res.json({
       success: true,

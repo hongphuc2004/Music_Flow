@@ -36,43 +36,65 @@ router.get("/:topicId/songs", async (req, res) => {
     let targetTopicId = topicId;
 
     if (!mongoose.Types.ObjectId.isValid(topicId)) {
-      const decodedParam = decodeURIComponent(topicId).trim();
+      const decodedParam = decodeURIComponent(topicId).trim().toLowerCase();
       const withSpaces = decodedParam.replace(/[-_]/g, " ").trim();
       const withHyphens = decodedParam.replace(/\s+/g, "-").trim();
 
-      const foundTopic = await Topic.findOne({
-        $or: [
-          { name: { $regex: new RegExp(`^${decodedParam}$`, "i") } },
-          { name: { $regex: new RegExp(`^${withSpaces}$`, "i") } },
-          { name: { $regex: new RegExp(`^${withHyphens}$`, "i") } },
-        ],
-      });
-      if (foundTopic) {
-        targetTopicId = foundTopic._id;
-      } else {
-        const allTopics = await Topic.find().select("_id name").lean();
-        const normalizeStr = (s) =>
-          (s || "")
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[đĐ]/g, "d")
-            .replace(/[^a-z0-9]/g, "");
-        const targetNormalized = normalizeStr(decodedParam);
+      // Explicit slug alias dictionary
+      const ALIAS_MAP = {
+        "nation-usuk": ["Nhạc Âu Mỹ (US-UK)", "US-UK", "Nhạc Âu Mỹ"],
+        "usuk": ["Nhạc Âu Mỹ (US-UK)", "US-UK", "Nhạc Âu Mỹ"],
+        "nation-cpop": ["Nhạc Hoa (C-Pop)", "Music Chinese", "Nhạc Hoa"],
+        "cpop": ["Nhạc Hoa (C-Pop)", "Music Chinese", "Nhạc Hoa"],
+        "nation-vn": ["Việt Nam", "V-Pop"],
+        "vpop": ["V-Pop", "Việt Nam"],
+        "nation-kpop": ["Nhạc Hàn (K-Pop)", "K-Pop", "Nhạc Hàn"],
+      };
 
-        const matched = allTopics.find((t) => {
-          const tNorm = normalizeStr(t.name);
-          return (
-            tNorm === targetNormalized ||
-            tNorm.includes(targetNormalized) ||
-            targetNormalized.includes(tNorm)
-          );
+      if (ALIAS_MAP[decodedParam]) {
+        const found = await Topic.findOne({
+          name: { $in: ALIAS_MAP[decodedParam] }
         });
+        if (found) {
+          targetTopicId = found._id;
+        }
+      }
 
-        if (matched) {
-          targetTopicId = matched._id;
+      if (!targetTopicId || targetTopicId === topicId) {
+        const foundTopic = await Topic.findOne({
+          $or: [
+            { name: { $regex: new RegExp(`^${decodedParam}$`, "i") } },
+            { name: { $regex: new RegExp(`^${withSpaces}$`, "i") } },
+            { name: { $regex: new RegExp(`^${withHyphens}$`, "i") } },
+          ],
+        });
+        if (foundTopic) {
+          targetTopicId = foundTopic._id;
         } else {
-          return res.json([]);
+          const allTopics = await Topic.find().select("_id name").lean();
+          const normalizeStr = (s) =>
+            (s || "")
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[đĐ]/g, "d")
+              .replace(/[^a-z0-9]/g, "");
+          const targetNormalized = normalizeStr(decodedParam);
+
+          const matched = allTopics.find((t) => {
+            const tNorm = normalizeStr(t.name);
+            return (
+              tNorm === targetNormalized ||
+              tNorm.includes(targetNormalized) ||
+              targetNormalized.includes(tNorm)
+            );
+          });
+
+          if (matched) {
+            targetTopicId = matched._id;
+          } else {
+            return res.json([]);
+          }
         }
       }
     }

@@ -71,6 +71,15 @@ function ArtistProfile() {
     }
   }, []);
 
+  const isGoogleAccount = useMemo(() => {
+    return Boolean(
+      artist?.provider === 'google' ||
+      artist?.googleId ||
+      artist?.isGoogle ||
+      !artist?.hasPassword
+    );
+  }, [artist]);
+
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
@@ -423,9 +432,11 @@ function ArtistProfile() {
               </Card>
 
               {/* Security & Password Change */}
-              <Box sx={{ mt: 3 }}>
-                <ChangePasswordCard hasPassword={artist?.hasPassword} role="artist" />
-              </Box>
+              {artist && !isGoogleAccount && (
+                <Box sx={{ mt: 3 }}>
+                  <ChangePasswordCard hasPassword={artist.hasPassword} isGoogle={isGoogleAccount} role="artist" />
+                </Box>
+              )}
             </Grid>
 
             {/* Listener Mock Preview Card */}

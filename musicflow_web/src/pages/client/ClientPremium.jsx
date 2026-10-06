@@ -53,7 +53,7 @@ function ClientPremium() {
   // Trạng thái Checkout Modal
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('mock'); // 'mock' hoặc 'vnpay'
+  const [paymentMethod, setPaymentMethod] = useState('vnpay'); // 'vnpay' làm phương thức chính thức
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -328,7 +328,7 @@ function ClientPremium() {
                         width: '100%',
                         display: 'flex',
                         flexDirection: 'column',
-                        borderRadius: '24px',
+                        borderRadius: '16px',
                         border: '2px solid',
                         borderColor: isCurrentPlan
                           ? '#22c55e'
@@ -368,7 +368,7 @@ function ClientPremium() {
                             color: '#fff',
                             px: 1.5,
                             py: 0.4,
-                            borderRadius: '10px',
+                            borderRadius: '8px',
                             zIndex: 2,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                             display: 'flex',
@@ -394,7 +394,7 @@ function ClientPremium() {
                             border: '1px solid rgba(34, 197, 94, 0.3)',
                             px: 1.5,
                             py: 0.4,
-                            borderRadius: '10px',
+                            borderRadius: '8px',
                             zIndex: 2,
                             display: 'flex',
                             alignItems: 'center',
@@ -444,7 +444,7 @@ function ClientPremium() {
                           onClick={() => handleOpenCheckout(plan)}
                           sx={{
                             py: 1.5,
-                            borderRadius: 3.5,
+                            borderRadius: '10px',
                             fontWeight: 800,
                             textTransform: 'none',
                             fontSize: '14.5px',
@@ -569,7 +569,7 @@ function ClientPremium() {
         maxWidth="xs"
         fullWidth
         PaperProps={{
-          sx: { borderRadius: 5, p: 1.5 },
+          sx: { borderRadius: '16px', p: 1 },
         }}
       >
         <DialogTitle sx={{ fontWeight: 850, pb: 1 }}>
@@ -578,7 +578,7 @@ function ClientPremium() {
         <DialogContent>
           {selectedPlan && (
             <Stack spacing={2.5}>
-              <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 3.5 }}>
+              <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: '12px' }}>
                 <Typography variant="caption" color="text.secondary" fontWeight={600}>
                   Gói đăng ký lựa chọn
                 </Typography>
@@ -604,76 +604,43 @@ function ClientPremium() {
               </Box>
 
               <Typography variant="subtitle2" fontWeight={800}>
-                Chọn phương thức thanh toán:
+                Phương thức thanh toán:
               </Typography>
 
               <RadioGroup
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
               >
-                <Stack spacing={1.5}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 3.5,
-                      border: '1px solid',
-                      borderColor: paymentMethod === 'mock' ? '#6c63ff' : 'divider',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <FormControlLabel
-                      value="mock"
-                      control={<Radio size="small" color="secondary" />}
-                      label={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <FlashIcon sx={{ color: '#eab308' }} />
-                          <Box>
-                            <Typography variant="body2" fontWeight={750}>
-                              Thử nghiệm (Mock Payment)
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              Kích hoạt Premium ngay lập tức để thử nghiệm.
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      }
-                      sx={{ width: '100%', m: 0 }}
-                    />
-                  </Paper>
-
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 3.5,
-                      border: '1px solid',
-                      borderColor: paymentMethod === 'vnpay' ? '#6c63ff' : 'divider',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <FormControlLabel
-                      value="vnpay"
-                      control={<Radio size="small" color="secondary" />}
-                      label={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <WalletIcon sx={{ color: '#00bcd4' }} />
-                          <Box>
-                            <Typography variant="body2" fontWeight={750}>
-                              Cổng thanh toán VNPay Sandbox
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              Thanh toán qua ví VNPay Sandbox / Thẻ ngân hàng test.
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      }
-                      sx={{ width: '100%', m: 0 }}
-                    />
-                  </Paper>
-                </Stack>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: '12px',
+                    border: '1.5px solid #6c63ff',
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.08)' : 'rgba(108, 99, 255, 0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <FormControlLabel
+                    value="vnpay"
+                    control={<Radio size="small" color="secondary" checked />}
+                    label={
+                      <Stack direction="row" spacing={1.2} alignItems="center">
+                        <WalletIcon sx={{ color: '#00bcd4' }} />
+                        <Box>
+                          <Typography variant="body2" fontWeight={750}>
+                            Cổng thanh toán VNPay Sandbox
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            Thanh toán an toàn qua ví VNPay Sandbox / Thẻ ngân hàng test.
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    }
+                    sx={{ width: '100%', m: 0 }}
+                  />
+                </Paper>
               </RadioGroup>
             </Stack>
           )}
@@ -682,7 +649,7 @@ function ClientPremium() {
           <Button 
             onClick={handleCloseCheckout} 
             disabled={processing}
-            sx={{ borderRadius: 3, fontWeight: 700, textTransform: 'none', color: 'text.secondary' }}
+            sx={{ borderRadius: '10px', fontWeight: 700, textTransform: 'none', color: 'text.secondary' }}
           >
             Hủy bỏ
           </Button>
@@ -692,7 +659,7 @@ function ClientPremium() {
             variant="contained"
             sx={{
               px: 3,
-              borderRadius: 3,
+              borderRadius: '10px',
               fontWeight: 800,
               textTransform: 'none',
               bgcolor: '#6c63ff',

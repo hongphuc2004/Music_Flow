@@ -315,8 +315,10 @@ router.get("/profile", authMiddleware, async (req, res) => {
       });
     }
 
+    const isGoogle = user.provider === "google" || Boolean(user.googleId);
     const userObj = user.toJSON();
-    userObj.hasPassword = Boolean(user.password);
+    userObj.isGoogle = isGoogle;
+    userObj.hasPassword = Boolean(user.password) && !isGoogle;
 
     res.json({
       success: true,
@@ -370,8 +372,9 @@ router.put("/change-password", authMiddleware, async (req, res) => {
       });
     }
 
-    // Source of truth: Google-only accounts have no password
-    if (!account.password) {
+    // Source of truth: Google accounts have no local password management
+    const isGoogleAccount = account.provider === "google" || Boolean(account.googleId);
+    if (!account.password || isGoogleAccount) {
       return res.status(400).json({
         success: false,
         message: "Tài khoản đăng nhập bằng Google không có mật khẩu để thay đổi",

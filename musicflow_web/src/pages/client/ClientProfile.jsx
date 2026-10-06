@@ -88,6 +88,15 @@ function ClientProfile() {
     return 'PREMIUM';
   }, [isPremium, resolvedPlanName]);
 
+  const isGoogleAccount = useMemo(() => {
+    return Boolean(
+      user?.provider === 'google' ||
+      user?.googleId ||
+      user?.isGoogle ||
+      !user?.hasPassword
+    );
+  }, [user]);
+
   const planQuota = useMemo(() => {
     switch (currentPlanBadge) {
       case 'GO':
@@ -743,7 +752,9 @@ function ClientProfile() {
                 </Paper>
 
                 {/* Security & Password Change */}
-                <ChangePasswordCard hasPassword={user?.hasPassword} role="user" />
+                {user && !isGoogleAccount && (
+                  <ChangePasswordCard hasPassword={user.hasPassword} isGoogle={isGoogleAccount} role="user" />
+                )}
               </Stack>
             </Grid>
 

@@ -108,7 +108,7 @@ class SubscriptionApiService {
   /// Khởi tạo thanh toán gói cước
   static Future<CheckoutResult> checkout({
     required String planId,
-    String paymentMethod = 'mock',
+    String paymentMethod = 'vnpay',
   }) async {
     try {
       final response = await ApiClient.post(

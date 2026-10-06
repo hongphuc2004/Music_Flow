@@ -515,8 +515,8 @@ function ArtistPro() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 4,
-            p: 1.5,
+            borderRadius: '16px',
+            p: 1,
           },
         }}
       >
@@ -530,7 +530,7 @@ function ArtistPro() {
         </DialogTitle>
 
         <DialogContent dividers sx={{ py: 2.5 }}>
-          <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 3, mb: 3 }}>
+          <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: '12px', mb: 3 }}>
             <Typography variant="body2" color="text.secondary">
               Gói dịch vụ:
             </Typography>
@@ -543,7 +543,7 @@ function ArtistPro() {
           </Box>
 
           <Typography variant="subtitle2" fontWeight={750} sx={{ mb: 1.5 }}>
-            Chọn phương thức thanh toán:
+            Phương thức thanh toán:
           </Typography>
 
           <RadioGroup value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
@@ -551,15 +551,16 @@ function ArtistPro() {
               elevation={0}
               sx={{
                 p: 1.5,
-                mb: 1.5,
-                borderRadius: 2.5,
-                border: '1.5px solid',
-                borderColor: paymentMethod === 'vnpay' ? '#f59e0b' : 'divider',
+                borderRadius: '12px',
+                border: '1.5px solid #f59e0b',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.04)',
+                display: 'flex',
+                alignItems: 'center',
               }}
             >
               <FormControlLabel
                 value="vnpay"
-                control={<Radio color="warning" />}
+                control={<Radio color="warning" checked readOnly />}
                 label={
                   <Box>
                     <Typography variant="body2" fontWeight={750}>
@@ -573,37 +574,11 @@ function ArtistPro() {
                 sx={{ width: '100%', m: 0 }}
               />
             </Paper>
-
-            <Paper
-              elevation={0}
-              sx={{
-                p: 1.5,
-                borderRadius: 2.5,
-                border: '1.5px solid',
-                borderColor: paymentMethod === 'mock' ? '#f59e0b' : 'divider',
-              }}
-            >
-              <FormControlLabel
-                value="mock"
-                control={<Radio color="warning" />}
-                label={
-                  <Box>
-                    <Typography variant="body2" fontWeight={750}>
-                      Giả lập thanh toán (Mock Demo)
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Thử nghiệm kích hoạt nhanh tức thì không cần thẻ
-                    </Typography>
-                  </Box>
-                }
-                sx={{ width: '100%', m: 0 }}
-              />
-            </Paper>
           </RadioGroup>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleCloseCheckout} disabled={submitting} sx={{ fontWeight: 600 }}>
+          <Button onClick={handleCloseCheckout} disabled={submitting} sx={{ fontWeight: 600, borderRadius: '10px' }}>
             Hủy
           </Button>
           <Button
@@ -613,7 +588,7 @@ function ArtistPro() {
             sx={{
               background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
               fontWeight: 800,
-              borderRadius: 2.5,
+              borderRadius: '10px',
               px: 3,
               textTransform: 'none',
             }}

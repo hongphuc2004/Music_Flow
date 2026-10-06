@@ -1,162 +1,83 @@
-# 🎵 MusicFlow — Hướng dẫn Cài đặt & Khởi chạy nhanh
+# 🎵 MusicFlow — Hệ Sinh Thái Ứng Dụng Âm Nhạc Đa Nền Tảng
 
-MusicFlow là một hệ sinh thái ứng dụng quản lý, phát nhạc và chia sẻ âm nhạc đa nền tảng, bao gồm:
-- **musicflow_backend/**: Backend Node.js/Express phục vụ API, xác thực, quản lý người dùng, upload nhạc (Cloudinary) và AI gợi ý nhạc (Gemini API).
-- **musicflow_web/**: Giao diện web React 19 + Vite + MUI dành cho Admin, Artist và Client/User.
-- **musicflow_app/**: Ứng dụng di động Flutter (Android & iOS) dành cho Client/User nghe nhạc trực tuyến, hỗ trợ background play và hát karaoke theo lyric.
+MusicFlow là một hệ sinh thái ứng dụng quản lý, phát nhạc trực tuyến và sáng tạo âm nhạc đa nền tảng, bao gồm 4 phân hệ chính:
 
-Dưới đây là hướng dẫn chi tiết từng bước để cài đặt và chạy dự án từ khi clone về máy mới.
+- 🚀 [**musicflow_backend/**](./musicflow_backend/README.md): RESTful API Node.js/Express 5 phục vụ nghiệp vụ, xác thực JWT & Google OAuth, upload đa phương tiện Cloudinary và AI DJ / Semantic Search qua Gemini API.
+- 🌐 [**musicflow_web/**](./musicflow_web/README.md): Giao diện web đa cổng (Admin, Artist, Client) xây dựng bằng React 19 + Vite + Material UI (MUI v7).
+- 📱 [**musicflow_app/**](./musicflow_app/README.md): Ứng dụng di động Flutter (Android & iOS) phát nhạc nền (background audio), hát karaoke theo lyric LRC và trợ lý giọng nói AI.
+- 🎙️ [**musicflow_lyrics_sync/**](./musicflow_lyrics_sync/README.md): Worker AI chuyên dụng (Python) tự động bóc tách lời từ audio (Gemini Flash / Faster-Whisper) và căn nhịp âm học chuẩn phòng thu từng từ (Wav2Vec2 CTC ONNX INT8).
 
 ---
 
-## 📋 Yêu cầu hệ thống (Prerequisites)
+## 📋 Yêu Cầu Hệ Thống (Prerequisites)
+
 Trước khi bắt đầu, hãy đảm bảo máy tính của bạn đã cài đặt:
-- **Node.js** v18+
-- **Flutter SDK** v3.19+ (kèm Android SDK / Xcode)
-- **MongoDB** (Local instance chạy cổng `27017` hoặc sử dụng tài khoản **MongoDB Atlas**)
-- **Docker & Docker Compose** (Không bắt buộc, dùng để chạy nhanh container)
+- **Node.js**: v18+ (khuyên dùng Node 20 LTS)
+- **Python**: 3.10+ (kèm `ffmpeg` nếu chạy module `musicflow_lyrics_sync`)
+- **Flutter SDK**: v3.19+ (kèm Android SDK hoặc Xcode nếu chạy app di động)
+- **MongoDB**: Đã cài đặt cục bộ (cổng `27017`) hoặc chuỗi kết nối **MongoDB Atlas**
+- **Docker & Docker Compose**: Để chạy nhanh toàn bộ hệ sinh thái mà không cần cài lẻ tẻ từng môi trường
 
 ---
 
-## ⚙️ Các bước cài đặt chi tiết
+## ⚡ Hướng Dẫn Cài Đặt Từng Phân Hệ
 
-### 1. Thiết lập Backend (`musicflow_backend/`)
-1. Di chuyển vào thư mục backend:
-   ```bash
-   cd musicflow_backend
-   ```
-2. Tạo file môi trường:
-   Sao chép file `.env.example` thành `.env.dev` (để chạy dev cục bộ) và `.env.prod` (khi chạy production):
-   ```bash
-   cp .env.example .env.dev
-   ```
-3. Mở file `.env.dev` bằng VS Code hoặc text editor bất kỳ và cấu hình các biến chính:
-   - `MONGO_URI`: Chuỗi kết nối MongoDB (Ví dụ: `mongodb://127.0.0.1:27017/musicflow_db`)
-   - `JWT_SECRET`: Một chuỗi ký tự ngẫu nhiên bất kỳ (Ví dụ: `my_super_secret_key_123`)
-   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Tạo tài khoản Cloudinary miễn phí và lấy thông tin cấu hình điền vào (dùng để upload nhạc và ảnh).
-   - `GEMINI_API_KEY`: API Key từ Google AI Studio (để kích hoạt AI DJ gợi ý nhạc theo tâm trạng).
-   - `GOOGLE_CLIENT_ID`: Web Client ID từ Google Cloud Console (nếu muốn dùng Google Sign-In).
-4. Cài đặt các thư viện phụ thuộc:
-   ```bash
-   npm install
-   ```
-5. Khởi chạy server ở chế độ Development (nodemon hot-reload):
-   ```bash
-   npm run dev
-   ```
-   *Mặc định backend sẽ chạy ở cổng **5001** (API Endpoint: `http://localhost:5001`).*
+Xem hướng dẫn chi tiết tại README của từng thư mục:
+
+| Thư mục | Mô tả & Hướng dẫn | Lệnh khởi chạy nhanh |
+| :--- | :--- | :--- |
+| [`musicflow_backend/`](./musicflow_backend/README.md) | API Server Node.js/Express | `npm run dev` (cổng 5001) |
+| [`musicflow_web/`](./musicflow_web/README.md) | Web React 19 + MUI | `npm run dev` (cổng 5173) |
+| [`musicflow_lyrics_sync/`](./musicflow_lyrics_sync/README.md) | AI Lyrics & LRC Worker Python | `python main.py` |
+| [`musicflow_app/`](./musicflow_app/README.md) | App di động Flutter | `flutter run` |
 
 ---
 
-### 2. Thiết lập Web Frontend (`musicflow_web/`)
-1. Di chuyển vào thư mục web:
-   ```bash
-   cd ../musicflow_web
-   ```
-2. Tạo file môi trường:
-   Sao chép file `.env.example` thành `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-3. Kiểm tra các biến trong file `.env`:
-   - `VITE_API_URL`: Cổng API Backend (mặc định: `http://localhost:5001/api`).
-   - `VITE_GOOGLE_CLIENT_ID`: Cấu hình Google Client ID trùng khớp với backend.
-4. Cài đặt các thư viện phụ thuộc:
-   ```bash
-   npm install
-   ```
-5. Khởi chạy ứng dụng Web:
-   ```bash
-   npm run dev
-   ```
-   *Trình duyệt sẽ tự động mở hoặc bạn có thể truy cập qua: `http://localhost:5173`.*
+## 🐳 Khởi Chạy Nhanh Toàn Bộ Bằng Docker
 
----
+Nếu máy bạn đã cài đặt Docker và Docker Compose, bạn có thể khởi chạy toàn bộ dịch vụ (Backend, Web, Database và Lyrics Sync Worker) chỉ bằng một lệnh duy nhất từ thư mục gốc của dự án:
 
-### 3. Thiết lập App Flutter (`musicflow_app/`)
-1. Di chuyển vào thư mục app:
-   ```bash
-   cd ../musicflow_app
-   ```
-2. Tải các package Flutter cần thiết:
-   ```bash
-   flutter pub get
-   ```
-3. Chạy ứng dụng di động:
-   - **Chạy trên máy ảo (Android Emulator / iOS Simulator):**
-     ```bash
-     flutter run
-     ```
-     *(Tự động phát hiện môi trường: Android Emulator trỏ về `10.0.2.2:5001`, iOS Simulator và Web trỏ về `localhost:5001`).*
-   - **Chạy trên thiết bị thật (Physical Device) hoặc muốn chỉ định API cụ thể:**
-     Bạn cần truyền IP mạng nội bộ (LAN IP) của máy tính đang chạy backend:
-     ```bash
-     flutter run --dart-define=API_BASE_URL=http://<ip-lan-may-tinh>:5001
-     ```
-
----
-
-## 🐳 Khởi chạy nhanh bằng Docker
-Nếu máy bạn có cài đặt Docker và Docker Compose, bạn có thể chạy đồng thời Backend, Web Frontend và Database MongoDB chỉ bằng một dòng lệnh từ thư mục gốc của dự án:
-
-### Khởi chạy chế độ Phát triển (Development - Hot reload)
-1. Cấu hình file `musicflow_backend/.env.dev` tương tự bước 1 ở trên.
-2. Tại thư mục gốc chạy:
+### 1. Khởi chạy chế độ Phát triển (Development - Hot reload)
+1. Cấu hình file `musicflow_backend/.env.dev` (tham khảo `.env.example`).
+2. Khởi chạy:
    ```bash
    docker compose --profile dev up --build
    ```
-3. URL truy cập:
-   - Web: `http://localhost:5173`
-   - Backend API: `http://localhost:5001`
-   - MongoDB: `mongodb://localhost:27017`
+3. Truy cập các cổng:
+   - 🌐 **Web Studio / Client**: `http://localhost:5173`
+   - 📡 **Backend API**: `http://localhost:5001`
+   - 🗄️ **MongoDB**: `mongodb://localhost:27017/musicflow_db`
+   - 🎙️ **Lyrics Sync Worker**: Tự động kết nối MongoDB và lắng nghe job ngầm.
 
-### Khởi chạy chế độ Production
-1. Cấu hình file `musicflow_backend/.env.prod`.
-2. Tại thư mục gốc chạy:
-   ```bash
-   docker compose --profile prod up --build -d
-   ```
-3. URL truy cập:
-   - Web: `http://localhost:8080`
-   - Backend API: `http://localhost:5000`
+### 2. Khởi chạy chế độ Production (Docker detached)
+```bash
+docker compose --profile prod up --build -d
+```
+- Web: `http://localhost:8080`
+- Backend API: `http://localhost:5000`
 
-Để dừng dịch vụ Docker:
+### 3. Dừng hệ thống Docker
 ```bash
 docker compose down
 ```
 
 ---
 
-## 🚀 Hướng dẫn Deploy nhanh
+## 🚀 Hướng Dẫn Triển Khai Đám Mây (Production Deployment)
 
-### 1. Cơ sở dữ liệu (MongoDB Atlas)
-- Đăng ký tài khoản MongoDB Atlas, tạo cluster M0 miễn phí.
-- Thêm IP `0.0.0.0/0` trong Network Access (hoặc IP cụ thể của Render/Vercel).
-- Lấy chuỗi kết nối (Connection String) điền vào `MONGO_URI` (Lưu ý: Nếu mật khẩu chứa ký tự đặc biệt như `@`, hãy mã hóa thành `%40`).
-
-### 2. Backend (Render)
-- Tạo mới một `Web Service` từ repo của bạn.
-- Cấu hình:
-  - **Root Directory**: `musicflow_backend`
-  - **Build Command**: `npm install`
-  - **Start Command**: `npm start`
-- Khai báo đầy đủ các biến môi trường trong file `.env.prod` lên phần Environment Variables của Render.
-
-### 3. Frontend Web (Vercel)
-- Tạo mới project trên Vercel liên kết với repo.
-- Cấu hình:
-  - **Root Directory**: `musicflow_web`
-  - **Build Command**: `npm run build`
-  - **Output Directory**: `dist`
-- Khai báo biến môi trường:
-  - `VITE_API_URL`: `https://<ten-mien-render-cua-ban>.onrender.com/api`
-  - `VITE_GOOGLE_CLIENT_ID`: Google Client ID tương ứng.
+| Dịch vụ | Nền tảng khuyến nghị | Thư mục cấu hình | Ghi chú |
+| :--- | :--- | :--- | :--- |
+| **Database** | MongoDB Atlas (M0 Free) | Đám mây | Whitelist IP `0.0.0.0/0`, URL-encode mật khẩu nếu có `@` |
+| **Backend** | Render Web Service | `musicflow_backend` | Start command: `npm start`, điền biến môi trường từ `.env.prod` |
+| **Web** | Vercel | `musicflow_web` | Build: `npm run build`, Output: `dist`, có sẵn rewrite SPA trong `vercel.json` |
+| **Lyrics Sync**| Modal.com / Cloud Run / Render | `musicflow_lyrics_sync` | Xem chi tiết trong [deploy_lyrics_sync_render.md](./docs/deploy_lyrics_sync_render.md) |
+| **Mobile App** | Google Play / App Store | `musicflow_app` | Build APK: `flutter build apk --release --dart-define=APP_ENV=prod` |
 
 ---
 
-## 🛠️ Một số lỗi thường gặp khi cài đặt
-1. **Lỗi `origin_mismatch` (Google Login)**: Kiểm tra cấu hình `Authorized JavaScript origins` trên Google Cloud Console đã thêm đúng domain web đang chạy chưa (ví dụ: `http://localhost:5173` hoặc domain production).
-2. **Lỗi CORS (`Not allowed by CORS`)**: Kiểm tra giá trị `CORS_ORIGINS` trong `.env` backend đã khai báo đúng domain của frontend chưa, các domain phân tách bằng dấu phẩy không chứa khoảng trắng dư thừa.
-3. **Lỗi kết nối MongoDB Atlas (`querySrv ENOTFOUND`)**: Hãy chắc chắn mật khẩu trong chuỗi kết nối của bạn đã được mã hóa URL-encode.
-4. **Lỗi Router 404 trên Web sau khi Deploy**: Đảm bảo tệp `musicflow_web/vercel.json` có mặt ở thư mục gốc của project web để rewrite toàn bộ các route SPA về `index.html`.
+## 🛠️ Một Số Lỗi Thường Gặp Khi Cài Đặt Máy Mới
 
+1. **Lỗi `origin_mismatch` (Google Login)**: Thêm domain của frontend (`http://localhost:5173` hoặc domain production) vào mục *Authorized JavaScript origins* trên Google Cloud Console.
+2. **Lỗi CORS (`Not allowed by CORS`)**: Khai báo đúng origin của frontend vào biến `CORS_ORIGINS` trong `.env` backend (phân tách bằng dấu phẩy, không chứa khoảng trắng).
+3. **Lỗi kết nối MongoDB Atlas (`querySrv ENOTFOUND`)**: Kiểm tra mật khẩu trong chuỗi kết nối URI, nếu có ký tự đặc biệt như `@` cần encode thành `%40`.
+4. **Lỗi mạng trên điện thoại thật khi chạy Flutter (`SocketException`)**: Đảm bảo điện thoại và máy tính kết nối chung mạng Wi-Fi và truyền cờ `--dart-define=API_BASE_URL=http://<IP-LAN-MAY-TINH>:5001`.

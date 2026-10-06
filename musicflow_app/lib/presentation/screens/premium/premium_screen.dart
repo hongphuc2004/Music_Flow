@@ -1,6 +1,4 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/core/utils/app_toast.dart';
 import 'package:musicflow_app/data/models/plan_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
@@ -638,7 +636,7 @@ class _CheckoutModal extends StatefulWidget {
 }
 
 class _CheckoutModalState extends State<_CheckoutModal> {
-  String _paymentMethod = 'mock'; // 'mock' hoặc 'vnpay'
+  String _paymentMethod = 'vnpay'; // Cổng VNPay chính thức
   bool _isProcessing = false;
 
   Future<void> _handleConfirmPayment() async {
@@ -713,7 +711,7 @@ class _CheckoutModalState extends State<_CheckoutModal> {
       ),
       decoration: const BoxDecoration(
         color: Color(0xFF140F24),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -748,7 +746,7 @@ class _CheckoutModalState extends State<_CheckoutModal> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Column(
@@ -809,16 +807,8 @@ class _CheckoutModalState extends State<_CheckoutModal> {
           const SizedBox(height: 8),
 
           _buildPaymentOption(
-            id: 'mock',
-            title: 'Kích hoạt thử nghiệm (Tức thì)',
-            subtitle: 'Thanh toán mô phỏng 0đ kích hoạt VIP ngay',
-            icon: Icons.flash_on_rounded,
-            iconColor: const Color(0xFFF59E0B),
-          ),
-          const SizedBox(height: 8),
-          _buildPaymentOption(
             id: 'vnpay',
-            title: 'Cổng thanh toán VNPay',
+            title: 'Cổng thanh toán VNPay Sandbox',
             subtitle: 'Thẻ ATM / QR Pay / Visa qua VNPay Sandbox',
             icon: Icons.account_balance_wallet_rounded,
             iconColor: const Color(0xFF00E5FF),
@@ -834,7 +824,7 @@ class _CheckoutModalState extends State<_CheckoutModal> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
               child: _isProcessing
@@ -872,14 +862,14 @@ class _CheckoutModalState extends State<_CheckoutModal> {
 
     return InkWell(
       onTap: () => setState(() => _paymentMethod = id),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
               ? iconColor.withOpacity(0.12)
               : Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? iconColor : Colors.white.withOpacity(0.08),
             width: isSelected ? 1.5 : 1.0,

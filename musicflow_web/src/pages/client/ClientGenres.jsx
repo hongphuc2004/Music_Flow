@@ -131,7 +131,8 @@ const NATIONS_ITEMS = [
     subtitle: 'Giai điệu thân thương & cảm xúc',
     image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&auto=format&fit=crop&q=80',
     gradient: 'linear-gradient(180deg, rgba(220, 38, 38, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
-    query: 'Việt',
+    topicName: 'Việt Nam',
+    query: 'Việt Nam',
     flag: '🇻🇳',
   },
   {
@@ -140,7 +141,8 @@ const NATIONS_ITEMS = [
     subtitle: 'Xu hướng Billboard toàn cầu',
     image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&auto=format&fit=crop&q=80',
     gradient: 'linear-gradient(180deg, rgba(37, 99, 235, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
-    query: 'US UK',
+    topicName: 'Nhạc Âu Mỹ (US-UK)',
+    query: 'US-UK',
     flag: '🇺🇸',
   },
   {
@@ -149,6 +151,7 @@ const NATIONS_ITEMS = [
     subtitle: 'Vũ đạo & giai điệu bùng nổ',
     image: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=600&auto=format&fit=crop&q=80',
     gradient: 'linear-gradient(180deg, rgba(219, 39, 119, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
+    topicName: 'Nhạc Hàn (K-Pop)',
     query: 'Kpop',
     flag: '🇰🇷',
   },
@@ -158,7 +161,8 @@ const NATIONS_ITEMS = [
     subtitle: 'Cổ phong & ngọt ngào sâu lắng',
     image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
     gradient: 'linear-gradient(180deg, rgba(185, 28, 28, 0.35) 0%, rgba(10, 15, 30, 0.95) 100%)',
-    query: 'Hoa',
+    topicName: 'Nhạc Hoa (C-Pop)',
+    query: 'C-Pop',
     flag: '🇨🇳',
   }
 ];
@@ -261,11 +265,11 @@ const GENRE_CAPSULES = [
     id: 'usuk',
     title: 'US-UK Billboard',
     name: 'US-UK Billboard',
-    topicName: 'US-UK',
+    topicName: 'Nhạc Âu Mỹ (US-UK)',
     color: '#6366f1',
     icon: '🇺🇸',
     desc: 'Top hits toàn cầu',
-    query: 'US UK',
+    query: 'US-UK',
     image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=1400&auto=format&fit=crop&q=80',
     gradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.85) 0%, rgba(59, 130, 246, 0.85) 100%)',
   },
@@ -297,7 +301,7 @@ const GENRE_CAPSULES = [
     id: 'rap',
     title: 'Rap & Hip-Hop',
     name: 'Rap & Hip-Hop',
-    topicName: 'Rap',
+    topicName: 'Hip Hop & Rap',
     color: '#f59e0b',
     icon: '🎤',
     desc: 'Bùng nổ nhịp beat',
@@ -324,46 +328,68 @@ function findMatchingDbTopic(item, topicsList) {
   if (item._id) return item;
 
   const rawName = item.topicName || item.name || item.title || '';
-  const searchName = rawName.toLowerCase();
+  const searchName = rawName.toLowerCase().trim();
   const searchSlug = toSlug(rawName);
+  const itemId = (item.id || '').toLowerCase().trim();
   
   // 1. Khớp chính xác name, _id, hoặc slug
-  let match = topicsList.find(t => t.name.toLowerCase() === searchName || toSlug(t.name) === searchSlug || t._id === item.id);
-  if (match) return match;
-  
-  // 2. Khớp includes
-  match = topicsList.find(t => {
-    const dbName = t.name.toLowerCase();
-    const dbSlug = toSlug(t.name);
-    return dbName.includes(searchName) || searchName.includes(dbName) || (searchSlug && dbSlug.includes(searchSlug));
-  });
+  let match = topicsList.find(t => 
+    t._id === item.id || 
+    t.name.toLowerCase() === searchName || 
+    toSlug(t.name) === searchSlug ||
+    toSlug(t.name) === itemId
+  );
   if (match) return match;
 
-  const keywords = {
-    'viet': ['việt', 'vpop', 'v-pop', 'nhac viet', 'pop'],
-    'vpop': ['việt', 'vpop', 'v-pop', 'nhac viet', 'pop'],
-    'lofi': ['lofi', 'chill'],
-    'ballad': ['pop', 'ballad'],
-    'acoustic': ['acoustic', 'cafe', 'mộc', 'indie'],
-    'indie': ['indie', 'acoustic', 'mộc'],
+  // 2. Tra cứu theo nhóm chủ đề / quốc gia chính xác (ngăn chặn lỗi substring 'us' trong 'music')
+  const TOPIC_INTENT_MAP = {
+    'nation-cpop': ['nhạc hoa (c-pop)', 'nhạc hoa', 'c-pop', 'cpop', 'music chinese'],
+    'cpop': ['nhạc hoa (c-pop)', 'nhạc hoa', 'c-pop', 'cpop', 'music chinese'],
+    'nation-usuk': ['nhạc âu mỹ (us-uk)', 'nhạc âu mỹ', 'âu mỹ', 'us-uk', 'usuk', 'us uk', 'billboard'],
+    'usuk': ['nhạc âu mỹ (us-uk)', 'nhạc âu mỹ', 'âu mỹ', 'us-uk', 'usuk', 'us uk', 'billboard'],
+    'nation-kpop': ['nhạc hàn (k-pop)', 'nhạc hàn', 'k-pop', 'kpop', 'hàn quốc'],
+    'kpop': ['nhạc hàn (k-pop)', 'nhạc hàn', 'k-pop', 'kpop', 'hàn quốc'],
+    'nation-vn': ['việt nam', 'v-pop', 'nhạc việt'],
+    'vpop': ['v-pop', 'việt nam', 'nhạc việt'],
+    'viet': ['việt nam', 'v-pop', 'nhạc việt'],
     'edm': ['edm', 'dance', 'electronic', 'remix'],
-    'us-uk': ['us', 'uk', 'pop', 'âu mỹ', 'billboard'],
-    'usuk': ['us', 'uk', 'pop', 'âu mỹ', 'billboard'],
-    'kpop': ['kpop', 'k-pop', 'hàn', 'korean'],
-    'cpop': ['hoa', 'cpop', 'c-pop'],
-    'rap': ['rap', 'hip-hop', 'hiphop', 'hip hop'],
-    'gym': ['gym', 'workout', 'remix', 'edm'],
-    'focus': ['focus', 'lofi', 'không lời']
+    'lofi': ['lofi', 'chill'],
+    'rap': ['hip hop & rap', 'rap', 'hip-hop', 'hiphop'],
+    'acoustic': ['acoustic', 'cafe', 'mộc'],
+    'indie': ['indie', 'acoustic'],
+    'ballad': ['ballad', 'pop'],
+    'gym': ['workout', 'gym'],
+    'workout': ['workout', 'gym'],
+    'party': ['party'],
+    'sleep': ['sleep'],
+    'study': ['study'],
+    'piano': ['piano'],
+    'sad': ['sad'],
+    'chill': ['chill']
   };
 
-  for (const [key, aliases] of Object.entries(keywords)) {
-    if (searchSlug.includes(key) || searchName.includes(key) || item.id === key) {
+  for (const [key, aliases] of Object.entries(TOPIC_INTENT_MAP)) {
+    if (itemId === key || searchSlug === key || searchSlug.includes(key)) {
       const aliasMatch = topicsList.find(t => {
-        const dbName = t.name.toLowerCase();
-        return aliases.some(alias => dbName.includes(alias));
+        const dbNameLower = t.name.toLowerCase();
+        const dbSlug = toSlug(t.name);
+        return aliases.some(alias => 
+          dbNameLower === alias || 
+          dbSlug === toSlug(alias) || 
+          dbNameLower.includes(alias)
+        );
       });
       if (aliasMatch) return aliasMatch;
     }
+  }
+
+  // 3. Khớp includes an toàn (chỉ khi từ >= 4 ký tự)
+  if (searchSlug.length >= 4) {
+    match = topicsList.find(t => {
+      const dbSlug = toSlug(t.name);
+      return dbSlug.length >= 4 && (dbSlug.includes(searchSlug) || searchSlug.includes(dbSlug));
+    });
+    if (match) return match;
   }
 
   return null;
@@ -560,8 +586,9 @@ function ClientGenres() {
       setLoading(true);
       setError('');
       
-      // 1. Thử gọi trực tiếp bằng _id, id hoặc slug
-      const targetIdOrSlug = item._id || item.id || toSlug(item.topicName || item.name || item.title);
+      // 1. Ưu tiên map qua DB Topic chính xác trước (nhất là các slug quốc gia như nation-usuk, nation-cpop)
+      const dbTopic = findMatchingDbTopic(item, topics);
+      const targetIdOrSlug = dbTopic?._id || item._id || item.id || toSlug(item.topicName || item.name || item.title);
       let fetchedSongs = [];
       
       if (targetIdOrSlug) {
@@ -573,16 +600,13 @@ function ClientGenres() {
         }
       }
 
-      // 2. Nếu chưa có kết quả, thử map qua DB Topic
-      if (fetchedSongs.length === 0) {
-        const dbTopic = findMatchingDbTopic(item, topics);
-        if (dbTopic && dbTopic._id !== targetIdOrSlug) {
-          try {
-            const response = await clientTopicsApi.getSongsByTopic(dbTopic._id);
-            fetchedSongs = Array.isArray(response.data) ? response.data : [];
-          } catch {
-            fetchedSongs = [];
-          }
+      // 2. Thử gọi slug gốc nếu query qua dbTopic chưa có
+      if (fetchedSongs.length === 0 && item.id && item.id !== targetIdOrSlug) {
+        try {
+          const response = await clientTopicsApi.getSongsByTopic(item.id);
+          fetchedSongs = Array.isArray(response.data) ? response.data : [];
+        } catch {
+          fetchedSongs = [];
         }
       }
 

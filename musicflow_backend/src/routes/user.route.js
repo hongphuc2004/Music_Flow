@@ -33,8 +33,10 @@ router.get("/me", authMiddleware, async (req, res) => {
       await user.save();
     }
 
+    const isGoogle = user.provider === "google" || Boolean(user.googleId);
     const userObj = user.toJSON();
-    userObj.hasPassword = Boolean(user.password);
+    userObj.isGoogle = isGoogle;
+    userObj.hasPassword = Boolean(user.password) && !isGoogle;
 
     return res.json({
       success: true,

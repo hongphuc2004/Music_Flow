@@ -4,12 +4,16 @@ const Song = require("../models/song.model");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
+const VALID_REACTION_TYPES = ["like", "love", "haha", "wow", "sad", "angry"];
+
 const buildReactionSummary = (reactions = []) => {
-  const summary = { like: 0 };
+  const summary = { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 };
 
   reactions.forEach((reaction) => {
     if (summary[reaction.type] !== undefined) {
       summary[reaction.type] += 1;
+    } else {
+      summary[reaction.type] = 1;
     }
   });
 
@@ -296,14 +300,19 @@ exports.reactToComment = async (req, res) => {
       });
     }
 
+    let { type = "like" } = req.body || {};
+    if (!VALID_REACTION_TYPES.includes(type)) {
+      type = "like";
+    }
+
     const reactionIndex = comment.reactions.findIndex(
       (reaction) => String(reaction.userId) === String(req.userId)
     );
 
     if (reactionIndex === -1) {
-      comment.reactions.push({ userId: req.userId, type: "like" });
+      comment.reactions.push({ userId: req.userId, type });
     } else {
-      comment.reactions[reactionIndex].type = "like";
+      comment.reactions[reactionIndex].type = type;
     }
 
     comment.reactionCount = comment.reactions.length;
@@ -326,7 +335,7 @@ exports.reactToComment = async (req, res) => {
       message: "Thả cảm xúc thành công",
       reactionCount: comment.reactionCount,
       reactionSummary: buildReactionSummary(comment.reactions),
-      userReaction: "like",
+      userReaction: type,
     });
   } catch (error) {
     console.error("React comment error:", error);

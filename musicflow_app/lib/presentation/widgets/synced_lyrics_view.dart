@@ -147,6 +147,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
               ),
               child: Text(
                 line.text.isEmpty ? '...' : line.text,
+                textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

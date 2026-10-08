@@ -290,6 +290,13 @@ class GlobalAudioState extends ChangeNotifier {
       return 0;
     }
 
+    // Chặn trùng lặp: không cho thêm bài hát đã có trong danh sách chờ hoặc đang phát
+    final isDuplicate =
+        _playlist.any((s) => s.id == song.id) || _currentSong?.id == song.id;
+    if (isDuplicate) {
+      return -1;
+    }
+
     final insertIndex = playNext
         ? (_currentIndex + 1).clamp(0, _playlist.length)
         : _playlist.length;

@@ -241,6 +241,7 @@ class CommentService {
 
   static Future<CommentActionResult> reactToComment({
     required String commentId,
+    String type = 'like',
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -255,7 +256,7 @@ class CommentService {
           .put(
             Uri.parse('${ApiConfig.commentsEndpoint}/$commentId/reactions'),
             headers: await _getAuthHeaders(),
-            body: jsonEncode({'type': 'like'}),
+            body: jsonEncode({'type': type}),
           )
           .timeout(timeout);
 

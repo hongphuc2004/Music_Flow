@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'rive/rive_heart_button.dart';
 
 class PlayerBottomActionBar extends StatelessWidget {
   final bool isLiked;
@@ -35,12 +36,30 @@ class PlayerBottomActionBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _ActionMenuItem(
-            icon: isLiked ? Icons.favorite : Icons.favorite_border,
-            iconColor: isLiked ? Colors.redAccent : Colors.white70,
-            label: _formatCount(likeCount),
-            tooltip: 'Like',
-            onPressed: onLikePressed,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 48,
+                child: Center(
+                  child: RiveHeartButton(
+                    isLiked: isLiked,
+                    onTap: onLikePressed,
+                    size: 24,
+                    activeColor: Colors.redAccent,
+                    inactiveColor: Colors.white70,
+                  ),
+                ),
+              ),
+              Text(
+                _formatCount(likeCount),
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
           _ActionMenuItem(
             icon: Icons.chat_bubble_outline,

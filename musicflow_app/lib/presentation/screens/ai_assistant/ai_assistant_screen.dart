@@ -1,11 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
-import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/core/utils/app_toast.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/assistant_api_service.dart';
-import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/presentation/screens/premium/premium_screen.dart';
 import 'package:musicflow_app/presentation/widgets/voice_ai_dj_sheet.dart';
 
@@ -144,8 +141,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
           });
           _scrollToBottom();
 
-          // Thực thi smart clientActions nếu có
-          _handleClientActions(res);
+          // Thực thi smart clientActions nếu có hoặc auto-play theo ý định yêu cầu
+          _handleClientActions(res, userPrompt: cleanText);
 
           // Cập nhật lại quota và danh sách hội thoại
           AssistantApiService.getQuota().then((q) {
@@ -173,24 +170,107 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     }
   }
 
-  void _handleClientActions(AssistantSendResult res) {
-    if (res.songs.isNotEmpty && res.clientActions.isNotEmpty) {
+  void _handleClientActions(AssistantSendResult res, {String? userPrompt}) {
+    bool hasHandledPlayback = false;
+
+    if (res.clientActions.isNotEmpty) {
       for (final action in res.clientActions) {
-        final type = action is Map ? action['type']?.toString() : null;
-        if (type == 'play_song') {
-          final targetSong = res.songs.first;
-          _playSong(targetSong);
+        if (action is! Map) continue;
+        final type = action['type']?.toString().toUpperCase();
+        final payload = action['payload'];
+
+        if (type == 'PLAY_SONG') {
+          Song? targetSong;
+          if (payload is Map && payload['song'] is Map) {
+            try {
+              targetSong = Song.fromJson(Map<String, dynamic>.from(payload['song']));
+            } catch (_) {}
+          }
+          targetSong ??= res.songs.isNotEmpty ? res.songs.first : null;
+
+          if (targetSong != null) {
+            if (res.songs.isNotEmpty) {
+              final idx = res.songs.indexWhere((s) => s.id == targetSong!.id);
+              _playAllSongs(res.songs, startIndex: idx >= 0 ? idx : 0);
+            } else {
+              _playSong(targetSong);
+            }
+            hasHandledPlayback = true;
+            break;
+          }
+        } else if (type == 'LOAD_PLAYLIST' || type == 'PLAY_PLAYLIST') {
+          List<Song> playlistSongs = [];
+          if (payload is Map && payload['songs'] is List) {
+            playlistSongs = (payload['songs'] as List)
+                .whereType<Map>()
+                .map((m) => Song.fromJson(Map<String, dynamic>.from(m)))
+                .toList();
+          }
+          if (playlistSongs.isEmpty) {
+            playlistSongs = res.songs;
+          }
+
+          if (playlistSongs.isNotEmpty) {
+            _playAllSongs(playlistSongs, startIndex: 0);
+            hasHandledPlayback = true;
+            break;
+          }
+        } else if (type == 'PAUSE_SONG' || type == 'PAUSE') {
+          _globalAudioState.audioService.pause();
+          hasHandledPlayback = true;
           break;
-        } else if (type == 'play_playlist') {
-          _playAllSongs(res.songs);
+        } else if (type == 'RESUME_SONG' || type == 'RESUME' || type == 'PLAY') {
+          _globalAudioState.audioService.resume();
+          hasHandledPlayback = true;
           break;
-        } else if (type == 'add_to_queue') {
-          for (final s in res.songs) {
+        } else if (type == 'NEXT_SONG' || type == 'NEXT') {
+          _globalAudioState.playNext();
+          hasHandledPlayback = true;
+          break;
+        } else if (type == 'PREV_SONG' || type == 'PREVIOUS_SONG') {
+          _globalAudioState.playPrevious();
+          hasHandledPlayback = true;
+          break;
+        } else if (type == 'ADD_TO_QUEUE') {
+          final songsToAdd = res.songs;
+          for (final s in songsToAdd) {
             _globalAudioState.addToQueue(s, playNext: false);
           }
-          AppToast.showInfo(context, 'Đã thêm ${res.songs.length} bài hát vào danh sách phát');
+          AppToast.showInfo(context, 'Đã thêm ${songsToAdd.length} bài hát vào danh sách phát');
+          hasHandledPlayback = true;
           break;
         }
+      }
+    }
+
+    // Auto-play Intent Fallback:
+    // Nếu chưa kích hoạt qua clientActions nhưng res.songs có bài hát
+    // và người dùng hoặc câu trả lời của AI thể hiện ý định phát nhạc
+    if (!hasHandledPlayback && res.songs.isNotEmpty) {
+      final promptLower = (userPrompt ?? '').toLowerCase();
+      final aiContentLower = (res.assistantMessage?.content ?? '').toLowerCase();
+
+      final isPlayIntent = promptLower.contains('phát') ||
+          promptLower.contains('phat') ||
+          promptLower.contains('bật') ||
+          promptLower.contains('bat') ||
+          promptLower.contains('mở') ||
+          promptLower.contains('mo') ||
+          promptLower.contains('nghe') ||
+          promptLower.contains('play') ||
+          promptLower.contains('chơi') ||
+          promptLower.contains('choi') ||
+          aiContentLower.contains('đang phát') ||
+          aiContentLower.contains('dang phat') ||
+          aiContentLower.contains('đang bật') ||
+          aiContentLower.contains('dang bat') ||
+          aiContentLower.contains('thưởng thức nhé') ||
+          aiContentLower.contains('thuong thuc') ||
+          aiContentLower.contains('mình đang phát') ||
+          aiContentLower.contains('mình đang bật');
+
+      if (isPlayIntent) {
+        _playAllSongs(res.songs, startIndex: 0);
       }
     }
   }

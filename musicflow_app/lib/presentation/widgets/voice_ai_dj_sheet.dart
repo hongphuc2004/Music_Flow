@@ -7,6 +7,8 @@ import '../../core/services/voice_assistant_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/song_model.dart';
 import '../../data/services/auth_service.dart';
+import 'rive/rive_ai_dj_mascot.dart';
+import 'rive/rive_audio_visualizer.dart';
 
 enum VoiceState { idle, listening, processing, speaking, responding, error }
 
@@ -253,13 +255,31 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
   }
 
   bool get _hasPlayAction {
-    if (_pendingActions == null || _pendingActions!.isEmpty) return false;
-    return _pendingActions!.any((a) {
-      final type = (a is Map ? a['type'] : null)?.toString().toUpperCase();
-      return type == 'PLAY_SONG' ||
-          type == 'LOAD_PLAYLIST' ||
-          type == 'PLAY_PLAYLIST';
-    });
+    final actions = _pendingActions;
+    if (actions != null && actions.isNotEmpty) {
+      final hasAction = actions.any((a) {
+        final type = (a is Map ? a['type'] : null)?.toString().toUpperCase();
+        return type == 'PLAY_SONG' ||
+            type == 'LOAD_PLAYLIST' ||
+            type == 'PLAY_PLAYLIST';
+      });
+      if (hasAction) return true;
+    }
+
+    if (_pendingSongs.isNotEmpty) {
+      final replyLower = _assistantReply.toLowerCase();
+      if (replyLower.contains('đang phát') ||
+          replyLower.contains('dang phat') ||
+          replyLower.contains('đang bật') ||
+          replyLower.contains('dang bat') ||
+          replyLower.contains('thưởng thức nhé') ||
+          replyLower.contains('mình đang phát') ||
+          replyLower.contains('mình đang bật')) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /// Triggered when TTS completes speaking or user skips speaking
@@ -322,11 +342,17 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.graphic_eq, color: AppColors.secondary, size: 24),
-                    SizedBox(width: 8),
-                    Text(
+                    const RiveAudioVisualizer(
+                      isPlaying: true,
+                      barCount: 4,
+                      width: 22,
+                      height: 18,
+                      color: AppColors.secondary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
                       'MusicFlow Voice AI DJ',
                       style: TextStyle(
                         color: Colors.white,
@@ -422,7 +448,14 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
       case VoiceState.processing:
         return Column(
           children: [
-            const CircularProgressIndicator(color: AppColors.primary),
+            const SizedBox(
+              width: 88,
+              height: 88,
+              child: RiveAiDjMascot(
+                isThinking: true,
+                size: 88,
+              ),
+            ),
             const SizedBox(height: 20),
             Text(
               'AI đang xử lý yêu cầu: "${_liveTranscript.trim()}"',
@@ -460,7 +493,13 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
             const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.graphic_eq, color: AppColors.secondary, size: 18),
+                RiveAudioVisualizer(
+                  isPlaying: true,
+                  barCount: 4,
+                  width: 20,
+                  height: 16,
+                  color: AppColors.secondary,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'AI DJ đang nói...',

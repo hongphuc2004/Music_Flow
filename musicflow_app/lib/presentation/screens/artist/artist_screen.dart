@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import '../../widgets/music_flow_backdrop.dart';
@@ -169,7 +170,58 @@ class _ArtistScreenState extends State<ArtistScreen> {
     return MusicFlowBackdrop(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(bottom: false, child: _buildBody()),
+        body: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              _buildBody(),
+              Positioned(
+                top: 24,
+                left: 28,
+                child: _buildFixedBackButton(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFixedBackButton() {
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Material(
+          color: Colors.black.withOpacity(0.42),
+          shape: CircleBorder(
+            side: BorderSide(
+              color: Colors.white.withOpacity(0.18),
+              width: 1.0,
+            ),
+          ),
+          child: InkWell(
+            onTap: () => Navigator.of(context).maybePop(),
+            customBorder: const CircleBorder(),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -264,7 +316,6 @@ class _ArtistScreenState extends State<ArtistScreen> {
                     artist: _artist!,
                     isFollowing: _isFollowing,
                     isFollowLoading: _isFollowLoading,
-                    onBack: () => Navigator.of(context).maybePop(),
                     onPlayAll: _handlePlayAll,
                     onShuffle: _handleShuffle,
                     onFollow: _toggleFollow,

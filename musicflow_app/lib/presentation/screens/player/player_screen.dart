@@ -16,6 +16,10 @@ import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
 import 'package:musicflow_app/presentation/widgets/synced_lyrics_view.dart';
 import 'package:musicflow_app/presentation/widgets/song_share_sheet.dart';
+import 'package:musicflow_app/presentation/widgets/rive/rive_play_pause_button.dart';
+import 'package:musicflow_app/presentation/widgets/rive/rive_audio_visualizer.dart';
+import 'package:musicflow_app/presentation/widgets/rive/rive_playback_controls.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -40,6 +44,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   final AudioPlayerService _audioService = AudioPlayerService();
   final GlobalAudioState _globalAudioState = GlobalAudioState();
   final PageController _pageController = PageController(initialPage: 0);
+  final ScrollController _queueScrollController = ScrollController();
 
   bool _isPlaying = false;
   Duration _position = Duration.zero;
@@ -138,6 +143,10 @@ class _PlayerScreenState extends State<PlayerScreen>
       _loadCommentCount();
       _loadLyricsForCurrentSong();
       widget.onSongChanged?.call(globalIndex);
+
+      if (_currentPage == 2) {
+        _scrollToCurrentSongInQueue();
+      }
     }
   }
 
@@ -275,10 +284,45 @@ class _PlayerScreenState extends State<PlayerScreen>
     return timed;
   }
 
+  void _scrollToCurrentSongInQueue({bool animate = true}) {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted || !_queueScrollController.hasClients) return;
+
+      int activeIndex = _currentIndex;
+      if (activeIndex < 0 ||
+          activeIndex >= _activePlaylist.length ||
+          _activePlaylist[activeIndex].id != _currentSong.id) {
+        activeIndex = _activePlaylist.indexWhere((s) => s.id == _currentSong.id);
+      }
+      if (activeIndex < 0) return;
+
+      const double itemHeight = 68.0;
+      final viewportHeight = _queueScrollController.position.viewportDimension;
+      final targetOffset =
+          (activeIndex * itemHeight) - (viewportHeight / 2) + (itemHeight / 2);
+
+      final clampedOffset = targetOffset.clamp(
+        _queueScrollController.position.minScrollExtent,
+        _queueScrollController.position.maxScrollExtent,
+      );
+
+      if (animate) {
+        _queueScrollController.animateTo(
+          clampedOffset.toDouble(),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _queueScrollController.jumpTo(clampedOffset.toDouble());
+      }
+    });
+  }
+
   @override
   void dispose() {
     _globalAudioState.removeListener(_onGlobalAudioStateChanged);
     _pageController.dispose();
+    _queueScrollController.dispose();
     _discRotationController.dispose();
     super.dispose();
   }
@@ -321,7 +365,10 @@ class _PlayerScreenState extends State<PlayerScreen>
             ? (_likeCount > 0 ? _likeCount - 1 : 0)
             : _likeCount + 1;
       });
-      _showActionMessage(result.message ?? 'Không thể cập nhật like lúc này');
+      _showActionMessage(
+        result.message ?? 'Không thể cập nhật like lúc này',
+        isError: true,
+      );
     }
   }
 
@@ -403,14 +450,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  void _showActionMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(milliseconds: 1500),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showActionMessage(String message, {bool isError = false}) {
+    if (isError) {
+      AppToast.showError(context, message);
+    } else {
+      AppToast.showSuccess(context, message);
+    }
   }
 
   Future<void> _initPlayer() async {
@@ -526,6 +571,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                       setState(() {
                         _currentPage = page;
                       });
+                      if (page == 2) {
+                        _scrollToCurrentSongInQueue();
+                      }
                     },
                     children: [
                       // Page 1: Player
@@ -577,6 +625,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                 duration: AppDurations.cardSlide,
                 curve: Curves.easeInOut,
               );
+              if (labels[index] == 'Danh sách chờ') {
+                _scrollToCurrentSongInQueue();
+              }
             },
             child: AnimatedContainer(
               duration: AppDurations.hover,
@@ -679,12 +730,20 @@ class _PlayerScreenState extends State<PlayerScreen>
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.graphic_eq_rounded, size: 14, color: AppColors.secondary),
-                SizedBox(width: 4),
-                Text(
+                RiveAudioVisualizer(
+                  isPlaying: _isPlaying,
+                  width: 14,
+                  height: 12,
+                  barCount: 3,
+                  barWidth: 2.2,
+                  spacing: 1.5,
+                  color: AppColors.secondary,
+                ),
+                const SizedBox(width: 5),
+                const Text(
                   'LỜI NHẠC',
                   style: TextStyle(
                     color: AppColors.secondary,
@@ -819,10 +878,13 @@ class _PlayerScreenState extends State<PlayerScreen>
           ),
           Expanded(
             child: ListView.builder(
+              controller: _queueScrollController,
+              itemExtent: 68.0,
               itemCount: _activePlaylist.length,
               itemBuilder: (context, index) {
                 final song = _activePlaylist[index];
-                final isCurrentSong = index == _currentIndex;
+                final isCurrentSong =
+                    index == _currentIndex || song.id == _currentSong.id;
 
                 return Container(
                   margin: const EdgeInsets.symmetric(
@@ -839,22 +901,33 @@ class _PlayerScreenState extends State<PlayerScreen>
                         : null,
                   ),
                   child: ListTile(
+                    dense: true,
+                    minLeadingWidth: 0,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                     leading: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
-                          width: 24,
+                          width: 22,
                           child: isCurrentSong
-                              ? const Icon(
-                                  Icons.equalizer_rounded,
-                                  color: AppColors.secondary,
-                                  size: 20,
+                              ? Center(
+                                  child: RiveAudioVisualizer(
+                                    isPlaying: _isPlaying,
+                                    barCount: 3,
+                                    width: 14,
+                                    height: 14,
+                                    barWidth: 2.5,
+                                    spacing: 2.0,
+                                    color: AppColors.secondary,
+                                  ),
                                 )
                               : Text(
                                   '${index + 1}',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.grey[500],
-                                    fontSize: 13,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                         ),
@@ -863,16 +936,17 @@ class _PlayerScreenState extends State<PlayerScreen>
                           borderRadius: BorderRadius.circular(AppRadius.small),
                           child: Image.network(
                             song.imageUrl,
-                            width: 44,
-                            height: 44,
+                            width: 42,
+                            height: 42,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
-                              width: 44,
-                              height: 44,
+                              width: 42,
+                              height: 42,
                               color: Colors.grey[800],
                               child: const Icon(
                                 Icons.music_note_rounded,
                                 color: Colors.white54,
+                                size: 20,
                               ),
                             ),
                           ),
@@ -1138,13 +1212,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(
-          icon: Icon(
-            Icons.shuffle_rounded,
-            color: isShuffleEnabled ? AppColors.secondary : Colors.white54,
-          ),
-          iconSize: 26,
-          onPressed: canUsePlaylistModes
+        RiveShuffleButton(
+          isEnabled: isShuffleEnabled,
+          size: 26,
+          onTap: canUsePlaylistModes
               ? () {
                   _globalAudioState.toggleShuffle();
                   setState(() {});
@@ -1159,30 +1230,17 @@ class _PlayerScreenState extends State<PlayerScreen>
           iconSize: 38,
           onPressed: canTriggerPrevious ? _playPrevious : null,
         ),
-        Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.secondary],
-            ),
-            shape: BoxShape.circle,
-            boxShadow: AppShadows.neonGlow(AppColors.primary),
-          ),
-          child: IconButton(
-            icon: Icon(
-              _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.white,
-            ),
-            iconSize: 38,
-            onPressed: () {
-              if (_isPlaying) {
-                _audioService.pause();
-              } else {
-                _audioService.resume();
-              }
-            },
-          ),
+        RivePlayPauseButton(
+          isPlaying: _isPlaying,
+          onTap: () {
+            if (_isPlaying) {
+              _audioService.pause();
+            } else {
+              _audioService.resume();
+            }
+          },
+          size: 68,
+          iconSize: 34,
         ),
         IconButton(
           icon: Icon(
@@ -1192,35 +1250,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           iconSize: 38,
           onPressed: canTriggerNext ? _playNext : null,
         ),
-        IconButton(
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                repeatMode == PlaybackRepeatMode.one
-                    ? Icons.repeat_one_rounded
-                    : Icons.repeat_rounded,
-                color: repeatMode == PlaybackRepeatMode.off
-                    ? Colors.white54
-                    : AppColors.secondary,
-              ),
-              if (repeatMode == PlaybackRepeatMode.all)
-                Positioned(
-                  right: -1,
-                  top: -2,
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          iconSize: 26,
-          onPressed: canUsePlaylistModes
+        RiveRepeatButton(
+          repeatMode: repeatMode,
+          size: 26,
+          onTap: canUsePlaylistModes
               ? () {
                   _globalAudioState.cycleRepeatMode();
                   setState(() {});

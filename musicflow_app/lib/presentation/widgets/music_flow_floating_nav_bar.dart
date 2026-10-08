@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import 'rive/rive_nav_icon.dart';
 
 class MusicFlowFloatingNavBar extends StatelessWidget {
   final int currentIndex;
@@ -94,17 +95,15 @@ class MusicFlowFloatingNavBar extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        // Nav Icon
-                        AnimatedScale(
-                          scale: isSelected ? 1.15 : 1.0,
-                          duration: AppDurations.hover,
-                          child: Icon(
-                            isSelected ? item.activeIcon : item.icon,
-                            color: isSelected
-                                ? (isDark ? AppColors.secondary : AppColors.primary)
-                                : theme.hintColor.withOpacity(0.6),
-                            size: 24,
-                          ),
+                        // Nav Icon with Rive-style micro-interactions
+                        RiveNavIcon(
+                          index: index,
+                          isSelected: isSelected,
+                          icon: item.icon,
+                          activeIcon: item.activeIcon,
+                          activeColor: isDark ? AppColors.secondary : AppColors.primary,
+                          inactiveColor: theme.hintColor.withOpacity(0.6),
+                          size: 24,
                         ),
                         const SizedBox(height: 4),
                         // Label text

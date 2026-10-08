@@ -6,7 +6,7 @@ class ArtistHeaderSection extends StatelessWidget {
   final ArtistProfile artist;
   final bool isFollowing;
   final bool isFollowLoading;
-  final VoidCallback onBack;
+  final VoidCallback? onBack;
   final VoidCallback onPlayAll;
   final VoidCallback onShuffle;
   final VoidCallback onFollow;
@@ -16,7 +16,7 @@ class ArtistHeaderSection extends StatelessWidget {
     required this.artist,
     required this.isFollowing,
     required this.isFollowLoading,
-    required this.onBack,
+    this.onBack,
     required this.onPlayAll,
     required this.onShuffle,
     required this.onFollow,
@@ -71,14 +71,15 @@ class ArtistHeaderSection extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: _CircleIconButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: onBack,
+              if (onBack != null)
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: _CircleIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    onTap: onBack!,
+                  ),
                 ),
-              ),
             ],
           ),
           Transform.translate(

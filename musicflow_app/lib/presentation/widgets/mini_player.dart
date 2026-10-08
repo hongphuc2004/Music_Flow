@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/player/player_screen.dart';
+import 'rive/rive_play_pause_button.dart';
+import 'rive/rive_audio_visualizer.dart';
 
 class MiniPlayer extends StatefulWidget {
   final bool isPlaying;
@@ -293,13 +295,16 @@ class _MiniPlayerState extends State<MiniPlayer>
         Row(
           children: [
             if (widget.isPlaying)
-              Container(
-                width: 6,
-                height: 6,
-                margin: const EdgeInsets.only(right: 6),
-                decoration: const BoxDecoration(
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: RiveAudioVisualizer(
+                  isPlaying: widget.isPlaying,
+                  width: 14,
+                  height: 12,
+                  barCount: 3,
+                  barWidth: 2.2,
+                  spacing: 1.5,
                   color: AppColors.secondary,
-                  shape: BoxShape.circle,
                 ),
               ),
             Expanded(
@@ -337,33 +342,11 @@ class _MiniPlayerState extends State<MiniPlayer>
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
         const SizedBox(width: 4),
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.secondary],
-            ),
-            shape: BoxShape.circle,
-            boxShadow: AppShadows.neonGlow(AppColors.primary),
-          ),
-          child: IconButton(
-            icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, anim) =>
-                  ScaleTransition(scale: anim, child: child),
-              child: Icon(
-                widget.isPlaying
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
-                key: ValueKey(widget.isPlaying),
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            onPressed: widget.onPlayPause,
-            padding: EdgeInsets.zero,
-          ),
+        RivePlayPauseButton(
+          isPlaying: widget.isPlaying,
+          onTap: widget.onPlayPause,
+          size: 38,
+          iconSize: 22,
         ),
         const SizedBox(width: 4),
         IconButton(

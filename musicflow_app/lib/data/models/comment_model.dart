@@ -46,7 +46,9 @@ class SongComment {
           .whereType<Map<String, dynamic>>()
           .map(CommentReaction.fromJson)
           .toList(),
-      reactionSummary: {'like': (rawSummary['like'] as num?)?.toInt() ?? 0},
+      reactionSummary: rawSummary.map(
+        (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+      ),
       createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
       updatedAt: DateTime.tryParse((json['updatedAt'] ?? '').toString()),
       replies: rawReplies

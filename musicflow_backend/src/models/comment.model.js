@@ -9,7 +9,8 @@ const reactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["like"],
+      enum: ["like", "love", "haha", "wow", "sad", "angry"],
+      default: "like",
       required: true,
     },
   },

@@ -9,6 +9,7 @@ import '../../../data/services/auth_service.dart';
 import '../../widgets/music_flow_backdrop.dart';
 import '../../widgets/song_options_menu.dart';
 import '../../widgets/voice_ai_dj_sheet.dart';
+import '../../widgets/rive/rive_ai_dj_mascot.dart';
 import '../library/favorites_screen.dart';
 
 import '../library/downloaded_songs_screen.dart';
@@ -351,7 +352,7 @@ class _AiDjScreenState extends State<AiDjScreen> {
         // Execute actions (like playing song, loading playlist, redirecting route)
         if (clientActions != null && clientActions.isNotEmpty) {
           _executeClientActions(clientActions);
-        } else if (playlist == null && responseSongs.isNotEmpty) {
+        } else if (responseSongs.isNotEmpty) {
           widget.onPlayAll(responseSongs, startIndex: 0);
         }
         _scrollToBottom();
@@ -511,6 +512,7 @@ class _AiDjScreenState extends State<AiDjScreen> {
           showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
+            isScrollControlled: true,
             builder: (context) => SongOptionsSheet(song: song),
           );
         },
@@ -606,23 +608,39 @@ class _AiDjScreenState extends State<AiDjScreen> {
     if (_messages.isEmpty && _playlists.isEmpty) {
       return Expanded(
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.auto_awesome_rounded,
-                size: 56,
-                color: isDark ? AppColors.darkTextSecondary.withValues(alpha: 0.4) : AppColors.lightTextSecondary.withValues(alpha: 0.4),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Tôi có thể giúp bạn tìm nhạc, phát bài hát, thiết kế playlist và điều hướng ứng dụng bằng AI.',
-                style: TextStyle(
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                RiveAiDjMascot(
+                  size: 140,
+                  isThinking: _isLoading,
+                  onTap: () {
+                    // Friendly haptic / tap reaction
+                  },
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'MusicFlow AI DJ',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Tôi có thể giúp bạn tìm nhạc theo tâm trạng, thiết kế playlist cá nhân hoá và điều hướng ứng dụng.',
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -665,16 +683,12 @@ class _AiDjScreenState extends State<AiDjScreen> {
         children: [
           ...timelineWidgets,
           if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
               child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: isDark ? Colors.white70 : Colors.black45,
-                    strokeWidth: 2,
-                  ),
+                child: RiveAiDjMascot(
+                  size: 64,
+                  isThinking: true,
                 ),
               ),
             ),

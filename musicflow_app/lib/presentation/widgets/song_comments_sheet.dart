@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
 import 'package:musicflow_app/data/models/comment_model.dart';
 import 'package:musicflow_app/data/services/auth_service.dart';
 import 'package:musicflow_app/data/services/comment_service.dart';
+import 'package:musicflow_app/presentation/widgets/comment_reaction_button.dart';
 
 class SongCommentsSheet extends StatefulWidget {
   final String songId;
@@ -33,8 +35,6 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _isSending = false;
-  String? _statusMessage;
-  bool _statusIsError = false;
 
   SongComment? _replyingTo;
 
@@ -79,16 +79,14 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
       setState(() {
         _isLoading = false;
         _isLoadingMore = false;
-        _statusIsError = true;
-        _statusMessage = result.message ?? 'Không tải được bình luận';
       });
+      _setStatus(result.message ?? 'Không tải được bình luận', isError: true);
       return;
     }
 
     setState(() {
       _isLoading = false;
       _isLoadingMore = false;
-      _statusMessage = null;
       _currentPage = result.page;
       _hasMore = result.hasMore;
       _commentCount = result.totalComments;
@@ -141,30 +139,57 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     await _loadComments(reset: true);
   }
 
-  Future<void> _toggleLikeReaction(SongComment comment) async {
+  Future<void> _handleReactionTap(SongComment comment) async {
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
-      _setStatus('Vui lòng đăng nhập de thao tac like', isError: true);
+      _setStatus('Vui lòng đăng nhập để tương tác cảm xúc', isError: true);
       return;
     }
 
-    final hasLiked = comment.reactions.any(
-      (reaction) =>
-          reaction.userId == _currentUserId && reaction.type == 'like',
+    final myReaction = comment.reactions.cast<CommentReaction?>().firstWhere(
+      (reaction) => reaction?.userId == _currentUserId,
+      orElse: () => null,
     );
 
-    final result = hasLiked
-        ? await CommentService.removeReaction(comment.id)
-        : await CommentService.reactToComment(commentId: comment.id);
+    if (myReaction != null) {
+      // Đã thả cảm xúc rồi -> Bấm nhanh để gỡ bỏ
+      final result = await CommentService.removeReaction(comment.id);
+      if (!mounted) return;
+      if (!result.success) {
+        _setStatus(result.message ?? 'Không thể gỡ cảm xúc', isError: true);
+        return;
+      }
+      _setStatus('Đã bỏ cảm xúc', isError: false);
+      await _loadComments(reset: true);
+    } else {
+      // Chưa thả -> Thả mặc định Thích (like)
+      await _sendReaction(comment, 'like');
+    }
+  }
 
-    if (!mounted) return;
-
-    if (!result.success) {
-      _setStatus(result.message ?? 'Không thể cập nhật like', isError: true);
+  Future<void> _sendReaction(SongComment comment, String type) async {
+    final isLoggedIn = await AuthService.isLoggedIn();
+    if (!isLoggedIn) {
+      _setStatus('Vui lòng đăng nhập để tương tác cảm xúc', isError: true);
       return;
     }
 
-    _setStatus(hasLiked ? 'Đã bỏ like' : 'Đã like bình luận', isError: false);
+    final result = await CommentService.reactToComment(
+      commentId: comment.id,
+      type: type,
+    );
+
+    if (!mounted) return;
+    if (!result.success) {
+      _setStatus(result.message ?? 'Không thể cập nhật cảm xúc', isError: true);
+      return;
+    }
+
+    final config = kCommentReactions.firstWhere(
+      (c) => c.key == type,
+      orElse: () => kCommentReactions[0],
+    );
+    _setStatus('Đã thả cảm xúc ${config.emoji} ${config.label}', isError: false);
     await _loadComments(reset: true);
   }
 
@@ -292,34 +317,40 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
 
   void _setStatus(String message, {required bool isError}) {
     if (!mounted) return;
-    setState(() {
-      _statusMessage = message;
-      _statusIsError = isError;
-    });
-
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(milliseconds: 1600),
-        backgroundColor: isError ? Colors.redAccent.withOpacity(0.9) : null,
-      ),
-    );
+    if (isError) {
+      AppToast.showError(context, message);
+    } else {
+      AppToast.showSuccess(context, message);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 12,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-        ),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.76,
-          child: Column(
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF140E26),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.6),
+            blurRadius: 30,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+          ),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.76,
+            child: Column(
             children: [
               Container(
                 width: 42,
@@ -430,36 +461,6 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                     ],
                   ),
                 ),
-              if (_statusMessage != null)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _statusIsError
-                        ? Colors.redAccent.withOpacity(0.15)
-                        : Colors.greenAccent.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: _statusIsError
-                          ? Colors.redAccent.withOpacity(0.5)
-                          : Colors.greenAccent.withOpacity(0.4),
-                    ),
-                  ),
-                  child: Text(
-                    _statusMessage!,
-                    style: TextStyle(
-                      color: _statusIsError
-                          ? Colors.redAccent
-                          : Colors.greenAccent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
@@ -503,7 +504,8 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCommentNode(SongComment comment, {required int depth}) {
@@ -511,12 +513,6 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     final hasAvatar = comment.user.avatar.isNotEmpty;
     final isMine =
         _currentUserId.isNotEmpty && comment.user.id == _currentUserId;
-    final hasLiked = comment.reactions.any(
-      (reaction) =>
-          reaction.userId == _currentUserId && reaction.type == 'like',
-    );
-
-    final reactionText = '👍 ${comment.reactionSummary['like'] ?? 0}';
 
     return Padding(
       padding: EdgeInsets.only(left: leftPadding, right: 6, top: 8, bottom: 4),
@@ -597,36 +593,25 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                       Wrap(
                         spacing: 12,
                         runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           GestureDetector(
                             onTap: () => setState(() => _replyingTo = comment),
                             child: const Text(
-                              'Tra loi',
+                              'Trả lời',
                               style: TextStyle(
                                 color: Colors.white54,
                                 fontSize: 11,
                               ),
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => _toggleLikeReaction(comment),
-                            child: Text(
-                              hasLiked ? 'Bo like' : 'Like',
-                              style: TextStyle(
-                                color: hasLiked
-                                    ? Colors.redAccent
-                                    : Colors.greenAccent,
-                                fontSize: 11,
-                              ),
-                            ),
+                          CommentReactionButton(
+                            comment: comment,
+                            currentUserId: _currentUserId,
+                            onSelectReaction: (type) => _sendReaction(comment, type),
+                            onToggleLike: () => _handleReactionTap(comment),
                           ),
-                          Text(
-                            reactionText,
-                            style: const TextStyle(
-                              color: Colors.white38,
-                              fontSize: 11,
-                            ),
-                          ),
+                          _buildReactionSummaryBadge(comment),
                         ],
                       ),
                     ],
@@ -637,6 +622,42 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
           ),
           ...comment.replies.map(
             (child) => _buildCommentNode(child, depth: depth + 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReactionSummaryBadge(SongComment comment) {
+    final summary = comment.reactionSummary;
+    final activeReactions = kCommentReactions
+        .where((r) => (summary[r.key] ?? 0) > 0)
+        .toList();
+    final totalCount = summary.values.fold<int>(0, (sum, count) => sum + count);
+
+    if (totalCount == 0) return const SizedBox.shrink();
+
+    final emojis = activeReactions.take(3).map((r) => r.emoji).join('');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emojis, style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 4),
+          Text(
+            '$totalCount',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

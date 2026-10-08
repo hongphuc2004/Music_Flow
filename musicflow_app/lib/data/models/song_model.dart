@@ -11,6 +11,10 @@ class Song {
   final int playCount;
   final int likeCount;
   final List<String> topicIds;
+  final String audioFormat;
+  final int? bitrate;
+  final bool hasHighQualitySource;
+  final int fileSize;
 
   // Global cache of artist metadata to avoid circular dependencies
   static final Map<String, String> artistAvatars = {};
@@ -30,7 +34,41 @@ class Song {
     this.playCount = 0,
     this.likeCount = 0,
     this.topicIds = const [],
+    this.audioFormat = 'mp3',
+    this.bitrate,
+    this.hasHighQualitySource = false,
+    this.fileSize = 0,
   });
+
+  /// Có phải là bài hát chất lượng cao (320kbps trở lên hoặc lossless)
+  bool get isHighQuality =>
+      (hasHighQualitySource == true) || (bitrate != null && bitrate! >= 320000);
+
+  /// Nhãn hiển thị chất lượng thực tế từ DB
+  String get qualityLabel {
+    if (bitrate != null && bitrate! > 0) {
+      final kbps = (bitrate! / 1000).round();
+      return '${kbps}kbps';
+    }
+    if (hasHighQualitySource == true) return '320kbps HQ';
+    return '128kbps';
+  }
+
+  /// Mô tả chi tiết chất lượng thật cho dialog thông tin
+  String get qualityDetailedDescription {
+    final fmt = audioFormat.isNotEmpty ? audioFormat.toUpperCase() : 'MP3';
+    if (bitrate != null && bitrate! > 0) {
+      final kbps = (bitrate! / 1000).round();
+      if (kbps >= 320) {
+        return '$kbps kbps ($fmt Chất lượng cao)';
+      }
+      return '$kbps kbps ($fmt Tiêu chuẩn)';
+    }
+    if (hasHighQualitySource == true) {
+      return '320 kbps ($fmt Chất lượng cao)';
+    }
+    return '128 kbps ($fmt Tiêu chuẩn)';
+  }
 
   /// Duration as Duration object for audio player
   Duration? get durationAsDuration => duration != null
@@ -106,19 +144,31 @@ class Song {
       }
     }
 
+    final audioMeta = json['audioMetadata'] is Map ? json['audioMetadata'] as Map : null;
+    final audioFormat = audioMeta?['format']?.toString() ?? 'mp3';
+    final bitrate = (audioMeta?['bitrate'] as num?)?.toInt();
+    final hasHighQualitySource =
+        audioMeta?['hasHighQualitySource'] == true ||
+        json['hasHighQualitySource'] == true;
+    final fileSize = (json['fileSize'] as num?)?.toInt() ?? 0;
+
     return Song(
-      id: json['_id'],
-      title: json['title'],
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
       artists: artists,
-      audioUrl: json['audioUrl'],
-      imageUrl: json['imageUrl'] ?? '',
-      lyrics: json['lyrics'] ?? '',
-      uploadedBy: json['uploadedBy'],
-      isPublic: json['isPublic'] ?? false,
-      duration: json['duration']?.toDouble(),
+      audioUrl: (json['audioUrl'] ?? '').toString(),
+      imageUrl: (json['imageUrl'] ?? '').toString(),
+      lyrics: (json['lyrics'] ?? '').toString(),
+      uploadedBy: json['uploadedBy']?.toString(),
+      isPublic: json['isPublic'] == true,
+      duration: json['duration'] != null ? (json['duration'] as num).toDouble() : null,
       playCount: playCount,
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       topicIds: topicIds,
+      audioFormat: audioFormat,
+      bitrate: bitrate,
+      hasHighQualitySource: hasHighQualitySource,
+      fileSize: fileSize,
     );
   }
 
@@ -136,6 +186,12 @@ class Song {
       'playCount': playCount,
       'likeCount': likeCount,
       'topicIds': topicIds,
+      'audioMetadata': {
+        'format': audioFormat,
+        'bitrate': bitrate,
+        'hasHighQualitySource': hasHighQualitySource,
+      },
+      'fileSize': fileSize,
     };
   }
 
@@ -148,6 +204,10 @@ class Song {
     int? playCount,
     int? likeCount,
     List<String>? topicIds,
+    String? audioFormat,
+    int? bitrate,
+    bool? hasHighQualitySource,
+    int? fileSize,
   }) {
     return Song(
       id: id,
@@ -162,6 +222,11 @@ class Song {
       playCount: playCount ?? this.playCount,
       likeCount: likeCount ?? this.likeCount,
       topicIds: topicIds ?? this.topicIds,
+      audioFormat: audioFormat ?? this.audioFormat,
+      bitrate: bitrate ?? this.bitrate,
+      hasHighQualitySource: hasHighQualitySource ?? this.hasHighQualitySource,
+      fileSize: fileSize ?? this.fileSize,
     );
   }
 }
+

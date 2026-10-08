@@ -39,7 +39,7 @@ services:
       - ./musicflow_backend:/app
       - backend_node_modules:/app/node_modules
     ports:
-      - "${MUSICFLOW_BACKEND_DEV_PORT:-5001}:5001"
+      - "${MUSICFLOW_BACKEND_DEV_PORT:-5080}:5001"
 
   web:
     profiles:

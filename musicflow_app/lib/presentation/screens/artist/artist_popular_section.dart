@@ -16,9 +16,9 @@ class ArtistPopularSection extends StatelessWidget {
       children: [
         ArtistSectionHeader(
           title: 'Popular Songs',
-          subtitle: 'Nhung bai duoc nghe nhieu nhat cua artist nay',
+          subtitle: 'Những bài được nghe nhiều nhất của artist này',
           trailing: Text(
-            '${songs.length} bai',
+            '${songs.length} bài',
             style: TextStyle(
               color: Colors.grey[500],
               fontSize: 12,
@@ -45,7 +45,7 @@ class ArtistPopularSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Nghệ sĩ này chưa có bài hát cong khai',
+                  'Nghệ sĩ này chưa có bài hát công khai',
                   style: TextStyle(
                     color: Colors.grey[300],
                     fontSize: 14,

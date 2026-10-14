@@ -27,6 +27,7 @@ import { getOptimizedImageUrl } from '../../../utils/imageUtil';
 import PremiumBadge from '../../common/ui/PremiumBadge';
 import PremiumRequiredDialog from './PremiumRequiredDialog';
 import PreviewDurationMarker from '../../common/ui/PreviewDurationMarker';
+import MorphingPlayButton from '../../common/ui/MorphingPlayButton';
 
 
 function formatDuration(seconds) {
@@ -654,29 +655,16 @@ function ClientNowPlayingBar({
             </Tooltip>
 
             <Tooltip title={isPlaying ? "Tạm dừng" : "Phát nhạc"} arrow>
-              <IconButton
-                size="small"
-                onClick={togglePlay}
-                sx={{
-                  color: '#fff',
-                  background: 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 60%, #00e5ff 100%)',
-                  width: 42,
-                  height: 42,
-                  boxShadow: isPlaying
-                    ? '0 0 20px rgba(108, 99, 255, 0.6), 0 0 40px rgba(0, 229, 255, 0.3)'
-                    : '0 4px 14px rgba(108, 99, 255, 0.4)',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                  '&:hover': {
-                    transform: 'scale(1.08)',
-                    boxShadow: '0 0 25px rgba(108, 99, 255, 0.8)',
-                  },
-                  '&:active': {
-                    transform: 'scale(0.96)',
-                  },
-                }}
-              >
-                {isPlaying ? <PauseIcon sx={{ fontSize: 26 }} /> : <PlayIcon sx={{ fontSize: 26, ml: 0.2 }} />}
-              </IconButton>
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <MorphingPlayButton
+                  isPlaying={isPlaying}
+                  onClick={togglePlay}
+                  progress={displayDuration > 0 ? (currentTime / displayDuration) : 0}
+                  size={48}
+                  buttonSize={40}
+                  showProgressRing={true}
+                />
+              </Box>
             </Tooltip>
 
             <Tooltip title="Bài tiếp theo" arrow>

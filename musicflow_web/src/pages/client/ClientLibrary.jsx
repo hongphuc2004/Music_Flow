@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi, clientAssistantApi } from '../../services/client/client.service';
+import FileUploader from '../../components/common/ui/FileUploader';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
 import useAppToast from '../../components/common/js/useAppToast';
@@ -2017,35 +2018,84 @@ function ClientLibrary() {
               InputProps={{ sx: { borderRadius: '14px' } }}
             />
 
-            <Button variant="outlined" component="label" sx={{ py: 1.5, borderRadius: '14px', borderColor: 'divider', borderWidth: '2px', '&:hover': { borderWidth: '2px' } }}>
-              {editingUploadSong ? 'Chọn file nhạc mới (tùy chọn)' : 'Chọn file nhạc phát * (MP3, WAV, FLAC, M4A)'}
-              <input
-                type="file"
+            <Box>
+              <Typography variant="caption" fontWeight={800} sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+                File âm thanh bài hát {editingUploadSong ? '(tùy chọn)' : '*'}
+              </Typography>
+              <FileUploader
+                file={uploadAudioFile}
+                onFileSelect={(file) => setUploadAudioFile(file)}
+                onFileRemove={() => setUploadAudioFile(null)}
                 accept="audio/*"
-                hidden
-                onChange={(event) => setUploadAudioFile(event.target.files?.[0] || null)}
+                title={editingUploadSong ? 'Kéo thả file nhạc mới hoặc' : 'Kéo thả file bài hát hoặc'}
+                browseText="chọn file nhạc"
+                subtitle="MP3, WAV, FLAC, M4A · Tối đa 50 MB"
               />
-            </Button>
-            {uploadAudioFile && (
-              <Typography variant="caption" color="primary" sx={{ mt: -1, fontWeight: 800 }}>
-                Đã chọn: {uploadAudioFile.name}
-              </Typography>
-            )}
+            </Box>
 
-            <Button variant="outlined" component="label" sx={{ py: 1.5, borderRadius: '14px', borderColor: 'divider', borderWidth: '2px', '&:hover': { borderWidth: '2px' } }}>
-              Chọn hình ảnh bìa (tùy chọn)
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(event) => setUploadImageFile(event.target.files?.[0] || null)}
-              />
-            </Button>
-            {uploadImageFile && (
-              <Typography variant="caption" color="primary" sx={{ mt: -1, fontWeight: 800 }}>
-                Đã chọn ảnh: {uploadImageFile.name}
+            <Box>
+              <Typography variant="caption" fontWeight={800} sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+                Hình ảnh bìa bài hát (tùy chọn)
               </Typography>
-            )}
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: (uploadImageFile || uploadImageUrl || editingUploadSong?.imageUrl) ? 8 : 12 }}>
+                  <FileUploader
+                    file={uploadImageFile}
+                    onFileSelect={(file) => setUploadImageFile(file)}
+                    onFileRemove={() => setUploadImageFile(null)}
+                    accept="image/*"
+                    title="Kéo thả ảnh bìa hoặc"
+                    browseText="chọn ảnh bìa"
+                    subtitle="PNG, JPG, WEBP · Tối đa 10 MB"
+                    compact
+                  />
+                </Grid>
+
+                {(uploadImageFile || uploadImageUrl || editingUploadSong?.imageUrl) && (
+                  <Grid size={{ xs: 4 }}>
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: 90,
+                        borderRadius: 2.5,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        overflow: 'hidden',
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: 'action.hover',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      <img
+                        src={
+                          uploadImageFile
+                            ? URL.createObjectURL(uploadImageFile)
+                            : (uploadImageUrl || editingUploadSong?.imageUrl)
+                        }
+                        alt="Cover preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+
+              {/* 🔗 DIRECT IMAGE URL INPUT */}
+              <TextField
+                fullWidth
+                size="small"
+                label="Hoặc dán link ảnh bìa trực tuyến (Image URL)"
+                placeholder="https://example.com/cover.jpg"
+                value={uploadImageUrl}
+                onChange={(e) => setUploadImageUrl(e.target.value)}
+                InputProps={{
+                  sx: { borderRadius: '14px' },
+                }}
+                sx={{ mt: 1.5 }}
+                helperText="Dán link ảnh trực tiếp nếu bạn không muốn chọn file từ máy."
+              />
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>

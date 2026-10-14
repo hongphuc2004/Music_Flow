@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { clearArtistSession } from '../utils/artistSession';
+import { clearArtistSession, syncArtistSession } from '../utils/artistSession';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -68,7 +68,7 @@ export const logout = async () => {
   }
 };
 
-const isTokenExpired = (token) => {
+export const isTokenExpired = (token) => {
   if (!token) return true;
   try {
     const parts = token.split('.');
@@ -99,7 +99,7 @@ export const refreshAccessToken = async (forceRefresh = false) => {
       )
       .then((res) => {
         const token = res?.data?.token;
-        const role = res?.data?.user?.role;
+        const role = res?.data?.user?.role || (res?.data?.isArtist ? 'artist' : null);
         accessToken = token || null;
         if (token) {
           localStorage.setItem('accessToken', token);
@@ -108,6 +108,9 @@ export const refreshAccessToken = async (forceRefresh = false) => {
         }
         if (role) {
           localStorage.setItem('role', role);
+        }
+        if (role === 'artist' || res?.data?.isArtist) {
+          syncArtistSession(res?.data?.artist || res?.data?.user);
         }
         return token;
       })

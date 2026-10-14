@@ -1359,7 +1359,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     ),
                   ),
                   child: const Text(
-                    'Nâng cấp Gói PLUS (49.000đ/tháng)',
+                    'Nâng cấp Gói PLUS (20.000đ/tháng)',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -1569,7 +1569,10 @@ class _PlayerScreenState extends State<PlayerScreen>
         isShuffleEnabled ||
         repeatMode == PlaybackRepeatMode.all;
     final canTriggerNext =
-        canGoNext || isShuffleEnabled || repeatMode == PlaybackRepeatMode.all;
+        canGoNext ||
+        isShuffleEnabled ||
+        repeatMode == PlaybackRepeatMode.all ||
+        _globalAudioState.isAutoplayEnabled;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1601,8 +1604,12 @@ class _PlayerScreenState extends State<PlayerScreen>
               _audioService.resume();
             }
           },
-          size: 68,
-          iconSize: 34,
+          size: 78,
+          iconSize: 32,
+          progress: _duration.inMilliseconds > 0
+              ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+              : 0.0,
+          showProgressRing: true,
         ),
         IconButton(
           icon: Icon(

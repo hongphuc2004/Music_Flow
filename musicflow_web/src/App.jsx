@@ -2,7 +2,7 @@ import { Suspense, useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import AppToastProvider from './components/common/ui/AppToastProvider';
-import { refreshAccessToken, setAccessToken } from './services/api';
+import { refreshAccessToken, setAccessToken, isTokenExpired } from './services/api';
 import { notifyClientSessionChanged } from './hooks/useClientSession';
 import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/routePreload';
 import { ColorModeContext } from './context/ColorModeContext';
@@ -190,6 +190,11 @@ function App() {
           await refreshAccessToken();
         } catch (err) {
           console.warn('Silent refresh failed:', err);
+          const currentToken = localStorage.getItem('accessToken');
+          if (role === 'artist' && currentToken && !isTokenExpired(currentToken)) {
+            setLoadingSession(false);
+            return;
+          }
           setAccessToken(null);
           localStorage.removeItem('role');
           localStorage.removeItem('userName');

@@ -1,9 +1,10 @@
+/* Notification Bell Button — Lucian UX/UI Prompt #074 Style */
+
 .noti-bell-container {
-  width: fit-content;
-  height: fit-content;
-  background-color: rgb(58, 58, 58);
-  border-radius: 10px;
-  padding: 8px;
+  width: 42px;
+  height: 42px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -24,10 +25,10 @@
 }
 
 .noti-bell-container:hover {
-  background-color: rgb(26, 26, 26);
+  background-color: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 [data-theme='light'] .noti-bell-container:hover,
@@ -41,8 +42,7 @@
 }
 
 .noti-bell-container svg {
-  color: rgba(255, 255, 255, 0.7);
-  transform: scale(1.15);
+  color: rgba(255, 255, 255, 0.75);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
   display: block;
 }
@@ -52,29 +52,50 @@
   color: rgba(30, 41, 59, 0.75);
 }
 
-.noti-bell-container:hover svg {
+/* Swinging ring animation on hover or has-unread */
+.noti-bell-container:hover svg,
+.noti-bell-container.has-unread svg {
   color: #ffffff;
-  transform: scale(1.28) rotate(6deg);
+  animation: noti-bell-swing 0.8s ease-in-out infinite alternate;
+  transform-origin: 50% 15%;
 }
 
 [data-theme='light'] .noti-bell-container:hover svg,
-.light .noti-bell-container:hover svg {
+[data-theme='light'] .noti-bell-container.has-unread svg {
   color: #0f172a;
+}
+
+@keyframes noti-bell-swing {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(14deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+  75% {
+    transform: rotate(7deg);
+  }
+  100% {
+    transform: rotate(-4deg);
+  }
 }
 
 /* Điểm xanh radar thông báo */
 .noti-bell-point {
   position: absolute;
-  bottom: 6px;
-  left: 6px;
+  bottom: 4px;
+  left: 4px;
   width: 7px;
   height: 7px;
-  background-color: rgb(0, 255, 0);
+  background-color: #00FF66;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 6px rgb(0, 255, 0);
+  box-shadow: 0 0 6px #00FF66;
   pointer-events: none;
 }
 
@@ -83,47 +104,64 @@
   position: absolute;
   width: 2px;
   height: 2px;
-  background-color: rgb(0, 255, 0);
+  background-color: #00FF66;
   border-radius: 50%;
-  animation: noti-radar-loop 1.4s ease-out infinite;
+  animation: noti-radar-loop 1.5s ease-out infinite;
   box-sizing: border-box;
 }
 
 @keyframes noti-radar-loop {
   0% {
-    background-color: rgba(0, 255, 0, 0.9);
+    background-color: rgba(0, 255, 102, 0.9);
     width: 2px;
     height: 2px;
-    box-shadow: 0 0 2px rgb(0, 255, 0);
+    box-shadow: 0 0 2px #00FF66;
   }
   70% {
-    background-color: rgba(0, 255, 0, 0.3);
+    background-color: rgba(0, 255, 102, 0.3);
   }
   100% {
-    background-color: rgba(0, 255, 0, 0);
-    width: 28px;
-    height: 28px;
+    background-color: rgba(0, 255, 102, 0);
+    width: 24px;
+    height: 24px;
     box-shadow: none;
   }
 }
 
-/* Badge số lượng thông báo nếu có */
+/* Badge số lượng thông báo màu san hô Prompt #074 (.u074-badge) */
 .noti-bell-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  top: -4px;
+  right: -4px;
+  background-color: #FF5A6E;
   color: #ffffff;
   font-size: 10px;
   font-weight: 800;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid rgb(58, 58, 58);
-  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
+  border: 2px solid #141724;
+  box-shadow: 0 2px 8px rgba(255, 90, 110, 0.55);
   pointer-events: none;
+  animation: noti-badge-pop 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+[data-theme='light'] .noti-bell-badge,
+.light .noti-bell-badge {
+  border-color: #ffffff;
+}
+
+@keyframes noti-badge-pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

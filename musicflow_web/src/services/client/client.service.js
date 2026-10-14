@@ -123,7 +123,7 @@ export const clientCommentsApi = {
   create: (payload) => api.post('/comments', payload),
   update: (id, payload) => api.put(`/comments/${id}`, payload),
   delete: (id) => api.delete(`/comments/${id}`),
-  react: (id) => api.put(`/comments/${id}/reactions`, { type: 'like' }),
+  react: (id, type = 'like') => api.put(`/comments/${id}/reactions`, { type }),
   unreact: (id) => api.delete(`/comments/${id}/reactions`),
 };
 

@@ -106,8 +106,14 @@ function ArtistLogin() {
 
           const { token, artist } = res.data;
           setAccessToken(token);
-          localStorage.setItem('role', artist.role);
+          localStorage.setItem('role', artist.role || 'artist');
           syncArtistSession(artist);
+          localStorage.removeItem('userId');
+          localStorage.removeItem('userName');
+          localStorage.removeItem('email');
+          localStorage.removeItem('userAvatar');
+          window.dispatchEvent(new Event('musicflow-client-session-changed'));
+          window.dispatchEvent(new Event('artist-profile-updated'));
           navigate('/artist/dashboard');
         } catch (err) {
           setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');
@@ -132,8 +138,14 @@ function ArtistLogin() {
       const res = await api.post('/artist/login', formData);
       const { token, artist } = res.data;
       setAccessToken(token);
-      localStorage.setItem('role', artist.role);
+      localStorage.setItem('role', artist.role || 'artist');
       syncArtistSession(artist);
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userAvatar');
+      window.dispatchEvent(new Event('musicflow-client-session-changed'));
+      window.dispatchEvent(new Event('artist-profile-updated'));
       navigate('/artist/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
@@ -169,8 +181,14 @@ function ArtistLogin() {
 
             const { token, artist } = res.data;
             setAccessToken(token);
-            localStorage.setItem('role', artist.role);
+            localStorage.setItem('role', artist.role || 'artist');
             syncArtistSession(artist);
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('email');
+            localStorage.removeItem('userAvatar');
+            window.dispatchEvent(new Event('musicflow-client-session-changed'));
+            window.dispatchEvent(new Event('artist-profile-updated'));
             navigate('/artist/dashboard');
           } catch (err) {
             setError(err.response?.data?.error || err.response?.data?.message || 'Đăng nhập Google thất bại');

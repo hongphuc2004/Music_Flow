@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/app_toast.dart';
 import '../../../data/services/notification_api_service.dart';
 import '../../widgets/notification_bell_button.dart';
 import '../../widgets/notifications_sheet.dart';
@@ -99,15 +98,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                 hasUnread: unreadCount > 0,
                 unreadCount: unreadCount,
                 onTap: () {
-                  if (unreadCount > 0) {
-                    NotificationsSheet.show(context);
-                  } else {
-                    AppToast.showInfo(
-                      context,
-                      'Không có thông báo mới nào.',
-                      title: 'Thông báo',
-                    );
-                  }
+                  NotificationsSheet.show(context);
                 },
               );
             },

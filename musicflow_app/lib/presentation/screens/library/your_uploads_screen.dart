@@ -11,6 +11,7 @@ import '../../../presentation/widgets/mini_player_wrapper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
 import 'package:musicflow_app/presentation/screens/premium/premium_screen.dart';
+import '../../widgets/file_uploader.dart';
 
 import '../../../data/services/auth_service.dart';
 import '../login/login_screen.dart';
@@ -1184,10 +1185,14 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
   final _titleController = TextEditingController();
   final _artistController = TextEditingController();
   final _lyricsController = TextEditingController();
+  final _imageUrlController = TextEditingController();
 
   File? _audioFile;
   File? _imageFile;
   String? _audioFileName;
+  int? _audioFileSize;
+  String? _imageFileName;
+  int? _imageFileSize;
 
   List<Topic> _topics = [];
   Topic? _selectedTopic;
@@ -1206,6 +1211,7 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
     _titleController.dispose();
     _artistController.dispose();
     _lyricsController.dispose();
+    _imageUrlController.dispose();
     super.dispose();
   }
 
@@ -1238,6 +1244,7 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
           setState(() {
             _audioFile = File(file.path!);
             _audioFileName = file.name;
+            _audioFileSize = file.size;
           });
         }
       }
@@ -1258,6 +1265,8 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
         if (file.path != null) {
           setState(() {
             _imageFile = File(file.path!);
+            _imageFileName = file.name;
+            _imageFileSize = file.size;
           });
         }
       }
@@ -1279,6 +1288,7 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
     final result = await SongApiService.uploadSong(
       audioFile: _audioFile!,
       imageFile: _imageFile,
+      imageUrl: _imageUrlController.text.trim().isNotEmpty ? _imageUrlController.text.trim() : null,
       title: _titleController.text.trim(),
       artist: _artistController.text.trim(),
       topicId: _selectedTopic?.id,
@@ -1488,63 +1498,66 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Audio + Image pickers in row
-                          Row(
-                            children: [
-                              // Image preview
-                              GestureDetector(
-                                onTap: _pickImageFile,
-                                child: Container(
-                                  width: 96,
-                                  height: 96,
-                                  decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF120E24) : const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                                    ),
-                                    image: _imageFile != null
-                                        ? DecorationImage(
-                                            image: FileImage(_imageFile!),
-                                            fit: BoxFit.cover,
-                                          )
-                                        : null,
-                                  ),
-                                  child: _imageFile == null
-                                      ? Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              Icons.add_photo_alternate_rounded,
-                                              color: AppColors.secondary,
-                                              size: 32,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Ảnh bìa',
-                                              style: TextStyle(
-                                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : null,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
+                          // Audio File Uploader (Prompt #032 design)
+                          Text(
+                            'File âm thanh bài hát *',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          FileUploader(
+                            file: _audioFile,
+                            fileName: _audioFileName,
+                            fileSize: _audioFileSize,
+                            title: 'Kéo thả file nhạc hoặc',
+                            browseText: 'chọn bài hát',
+                            subtitle: 'MP3, M4A, WAV · tối đa 50 MB',
+                            isAudio: true,
+                            onTap: _pickAudioFile,
+                            onRemove: () => setState(() {
+                              _audioFile = null;
+                              _audioFileName = null;
+                              _audioFileSize = null;
+                            }),
+                          ),
 
-                              // Audio picker
-                              Expanded(
-                                child: _buildFilePicker(
-                                  icon: Icons.audio_file_rounded,
-                                  label: _audioFileName ?? 'Chọn file nhạc audio (.mp3, .m4a)',
-                                  isSelected: _audioFile != null,
-                                  onTap: _pickAudioFile,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 16),
+
+                          // Cover Image Uploader (Prompt #032 design)
+                          Text(
+                            'Ảnh bìa (tuỳ chọn)',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          FileUploader(
+                            file: _imageFile,
+                            fileName: _imageFileName,
+                            fileSize: _imageFileSize,
+                            title: 'Kéo thả ảnh bìa hoặc',
+                            browseText: 'chọn ảnh',
+                            subtitle: 'PNG, JPG, WEBP · tối đa 10 MB',
+                            compact: true,
+                            isAudio: false,
+                            isImage: true,
+                            onTap: _pickImageFile,
+                            onRemove: () => setState(() {
+                              _imageFile = null;
+                              _imageFileName = null;
+                              _imageFileSize = null;
+                            }),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildTextField(
+                            controller: _imageUrlController,
+                            label: 'Hoặc dán URL ảnh bìa (tuỳ chọn)',
+                            hint: 'https://example.com/cover.jpg',
                           ),
 
                           const SizedBox(height: 20),
@@ -1705,60 +1718,7 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
     );
   }
 
-  Widget _buildFilePicker({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 96,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF120E24) : const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.secondary
-                : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.secondary : AppColors.primary,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? (isDark ? Colors.white : AppColors.lightTextPrimary) : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
-              color: isSelected ? AppColors.secondary : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildTextField({
     required TextEditingController controller,

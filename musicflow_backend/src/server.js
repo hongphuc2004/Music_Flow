@@ -59,7 +59,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http:
 // causing a memory leak under sustained traffic.
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,
+  max: process.env.NODE_ENV === "production" ? 50 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many authentication requests. Please try again later." },
@@ -67,7 +67,7 @@ const authRateLimiter = rateLimit({
 
 const generalRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 200,
+  max: process.env.NODE_ENV === "production" ? 200 : 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Please slow down." },
@@ -97,14 +97,16 @@ app.use(
 
 const forgotPasswordRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: process.env.NODE_ENV === "production" ? 5 : 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: "Bạn đã gửi quá nhiều yêu cầu từ địa chỉ IP này. Vui lòng thử lại sau 15 phút." },
 });
 
 app.use("/api/auth/forgot-password", forgotPasswordRateLimiter);
-app.use("/api/auth", authRateLimiter);
+app.use("/api/auth/login", authRateLimiter);
+app.use("/api/auth/register", authRateLimiter);
+app.use("/api/auth/google", authRateLimiter);
 app.use("/api/admin/auth/login", authRateLimiter);
 app.use("/api/artist/login", authRateLimiter);
 app.use("/api/artist/google", authRateLimiter);

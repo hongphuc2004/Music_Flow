@@ -1,0 +1,141 @@
+/* Morphing Play/Pause Button with Pulse & Circular Progress Arc
+   Style & Animation extracted from Lucian UX/UI Prompt #007
+   System colors: #8c85ff (primary-light), #6c63ff (primary), #00e5ff / #00bcd4 (secondary)
+*/
+
+.mf-play-wrapper {
+  --mf-grad1: #8c85ff;
+  --mf-grad2: #6c63ff;
+  --mf-grad3: #00e5ff;
+  --mf-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --mf-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Outer circular progress track & arc */
+.mf-play-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.mf-play-ring circle {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.15s linear;
+}
+
+.mf-play-track {
+  stroke: rgba(255, 255, 255, 0.14);
+}
+
+.mf-play-arc {
+  /* stroke-dasharray and stroke-dashoffset set dynamically */
+  filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.4));
+}
+
+/* Pulsing halo ring */
+.mf-play-pulse {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mf-grad1), var(--mf-grad2) 50%, var(--mf-grad3));
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.mf-play-wrapper.is-playing .mf-play-pulse {
+  animation: mf-play-pulse 2.4s var(--mf-ease) infinite;
+}
+
+@keyframes mf-play-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.52);
+  }
+}
+
+/* Main circular play/pause button */
+.mf-play-btn {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--mf-grad1) 0%, var(--mf-grad2) 55%, var(--mf-grad3) 100%);
+  cursor: pointer;
+  outline: none;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -8px 16px -8px rgba(15, 10, 40, 0.5),
+    0 8px 24px -6px rgba(108, 99, 255, 0.65),
+    0 0 18px rgba(0, 229, 255, 0.28);
+  transition:
+    transform 0.45s var(--mf-spring),
+    box-shadow 0.4s var(--mf-ease);
+}
+
+.mf-play-btn:hover {
+  transform: scale(1.08);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 16px -8px rgba(15, 10, 40, 0.5),
+    0 10px 30px -4px rgba(108, 99, 255, 0.85),
+    0 0 25px rgba(0, 229, 255, 0.5);
+}
+
+.mf-play-btn:active {
+  transform: scale(0.92);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.3),
+    inset 0 4px 10px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(108, 99, 255, 0.4);
+}
+
+.mf-play-btn:focus-visible {
+  outline: 2px solid #00e5ff;
+  outline-offset: 4px;
+}
+
+/* SVG icon with morphing polygon pair */
+.mf-play-btn svg {
+  display: block;
+  overflow: visible;
+}
+
+.mf-play-btn polygon {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-play-wrapper.is-playing .mf-play-pulse {
+    animation: none;
+  }
+  .mf-play-btn {
+    transition: none;
+  }
+}

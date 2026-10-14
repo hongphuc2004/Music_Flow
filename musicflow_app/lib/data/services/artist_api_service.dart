@@ -169,6 +169,50 @@ class ArtistApiService {
     }
   }
 
+  static Future<List<ArtistSuggestion>> fetchSuggestions({
+    String? artistId,
+    String? artistName,
+    int limit = 4,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      final headers = <String, String>{};
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final url = ApiConfig.artistSuggestionsUrl(
+        artistId: artistId,
+        artistName: artistName,
+        limit: limit,
+      );
+
+      final response = await ApiClient.get(Uri.parse(url), headers: headers);
+      if (response.statusCode == 200) {
+        final data = _decodeToMap(response.body);
+        if (data['success'] == true && data['suggestions'] is List) {
+          final list = (data['suggestions'] as List)
+              .whereType<Map>()
+              .map(
+                (item) => ArtistSuggestion.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList();
+          for (final item in list) {
+            if (item.avatarUrl.isNotEmpty) {
+              cacheAvatar(item.name, item.avatarUrl);
+            }
+          }
+          return list;
+        }
+      }
+      return const [];
+    } catch (e) {
+      return const [];
+    }
+  }
+
   static Map<String, dynamic> _decodeToMap(String responseBody) {
     final decoded = jsonDecode(responseBody);
     return _asMap(decoded) ?? <String, dynamic>{};
@@ -182,6 +226,40 @@ class ArtistApiService {
       return value.map((key, mapValue) => MapEntry(key.toString(), mapValue));
     }
     return null;
+  }
+}
+
+class ArtistSuggestion {
+  final String id;
+  final String name;
+  final String avatarUrl;
+  final bool isVerified;
+  final int followersCount;
+  final String role;
+  bool isFollowing;
+
+  ArtistSuggestion({
+    required this.id,
+    required this.name,
+    required this.avatarUrl,
+    this.isVerified = false,
+    this.followersCount = 0,
+    required this.role,
+    this.isFollowing = false,
+  });
+
+  factory ArtistSuggestion.fromJson(Map<String, dynamic> json) {
+    return ArtistSuggestion(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      avatarUrl: json['avatar']?.toString() ?? json['avatarUrl']?.toString() ?? '',
+      isVerified: json['isVerified'] == true,
+      followersCount: (json['followersCount'] as num?)?.toInt() ??
+          (json['followers'] as num?)?.toInt() ??
+          0,
+      role: json['role']?.toString() ?? 'Nghệ sĩ đề xuất',
+      isFollowing: json['isFollowing'] == true,
+    );
   }
 }
 

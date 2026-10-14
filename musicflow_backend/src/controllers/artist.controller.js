@@ -1,11 +1,11 @@
 const Artist = require("../models/artist.model");
 const jwt = require("jsonwebtoken");
 const { verifyGoogleCredential } = require("../utils/googleAuth");
-
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("Missing JWT_SECRET environment variable");
-}
+const {
+  JWT_SECRET,
+  rotateRefreshToken,
+  setRefreshCookie,
+} = require("../utils/token.util");
 
 // Đăng ký artist
 exports.register = async (req, res) => {
@@ -18,9 +18,11 @@ exports.register = async (req, res) => {
     if (existing) {
       return res.status(409).json({ message: "Email đã tồn tại" });
     }
-    const artist = new Artist({ name, email, password, avatar, bio });
+    const artist = new Artist({ name, email, password, avatar, bio, role: "artist" });
     await artist.save();
-    res.status(201).json({ message: "Đăng ký thành công", artist: artist.toJSON() });
+    const artistObj = artist.toJSON();
+    artistObj.role = "artist";
+    res.status(201).json({ message: "Đăng ký thành công", artist: artistObj });
   } catch (err) {
     res.status(500).json({ message: "Lỗi server", error: err.message });
   }
@@ -44,7 +46,13 @@ exports.login = async (req, res) => {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.json({ message: "Đăng nhập thành công", token, artist: artist.toJSON() });
+    const refreshToken = await rotateRefreshToken(artist._id);
+    setRefreshCookie(res, refreshToken);
+
+    const artistObj = artist.toJSON();
+    artistObj.role = artist.role || "artist";
+
+    res.json({ message: "Đăng nhập thành công", token, refreshToken, artist: artistObj });
   } catch (err) {
     res.status(500).json({ message: "Lỗi server", error: err.message });
   }
@@ -65,6 +73,9 @@ exports.googleLogin = async (req, res) => {
         artist.googleId = googleId;
       }
       artist.provider = "google";
+      if (!artist.role) {
+        artist.role = "artist";
+      }
       if (avatar && !artist.avatar) {
         artist.avatar = avatar;
       }
@@ -79,6 +90,7 @@ exports.googleLogin = async (req, res) => {
         name,
         avatar: avatar || "",
         provider: "google",
+        role: "artist",
       });
     }
 
@@ -87,11 +99,17 @@ exports.googleLogin = async (req, res) => {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
+    const refreshToken = await rotateRefreshToken(artist._id);
+    setRefreshCookie(res, refreshToken);
+
+    const artistObj = artist.toJSON();
+    artistObj.role = artist.role || "artist";
 
     res.json({
       message: "Đăng nhập thành công",
       token,
-      artist: artist.toJSON(),
+      refreshToken,
+      artist: artistObj,
     });
   } catch (err) {
     res.status(err.statusCode || 500).json({
@@ -100,3 +118,4 @@ exports.googleLogin = async (req, res) => {
     });
   }
 };
+

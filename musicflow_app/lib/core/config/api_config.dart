@@ -132,6 +132,21 @@ class ApiConfig {
   static String artistProfileUrlByName(String artistName) =>
       "$artistEndpoint/profile?name=${Uri.encodeComponent(artistName)}";
 
+  static String artistSuggestionsUrl({
+    String? artistId,
+    String? artistName,
+    int limit = 4,
+  }) {
+    final queryParams = <String>['limit=$limit'];
+    if (artistId != null && artistId.isNotEmpty) {
+      queryParams.add('artistId=${Uri.encodeComponent(artistId)}');
+    }
+    if (artistName != null && artistName.isNotEmpty) {
+      queryParams.add('artistName=${Uri.encodeComponent(artistName)}');
+    }
+    return "$artistEndpoint/suggestions?${queryParams.join('&')}";
+  }
+
   static String songShareUrl(
     String songId, {
     String? title,
@@ -147,5 +162,17 @@ class ApiConfig {
       return "$webBaseUrl/$artistSlug/$songSlug?utm_source=$source&utm_medium=$medium&utm_campaign=social_sharing";
     }
     return "$webBaseUrl/client/songs/$songId?utm_source=$source&utm_medium=$medium&utm_campaign=social_sharing";
+  }
+
+  static String artistShareUrl(
+    String? artistId, {
+    String? artistName,
+    String source = 'clipboard',
+    String medium = 'share',
+  }) {
+    final slug = (artistName != null && artistName.isNotEmpty)
+        ? slugify(artistName)
+        : (artistId ?? 'artist');
+    return "$webBaseUrl/$slug?utm_source=$source&utm_medium=$medium&utm_campaign=artist_sharing";
   }
 }

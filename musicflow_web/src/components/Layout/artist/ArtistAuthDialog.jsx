@@ -144,8 +144,14 @@ function ArtistAuthDialog() {
 
   const completeArtistAuth = useCallback(({ token, artist }) => {
     setAccessToken(token);
-    localStorage.setItem('role', artist.role);
+    localStorage.setItem('role', artist?.role || 'artist');
     syncArtistSession(artist);
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('email');
+    localStorage.removeItem('userAvatar');
+    window.dispatchEvent(new Event('musicflow-client-session-changed'));
+    window.dispatchEvent(new Event('artist-profile-updated'));
     navigate('/artist/dashboard', { replace: true });
   }, [navigate]);
 

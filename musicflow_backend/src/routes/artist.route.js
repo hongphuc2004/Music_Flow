@@ -237,6 +237,151 @@ router.get("/profile", async (req, res) => {
   }
 });
 
+// Gợi ý nghệ sĩ tương tự (Similar people):
+// Ưu tiên 1: Các nghệ sĩ có tham gia chung bài hát với nghệ sĩ hiện tại
+// Ưu tiên 2: Các nghệ sĩ có followers / lượt nghe cao
+router.get("/suggestions", async (req, res) => {
+  try {
+    const { artistId, artistName, limit = 4 } = req.query;
+
+    let targetArtist = null;
+    const key = artistId || artistName;
+    if (key) {
+      targetArtist = await findArtistBySlugOrId(key);
+    }
+
+    let currentUserId = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      try {
+        const jwt = require("jsonwebtoken");
+        const decoded = jwt.verify(
+          req.headers.authorization.split(" ")[1],
+          process.env.JWT_SECRET
+        );
+        currentUserId = decoded.id;
+      } catch (_) {}
+    }
+
+    let followedSet = new Set();
+    if (currentUserId) {
+      const user = await User.findById(currentUserId).select("followedArtists");
+      if (user && Array.isArray(user.followedArtists)) {
+        followedSet = new Set(user.followedArtists.map((id) => id.toString()));
+      }
+    }
+
+    const suggestions = [];
+    const seenArtistIds = new Set();
+    const seenArtistNames = new Set();
+
+    if (targetArtist) {
+      seenArtistIds.add(targetArtist._id.toString());
+      if (targetArtist.name) {
+        seenArtistNames.add(targetArtist.name.trim().toLowerCase());
+      }
+    }
+
+    // 1. ƯU TIÊN 1: Nghệ sĩ hợp tác chung bài hát
+    if (targetArtist) {
+      const collabSongs = await Song.find({
+        artists: targetArtist._id,
+        isPublic: true,
+      })
+        .populate("artists", "_id name avatar isVerified followersCount monthlyListeners")
+        .limit(30)
+        .lean();
+
+      const collabCounts = {};
+      const collabMap = {};
+
+      for (const song of collabSongs) {
+        if (!Array.isArray(song.artists)) continue;
+        for (const a of song.artists) {
+          if (!a || !a._id) continue;
+          const aid = a._id.toString();
+          const aname = (a.name || "").trim().toLowerCase();
+          if (aid === targetArtist._id.toString() || aname === targetArtist.name.trim().toLowerCase()) {
+            continue;
+          }
+
+          collabCounts[aid] = (collabCounts[aid] || 0) + 1;
+          collabMap[aid] = a;
+        }
+      }
+
+      const sortedCollabIds = Object.keys(collabCounts).sort(
+        (a, b) => collabCounts[b] - collabCounts[a]
+      );
+
+      for (const aid of sortedCollabIds) {
+        if (suggestions.length >= Number(limit)) break;
+        const a = collabMap[aid];
+        seenArtistIds.add(aid);
+        if (a.name) seenArtistNames.add(a.name.trim().toLowerCase());
+
+        suggestions.push({
+          _id: a._id,
+          name: a.name,
+          avatar: a.avatar || "",
+          isVerified: a.isVerified || false,
+          followersCount: a.followersCount || 0,
+          monthlyListeners: a.monthlyListeners || 0,
+          type: "collab",
+          role: `Hợp tác · ${collabCounts[aid]} bài hát`,
+          isFollowing: followedSet.has(aid),
+        });
+      }
+    }
+
+    // 2. ƯU TIÊN 2: Nghệ sĩ có nhiều followers / lượt nghe nhất (fallback)
+    if (suggestions.length < Number(limit)) {
+      const remainingLimit = Number(limit) - suggestions.length;
+      const topArtists = await Artist.find({
+        _id: { $nin: Array.from(seenArtistIds) },
+      })
+        .sort({ followersCount: -1, monthlyListeners: -1 })
+        .limit(remainingLimit * 2)
+        .select("_id name avatar isVerified followersCount monthlyListeners")
+        .lean();
+
+      for (const a of topArtists) {
+        if (suggestions.length >= Number(limit)) break;
+        const aid = a._id.toString();
+        const aname = (a.name || "").trim().toLowerCase();
+        if (seenArtistIds.has(aid) || seenArtistNames.has(aname)) continue;
+
+        seenArtistIds.add(aid);
+        seenArtistNames.add(aname);
+
+        suggestions.push({
+          _id: a._id,
+          name: a.name,
+          avatar: a.avatar || "",
+          isVerified: a.isVerified || false,
+          followersCount: a.followersCount || 0,
+          monthlyListeners: a.monthlyListeners || 0,
+          type: "popular",
+          role: a.followersCount > 0
+            ? `${a.followersCount} người theo dõi`
+            : "Nghệ sĩ đề xuất",
+          isFollowing: followedSet.has(aid),
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      suggestions,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Get artist suggestions failed",
+      error: error.message,
+    });
+  }
+});
+
 router.get("/:id/follow-status", authMiddleware, async (req, res) => {
   try {
     const [artist, user] = await Promise.all([

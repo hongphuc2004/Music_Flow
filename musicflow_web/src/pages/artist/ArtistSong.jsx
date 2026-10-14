@@ -59,6 +59,7 @@ import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import ArtistLyricsDialog from './ArtistLyricsDialog';
 import api from '../../services/api';
 import useAppToast from '../../components/common/js/useAppToast';
+import FileUploader from '../../components/common/ui/FileUploader';
 import PremiumBadge from '../../components/common/ui/PremiumBadge';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1082,59 +1083,15 @@ function ArtistSong() {
                 <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   File âm thanh (Audio File) <span style={{ color: '#ef5350' }}>*</span>
                 </Typography>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  fullWidth
-                  sx={{
-                    py: 3,
-                    borderRadius: 2.5,
-                    borderColor: audioFile ? 'success.main' : 'divider',
-                    borderStyle: 'dashed',
-                    borderWidth: 2,
-                    bgcolor: audioFile ? 'rgba(46, 125, 50, 0.03)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                    color: 'text.secondary',
-                    flexDirection: 'column',
-                    gap: 1.25,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      borderColor: '#6c63ff',
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.04)' : 'rgba(108, 99, 255, 0.02)',
-                    }
-                  }}
-                >
-                  {audioFile ? (
-                    <>
-                      <CheckCircleIcon color="success" sx={{ fontSize: 36 }} />
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="subtitle2" fontWeight={800} color="success.main" sx={{ wordBreak: 'break-all', px: 2 }}>
-                          Đã chọn: {audioFile.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                          {(audioFile.size / (1024 * 1024)).toFixed(2)} MB
-                        </Typography>
-                      </Box>
-                    </>
-                  ) : (
-                    <>
-                      <AudioIcon sx={{ fontSize: 36, color: 'text.disabled' }} />
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="subtitle2" fontWeight={800} color="text.primary">
-                          {editingSong ? 'Thay đổi file MP3 (Nếu có)' : 'Kéo thả hoặc click để chọn file MP3'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                          Chấp nhận định dạng file: .mp3, .wav (Tối đa 15MB)
-                        </Typography>
-                      </Box>
-                    </>
-                  )}
-                  <input
-                    hidden
-                    type="file"
-                    accept="audio/*"
-                    onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-                  />
-                </Button>
+                <FileUploader
+                  file={audioFile}
+                  onFileSelect={(file) => setAudioFile(file)}
+                  onFileRemove={() => setAudioFile(null)}
+                  accept="audio/*"
+                  title={editingSong ? 'Thay đổi file âm thanh hoặc' : 'Kéo thả file âm thanh vào đây hoặc'}
+                  browseText="chọn file MP3/WAV"
+                  subtitle="MP3, WAV, FLAC · Tối đa 50 MB"
+                />
               </Box>
 
               {/* Cover Artwork Area */}
@@ -1144,49 +1101,16 @@ function ArtistSong() {
                 </Typography>
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: (imageFile || formData.imageUrl || editingSong?.imageUrl) ? 8 : 12 }}>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      fullWidth
-                      sx={{
-                        py: imageFile ? 2 : 2.5,
-                        borderRadius: 2.5,
-                        borderColor: imageFile ? 'success.main' : 'divider',
-                        borderStyle: 'dashed',
-                        borderWidth: 2,
-                        bgcolor: imageFile ? 'rgba(46, 125, 50, 0.03)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                        color: 'text.secondary',
-                        flexDirection: 'column',
-                        gap: 1,
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          borderColor: '#6c63ff',
-                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.04)' : 'rgba(108, 99, 255, 0.02)',
-                        }
-                      }}
-                    >
-                      {imageFile ? (
-                        <>
-                          <CheckCircleIcon color="success" sx={{ fontSize: 28 }} />
-                          <Typography variant="body2" fontWeight={700} color="success.main" noWrap sx={{ maxWidth: '90%' }}>
-                            {imageFile.name}
-                          </Typography>
-                        </>
-                      ) : (
-                        <>
-                          <ImageIcon sx={{ fontSize: 28, color: 'text.disabled' }} />
-                          <Typography variant="body2" fontWeight={800} color="text.primary">
-                            Tải lên file ảnh từ máy
-                          </Typography>
-                        </>
-                      )}
-                      <input
-                        hidden
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                      />
-                    </Button>
+                    <FileUploader
+                      file={imageFile}
+                      onFileSelect={(file) => setImageFile(file)}
+                      onFileRemove={() => setImageFile(null)}
+                      accept="image/*"
+                      title="Kéo thả hình đại diện hoặc"
+                      browseText="chọn ảnh từ máy"
+                      subtitle="JPG, PNG, WEBP · Tối đa 10 MB"
+                      compact
+                    />
                   </Grid>
 
                   {/* Thumbnail Preview */}

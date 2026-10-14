@@ -4,10 +4,28 @@ const Song = require("../models/song.model");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
-const VALID_REACTION_TYPES = ["like", "love", "haha", "wow", "sad", "angry"];
+const VALID_REACTION_TYPES = [
+  "like",
+  "love",
+  "haha",
+  "wow",
+  "sad",
+  "angry",
+  "celebrate",
+  "fire",
+  "watching",
+  "thanks",
+  "done",
+  "idea",
+  "launch",
+  "clap",
+];
 
 const buildReactionSummary = (reactions = []) => {
-  const summary = { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 };
+  const summary = {};
+  VALID_REACTION_TYPES.forEach((t) => {
+    summary[t] = 0;
+  });
 
   reactions.forEach((reaction) => {
     if (summary[reaction.type] !== undefined) {

@@ -300,7 +300,15 @@ class GlobalAudioState extends ChangeNotifier {
         candidates = recommended.where((s) => !existingIds.contains(s.id)).toList();
       }
 
+      // 4. Fallback cuối cùng nếu toàn bộ candidates đã nằm trong playlist:
+      if (candidates.isEmpty) {
+        final fallbackList = await SongApiService.fetchRecommendedSongs(limit: 10);
+        // Chỉ loại trừ bài hiện tại để tiếp tục phát
+        candidates = fallbackList.where((s) => s.id != currentId).toList();
+      }
+
       if (candidates.isNotEmpty) {
+        debugPrint('[GlobalAudioState] Autoplay found ${candidates.length} songs. Next: "${candidates.first.title}"');
         _playlist.addAll(candidates);
         _currentIndex = _currentIndex + 1;
         if (_currentIndex < _playlist.length) {
@@ -313,6 +321,8 @@ class GlobalAudioState extends ChangeNotifier {
             _isChangingSong = false;
           });
         }
+      } else {
+        debugPrint('[GlobalAudioState] Autoplay: Không tìm thấy bài hát liên quan mới.');
       }
     } catch (e) {
       debugPrint('[GlobalAudioState] Autoplay error: $e');

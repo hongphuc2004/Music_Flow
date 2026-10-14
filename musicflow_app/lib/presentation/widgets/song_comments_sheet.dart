@@ -139,33 +139,7 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     await _loadComments(reset: true);
   }
 
-  Future<void> _handleReactionTap(SongComment comment) async {
-    final isLoggedIn = await AuthService.isLoggedIn();
-    if (!isLoggedIn) {
-      _setStatus('Vui lòng đăng nhập để tương tác cảm xúc', isError: true);
-      return;
-    }
 
-    final myReaction = comment.reactions.cast<CommentReaction?>().firstWhere(
-      (reaction) => reaction?.userId == _currentUserId,
-      orElse: () => null,
-    );
-
-    if (myReaction != null) {
-      // Đã thả cảm xúc rồi -> Bấm nhanh để gỡ bỏ
-      final result = await CommentService.removeReaction(comment.id);
-      if (!mounted) return;
-      if (!result.success) {
-        _setStatus(result.message ?? 'Không thể gỡ cảm xúc', isError: true);
-        return;
-      }
-      _setStatus('Đã bỏ cảm xúc', isError: false);
-      await _loadComments(reset: true);
-    } else {
-      // Chưa thả -> Thả mặc định Thích (like)
-      await _sendReaction(comment, 'like');
-    }
-  }
 
   Future<void> _sendReaction(SongComment comment, String type) async {
     final isLoggedIn = await AuthService.isLoggedIn();
@@ -191,6 +165,33 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
     );
     _setStatus('Đã thả cảm xúc ${config.emoji} ${config.label}', isError: false);
     await _loadComments(reset: true);
+  }
+
+  Future<void> _removeReaction(SongComment comment) async {
+    final isLoggedIn = await AuthService.isLoggedIn();
+    if (!isLoggedIn) {
+      _setStatus('Vui lòng đăng nhập để tương tác cảm xúc', isError: true);
+      return;
+    }
+
+    final result = await CommentService.removeReaction(comment.id);
+    if (!mounted) return;
+    if (!result.success) {
+      _setStatus(result.message ?? 'Không thể gỡ cảm xúc', isError: true);
+      return;
+    }
+    _setStatus('Đã gỡ cảm xúc', isError: false);
+    await _loadComments(reset: true);
+  }
+
+  String _formatTimeAgo(DateTime? time) {
+    if (time == null) return '';
+    final diff = DateTime.now().difference(time);
+    if (diff.inSeconds < 60) return 'Vừa xong';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}p';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inDays < 7) return '${diff.inDays}d';
+    return '${time.day}/${time.month}';
   }
 
   Future<void> _editComment(SongComment comment) async {
@@ -509,39 +510,108 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
   }
 
   Widget _buildCommentNode(SongComment comment, {required int depth}) {
-    final leftPadding = 8.0 + (depth * 16);
+    final leftPadding = 8.0 + (depth * 20);
     final hasAvatar = comment.user.avatar.isNotEmpty;
     final isMine =
         _currentUserId.isNotEmpty && comment.user.id == _currentUserId;
 
+    // Gradient fallback matching Prompt #077 .u077-av
+    final avatarGradient = (comment.user.id.hashCode % 2 == 0)
+        ? const LinearGradient(
+            colors: [Color(0xFF22C3A6), Color(0xFF0EA5E9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFF8B6CFF), Color(0xFF5B8CFF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
     return Padding(
-      padding: EdgeInsets.only(left: leftPadding, right: 6, top: 8, bottom: 4),
+      padding: EdgeInsets.only(left: leftPadding, right: 6, top: 10, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Prompt #077 Message: Avatar + Bubble (.u077-msg)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: Colors.white12,
-                backgroundImage: hasAvatar
-                    ? NetworkImage(comment.user.avatar)
-                    : null,
+              // Avatar (.u077-av: 34x34)
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: avatarGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
                 child: hasAvatar
-                    ? null
-                    : const Icon(Icons.person, size: 15, color: Colors.white70),
+                    ? Image.network(
+                        comment.user.avatar,
+                        width: 34,
+                        height: 34,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(
+                            comment.user.name.isNotEmpty
+                                ? comment.user.name[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          comment.user.name.isNotEmpty
+                              ? comment.user.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
+              // Message Bubble (.u077-bub: 6px 18px 18px 18px)
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+                    horizontal: 14,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF1A1B25),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(6),
+                      topRight: Radius.circular(18),
+                      bottomLeft: Radius.circular(18),
+                      bottomRight: Radius.circular(18),
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.08),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,20 +622,25 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                             child: Text(
                               comment.user.name,
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                                color: Color(0xFFDCD8E8),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12.5,
+                                letterSpacing: -0.1,
                               ),
                             ),
                           ),
                           if (isMine)
                             PopupMenuButton<String>(
+                              padding: EdgeInsets.zero,
+                              iconSize: 18,
                               icon: const Icon(
                                 Icons.more_horiz,
                                 color: Colors.white54,
-                                size: 18,
                               ),
-                              color: const Color(0xFF222222),
+                              color: const Color(0xFF222332),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               onSelected: (value) =>
                                   _handleOwnCommentAction(value, comment),
                               itemBuilder: (context) => const [
@@ -585,34 +660,11 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
                       Text(
                         comment.content,
                         style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
+                          color: Color(0xFFF4F0E8),
+                          fontSize: 13.5,
+                          height: 1.45,
+                          letterSpacing: -0.1,
                         ),
-                      ),
-                      const SizedBox(height: 7),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 6,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: () => setState(() => _replyingTo = comment),
-                            child: const Text(
-                              'Trả lời',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                          CommentReactionButton(
-                            comment: comment,
-                            currentUserId: _currentUserId,
-                            onSelectReaction: (type) => _sendReaction(comment, type),
-                            onToggleLike: () => _handleReactionTap(comment),
-                          ),
-                          _buildReactionSummaryBadge(comment),
-                        ],
                       ),
                     ],
                   ),
@@ -620,44 +672,23 @@ class _SongCommentsSheetState extends State<SongCommentsSheet> {
               ),
             ],
           ),
+
+          // MusicFlow Reaction row: Aligned under the bubble
+          Padding(
+            padding: const EdgeInsets.only(left: 44),
+            child: SongCommentReactions(
+              comment: comment,
+              currentUserId: _currentUserId,
+              onSelectReaction: (type) => _sendReaction(comment, type),
+              onRemoveReaction: () => _removeReaction(comment),
+              onReply: () => setState(() => _replyingTo = comment),
+              timeAgo: _formatTimeAgo(comment.createdAt),
+            ),
+          ),
+
+          // Child replies
           ...comment.replies.map(
             (child) => _buildCommentNode(child, depth: depth + 1),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReactionSummaryBadge(SongComment comment) {
-    final summary = comment.reactionSummary;
-    final activeReactions = kCommentReactions
-        .where((r) => (summary[r.key] ?? 0) > 0)
-        .toList();
-    final totalCount = summary.values.fold<int>(0, (sum, count) => sum + count);
-
-    if (totalCount == 0) return const SizedBox.shrink();
-
-    final emojis = activeReactions.take(3).map((r) => r.emoji).join('');
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emojis, style: const TextStyle(fontSize: 11)),
-          const SizedBox(width: 4),
-          Text(
-            '$totalCount',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:musicflow_app/core/config/api_config.dart';
 import 'package:musicflow_app/core/config/api_client.dart';
@@ -133,14 +134,27 @@ class SongApiService {
 
       if (response.statusCode == 200) {
         final dynamic data = json.decode(response.body);
+        List? songList;
         if (data is List) {
-          return data.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
-        } else if (data is Map && data['songs'] is List) {
-          return (data['songs'] as List).map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+          songList = data;
+        } else if (data is Map) {
+          if (data['data'] is List) {
+            songList = data['data'] as List;
+          } else if (data['songs'] is List) {
+            songList = data['songs'] as List;
+          }
+        }
+
+        if (songList != null) {
+          return songList
+              .whereType<Map>()
+              .map((e) => Song.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
         }
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SongApiService] fetchSimilarSongs error: $e');
       return [];
     }
   }
@@ -156,26 +170,61 @@ class SongApiService {
 
       if (response.statusCode == 200) {
         final dynamic data = json.decode(response.body);
+        List? songList;
         if (data is List) {
-          return data.map((e) => Song.fromJson(e as Map<String, dynamic>)).toList();
+          songList = data;
+        } else if (data is Map) {
+          if (data['songs'] is List) {
+            songList = data['songs'] as List;
+          } else if (data['data'] is List) {
+            songList = data['data'] as List;
+          }
+        }
+
+        if (songList != null) {
+          return songList
+              .whereType<Map>()
+              .map((e) => Song.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
         }
       }
       return [];
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SongApiService] fetchSongsByArtistName error: $e');
       return [];
     }
   }
 
   /// Lấy danh sách bài hát gợi ý (random)
   static Future<List<Song>> fetchRecommendedSongs({int limit = 12}) async {
-    final uri = Uri.parse("$baseUrl/recommended?limit=$limit");
-    final response = await ApiClient.get(uri);
+    try {
+      final uri = Uri.parse("$baseUrl/recommended?limit=$limit");
+      final response = await ApiClient.get(uri);
 
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      return data.map((e) => Song.fromJson(e)).toList();
-    } else {
-      throw NetworkException("Lấy gợi ý thất bại");
+      if (response.statusCode == 200) {
+        final dynamic data = json.decode(response.body);
+        List? songList;
+        if (data is List) {
+          songList = data;
+        } else if (data is Map) {
+          if (data['data'] is List) {
+            songList = data['data'] as List;
+          } else if (data['songs'] is List) {
+            songList = data['songs'] as List;
+          }
+        }
+
+        if (songList != null) {
+          return songList
+              .whereType<Map>()
+              .map((e) => Song.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('[SongApiService] fetchRecommendedSongs error: $e');
+      return [];
     }
   }
 
@@ -362,10 +411,11 @@ class SongApiService {
     return SearchResult(songs: songs, artists: artists, playlists: playlists);
   }
 
-  /// Upload bài hát mới (audio + image) - YÊU CẦU ĐĂNG NHẬP
+  /// Upload bài hát mới (audio + image / imageUrl) - YÊU CẦU ĐĂNG NHẬP
   static Future<UploadResult> uploadSong({
     required File audioFile,
     File? imageFile,
+    String? imageUrl,
     String? title,
     String? artist,
     String? topicId,
@@ -408,6 +458,9 @@ class SongApiService {
       }
       if (lyrics != null && lyrics.isNotEmpty) {
         request.fields['lyrics'] = lyrics;
+      }
+      if (imageUrl != null && imageUrl.trim().isNotEmpty) {
+        request.fields['imageUrl'] = imageUrl.trim();
       }
 
       request.files.add(

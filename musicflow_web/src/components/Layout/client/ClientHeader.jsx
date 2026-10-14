@@ -55,6 +55,7 @@ import { getOptimizedImageUrl } from '../../../utils/imageUtil';
 import { getArtistPath } from '../../../utils/shareUtil';
 import useVoiceRecognition from '../../../hooks/useVoiceRecognition';
 import NotificationBellButton from '../../../components/common/ui/NotificationBellButton';
+import NotificationPanel from '../../../components/common/ui/NotificationPanel';
 import PremiumBadge from '../../../components/common/ui/PremiumBadge';
 
 const SEARCH_HISTORY_STORAGE_KEY = 'musicflow_search_history';
@@ -1094,138 +1095,55 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
               vertical: 'top',
               horizontal: 'right',
             }}
-            PaperProps={{
-              sx: {
-                width: 360,
-                maxHeight: 480,
-                borderRadius: 3,
-                mt: 1.5,
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
-                border: '1px solid',
-                borderColor: 'divider',
-                backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-                backdropFilter: 'blur(16px)',
-              }
+            slotProps={{
+              paper: {
+                sx: {
+                  bgcolor: 'transparent',
+                  boxShadow: 'none',
+                  overflow: 'visible',
+                  mt: 1.5,
+                  p: 0,
+                },
+              },
             }}
           >
-            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Thông báo</Typography>
-              {unreadCount > 0 && (
-                <Button size="small" variant="text" onClick={handleMarkAllAsRead} sx={{ fontSize: 12, fontWeight: 700, p: 0, minWidth: 0, textTransform: 'none' }}>
-                  Đọc tất cả
-                </Button>
-              )}
-            </Box>
-            
-            <Box sx={{ overflowY: 'auto', maxHeight: 380 }}>
-              {notifications.length > 0 ? (
-                <List disablePadding>
-                  {notifications.map((noti) => {
-                    let IconComponent = InfoIcon;
-                    let iconBgColor = 'rgba(0, 188, 212, 0.15)';
-                    let iconColor = '#00bcd4';
+            <NotificationPanel
+              notifications={notifications}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              onItemClick={(noti) => {
+                handleNotiClose();
 
-                    if (noti.type === 'subscription') {
-                      IconComponent = CreditCardIcon;
-                      iconBgColor = 'rgba(108, 99, 255, 0.15)';
-                      iconColor = '#6c63ff';
-                    } else if (noti.type === 'system') {
-                      IconComponent = CampaignIcon;
-                      iconBgColor = 'rgba(244, 63, 94, 0.15)';
-                      iconColor = '#f43f5e';
-                    } else if (noti.type === 'admin_moderation_alert') {
-                      IconComponent = WarningIcon;
-                      iconBgColor = 'rgba(239, 68, 68, 0.15)';
-                      iconColor = '#ef4444';
-                    } else if (noti.type === 'song_moderation_result') {
-                      IconComponent = SecurityIcon;
-                      iconBgColor = 'rgba(245, 158, 11, 0.15)';
-                      iconColor = '#f59e0b';
-                    }
+                const metadata = noti.metadata || {};
+                const songId = metadata.songId || '';
+                const commentId = metadata.commentId || '';
+                const actionUrl = metadata.actionUrl || '';
 
-                    return (
-                      <ListItemButton
-                        key={noti._id}
-                        onClick={() => {
-                          if (!noti.isRead) {
-                            handleMarkAsRead(noti._id);
-                          }
-                          handleNotiClose();
-
-                          const metadata = noti.metadata || {};
-                          const songId = metadata.songId || '';
-                          const commentId = metadata.commentId || '';
-                          const actionUrl = metadata.actionUrl || '';
-
-                          // 1. Chỉ mở bình luận khi thực sự là thông báo về tương tác / bình luận
-                          if (noti.type === 'interaction' || commentId || (actionUrl && actionUrl.includes('comment='))) {
-                            if (onOpenCommentsTarget) {
-                              onOpenCommentsTarget({ songId, commentId, actionUrl });
-                            }
-                          }
-                          // 2. Cảnh báo kiểm duyệt AI cho Admin -> Chuyển đến trang Quản lý bài hát
-                          else if (noti.type === 'admin_moderation_alert') {
-                            navigate(actionUrl || '/admin/songs');
-                          }
-                          // 3. Kết quả kiểm duyệt cho Uploader -> Chuyển đến Thư viện tải lên
-                          else if (noti.type === 'song_moderation_result') {
-                            navigate(actionUrl || '/client/library');
-                          }
-                          // 4. Thông báo gói dịch vụ Subscription -> Chuyển đến trang Premium
-                          else if (noti.type === 'subscription') {
-                            navigate('/client/premium');
-                          }
-                          // 5. Các hành động điều hướng khác nếu có actionUrl
-                          else if (actionUrl) {
-                            navigate(actionUrl);
-                          }
-                        }}
-                        sx={{
-                          py: 1.5,
-                          px: 2,
-                          alignItems: 'flex-start',
-                          borderBottom: '1px solid',
-                          borderColor: 'rgba(0,0,0,0.03)',
-                          backgroundColor: noti.isRead 
-                            ? 'transparent' 
-                            : (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.05)' : 'rgba(108, 99, 255, 0.03)',
-                          '&:hover': {
-                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                          }
-                        }}
-                      >
-                        <ListItemAvatar sx={{ minWidth: 46, mt: 0.5 }}>
-                          <Avatar sx={{ width: 34, height: 34, bgcolor: iconBgColor, color: iconColor }}>
-                            <IconComponent sx={{ fontSize: 18 }} />
-                          </Avatar>
-                        </ListItemAvatar>
-                        
-                        <ListItemText
-                          primary={noti.title}
-                          secondary={
-                            <Stack spacing={0.5}>
-                              <Typography variant="body2" color="text.primary" sx={{ fontSize: 12.5, fontWeight: noti.isRead ? 500 : 700, lineHeight: 1.4 }}>
-                                {noti.content}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10.5 }}>
-                                {formatTimeAgo(noti.createdAt)}
-                              </Typography>
-                            </Stack>
-                          }
-                          disableTypography
-                        />
-                      </ListItemButton>
-                    );
-                  })}
-                </List>
-              ) : (
-                <Box sx={{ py: 6, px: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                    Bạn chưa có thông báo nào.
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+                // 1. Chỉ mở bình luận khi thực sự là thông báo về tương tác / bình luận
+                if (noti.type === 'interaction' || commentId || (actionUrl && actionUrl.includes('comment='))) {
+                  if (onOpenCommentsTarget) {
+                    onOpenCommentsTarget({ songId, commentId, actionUrl });
+                  }
+                }
+                // 2. Cảnh báo kiểm duyệt AI cho Admin -> Chuyển đến trang Quản lý bài hát
+                else if (noti.type === 'admin_moderation_alert') {
+                  navigate(actionUrl || '/admin/songs');
+                }
+                // 3. Kết quả kiểm duyệt cho Uploader -> Chuyển đến Thư viện tải lên
+                else if (noti.type === 'song_moderation_result') {
+                  navigate(actionUrl || '/client/library');
+                }
+                // 4. Thông báo gói dịch vụ Subscription -> Chuyển đến trang Premium
+                else if (noti.type === 'subscription') {
+                  navigate('/client/premium');
+                }
+                // 5. Các hành động điều hướng khác nếu có actionUrl
+                else if (actionUrl) {
+                  navigate(actionUrl);
+                }
+              }}
+              onClose={handleNotiClose}
+            />
           </Popover>
           {isLoggedIn && (
             <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>

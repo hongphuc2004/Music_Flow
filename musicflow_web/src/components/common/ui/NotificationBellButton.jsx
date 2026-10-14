@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import '../css/NotificationBellButton.css';
 
-export default function NotificationBellButton({
-  onClick,
-  hasUnread = false,
-  unreadCount = 0,
-  className = '',
-  title = 'Thông báo',
-}) {
+const NotificationBellButton = forwardRef(function NotificationBellButton(
+  { onClick, hasUnread = false, unreadCount = 0, className = '', title = 'Thông báo' },
+  ref
+) {
+  const showUnread = hasUnread || unreadCount > 0;
+
   return (
     <div
-      className={`noti-bell-container ${className}`}
+      ref={ref}
+      className={`noti-bell-container ${showUnread ? 'has-unread' : ''} ${className}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -40,9 +40,9 @@ export default function NotificationBellButton({
       </svg>
 
       {/* Chấm radar xanh lá phát sóng khi có thông báo */}
-      {(hasUnread || unreadCount > 0) && <div className="noti-bell-point" />}
+      {showUnread && <div className="noti-bell-point" />}
 
-      {/* Badge hiển thị số lượng nếu có nhiều hơn 0 */}
+      {/* Badge số lượng màu san hô Prompt #074 */}
       {unreadCount > 0 && (
         <span className="noti-bell-badge">
           {unreadCount > 99 ? '99+' : unreadCount}
@@ -50,4 +50,6 @@ export default function NotificationBellButton({
       )}
     </div>
   );
-}
+});
+
+export default NotificationBellButton;

@@ -36,6 +36,7 @@ import {
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientCommentsApi } from '../../../services/client/client.service';
 import useAppToast from '../../../components/common/js/useAppToast';
+import SongCommentReactions from '../../../components/common/ui/SongCommentReactions';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -215,52 +216,93 @@ function ClientSongCommentsDrawer({
     }
   };
 
-  const handleToggleLike = async (comment) => {
+  const handleSelectReaction = async (comment, reactionType) => {
     if (!isLoggedIn) {
       triggerLogin();
       return;
     }
 
-    const hasLiked = comment.reactions?.some((r) => String(r.userId) === String(currentUserId));
+    const currentReaction = comment.reactions?.find(
+      (r) => String(r.userId) === String(currentUserId)
+    );
+    const prevType = currentReaction?.type;
 
-    // Optimistically update reactions to make the UI feel fast
-    const updateReactionInTree = (nodes, targetId, wasLiked, userId) => {
-      return nodes.map((node) => {
-        if (node._id === targetId) {
-          const nextReactions = wasLiked
-            ? (node.reactions || []).filter((r) => String(r.userId) !== String(userId))
-            : [...(node.reactions || []), { userId, type: 'like' }];
-          const diff = wasLiked ? -1 : 1;
-          const currentLikes = node.reactionSummary?.like || 0;
+    const updateInTree = (nodes) =>
+      nodes.map((node) => {
+        if (node._id === comment._id) {
+          const nextReactions = (node.reactions || []).filter(
+            (r) => String(r.userId) !== String(currentUserId)
+          );
+          nextReactions.push({ userId: currentUserId, type: reactionType });
+
+          const nextSummary = { ...(node.reactionSummary || {}) };
+          if (prevType && nextSummary[prevType]) {
+            nextSummary[prevType] = Math.max(0, nextSummary[prevType] - 1);
+          }
+          nextSummary[reactionType] = (nextSummary[reactionType] || 0) + 1;
+
           return {
             ...node,
             reactions: nextReactions,
-            reactionCount: Math.max(0, (node.reactionCount || 0) + diff),
-            reactionSummary: {
-              like: Math.max(0, currentLikes + diff),
-            },
+            reactionCount: prevType ? (node.reactionCount || 1) : ((node.reactionCount || 0) + 1),
+            reactionSummary: nextSummary,
           };
         }
         if (node.replies && node.replies.length > 0) {
-          return {
-            ...node,
-            replies: updateReactionInTree(node.replies, targetId, wasLiked, userId),
-          };
+          return { ...node, replies: updateInTree(node.replies) };
         }
         return node;
       });
-    };
 
-    setComments((prev) => updateReactionInTree(prev, comment._id, hasLiked, currentUserId));
+    setComments((prev) => updateInTree(prev));
 
     try {
-      if (hasLiked) {
-        await clientCommentsApi.unreact(comment._id);
-      } else {
-        await clientCommentsApi.react(comment._id);
-      }
+      await clientCommentsApi.react(comment._id, reactionType);
     } catch {
-      // Revert on error (re-fetch all comments to restore state)
+      fetchComments(true);
+    }
+  };
+
+  const handleRemoveReaction = async (comment) => {
+    if (!isLoggedIn) {
+      triggerLogin();
+      return;
+    }
+
+    const currentReaction = comment.reactions?.find(
+      (r) => String(r.userId) === String(currentUserId)
+    );
+    const prevType = currentReaction?.type;
+
+    const removeInTree = (nodes) =>
+      nodes.map((node) => {
+        if (node._id === comment._id) {
+          const nextReactions = (node.reactions || []).filter(
+            (r) => String(r.userId) !== String(currentUserId)
+          );
+          const nextSummary = { ...(node.reactionSummary || {}) };
+          if (prevType && nextSummary[prevType]) {
+            nextSummary[prevType] = Math.max(0, nextSummary[prevType] - 1);
+          }
+
+          return {
+            ...node,
+            reactions: nextReactions,
+            reactionCount: Math.max(0, (node.reactionCount || 1) - 1),
+            reactionSummary: nextSummary,
+          };
+        }
+        if (node.replies && node.replies.length > 0) {
+          return { ...node, replies: removeInTree(node.replies) };
+        }
+        return node;
+      });
+
+    setComments((prev) => removeInTree(prev));
+
+    try {
+      await clientCommentsApi.unreact(comment._id);
+    } catch {
       fetchComments(true);
     }
   };
@@ -346,14 +388,10 @@ function ClientSongCommentsDrawer({
 
   const renderCommentNode = (comment, depth = 0) => {
     const isMine = currentUserId && String(comment.user?._id) === String(currentUserId);
-    const hasLiked = comment.reactions?.some((r) => String(r.userId) === String(currentUserId));
-    const likeIcon = hasLiked ? (
-      <FavoriteIcon sx={{ fontSize: 15, color: '#fb7185' }} />
-    ) : (
-      <FavoriteBorderIcon sx={{ fontSize: 15 }} />
-    );
-
     const isEditing = editingCommentId === comment._id;
+    const avatarGradient = ((comment.user?._id?.charCodeAt(0) || 0) % 2 === 0)
+      ? 'linear-gradient(140deg, #22C3A6, #0EA5E9)'
+      : 'linear-gradient(140deg, #8B6CFF, #5B8CFF)';
 
     return (
       <Box
@@ -361,7 +399,7 @@ function ClientSongCommentsDrawer({
         id={`comment-${comment._id}`}
         sx={{
           pl: depth > 0 ? { xs: 2, sm: 3 } : 0,
-          mt: 1.5,
+          mt: 2,
           position: 'relative',
         }}
       >
@@ -383,44 +421,31 @@ function ClientSongCommentsDrawer({
           <Avatar
             src={comment.user?.avatar}
             sx={{
-              width: depth > 0 ? 26 : 32,
-              height: depth > 0 ? 26 : 32,
-              bgcolor: 'rgba(255, 255, 255, 0.08)',
-              border: isMine ? '1px solid #14b8a6' : 'none',
+              width: depth > 0 ? 28 : 34,
+              height: depth > 0 ? 28 : 34,
+              background: avatarGradient,
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+              fontSize: 13,
+              fontWeight: 800,
             }}
           >
             {comment.user?.name ? comment.user.name[0].toUpperCase() : 'U'}
           </Avatar>
 
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            {/* Balloon content wrapper */}
-            <Box
-              sx={{
-                bgcolor: 'rgba(255, 255, 255, 0.04)',
-                borderRadius: 3,
-                p: '8px 12px',
-                display: 'inline-block',
-                maxWidth: '100%',
-                border: isMine ? '1px solid rgba(20, 184, 166, 0.15)' : 'none',
-              }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.25 }}>
-                <Typography
-                  variant="caption"
-                  fontWeight={700}
-                  sx={{
-                    color: isMine ? '#2dd4bf' : 'rgba(255, 255, 255, 0.9)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    maxWidth: 160,
-                  }}
-                >
-                  {comment.user?.name || 'Vô danh'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.38)', fontSize: 10 }}>
-                  • {formatDate(comment.createdAt)}
-                </Typography>
+            {/* MusicFlow Comment Bubble */}
+            <div className="mf-comment-bubble">
+              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                <b>{comment.user?.name || 'Vô danh'}</b>
+                {isMine && !isEditing && (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleOpenMenu(e, comment)}
+                    sx={{ color: 'rgba(255, 255, 255, 0.4)', p: 0.2, ml: 1, mt: -0.5 }}
+                  >
+                    <MoreIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                )}
               </Stack>
 
               {isEditing ? (
@@ -450,70 +475,35 @@ function ClientSongCommentsDrawer({
                       size="small"
                       variant="contained"
                       onClick={() => handleSaveEdit(comment._id)}
-                      sx={{ bgcolor: '#14b8a6', '&:hover': { bgcolor: '#0f766e' } }}
+                      sx={{ bgcolor: '#B7A4FF', color: '#0B0C12', fontWeight: 700, '&:hover': { bgcolor: '#9d84fd' } }}
                     >
                       Lưu
                     </Button>
                   </Stack>
                 </Stack>
               ) : (
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.85)', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                <Typography variant="body2" sx={{ color: '#F4F0E8', wordBreak: 'break-word', whiteSpace: 'pre-wrap', fontSize: 13.5 }}>
                   {comment.content}
                 </Typography>
               )}
-            </Box>
+            </div>
 
-            {/* Action Bar: Reply, Like, Menu */}
+            {/* MusicFlow Comment Reaction Bar */}
             {!isEditing && (
-              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5, pl: 0.5 }}>
-                <Button
-                  size="small"
-                  startIcon={<ReplyIcon sx={{ fontSize: 14 }} />}
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      triggerLogin();
-                    } else {
-                      setReplyingTo(comment);
-                    }
-                  }}
-                  sx={{
-                    color: 'rgba(255, 255, 255, 0.45)',
-                    fontSize: 11,
-                    textTransform: 'none',
-                    p: 0,
-                    minWidth: 0,
-                    '&:hover': { color: '#14b8a6' },
-                  }}
-                >
-                  Trả lời
-                </Button>
-
-                <Button
-                  size="small"
-                  startIcon={likeIcon}
-                  onClick={() => handleToggleLike(comment)}
-                  sx={{
-                    color: hasLiked ? '#fb7185' : 'rgba(255, 255, 255, 0.45)',
-                    fontSize: 11,
-                    textTransform: 'none',
-                    p: 0,
-                    minWidth: 0,
-                    '&:hover': { color: '#fb7185' },
-                  }}
-                >
-                  Thích ({comment.reactionCount || 0})
-                </Button>
-
-                {isMine && (
-                  <IconButton
-                    size="small"
-                    onClick={(e) => handleOpenMenu(e, comment)}
-                    sx={{ color: 'rgba(255, 255, 255, 0.38)', p: 0.2 }}
-                  >
-                    <MoreIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                )}
-              </Stack>
+              <SongCommentReactions
+                comment={comment}
+                currentUserId={currentUserId}
+                onSelectReaction={handleSelectReaction}
+                onRemoveReaction={handleRemoveReaction}
+                onReply={(c) => {
+                  if (!isLoggedIn) {
+                    triggerLogin();
+                  } else {
+                    setReplyingTo(c);
+                  }
+                }}
+                timeAgo={formatDate(comment.createdAt)}
+              />
             )}
           </Box>
         </Stack>

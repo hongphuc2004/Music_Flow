@@ -1,0 +1,356 @@
+/* Modern File Dropzone & Uploader (Prompt #032 design) */
+
+.mf-uploader {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mf-uploader *,
+.mf-uploader *::before,
+.mf-uploader *::after {
+  box-sizing: border-box;
+}
+
+/* Drop Zone Card */
+.mf-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 170px;
+  padding: 24px 16px;
+  border: 0;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #F4F0E8;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.45s cubic-bezier(0.34, 1.45, 0.64, 1),
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.mf-dropzone.compact {
+  min-height: 135px;
+  padding: 16px 12px;
+  border-radius: 20px;
+}
+
+.mf-dropzone:focus-visible {
+  outline: 2px solid #B7A4FF;
+  outline-offset: 4px;
+}
+
+/* Dashed marching ants border */
+.mf-dropzone svg.mf-dropzone-dash {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mf-dropzone-dash rect {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 2;
+  stroke-dasharray: 8 7;
+  transition: stroke 0.3s ease;
+}
+
+.mf-dropzone:hover .mf-dropzone-dash rect,
+.mf-uploader.is-over .mf-dropzone-dash rect {
+  stroke: #B7A4FF;
+  animation: mf-march 0.9s linear infinite;
+}
+
+@keyframes mf-march {
+  to {
+    stroke-dashoffset: -30;
+  }
+}
+
+.mf-uploader.is-over .mf-dropzone {
+  transform: scale(1.02);
+  background: rgba(183, 164, 255, 0.08);
+}
+
+/* Glowing Squircle Orb */
+.mf-dropzone-orb {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(140deg, #5B8CFF, #8B6CFF);
+  box-shadow: 0 14px 26px -10px rgba(91, 108, 255, 0.7);
+  transition: transform 0.45s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.mf-dropzone.compact .mf-dropzone-orb {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.mf-dropzone-orb svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mf-dropzone.compact .mf-dropzone-orb svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mf-dropzone:hover .mf-dropzone-orb {
+  transform: translateY(-4px);
+}
+
+.mf-uploader.is-over .mf-dropzone-orb {
+  transform: translateY(-8px) scale(1.1) rotate(-6deg);
+}
+
+/* Text styles */
+.mf-dropzone b {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #F4F0E8;
+  text-align: center;
+}
+
+.mf-dropzone b em {
+  font-style: normal;
+  color: #B7A4FF;
+  margin-left: 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mf-dropzone small {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(244, 240, 232, 0.5);
+  text-align: center;
+}
+
+.mf-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Files Upload List */
+.mf-upload-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Row Item */
+.mf-upload-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 62px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: #171824;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 14px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: mf-upload-in 0.45s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+@keyframes mf-upload-in {
+  from {
+    transform: translateY(-8px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+/* Extension Icon Badge */
+.mf-upload-ic {
+  width: 38px;
+  height: 42px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: end center;
+  padding-bottom: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--c, #8E8A97);
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* File Metadata */
+.mf-upload-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.mf-upload-meta b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #F4F0E8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mf-upload-meta small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: rgba(244, 240, 232, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bottom Progress Bar */
+.mf-upload-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: #B7A4FF;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p, 1));
+  transition: transform 0.2s linear, background-color 0.3s, opacity 0.5s 0.4s;
+}
+
+.mf-upload-row.done .mf-upload-bar {
+  background: #119C72;
+  opacity: 0;
+}
+
+.mf-upload-row.fail .mf-upload-bar {
+  background: #D93A55;
+}
+
+/* Status Icon (Done / Loading / Fail) */
+.mf-upload-st {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.mf-upload-st svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mf-upload-row.done .mf-upload-st {
+  background: #119C72;
+  color: #fff;
+  animation: mf-upload-pop 0.45s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+@keyframes mf-upload-pop {
+  from {
+    transform: scale(0.3);
+  }
+}
+
+.mf-upload-row.done .mf-upload-st path {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: mf-draw 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s forwards;
+}
+
+@keyframes mf-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.mf-upload-row.fail .mf-upload-meta small {
+  color: #FF7D8C;
+}
+
+/* Retry Button */
+.mf-upload-retry {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(217, 58, 85, 0.15);
+  color: #FF7D8C;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.mf-upload-retry:hover {
+  background: rgba(217, 58, 85, 0.25);
+  transform: scale(1.04);
+}
+
+/* Remove button */
+.mf-upload-remove-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  margin-left: 6px;
+  transition: background-color 0.2s, color 0.2s, transform 0.2s;
+}
+
+.mf-upload-remove-btn:hover {
+  background: rgba(217, 58, 85, 0.2);
+  color: #FF7D8C;
+  transform: scale(1.1);
+}
+
+/* Spinner */
+.mf-upload-spin {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #B7A4FF;
+  animation: mf-upload-rot 0.8s linear infinite;
+}
+
+@keyframes mf-upload-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}

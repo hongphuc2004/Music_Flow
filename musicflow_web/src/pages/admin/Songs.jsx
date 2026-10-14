@@ -64,6 +64,7 @@ import { Layout } from '../../components/Layout';
 import { songsApi, topicsApi, accountsApi } from '../../services/admin/admin.service';
 import useAppToast from '../../components/common/js/useAppToast';
 import ArtistLyricsDialog from '../artist/ArtistLyricsDialog';
+import FileUploader from '../../components/common/ui/FileUploader';
 import PremiumBadge from '../../components/common/ui/PremiumBadge';
 
 const Transition = forwardRef(function Transition(props, ref) {
@@ -1080,51 +1081,15 @@ function Songs() {
                 <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ mb: 1.25 }}>
                   File âm thanh (Audio file) *
                 </Typography>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  fullWidth
-                  sx={{
-                    py: 4,
-                    borderRadius: 2,
-                    borderColor: audioFile ? 'success.main' : 'divider',
-                    borderStyle: 'dashed',
-                    borderWidth: 2,
-                    bgcolor: audioFile ? 'rgba(76, 175, 80, 0.02)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                    color: 'text.secondary',
-                    flexDirection: 'column',
-                    gap: 1.5,
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.05)' : 'rgba(108, 99, 255, 0.02)',
-                      boxShadow: '0 8px 24px rgba(108,99,255,0.04)'
-                    }
-                  }}
-                >
-                  {audioFile ? (
-                    <>
-                      <CheckCircleIcon color="success" sx={{ fontSize: 36 }} />
-                      <Typography variant="subtitle2" fontWeight={800} color="success.main" sx={{ mt: 0.5 }}>
-                        Đã chọn: {audioFile.name}
-                      </Typography>
-                      <Typography variant="caption">{(audioFile.size / (1024 * 1024)).toFixed(2)} MB</Typography>
-                    </>
-                  ) : (
-                    <>
-                      <AudioIcon sx={{ fontSize: 36, color: 'text.disabled' }} />
-                      <Typography variant="body2" fontWeight={700}>
-                        {editingSong ? 'Thay đổi file MP3 (Không bắt buộc)' : 'Nhấp để chọn file nhạc MP3 *'}
-                      </Typography>
-                    </>
-                  )}
-                  <input
-                    hidden
-                    type="file"
-                    accept="audio/*"
-                    onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-                  />
-                </Button>
+                <FileUploader
+                  file={audioFile}
+                  onFileSelect={(file) => setAudioFile(file)}
+                  onFileRemove={() => setAudioFile(null)}
+                  accept="audio/*"
+                  title={editingSong ? 'Thay đổi file MP3 hoặc' : 'Kéo thả file nhạc vào đây hoặc'}
+                  browseText="chọn file MP3/WAV"
+                  subtitle="MP3, WAV, FLAC · Tối đa 50 MB"
+                />
               </Box>
 
               <Box>
@@ -1133,59 +1098,29 @@ function Songs() {
                 </Typography>
                 <Grid container spacing={2} alignItems="center">
                   <Grid size={{ xs: imageFile || formData.imageUrl ? 8 : 12 }}>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      fullWidth
-                      sx={{
-                        py: imageFile ? 2 : 2.5,
-                        borderRadius: 2,
-                        borderColor: imageFile ? 'success.main' : 'divider',
-                        borderStyle: 'dashed',
-                        borderWidth: 2,
-                        bgcolor: imageFile ? 'rgba(76, 175, 80, 0.02)' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
-                        color: 'text.secondary',
-                        flexDirection: 'column',
-                        gap: 0.5,
-                        height: '100%',
-                        transition: 'all 0.3s',
-                        '&:hover': {
-                          borderColor: 'primary.main',
-                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.05)' : 'rgba(108, 99, 255, 0.02)',
-                        }
-                      }}
-                    >
-                      {imageFile ? (
-                        <>
-                          <CheckCircleIcon color="success" sx={{ fontSize: 24 }} />
-                          <Typography variant="body2" fontWeight={700} color="success.main" noWrap sx={{ maxWidth: '90%', mt: 0.5 }}>
-                            {imageFile.name}
-                          </Typography>
-                        </>
-                      ) : (
-                        <>
-                          <ImageIcon sx={{ fontSize: 24, color: 'text.disabled' }} />
-                          <Typography variant="body2" fontWeight={700}>Tải ảnh lên từ thiết bị</Typography>
-                        </>
-                      )}
-                      <input
-                        hidden
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                      />
-                    </Button>
+                    <FileUploader
+                      file={imageFile}
+                      onFileSelect={(file) => setImageFile(file)}
+                      onFileRemove={() => setImageFile(null)}
+                      accept="image/*"
+                      title="Kéo thả ảnh bìa vào đây hoặc"
+                      browseText="chọn ảnh từ thiết bị"
+                      subtitle="JPG, PNG, WEBP · Tối đa 10 MB"
+                      compact
+                    />
                   </Grid>
 
                   {(imageFile || formData.imageUrl) && (
                     <Grid size={{ xs: 4 }}>
                       <Box sx={{ 
-                        width: 72, 
-                        height: 72, 
-                        borderRadius: 1.5, 
+                        width: '100%', 
+                        height: 84, 
+                        borderRadius: 2, 
                         border: '1px solid', 
                         borderColor: 'divider', 
                         overflow: 'hidden', 
+                        display: 'grid',
+                        placeItems: 'center',
                         bgcolor: 'action.hover',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
                         mx: 'auto'
@@ -1199,6 +1134,21 @@ function Songs() {
                     </Grid>
                   )}
                 </Grid>
+
+                {/* 🔗 DIRECT IMAGE URL INPUT */}
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Hoặc dán đường dẫn URL ảnh bìa (Image URL)"
+                  placeholder="https://example.com/artwork.jpg"
+                  value={formData.imageUrl || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                  InputProps={{
+                    sx: { borderRadius: 2.5 }
+                  }}
+                  sx={{ mt: 1.5 }}
+                  helperText="Dán trực tiếp link ảnh trực tuyến nếu không upload file từ máy."
+                />
               </Box>
             </Stack>
           )}

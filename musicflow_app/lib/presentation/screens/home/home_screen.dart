@@ -22,6 +22,7 @@ import 'package:musicflow_app/presentation/screens/home/home_new_releases_sectio
 import 'package:musicflow_app/presentation/widgets/ad_banner_widget.dart';
 import 'package:musicflow_app/presentation/widgets/voice_ai_dj_sheet.dart';
 import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
+import 'package:musicflow_app/core/services/app_tab_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -377,11 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       return HomeTopBar(
                         displayName: _resolveHomeDisplayName(currentUser),
                         onSearchTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Vui lòng chuyển sang Tab Tìm kiếm ở thanh điều hướng để tìm nhạc!'),
-                            ),
-                          );
+                          AppTabService().switchTab(2, context: context);
                         },
                       );
                     },

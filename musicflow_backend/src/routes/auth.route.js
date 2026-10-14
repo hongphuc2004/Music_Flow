@@ -12,76 +12,20 @@ const { sendOtpEmail } = require("../services/email.service");
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("Missing JWT_SECRET environment variable");
-}
+const {
+  JWT_SECRET,
+  JWT_EXPIRES_IN,
+  REFRESH_EXPIRES_IN,
+  REFRESH_COOKIE_NAME,
+  parseCookies,
+  setRefreshCookie,
+  clearRefreshCookie,
+  generateRefreshToken,
+  hashRefreshToken,
+  signAccessToken,
+  rotateRefreshToken,
+} = require("../utils/token.util");
 
-const JWT_EXPIRES_IN = "2h";
-const REFRESH_EXPIRES_IN = 30;
-const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || "mf_refresh_token";
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
-function parseCookies(req) {
-  const rawCookie = req.headers.cookie;
-  if (!rawCookie) return {};
-
-  return rawCookie.split(";").reduce((acc, part) => {
-    const [name, ...valueParts] = part.trim().split("=");
-    if (!name) return acc;
-    acc[name] = decodeURIComponent(valueParts.join("="));
-    return acc;
-  }, {});
-}
-
-function setRefreshCookie(res, refreshToken) {
-  res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
-    httpOnly: true,
-    secure: IS_PRODUCTION,
-    sameSite: IS_PRODUCTION ? "none" : "lax",
-    maxAge: REFRESH_EXPIRES_IN * 24 * 60 * 60 * 1000,
-    path: "/",
-  });
-}
-
-function clearRefreshCookie(res) {
-  res.clearCookie(REFRESH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: IS_PRODUCTION,
-    sameSite: IS_PRODUCTION ? "none" : "lax",
-    path: "/",
-  });
-}
-
-function generateRefreshToken() {
-  const token = crypto.randomBytes(64).toString("hex");
-  const expiresAt = new Date(
-    Date.now() + REFRESH_EXPIRES_IN * 24 * 60 * 60 * 1000
-  );
-  return { token, expiresAt };
-}
-
-function hashRefreshToken(token) {
-  return crypto.createHash("sha256").update(String(token)).digest("hex");
-}
-
-function signAccessToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
-}
-
-async function rotateRefreshToken(userId, existingToken = null) {
-  if (existingToken) {
-    await RefreshToken.deleteOne({ tokenHash: hashRefreshToken(existingToken) });
-  } else {
-    await RefreshToken.findOneAndDelete({ userId });
-  }
-
-  const { token, expiresAt } = generateRefreshToken();
-  await RefreshToken.create({ userId, tokenHash: hashRefreshToken(token), expiresAt });
-  return token;
-}
 
 router.post("/register", async (req, res) => {
   try {
@@ -165,12 +109,19 @@ router.post("/login", async (req, res) => {
           { expiresIn: "7d" }
         );
 
+        const refreshToken = await rotateRefreshToken(artist._id);
+        setRefreshCookie(res, refreshToken);
+
+        const artistObj = artist.toJSON();
+        artistObj.role = artist.role || "artist";
+
         return res.json({
           success: true,
           message: "Dang nhap thanh cong",
           token,
+          refreshToken,
           isArtist: true,
-          artist: artist.toJSON(),
+          artist: artistObj,
           user: {
             _id: artist._id,
             name: artist.name,
@@ -289,10 +240,45 @@ router.post("/refresh", async (req, res) => {
     }
 
     const user = await User.findById(found.userId);
+    let artist = null;
     if (!user) {
+      artist = await Artist.findById(found.userId);
+    }
+
+    if (!user && !artist) {
       return res.status(401).json({
         success: false,
-        message: "User khong ton tai",
+        message: "Tai khoan khong ton tai",
+      });
+    }
+
+    if (artist) {
+      const token = jwt.sign(
+        { id: artist._id, userId: artist._id, role: artist.role || "artist" },
+        JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+      const newRefreshToken = await rotateRefreshToken(artist._id, refreshToken);
+      setRefreshCookie(res, newRefreshToken);
+
+      const artistObj = artist.toJSON();
+      artistObj.role = artist.role || "artist";
+
+      return res.json({
+        success: true,
+        token,
+        refreshToken: newRefreshToken,
+        isArtist: true,
+        artist: artistObj,
+        user: {
+          _id: artist._id,
+          name: artist.name,
+          email: artist.email,
+          role: "artist",
+          avatar: artist.avatar,
+          isPro: artist.isPro,
+          proExpiry: artist.proExpiry,
+        },
       });
     }
 

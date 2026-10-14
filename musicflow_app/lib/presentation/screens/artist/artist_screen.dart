@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/music_flow_backdrop.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
+import 'package:musicflow_app/core/utils/app_toast.dart';
 import 'package:musicflow_app/data/models/artist_profile_model.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/artist_api_service.dart';
@@ -14,6 +15,7 @@ import 'package:musicflow_app/presentation/screens/artist/artist_header_section.
 import 'package:musicflow_app/presentation/screens/artist/artist_popular_section.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_release_section.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_shared.dart';
+import 'package:musicflow_app/presentation/widgets/artist_share_sheet.dart';
 
 class ArtistScreen extends StatefulWidget {
   final String artistName;
@@ -126,11 +128,9 @@ class _ArtistScreenState extends State<ArtistScreen> {
     final isLoggedIn = await AuthService.isLoggedIn();
     if (!isLoggedIn) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng đăng nhập để theo dõi nghệ sĩ'),
-          duration: Duration(seconds: 2),
-        ),
+      AppToast.showInfo(
+        context,
+        'Vui lòng đăng nhập để theo dõi nghệ sĩ',
       );
       return;
     }
@@ -142,27 +142,37 @@ class _ArtistScreenState extends State<ArtistScreen> {
     final result = await ArtistApiService.toggleFollowArtist(artist.id);
     if (!mounted) return;
 
+    final updatedIsFollowing = result.isFollowing ?? !_isFollowing;
     setState(() {
       _isFollowLoading = false;
       if (result.success) {
-        _isFollowing = result.isFollowing ?? _isFollowing;
+        _isFollowing = updatedIsFollowing;
         _artist = _artist?.copyWith(
           followers: result.followers ?? _artist!.followers,
         );
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.message ??
-              (result.success
-                  ? 'Cập nhật theo dõi thành công'
-                  : 'Không thể cập nhật theo dõi'),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (result.success) {
+      AppToast.showSuccess(
+        context,
+        result.message ??
+            (_isFollowing
+                ? 'Đã theo dõi ${artist.name}'
+                : 'Đã bỏ theo dõi ${artist.name}'),
+      );
+    } else {
+      AppToast.showError(
+        context,
+        result.message ?? 'Không thể cập nhật theo dõi',
+      );
+    }
+  }
+
+  void _handleShare() {
+    final artist = _artist;
+    if (artist == null) return;
+    ArtistShareSheet.show(context, artist);
   }
 
   @override
@@ -319,6 +329,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
                     onPlayAll: _handlePlayAll,
                     onShuffle: _handleShuffle,
                     onFollow: _toggleFollow,
+                    onShare: _handleShare,
                   ),
                   const SizedBox(height: 6),
                   ArtistPopularSection(

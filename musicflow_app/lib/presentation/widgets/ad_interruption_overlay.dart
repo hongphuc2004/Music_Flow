@@ -296,7 +296,7 @@ class AdInterruptionOverlay extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  'Nâng cấp Gói PLUS (49.000đ/tháng)',
+                                  'Nâng cấp Gói PLUS (20.000đ/tháng)',
                                   style: TextStyle(
                                     color: AppColors.secondary,
                                     fontWeight: FontWeight.w700,

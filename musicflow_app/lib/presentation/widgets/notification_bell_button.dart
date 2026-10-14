@@ -21,28 +21,64 @@ class NotificationBellButton extends StatefulWidget {
 }
 
 class _NotificationBellButtonState extends State<NotificationBellButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _radarController;
+    with TickerProviderStateMixin {
+  AnimationController? _radarController;
+  AnimationController? _ringController;
+  Animation<double>? _ringAnimation;
   bool _isHovered = false;
   bool _isPressed = false;
+
+  void _ensureControllers() {
+    _radarController ??= AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+
+    if (_ringController == null) {
+      _ringController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 800),
+      );
+
+      _ringAnimation = TweenSequence<double>([
+        TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.05), weight: 15),
+        TweenSequenceItem(tween: Tween(begin: 0.05, end: -0.045), weight: 20),
+        TweenSequenceItem(tween: Tween(begin: -0.045, end: 0.035), weight: 20),
+        TweenSequenceItem(tween: Tween(begin: 0.035, end: -0.02), weight: 20),
+        TweenSequenceItem(tween: Tween(begin: -0.02, end: 0.01), weight: 15),
+        TweenSequenceItem(tween: Tween(begin: 0.01, end: 0.0), weight: 10),
+      ]).animate(CurvedAnimation(parent: _ringController!, curve: Curves.easeInOut));
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _radarController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat();
+    _ensureControllers();
+    if (widget.unreadCount > 0) {
+      _ringController?.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void didUpdateWidget(NotificationBellButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _ensureControllers();
+    if (widget.unreadCount > oldWidget.unreadCount) {
+      _ringController?.forward(from: 0.0);
+    }
   }
 
   @override
   void dispose() {
-    _radarController.dispose();
+    _radarController?.dispose();
+    _ringController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    _ensureControllers();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final showRadar = widget.hasUnread || widget.unreadCount > 0;
 
@@ -95,12 +131,19 @@ class _NotificationBellButtonState extends State<NotificationBellButton>
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                // Icon cái chuông với hiệu ứng xoay nhẹ và phóng to khi hover
-                AnimatedRotation(
-                  turns: _isHovered ? 0.025 : 0.0,
-                  duration: const Duration(milliseconds: 200),
+                // Icon cái chuông với hiệu ứng đung đưa (swinging ring animation) từ Prompt #074
+                AnimatedBuilder(
+                  animation: _ringAnimation ?? const AlwaysStoppedAnimation(0.0),
+                  builder: (context, child) {
+                    final angle = (_ringAnimation?.value ?? 0.0) * 2 * 3.14159;
+                    return Transform.rotate(
+                      angle: angle,
+                      origin: const Offset(0, -6),
+                      child: child,
+                    );
+                  },
                   child: AnimatedScale(
-                    scale: _isHovered ? 1.2 : 1.0,
+                    scale: _isHovered ? 1.15 : 1.0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
                       Icons.notifications_none_rounded,
@@ -123,12 +166,13 @@ class _NotificationBellButtonState extends State<NotificationBellButton>
                         children: [
                           // Vòng sóng radar tỏa ra
                           AnimatedBuilder(
-                            animation: _radarController,
+                            animation: _radarController ??
+                                const AlwaysStoppedAnimation(0.0),
                             builder: (context, _) {
                               return CustomPaint(
                                 size: const Size(20, 20),
                                 painter: _RadarPulsePainter(
-                                  progress: _radarController.value,
+                                  progress: _radarController?.value ?? 0.0,
                                 ),
                               );
                             },
@@ -154,31 +198,31 @@ class _NotificationBellButtonState extends State<NotificationBellButton>
                     ),
                   ),
 
-                // Badge số lượng (nếu có số lượng lớn hơn 0)
-                if (widget.unreadCount > 0)
-                  Positioned(
-                    right: -6,
-                    top: -6,
+                // Badge số lượng màu san hô (.u074-badge từ Prompt #074)
+                Positioned(
+                  right: -5,
+                  top: -5,
+                  child: AnimatedScale(
+                    scale: widget.unreadCount > 0 ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutBack,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1.5,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
                       constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
+                        minWidth: 19,
+                        minHeight: 19,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
+                        color: const Color(0xFFFF5A6E), // Prompt #074 coral red
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFF3A3A3A),
-                          width: 1.5,
+                          color: isDark ? const Color(0xFF141724) : Colors.white,
+                          width: 2.0,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFEF4444).withOpacity(0.5),
-                            blurRadius: 6,
+                            color: const Color(0xFFFF5A6E).withOpacity(0.45),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -190,14 +234,15 @@ class _NotificationBellButtonState extends State<NotificationBellButton>
                               : '${widget.unreadCount}',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            height: 1.1,
                           ),
                         ),
                       ),
                     ),
                   ),
+                ),
               ],
             ),
           ),

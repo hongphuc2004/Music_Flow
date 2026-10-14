@@ -147,6 +147,27 @@ exports.createComment = async (req, res) => {
       }).catch((err) => console.error("Reply notification trigger error:", err.message));
     }
 
+    // Trigger notification to the song's artist(s) if not commented by the artist
+    try {
+      const songDoc = await Song.findById(songId).select("title artists").lean();
+      if (songDoc && Array.isArray(songDoc.artists) && songDoc.artists.length > 0) {
+        const notificationTriggerService = require("../services/notificationTrigger.service");
+        for (const aId of songDoc.artists) {
+          if (String(aId) !== String(req.userId)) {
+            notificationTriggerService.triggerArtistCommentNotification({
+              artistId: aId,
+              song: songDoc,
+              commenterId: req.userId,
+              commentContent: content,
+              commentId: comment._id,
+            }).catch((err) => console.error("Artist comment notification error:", err.message));
+          }
+        }
+      }
+    } catch (artistNotiErr) {
+      console.warn("Failed to notify artist of song comment:", artistNotiErr.message);
+    }
+
     const populatedComment = await Comment.findById(comment._id)
       .populate("userId", "name avatar")
       .populate("reactions.userId", "name avatar");

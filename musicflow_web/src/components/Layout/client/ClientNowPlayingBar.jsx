@@ -19,10 +19,14 @@ import ShareIcon from '@mui/icons-material/ShareRounded';
 import QueueIcon from '@mui/icons-material/QueueMusicRounded';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientFavoritesApi, clientSongsApi, clientCommentsApi } from '../../../services/client/client.service';
-import useAppToast from '../../../components/common/useAppToast';
+import useAppToast from '../../../components/common/js/useAppToast';
 import { useNavigate } from 'react-router-dom';
-import ShareSongModal from '../../common/ShareSongModal';
+import ShareSongModal from '../../common/ui/ShareSongModal';
+import HeartFavoriteButton from '../../common/ui/HeartFavoriteButton';
 import { getOptimizedImageUrl } from '../../../utils/imageUtil';
+import PremiumBadge from '../../common/ui/PremiumBadge';
+import PremiumRequiredDialog from './PremiumRequiredDialog';
+import PreviewDurationMarker from '../../common/ui/PreviewDurationMarker';
 
 
 function formatDuration(seconds) {
@@ -68,6 +72,9 @@ function ClientNowPlayingBar({
     canPlayHQ,
     setAudioQuality,
     isQualityLoading,
+    isPremiumPreview,
+    openPremiumRequiredModal,
+    setOpenPremiumRequiredModal,
   } = useClientPlayer();
   const isLoggedIn = Boolean(localStorage.getItem('role'));
   const navigate = useNavigate();
@@ -119,8 +126,18 @@ function ClientNowPlayingBar({
 
     checkFavorite();
 
+    const handleFavEvent = (e) => {
+      const { songId, isFavorite } = e.detail || {};
+      if (currentSong?._id && songId === currentSong._id) {
+        setFavorite(Boolean(isFavorite));
+      }
+    };
+
+    window.addEventListener('musicflow-favorite-changed', handleFavEvent);
+
     return () => {
       ignore = true;
+      window.removeEventListener('musicflow-favorite-changed', handleFavEvent);
     };
   }, [currentSong?._id, isLoggedIn]);
 
@@ -152,7 +169,9 @@ function ClientNowPlayingBar({
 
     try {
       const response = await clientFavoritesApi.toggle(currentSong._id);
-      const next = response.data?.isFavorite ?? !favorite;
+      const next = typeof response.data?.isFavorite === 'boolean'
+        ? response.data.isFavorite
+        : !favorite;
       setFavorite(next);
       showToast({
         severity: 'success',
@@ -161,6 +180,12 @@ function ClientNowPlayingBar({
           ? 'Đã thêm bài hát vào danh sách yêu thích.'
           : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
       });
+
+      window.dispatchEvent(
+        new CustomEvent('musicflow-favorite-changed', {
+          detail: { songId: currentSong._id, isFavorite: next, song: currentSong },
+        })
+      );
     } catch (error) {
       showToast({
         severity: 'error',
@@ -276,6 +301,49 @@ function ClientNowPlayingBar({
         }),
       }}
     >
+      {/* Zing MP3 Style Gold Preview Banner */}
+      {isPremiumPreview && (
+        <Box
+          onClick={() => navigate('/premium')}
+          sx={{
+            cursor: 'pointer',
+            bgcolor: '#e5ac18',
+            color: '#fff',
+            py: 0.6,
+            px: 2,
+            borderRadius: '24px 24px 0 0',
+            mx: { xs: -1.2, md: -1.4 },
+            mt: { xs: -1.2, md: -1.4 },
+            mb: 1.2,
+            textAlign: 'center',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 0.6,
+            boxShadow: '0 2px 10px rgba(229, 172, 24, 0.3)',
+            transition: 'filter 0.2s ease',
+            '&:hover': {
+              filter: 'brightness(1.08)',
+            },
+          }}
+        >
+          <span>Nâng cấp tài khoản Premium để nghe trọn bài hát.</span>
+          <Typography
+            component="span"
+            sx={{
+              fontSize: '12.5px',
+              fontWeight: 700,
+              textDecoration: 'underline',
+              color: '#fff',
+            }}
+          >
+            Tìm hiểu ngay
+          </Typography>
+        </Box>
+      )}
+
       <Stack direction="row" alignItems="center" spacing={{ xs: 1, md: 0 }} sx={{ minWidth: 0, flexShrink: 0 }}>
         <Stack
           direction="row"
@@ -344,22 +412,23 @@ function ClientNowPlayingBar({
             </Avatar>
           </Box>
           <Box sx={{ minWidth: 0, flexGrow: 1, width: '100%', overflow: 'hidden' }}>
-            <Typography
-              variant="body2"
-              fontWeight={850}
-              noWrap
-              sx={{
-                fontSize: { xs: 13, md: 14 },
-                letterSpacing: '-0.01em',
-                display: 'block',
-                width: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {currentSong?.title}
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.8} sx={{ minWidth: 0, width: '100%' }}>
+              <Typography
+                variant="body2"
+                fontWeight={850}
+                noWrap
+                sx={{
+                  fontSize: { xs: 13, md: 14 },
+                  letterSpacing: '-0.01em',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {currentSong?.title}
+              </Typography>
+              {Boolean(currentSong?.isPremium) && <PremiumBadge />}
+            </Stack>
             <Typography
               variant="caption"
               noWrap
@@ -401,18 +470,16 @@ function ClientNowPlayingBar({
         </Stack>
 
         <Stack direction="row" alignItems="center" spacing={1.1} sx={{ display: { xs: 'none', md: 'flex' }, ml: { xs: 0, md: '105px' } }}>
-          <Tooltip title={favorite ? "Bỏ yêu thích" : "Yêu thích"} arrow>
-            <IconButton
-              size="small"
-              onClick={handleToggleFavorite}
-              sx={{
-                color: favorite ? '#f43f5e' : 'rgba(255,255,255,0.75)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                '&:hover': { transform: 'scale(1.1)', color: '#f43f5e' },
-              }}
-            >
-              {favorite ? <FavoriteIcon sx={{ fontSize: 24 }} /> : <FavoriteBorderIcon sx={{ fontSize: 24 }} />}
-            </IconButton>
+          <Tooltip title={favorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"} arrow>
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              <HeartFavoriteButton
+                checked={favorite}
+                onChange={handleToggleFavorite}
+                size={34}
+                color="#ff4e7c"
+                outlineColor="rgba(255, 255, 255, 0.75)"
+              />
+            </Box>
           </Tooltip>
 
           <Tooltip title="Tải bài hát về máy" arrow>
@@ -657,41 +724,53 @@ function ClientNowPlayingBar({
             </Tooltip>
           </Stack>
 
-          <Slider
-            size="small"
-            min={0}
-            max={displayDuration || 1}
-            value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
-            onChange={(_, value) => setScrubTime(Number(value))}
-            onChangeCommitted={(_, value) => {
-              seekTo(value);
-              setScrubTime(null);
-            }}
-            sx={{
-              color: '#6c63ff',
-              py: 0,
-              mt: 0.2,
-              height: 4,
-              '& .MuiSlider-thumb': {
-                width: 10,
-                height: 10,
-                transition: '0.2s ease',
-                '&:before': { boxShadow: '0 2px 6px rgba(0,0,0,0.4)' },
-                '&:hover, &.Mui-focusVisible, &.Mui-active': {
-                  boxShadow: '0 0 0 8px rgba(108, 99, 255, 0.2)',
-                  width: 12,
-                  height: 12,
+          <Box sx={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+            <Slider
+              size="small"
+              min={0}
+              max={displayDuration || 1}
+              value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
+              onChange={(_, value) => setScrubTime(Number(value))}
+              onChangeCommitted={(_, value) => {
+                seekTo(value);
+                setScrubTime(null);
+              }}
+              sx={{
+                color: '#6c63ff',
+                py: 0,
+                mt: 0.2,
+                height: 4,
+                '& .MuiSlider-thumb': {
+                  width: 10,
+                  height: 10,
+                  transition: '0.2s ease',
+                  zIndex: 2,
+                  '&:before': { boxShadow: '0 2px 6px rgba(0,0,0,0.4)' },
+                  '&:hover, &.Mui-focusVisible, &.Mui-active': {
+                    boxShadow: '0 0 0 8px rgba(108, 99, 255, 0.2)',
+                    width: 12,
+                    height: 12,
+                  },
                 },
-              },
-              '& .MuiSlider-rail': {
-                opacity: 0.2,
-                bgcolor: '#fff',
-              },
-              '& .MuiSlider-track': {
-                backgroundImage: 'linear-gradient(90deg, #6c63ff, #00bcd4)',
-              },
-            }}
-          />
+                '& .MuiSlider-rail': {
+                  opacity: 0.2,
+                  bgcolor: '#fff',
+                },
+                '& .MuiSlider-track': {
+                  backgroundImage: 'linear-gradient(90deg, #6c63ff, #00bcd4)',
+                  zIndex: 1,
+                },
+              }}
+            />
+
+            {/* Vạch ngăn giới hạn nghe thử 45s (Zing MP3 style) */}
+            <PreviewDurationMarker
+              isPremiumPreview={isPremiumPreview}
+              duration={displayDuration}
+              cutoffSeconds={45}
+              onOpenModal={() => setOpenPremiumRequiredModal?.(true)}
+            />
+          </Box>
         </Stack>
       </Stack>
 
@@ -847,6 +926,11 @@ function ClientNowPlayingBar({
         open={shareOpen}
         onClose={() => setShareOpen(false)}
         song={currentSong}
+      />
+
+      <PremiumRequiredDialog
+        open={openPremiumRequiredModal}
+        onClose={() => setOpenPremiumRequiredModal(false)}
       />
     </Box>
 

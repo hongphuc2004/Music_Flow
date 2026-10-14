@@ -40,7 +40,7 @@ exports.login = async (req, res) => {
     }
     // Tạo JWT
     const token = jwt.sign(
-      { id: artist._id, role: artist.role },
+      { id: artist._id, userId: artist._id, role: artist.role || "artist" },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -83,7 +83,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: artist._id, role: artist.role },
+      { id: artist._id, userId: artist._id, role: artist.role || "artist" },
       JWT_SECRET,
       { expiresIn: "7d" }
     );

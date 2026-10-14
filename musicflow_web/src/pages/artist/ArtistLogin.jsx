@@ -28,7 +28,7 @@ import api from '../../services/api';
 import { syncArtistSession } from '../../utils/artistSession';
 import { setAccessToken } from '../../services/api';
 import ForgotPasswordDialog from '../../components/auth/ForgotPasswordDialog';
-import FloatingTextField from '../../components/common/FloatingTextField';
+import FloatingTextField from '../../components/common/ui/FloatingTextField';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 

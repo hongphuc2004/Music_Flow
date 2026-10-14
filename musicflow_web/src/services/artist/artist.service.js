@@ -31,3 +31,9 @@ export const artistApi = {
   startLyricsTranscription: (songId, payload) => api.post(`/artist/songs/${songId}/lyrics/transcribe`, payload),
   getLyricsTranscriptionStatus: (songId) => api.get(`/artist/songs/${songId}/lyrics/transcription/status`),
 };
+
+export const artistNotificationsApi = {
+  getAll: () => api.get('/notifications'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+};

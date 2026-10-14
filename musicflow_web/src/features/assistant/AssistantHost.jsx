@@ -37,8 +37,11 @@ import {
   PauseRounded as PauseIcon,
   DownloadRounded as DownloadIcon,
   OpenInNewRounded as OpenIcon,
+  MicRounded as MicIcon,
 } from '@mui/icons-material';
 import { useAssistant } from './AssistantProvider';
+import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
+import useVoiceRecognition from '../../hooks/useVoiceRecognition';
 
 export default function AssistantHost() {
   const navigate = useNavigate();
@@ -65,6 +68,64 @@ export default function AssistantHost() {
   const [inputText, setInputText] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef(null);
+
+  const { isPlaying } = useClientPlayer();
+  const { pauseSong, resumeSong } = useClientPlayerActions();
+  const wasPlayingRef = useRef(false);
+
+  const {
+    isSupported: isVoiceSupported,
+    isListening: isVoiceListening,
+    startListening: startVoiceListening,
+    stopListening: stopVoiceListening,
+  } = useVoiceRecognition();
+
+  const handleToggleVoice = () => {
+    if (isVoiceListening) {
+      stopVoiceListening();
+      if (wasPlayingRef.current) {
+        wasPlayingRef.current = false;
+        resumeSong?.();
+      }
+      return;
+    }
+    if (!isVoiceSupported) {
+      alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API.');
+      return;
+    }
+
+    if (isPlaying) {
+      wasPlayingRef.current = true;
+      pauseSong?.();
+    } else {
+      wasPlayingRef.current = false;
+    }
+
+    startVoiceListening({
+      lang: 'vi-VN',
+      silenceTimeoutMs: 1400,
+      onResult: (text) => {
+        setInputText(text);
+      },
+      onEnd: (cleanedText, rawText) => {
+        if (wasPlayingRef.current) {
+          wasPlayingRef.current = false;
+          resumeSong?.();
+        }
+        const text = cleanedText || rawText || '';
+        if (text) {
+          setInputText(text);
+        }
+      },
+      onError: (err) => {
+        if (wasPlayingRef.current) {
+          wasPlayingRef.current = false;
+          resumeSong?.();
+        }
+        console.warn('Assistant voice error:', err.message);
+      },
+    });
+  };
 
   // Drag and drop state & handlers for floating launcher button
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -194,35 +255,91 @@ export default function AssistantHost() {
     <Box sx={{ position: 'fixed', zIndex: 9999 }}>
       {/* LAUNCHER BUTTON */}
       {!isOpen && (
-        <Tooltip title="Trợ lý AI MusicFlow" placement="left">
-          <IconButton
-            onPointerDown={handlePointerDown}
-            onClick={handleButtonClick}
+        <Tooltip title="Trợ lý AI MusicFlow (Bấm để trò chuyện, Kéo để di chuyển)" placement="left">
+          <Box
             sx={{
               position: 'fixed',
               bottom: hasPlayer ? '104px' : '24px', // Shift up on client view to clear player bar
               right: '24px',
-              width: 56,
-              height: 56,
-              bgcolor: 'primary.main',
-              color: 'white',
-              boxShadow: '0 8px 32px rgba(108, 99, 255, 0.4)',
               transform: `translate(${position.x}px, ${position.y}px)`,
               cursor: isDragging ? 'grabbing' : 'pointer',
               touchAction: 'none',
-              transition: 'background-color 0.2s, box-shadow 0.2s, color 0.2s',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                transform: `translate(${position.x}px, ${position.y}px) scale(1.1) rotate(10deg)`,
-                boxShadow: '0 12px 40px rgba(108, 99, 255, 0.6)',
-              },
-              '&:active': {
-                transform: `translate(${position.x}px, ${position.y}px) scale(0.95)`,
-              },
+              zIndex: 9999,
             }}
           >
-            <SparklesIcon sx={{ fontSize: 28 }} />
-          </IconButton>
+            {/* Outer Breathing Glow Halo */}
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: -6,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 40%, #06b6d4 100%)',
+                opacity: 0.55,
+                filter: 'blur(10px)',
+                animation: 'aiHaloPulse 2.8s ease-in-out infinite',
+                '@keyframes aiHaloPulse': {
+                  '0%, 100%': { transform: 'scale(0.92)', opacity: 0.4 },
+                  '50%': { transform: 'scale(1.18)', opacity: 0.8 },
+                },
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Main Interactive Button */}
+            <IconButton
+              onPointerDown={handlePointerDown}
+              onClick={handleButtonClick}
+              sx={{
+                position: 'relative',
+                width: 60,
+                height: 60,
+                p: 0,
+                borderRadius: '50%',
+                boxShadow: '0 10px 32px rgba(124, 58, 237, 0.55), 0 0 20px rgba(6, 182, 212, 0.4)',
+                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                border: '2px solid rgba(255, 255, 255, 0.65)',
+                overflow: 'hidden',
+                bgcolor: 'transparent',
+                '&:hover': {
+                  transform: 'scale(1.12) rotate(6deg)',
+                  boxShadow: '0 14px 44px rgba(124, 58, 237, 0.8), 0 0 32px rgba(6, 182, 212, 0.65)',
+                  border: '2px solid rgba(255, 255, 255, 0.95)',
+                },
+                '&:active': {
+                  transform: 'scale(0.95)',
+                },
+              }}
+            >
+              <Box
+                component="img"
+                src="/ai-assistant-icon.png"
+                alt="AI Assistant"
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  pointerEvents: 'none',
+                }}
+              />
+            </IconButton>
+
+            {/* Glowing Online Status Dot */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 1,
+                right: 1,
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                bgcolor: '#10b981',
+                border: '2.5px solid #0f172a',
+                boxShadow: '0 0 10px #10b981',
+                pointerEvents: 'none',
+              }}
+            />
+          </Box>
         </Tooltip>
       )}
 
@@ -237,7 +354,7 @@ export default function AssistantHost() {
             right: isMobile ? 0 : '24px',
             width: isMobile ? '100vw' : 400,
             height: isMobile ? '100dvh' : 600,
-            borderRadius: isMobile ? 0 : 4,
+            borderRadius: isMobile ? 0 : '16px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -262,15 +379,14 @@ export default function AssistantHost() {
           >
             <Stack direction="row" alignItems="center" spacing={1.5}>
               <Avatar
+                src="/ai-assistant-icon.png"
                 sx={{
-                  bgcolor: 'primary.main',
-                  background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)',
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
+                  boxShadow: '0 2px 10px rgba(124, 58, 237, 0.4)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.3)',
                 }}
-              >
-                <SparklesIcon sx={{ fontSize: 20, color: 'white' }} />
-              </Avatar>
+              />
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Typography variant="subtitle1" fontWeight={800} noWrap>
                   Trợ lý MusicFlow
@@ -656,11 +772,53 @@ export default function AssistantHost() {
                 </Box>
               )}
 
+              {/* Live Voice Indicator Banner */}
+              {isVoiceListening && (
+                <Box
+                  sx={{
+                    mb: 1,
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                  }}
+                >
+                  <MicIcon
+                    sx={{
+                      fontSize: 16,
+                      color: '#ef4444',
+                      animation: 'pulseVoiceAssistant 1.4s infinite ease-in-out',
+                      '@keyframes pulseVoiceAssistant': {
+                        '0%': { transform: 'scale(1)' },
+                        '50%': { transform: 'scale(1.2)' },
+                        '100%': { transform: 'scale(1)' },
+                      },
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: 'text.primary', fontWeight: 600, flexGrow: 1 }} noWrap>
+                    {inputText ? `"${inputText}"` : 'Đang lắng nghe câu hỏi của bạn...'}
+                  </Typography>
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={stopVoiceListening}
+                    sx={{ minWidth: 0, p: 0, fontSize: 11, fontWeight: 700, textTransform: 'none' }}
+                  >
+                    Xong
+                  </Button>
+                </Box>
+              )}
+
               {/* Text Input */}
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Nhắn tin cho trợ lý..."
+                placeholder={isVoiceListening ? "Đang lắng nghe bạn nói..." : "Nhắn tin cho trợ lý..."}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyPress}
@@ -669,6 +827,30 @@ export default function AssistantHost() {
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
+                        <Tooltip title={isVoiceListening ? "Đang nghe... Bấm để dừng" : "Nói chuyện bằng giọng nói"}>
+                          <IconButton
+                            size="small"
+                            onClick={handleToggleVoice}
+                            disabled={isLoading}
+                            sx={{
+                              mr: 0.5,
+                              color: isVoiceListening ? '#ef4444' : 'text.secondary',
+                              bgcolor: isVoiceListening ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                              animation: isVoiceListening ? 'pulseVoiceAssistantBtn 1.4s infinite ease-in-out' : 'none',
+                              '@keyframes pulseVoiceAssistantBtn': {
+                                '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.6)' },
+                                '50%': { transform: 'scale(1.15)', boxShadow: '0 0 0 6px rgba(239, 68, 68, 0)' },
+                                '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0)' },
+                              },
+                              '&:hover': {
+                                color: isVoiceListening ? '#dc2626' : 'primary.main',
+                                bgcolor: isVoiceListening ? 'rgba(239, 68, 68, 0.25)' : 'rgba(108, 99, 255, 0.1)',
+                              },
+                            }}
+                          >
+                            <MicIcon sx={{ fontSize: 19 }} />
+                          </IconButton>
+                        </Tooltip>
                         <IconButton
                           edge="end"
                           color="primary"
@@ -680,7 +862,7 @@ export default function AssistantHost() {
                       </InputAdornment>
                     ),
                     sx: {
-                      borderRadius: 4,
+                      borderRadius: '24px',
                       pr: 1.5,
                     },
                   },

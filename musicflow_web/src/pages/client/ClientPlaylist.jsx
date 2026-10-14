@@ -27,7 +27,7 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import { clientPlaylistsApi, clientArtistApi, clientSongsApi } from '../../services/client/client.service';
 import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import { getArtistPath, toZingArtistSlug } from '../../utils/shareUtil';
 
 function formatNumber(num) {

@@ -150,6 +150,11 @@ api.interceptors.response.use(
 
     const handleSessionExpiry = () => {
       const currentRole = localStorage.getItem('role');
+      const search = window.location.search;
+      if (search.includes('auth=login') || search.includes('auth=register')) {
+        return;
+      }
+
       accessToken = null;
       localStorage.removeItem('accessToken');
       apiCache.clear();
@@ -159,7 +164,7 @@ api.interceptors.response.use(
         window.location.href = '/artist/dashboard?auth=login';
       } else if (currentRole === 'admin') {
         window.location.href = '/adminlogin';
-      } else {
+      } else if (currentRole === 'user') {
         window.location.href = '/?auth=login';
       }
     };
@@ -211,7 +216,12 @@ api.interceptors.response.use(
       requestUrl.includes('/auth/profile');
 
     if (status === 401 && !isAuthRoute) {
-      handleSessionExpiry();
+      const currentRole = localStorage.getItem('role');
+      if (requestUrl.includes('/artist/') && currentRole !== 'artist') {
+        // Do not expire listener/guest session on artist-specific endpoints
+      } else {
+        handleSessionExpiry();
+      }
     } else if (status === 404 && isMeRoute) {
       handleSessionExpiry();
     }

@@ -19,10 +19,20 @@ class FavoriteService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        final List favorites = data['favorites'] ?? [];
+        final rawFavs = data['favorites'];
+        final songs = <Song>[];
+        if (rawFavs is List) {
+          for (final item in rawFavs) {
+            if (item is Map) {
+              try {
+                songs.add(Song.fromJson(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          }
+        }
         return FavoriteResult(
           success: true,
-          favorites: favorites.map((e) => Song.fromJson(e)).toList(),
+          favorites: songs,
         );
       } else {
         return FavoriteResult(

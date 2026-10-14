@@ -12,7 +12,9 @@ class NotificationTriggerService {
     const normalizedAction = action === "renewal" ? "renewal" : "purchase";
     const subIdStr = subscriptionId ? subscriptionId.toString() : Date.now().toString();
     const uniqueKey = `subscription_${normalizedAction}_${userId.toString()}_${subIdStr}`;
-    const actionUrl = "/client/subscription";
+    const isArtistPlan = (planName || "").toLowerCase().includes("artist");
+    const actionUrl = isArtistPlan ? "/artist/pro" : "/client/subscription";
+    const notifType = isArtistPlan ? "artist_pro" : "subscription";
 
     const title = normalizedAction === "purchase"
       ? "Xác nhận nâng cấp gói thành công"
@@ -30,7 +32,7 @@ class NotificationTriggerService {
             user: userId,
             title,
             content,
-            type: "subscription",
+            type: notifType,
             isRead: false,
             metadata: {
               action: normalizedAction,
@@ -237,6 +239,89 @@ class NotificationTriggerService {
       );
     } catch (err) {
       console.error("Failed to trigger milestone notification:", err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Gửi thông báo cho Artist khi có người theo dõi mới
+   */
+  async triggerArtistFollowNotification({ artistId, followerId, followerName = "" }) {
+    if (!artistId || !followerId) return null;
+
+    let displayName = followerName;
+    if (!displayName) {
+      const userDoc = await User.findById(followerId).select("name").lean();
+      displayName = userDoc?.name || "Một thính giả";
+    }
+
+    const uniqueKey = `artist_follow_${artistId.toString()}_${followerId.toString()}_${Date.now()}`;
+    const actionUrl = "/artist/analytics";
+
+    const title = "Người theo dõi mới! 🌟";
+    const content = `${displayName} vừa bắt đầu theo dõi kênh âm nhạc của bạn.`;
+
+    try {
+      return await Notification.create({
+        user: artistId,
+        title,
+        content,
+        type: "artist_follow",
+        isRead: false,
+        uniqueKey,
+        metadata: {
+          followerId,
+          followerName: displayName,
+          actionUrl,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to trigger artist follow notification:", err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Gửi thông báo cho Artist khi có người nghe bình luận vào bài hát
+   */
+  async triggerArtistCommentNotification({ artistId, song, commenterId, commenterName = "", commentContent = "", commentId = null }) {
+    if (!artistId || !song || !commenterId) return null;
+    if (artistId.toString() === commenterId.toString()) return null;
+
+    let displayName = commenterName;
+    if (!displayName) {
+      const userDoc = await User.findById(commenterId).select("name").lean();
+      displayName = userDoc?.name || "Một thính giả";
+    }
+
+    const snippet = commentContent.length > 60 ? `${commentContent.slice(0, 60)}...` : commentContent;
+    const commentIdStr = commentId ? commentId.toString() : Date.now().toString();
+    const uniqueKey = `artist_comment_${artistId.toString()}_${commentIdStr}`;
+    const songTitle = song.title || "bài hát";
+    const actionUrl = "/artist/songs";
+
+    const title = "Bình luận mới về bài hát 💬";
+    const content = `${displayName} đã bình luận về "${songTitle}": "${snippet}"`;
+
+    try {
+      return await Notification.create({
+        user: artistId,
+        title,
+        content,
+        type: "interaction",
+        isRead: false,
+        uniqueKey,
+        metadata: {
+          songId: song._id,
+          songTitle,
+          commentId,
+          commenterId,
+          commenterName: displayName,
+          actionUrl,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to trigger artist comment notification:", err.message);
       return null;
     }
   }

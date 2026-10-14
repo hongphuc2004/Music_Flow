@@ -521,7 +521,7 @@ router.get("/users/:id/ai-quota", authMiddleware, requireAdmin, async (req, res)
     const aiQuotaService = require("../services/aiQuota.service");
     const quotaInfo = await aiQuotaService.checkQuota(userId).catch(async (err) => {
       if (err.status === 403) {
-        let tierLimit = user.isPremium ? 20 : 5;
+        let tierLimit = user.isPremium ? 15 : 3;
         const baseLimit = (user.customAiLimit !== null && user.customAiLimit !== undefined && user.customAiLimit >= 0)
           ? Number(user.customAiLimit)
           : tierLimit;
@@ -856,7 +856,7 @@ router.post(
       const imageFile = req.files?.image?.[0] || null;
   
       try {
-        const { title, artist, topicId, lyrics, isPublic, imageUrl } = req.body;
+        const { title, artist, topicId, lyrics, isPublic, isPremium, imageUrl } = req.body;
 
         if (!title || !artist) {
           return res.status(400).json({
@@ -913,6 +913,7 @@ router.post(
           artists: artistIds,
           lyrics: lyrics || "",
           isPublic: isPublic === "true" || isPublic === true,
+          isPremium: isPremium === "true" || isPremium === true,
           audioUrl: finalAudioUrl,
           audioPublicId,
           duration,
@@ -983,7 +984,7 @@ router.put(
       }
 
       const wasPublicBefore = Boolean(song.isPublic);
-      const { title, artist, topicId, lyrics, isPublic, imageUrl } = req.body;
+      const { title, artist, topicId, lyrics, isPublic, isPremium, imageUrl } = req.body;
 
       if (typeof title !== "undefined") {
         song.title = String(title).trim();
@@ -1005,6 +1006,10 @@ router.put(
 
       if (typeof isPublic !== "undefined") {
         song.isPublic = isPublic === "true" || isPublic === true;
+      }
+
+      if (typeof isPremium !== "undefined") {
+        song.isPremium = isPremium === "true" || isPremium === true;
       }
 
       if (typeof topicId !== "undefined") {
@@ -1108,6 +1113,28 @@ router.patch("/songs/:id/moderation", authMiddleware, requireAdmin, async (req, 
     }
 
     await song.save();
+
+    // Trigger notification to artist / uploader on moderation decision
+    if (reviewDecision) {
+      try {
+        const recipientId = song.uploadedBy || (Array.isArray(song.artists) && song.artists[0]);
+        if (recipientId) {
+          const notificationTriggerService = require("../services/notificationTrigger.service");
+          notificationTriggerService.triggerSongModerationNotification({
+            song,
+            uploaderId: recipientId,
+            moderationResult: {
+              status: song.moderation.status,
+              reason: reviewNote || (reviewDecision === "approved" ? "Quản trị viên đã phê duyệt phát hành bài hát của bạn" : "Quản trị viên đã từ chối bài hát"),
+              riskLevel: reviewDecision === "approved" ? "LOW" : "HIGH",
+            },
+          }).catch((err) => console.error("Admin moderation noti trigger error:", err.message));
+        }
+      } catch (modNotiErr) {
+        console.warn("Failed to trigger moderation noti:", modNotiErr.message);
+      }
+    }
+
     const updated = await Song.findById(song._id)
       .populate("uploadedBy", "name email")
       .populate("artists", "name")
@@ -1178,6 +1205,27 @@ router.patch("/songs/:id/visibility", authMiddleware, requireAdmin, async (req, 
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// Update song premium status
+router.patch("/songs/:id/premium", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { isPremium } = req.body;
+    const song = await Song.findByIdAndUpdate(
+      req.params.id,
+      { isPremium: Boolean(isPremium) },
+      { new: true }
+    );
+
+    if (!song) {
+      return res.status(404).json({ message: "Song not found" });
+    }
+
+    res.json(song);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 // ================= PLAYLISTS MANAGEMENT =================
 // Get all system playlists with pagination

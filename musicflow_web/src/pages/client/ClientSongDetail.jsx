@@ -29,9 +29,11 @@ import {
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi, clientFavoritesApi } from '../../services/client/client.service';
 import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
-import ShareSongModal from '../../components/common/ShareSongModal';
+import ShareSongModal from '../../components/common/ui/ShareSongModal';
+import HeartFavoriteButton from '../../components/common/ui/HeartFavoriteButton';
+import PremiumBadge from '../../components/common/ui/PremiumBadge';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import { parseLyrics } from '../../utils/lyrics';
 import { getArtistPath } from '../../utils/shareUtil';
 
@@ -152,8 +154,17 @@ export default function ClientSongDetail() {
       })
       .catch(() => {});
 
+    const handleFavEvent = (e) => {
+      const { songId: eventSongId, isFavorite } = e.detail || {};
+      if (targetId && eventSongId === targetId) {
+        setIsLiked(Boolean(isFavorite));
+      }
+    };
+    window.addEventListener('musicflow-favorite-changed', handleFavEvent);
+
     return () => {
       isSubscribed = false;
+      window.removeEventListener('musicflow-favorite-changed', handleFavEvent);
     };
   }, [song?._id, song?.id, songId]);
 
@@ -173,10 +184,20 @@ export default function ClientSongDetail() {
         await clientFavoritesApi.remove(targetId);
         setIsLiked(false);
         showToast({ message: 'Đã xóa khỏi bài hát yêu thích.', severity: 'info' });
+        window.dispatchEvent(
+          new CustomEvent('musicflow-favorite-changed', {
+            detail: { songId: targetId, isFavorite: false, song },
+          })
+        );
       } else {
         await clientFavoritesApi.add(targetId);
         setIsLiked(true);
         showToast({ message: 'Đã thêm vào bài hát yêu thích! ❤️', severity: 'success' });
+        window.dispatchEvent(
+          new CustomEvent('musicflow-favorite-changed', {
+            detail: { songId: targetId, isFavorite: true, song },
+          })
+        );
       }
     } catch {
       showToast({ message: 'Không thể cập nhật danh sách yêu thích.', severity: 'error' });
@@ -403,17 +424,22 @@ export default function ClientSongDetail() {
                     ))}
                 </Stack>
 
-                <Typography
-                  variant="h3"
-                  sx={{
-                    fontWeight: 900,
-                    fontSize: { xs: '1.75rem', md: '2.5rem' },
-                    lineHeight: 1.15,
-                    letterSpacing: -0.5,
-                  }}
-                >
-                  {song.title}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontWeight: 900,
+                      fontSize: { xs: '1.75rem', md: '2.5rem' },
+                      lineHeight: 1.15,
+                      letterSpacing: -0.5,
+                    }}
+                  >
+                    {song.title}
+                  </Typography>
+                  {Boolean(song.isPremium) && (
+                    <PremiumBadge sx={{ fontSize: '12px', py: '3px', px: '8px', borderRadius: '6px' }} />
+                  )}
+                </Box>
 
                 {/* Artists list */}
                 <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
@@ -494,26 +520,33 @@ export default function ClientSongDetail() {
 
                   {/* Favorite Button */}
                   <Tooltip title={isLiked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}>
-                    <IconButton
-                      onClick={handleToggleFavorite}
-                      disabled={likeLoading}
+                    <Box
                       sx={{
                         width: 46,
                         height: 46,
                         borderRadius: 2.5,
                         border: '1px solid',
-                        borderColor: isLiked ? '#ec4899' : 'divider',
+                        borderColor: isLiked ? 'rgba(236, 72, 153, 0.45)' : 'divider',
                         bgcolor: isLiked ? 'rgba(236, 72, 153, 0.12)' : 'background.paper',
-                        color: isLiked ? '#ec4899' : 'text.secondary',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.25s ease',
                         '&:hover': {
-                          bgcolor: 'rgba(236, 72, 153, 0.2)',
-                          color: '#ec4899',
                           borderColor: '#ec4899',
+                          bgcolor: 'rgba(236, 72, 153, 0.2)',
                         },
                       }}
                     >
-                      {isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                    </IconButton>
+                      <HeartFavoriteButton
+                        checked={isLiked}
+                        onChange={handleToggleFavorite}
+                        size={40}
+                        color="#ec4899"
+                        outlineColor="rgba(255, 255, 255, 0.65)"
+                        disabled={likeLoading}
+                      />
+                    </Box>
                   </Tooltip>
 
                   {/* Share Button */}

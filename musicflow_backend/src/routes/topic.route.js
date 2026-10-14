@@ -6,7 +6,7 @@ const Song = require("../models/song.model");
 const { cache, CACHE_TTL } = require("../utils/cache.util");
 
 const TOPIC_SONG_SELECT =
-  "title artists topicIds uploadedBy isPublic audioUrl audioPublicId audioMetadata duration imageUrl source allowDownload playCount likeCount createdAt";
+  "title artists topicIds uploadedBy isPublic isPremium audioUrl audioPublicId audioMetadata duration imageUrl source allowDownload playCount likeCount createdAt";
 
 const parsePagination = (query) => {
   const page = Math.max(parseInt(query.page, 10) || 1, 1);

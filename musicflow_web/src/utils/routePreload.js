@@ -10,6 +10,7 @@ const routeLoaders = {
   '/admin/playlists': () => import('../pages/admin/Playlists'),
   '/admin/settings': () => import('../pages/admin/Settings'),
   '/admin/premium': () => import('../pages/admin/Premium'),
+  '/admin/advertisements': () => import('../pages/admin/Advertisements'),
   '/adminlogin': () => import('../pages/admin/AdminLogin'),
 
   // Artist Routes

@@ -66,6 +66,23 @@ class ApiClient {
         } else if (method == 'PATCH') {
           response = await http.patch(uri, headers: allHeaders, body: bodyStr).timeout(timeout);
         }
+        if (response.statusCode == 401 && requireAuth) {
+          final refreshed = await AuthService.tryRefreshToken();
+          if (refreshed) {
+            final refreshedHeaders = await _getHeaders(requireAuth: true, extraHeaders: headers);
+            if (method == 'GET') {
+              response = await http.get(uri, headers: refreshedHeaders).timeout(timeout);
+            } else if (method == 'POST') {
+              response = await http.post(uri, headers: refreshedHeaders, body: bodyStr).timeout(timeout);
+            } else if (method == 'PUT') {
+              response = await http.put(uri, headers: refreshedHeaders, body: bodyStr).timeout(timeout);
+            } else if (method == 'DELETE') {
+              response = await http.delete(uri, headers: refreshedHeaders, body: bodyStr).timeout(timeout);
+            } else if (method == 'PATCH') {
+              response = await http.patch(uri, headers: refreshedHeaders, body: bodyStr).timeout(timeout);
+            }
+          }
+        }
         return response;
       } on TimeoutException {
         if (attempts >= maxRetries) {

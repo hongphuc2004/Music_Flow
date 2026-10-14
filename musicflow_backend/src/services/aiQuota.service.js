@@ -73,19 +73,16 @@ async function checkQuota(userId, userRole = null) {
     };
   }
 
-  let tierLimit = 5; // Free: 5 yêu cầu
+  let tierLimit = 3; // Free: 3 yêu cầu
   let planLabel = "miễn phí";
 
   if (hasPremiumAccess(user)) {
     const planName = user.premiumPlan?.name || "";
-    if (planName === "Gói GO") {
+    if (planName === "Gói PLUS") {
       tierLimit = 20;
-      planLabel = "Gói GO";
-    } else if (planName === "Gói PLUS") {
-      tierLimit = 50;
       planLabel = "Gói PLUS";
     } else {
-      tierLimit = 100; // Gói PREMIUM: 100 yêu cầu / 24h
+      tierLimit = 50; // Gói PREMIUM: 50 yêu cầu / 24h
       planLabel = "Gói PREMIUM";
     }
   }
@@ -113,6 +110,12 @@ async function checkQuota(userId, userRole = null) {
     : 0;
 
   if (count >= effectiveLimit) {
+    if (!hasPremiumAccess(user)) {
+      const error = new Error("🤖 Bạn đã sử dụng hết lượt AI hôm nay. Nâng cấp Gói PLUS để có thêm lượt sử dụng AI.");
+      error.status = 403;
+      error.code = "AI_QUOTA_EXCEEDED";
+      throw error;
+    }
     const error = new Error(`Bạn đã vượt quá hạn mức ${effectiveLimit} yêu cầu AI trong 24 giờ của tài khoản ${planLabel}. Vui lòng nâng cấp gói hoặc liên hệ quản trị viên.`);
     error.status = 403;
     throw error;
@@ -212,12 +215,11 @@ async function checkAndTriggerQuotaRestored(userId) {
     const user = await User.findById(userId).populate("premiumPlan").lean();
     if (!user || user.role === "admin") return;
 
-    let tierLimit = 5;
+    let tierLimit = 3;
     if (hasPremiumAccess(user)) {
       const planName = user.premiumPlan?.name || "";
-      if (planName === "Gói GO") tierLimit = 20;
-      else if (planName === "Gói PLUS") tierLimit = 50;
-      else tierLimit = 100;
+      if (planName === "Gói PLUS") tierLimit = 20;
+      else tierLimit = 50;
     }
 
     const baseLimit = (user.customAiLimit !== null && user.customAiLimit !== undefined && user.customAiLimit >= 0)

@@ -6,6 +6,7 @@ import '../../../data/models/song_model.dart';
 import '../../../data/services/favorite_service.dart';
 import '../../../data/services/auth_service.dart';
 import '../../widgets/song_options_menu.dart';
+import '../../widgets/rive/rive_heart_button.dart';
 import '../../widgets/mini_player_wrapper.dart';
 import '../login/login_screen.dart';
 import '../../../core/audio/global_audio_state.dart';
@@ -669,12 +670,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Quick Favorite toggle (Unlike)
-            IconButton(
-              icon: const Icon(Icons.favorite_rounded, color: AppColors.accentPink, size: 20),
-              tooltip: 'Bỏ thích',
-              onPressed: () => _unlikeSong(song),
+            // Quick Favorite toggle (Unlike) với hiệu ứng Hover & Click Animation
+            RiveHeartButton(
+              isLiked: true,
+              size: 20,
+              activeColor: AppColors.accentPink,
+              onTap: () => _unlikeSong(song),
             ),
+            const SizedBox(width: 4),
             // More options
             SongOptionsMenu(
               song: song,

@@ -52,20 +52,12 @@ class Plan {
     final upper = name.toUpperCase();
     if (upper.contains('PLUS')) return 'PHỔ BIẾN NHẤT';
     if (upper.contains('PREMIUM')) return 'VIP ĐẲNG CẤP';
-    if (upper.contains('GO')) return 'TIẾT KIỆM';
     return '';
   }
 
   List<String> get benefits {
     if (description.isNotEmpty) return description;
     final upper = name.toUpperCase();
-    if (upper.contains('GO')) {
-      return [
-        'Hạn mức tải lên tối đa 250 MB',
-        'Tải nhạc ngoại tuyến tối đa 300 MB',
-        'Trò chuyện AI DJ 10 lần / ngày',
-      ];
-    }
     if (upper.contains('PLUS')) {
       return [
         'Hạn mức tải lên tối đa 500 MB',

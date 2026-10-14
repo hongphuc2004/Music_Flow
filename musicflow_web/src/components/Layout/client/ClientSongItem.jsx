@@ -8,6 +8,7 @@ import {
 import ClientSongMoreMenu from './ClientSongMoreMenu';
 import PlayingEqualizer from './ClientPlayingEqualizer';
 import { getOptimizedImageUrl } from '../../../utils/imageUtil';
+import PremiumBadge from '../../common/ui/PremiumBadge';
 
 function formatDuration(secs) {
   if (isNaN(secs) || secs === undefined || secs === null) return '--:--';
@@ -25,6 +26,7 @@ const ClientSongItem = ({
   actions = null,
   onEdit = undefined,
   moreMenuButtonSx = undefined,
+  onFavoriteChange = undefined,
   index = null,
   showDuration = false,
   sx = {},
@@ -163,7 +165,12 @@ const ClientSongItem = ({
 
       {/* Song details */}
       <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25, minWidth: 0, width: '100%', overflow: 'hidden' }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.8}
+          sx={{ mb: 0.25, minWidth: 0, width: '100%', overflow: 'hidden' }}
+        >
           <Typography
             variant="body2"
             noWrap
@@ -175,15 +182,15 @@ const ClientSongItem = ({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              display: 'block',
               minWidth: 0,
-              flexGrow: 1,
+              flexShrink: 1,
             }}
           >
             {song.title}
           </Typography>
+          {Boolean(song.isPremium) && <PremiumBadge sx={{ ml: 0.5, flexShrink: 0 }} />}
           {isCurrent && index === null && (
-            <Box sx={{ flexShrink: 0 }}>
+            <Box sx={{ flexShrink: 0, ml: 'auto' }}>
               <PlayingEqualizer isPlaying={isPlaying} />
             </Box>
           )}
@@ -220,7 +227,12 @@ const ClientSongItem = ({
       {showActions && (
         <Box onClick={(e) => e.stopPropagation()} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {actions}
-          <ClientSongMoreMenu song={song} onEdit={onEdit} buttonSx={moreMenuButtonSx} />
+          <ClientSongMoreMenu
+            song={song}
+            onEdit={onEdit}
+            buttonSx={moreMenuButtonSx}
+            onFavoriteChange={onFavoriteChange}
+          />
         </Box>
       )}
     </Box>

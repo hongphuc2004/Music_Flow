@@ -36,10 +36,12 @@ class Playlist {
   factory Playlist.fromJson(Map<String, dynamic> json) {
     // Parse songs - có thể là list of objects hoặc list of IDs
     List<Song> parsedSongs = [];
-    if (json['songs'] != null) {
+    if (json['songs'] != null && json['songs'] is List) {
       for (var item in json['songs']) {
-        if (item is Map<String, dynamic>) {
-          parsedSongs.add(Song.fromJson(item));
+        if (item is Map) {
+          try {
+            parsedSongs.add(Song.fromJson(Map<String, dynamic>.from(item)));
+          } catch (_) {}
         }
       }
     }

@@ -45,10 +45,11 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi, clientAssistantApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
+import HeartFavoriteButton from '../../components/common/ui/HeartFavoriteButton';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -144,6 +145,27 @@ function ClientLibrary() {
 
   useEffect(() => {
     loadLibrary();
+  }, []);
+
+  useEffect(() => {
+    const handleFavoriteChanged = (e) => {
+      const { songId, isFavorite } = e.detail || {};
+      if (!songId) return;
+      if (!isFavorite) {
+        setFavoriteSongs((prev) => prev.filter((s) => s._id !== songId));
+      } else {
+        clientFavoritesApi.getAll().then((res) => {
+          if (res.data?.favorites) {
+            setFavoriteSongs(res.data.favorites);
+          }
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener('musicflow-favorite-changed', handleFavoriteChanged);
+    return () => {
+      window.removeEventListener('musicflow-favorite-changed', handleFavoriteChanged);
+    };
   }, []);
 
 
@@ -685,7 +707,7 @@ function ClientLibrary() {
         <Paper
           sx={{
             p: { xs: 3, md: 4 },
-            borderRadius: '24px',
+            borderRadius: '16px',
             border: '1px solid',
             borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(108, 99, 255, 0.1)',
             background: (theme) => theme.palette.mode === 'dark'
@@ -745,7 +767,7 @@ function ClientLibrary() {
               }}
               sx={{
                 mt: 3,
-                borderRadius: '20px',
+                borderRadius: '9999px',
                 px: 4,
                 py: 1.25,
                 bgcolor: '#fff',
@@ -769,7 +791,7 @@ function ClientLibrary() {
               zIndex: 1,
               width: { xs: 100, sm: 120 },
               height: { xs: 100, sm: 120 },
-              borderRadius: '32px',
+              borderRadius: '20px',
               background: 'linear-gradient(135deg, #00bcd4 0%, #ff4e7c 100%)',
               p: 0.5,
               boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
@@ -782,7 +804,7 @@ function ClientLibrary() {
               sx={{
                 width: '100%',
                 height: '100%',
-                borderRadius: '28px',
+                borderRadius: '16px',
                 bgcolor: '#111827',
                 color: '#fff',
                 fontSize: '2.75rem',
@@ -840,7 +862,7 @@ function ClientLibrary() {
               onClick={stat.onClick}
               sx={{
                 p: 2.75,
-                borderRadius: '22px',
+                borderRadius: '14px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -915,7 +937,7 @@ function ClientLibrary() {
         <Box
           sx={{
             display: 'flex',
-            borderRadius: '32px',
+            borderRadius: '12px',
             p: 0.75,
             height: 48,
             backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)',
@@ -946,7 +968,7 @@ function ClientLibrary() {
                   px: 3,
                   py: 1,
                   height: '100%',
-                  borderRadius: '26px',
+                  borderRadius: '9999px',
                   cursor: 'pointer',
                   fontWeight: 800,
                   fontSize: '0.9rem',
@@ -980,7 +1002,7 @@ function ClientLibrary() {
             InputProps={{
               startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1, fontSize: 18 }} />,
               sx: {
-                borderRadius: '24px',
+                borderRadius: '12px',
                 height: 48,
                 width: { xs: '100%', sm: 260 },
                 backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.8)',
@@ -1000,7 +1022,7 @@ function ClientLibrary() {
             startIcon={<PlayIcon />}
             onClick={() => handlePlayAll(false)}
             sx={{
-              borderRadius: '24px',
+              borderRadius: '12px',
               height: 48,
               px: 3,
               fontSize: '0.9rem',
@@ -1024,7 +1046,7 @@ function ClientLibrary() {
             startIcon={<ShuffleIcon />}
             onClick={() => handlePlayAll(true)}
             sx={{
-              borderRadius: '24px',
+              borderRadius: '12px',
               height: 48,
               px: 3,
               fontSize: '0.9rem',
@@ -1050,7 +1072,7 @@ function ClientLibrary() {
               startIcon={<UploadIcon />}
               onClick={openCreateUploadDialog}
               sx={{
-                borderRadius: '24px',
+                borderRadius: '12px',
                 height: 48,
                 px: 3,
                 fontWeight: 800,
@@ -1087,7 +1109,7 @@ function ClientLibrary() {
                     onClick={() => navigate(`/playlists/${featuredPlaylist._id}`)}
                     sx={{
                       p: 3,
-                      borderRadius: '24px',
+                      borderRadius: '14px',
                       cursor: 'pointer',
                       border: '1px solid',
                       borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
@@ -1187,7 +1209,7 @@ function ClientLibrary() {
                       onClick={() => handleOpenPlaylistDialog()}
                       sx={{
                         p: 2.25,
-                        borderRadius: '24px',
+                        borderRadius: '14px',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
@@ -1210,7 +1232,7 @@ function ClientLibrary() {
                       }}
                     >
                       {/* Placeholder cover art */}
-                      <Box sx={{ width: '100%', aspectRatio: '1/1', borderRadius: '18px', overflow: 'hidden', position: 'relative', mb: 2, flexShrink: 0 }}>
+                      <Box sx={{ width: '100%', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', position: 'relative', mb: 2, flexShrink: 0 }}>
                         <Box
                           sx={{
                             width: '100%',
@@ -1281,7 +1303,7 @@ function ClientLibrary() {
                   <Paper
                     sx={{
                       p: 4,
-                      borderRadius: '28px',
+                      borderRadius: '16px',
                       border: '1px solid',
                       borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                       background: (theme) => theme.palette.mode === 'dark'
@@ -1300,7 +1322,7 @@ function ClientLibrary() {
                         width: '100%',
                         maxWidth: 240,
                         aspectRatio: '1/1',
-                        borderRadius: '24px',
+                        borderRadius: '14px',
                         overflow: 'hidden',
                         mb: 3,
                         boxShadow: `0 12px 30px ${tabColorConfig.color}35`,
@@ -1402,6 +1424,11 @@ function ClientLibrary() {
                         isPlaying={isPlaying}
                         onPlay={() => playSong(song, { queue: activeSongsList })}
                         onEdit={activeTab === 2 ? openEditUploadDialog : undefined}
+                        onFavoriteChange={(targetSongId, isFav) => {
+                          if (!isFav) {
+                            setFavoriteSongs((prev) => prev.filter((s) => s._id !== targetSongId));
+                          }
+                        }}
                         moreMenuButtonSx={{
                           color: 'text.secondary',
                           backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
@@ -1409,18 +1436,13 @@ function ClientLibrary() {
                         actions={
                           <>
                             {activeTab === 1 && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => handleRemoveFavoriteClick(e, song)}
-                                sx={{
-                                  color: '#ff4e7c',
-                                  backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                  '&:hover': { backgroundColor: 'rgba(255,78,124,0.1)' },
-                                }}
+                              <HeartFavoriteButton
+                                checked={true}
+                                onChange={(e) => handleRemoveFavoriteClick(e, song)}
+                                size={30}
+                                color="#ff4e7c"
                                 title="Bỏ yêu thích"
-                              >
-                                <DeleteIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
+                              />
                             )}
 
                             {activeTab === 2 && (
@@ -1458,7 +1480,7 @@ function ClientLibrary() {
                     </Box>
                   ))}
                   {!activeSongsList.length && (
-                    <Box sx={{ textAlign: 'center', py: 8, border: '1px dashed', borderColor: 'divider', borderRadius: '24px' }}>
+                    <Box sx={{ textAlign: 'center', py: 8, border: '1px dashed', borderColor: 'divider', borderRadius: '14px' }}>
                       <Typography color="text.secondary" fontWeight={500}>Không tìm thấy bài hát nào.</Typography>
                     </Box>
                   )}
@@ -1485,7 +1507,7 @@ function ClientLibrary() {
         maxWidth="xs"
         PaperProps={{
           sx: {
-            borderRadius: '24px',
+            borderRadius: '14px',
             p: 1.5,
             border: '1px solid',
             borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
@@ -1961,7 +1983,7 @@ function ClientLibrary() {
         }}
         fullWidth
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: '24px' } }}
+        PaperProps={{ sx: { borderRadius: '14px' } }}
       >
         <DialogTitle sx={{ fontWeight: 900, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {editingUploadSong ? 'Chỉnh sửa bài hát' : 'Tải lên bài hát mới'}
@@ -2052,7 +2074,7 @@ function ClientLibrary() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '24px',
+            borderRadius: '14px',
             overflow: 'hidden',
             bgcolor: '#0f172a',
             color: '#fff',

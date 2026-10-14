@@ -149,6 +149,40 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      const artist = await Artist.findOne({ email });
+      if (artist) {
+        const isMatch = await artist.comparePassword(password);
+        if (!isMatch) {
+          return res.status(401).json({
+            success: false,
+            message: "Email hoac mat khau khong dung",
+          });
+        }
+
+        const token = jwt.sign(
+          { id: artist._id, userId: artist._id, role: artist.role || "artist" },
+          JWT_SECRET,
+          { expiresIn: "7d" }
+        );
+
+        return res.json({
+          success: true,
+          message: "Dang nhap thanh cong",
+          token,
+          isArtist: true,
+          artist: artist.toJSON(),
+          user: {
+            _id: artist._id,
+            name: artist.name,
+            email: artist.email,
+            role: "artist",
+            avatar: artist.avatar,
+            isPro: artist.isPro,
+            proExpiry: artist.proExpiry,
+          },
+        });
+      }
+
       return res.status(401).json({
         success: false,
         message: "Email hoac mat khau khong dung",

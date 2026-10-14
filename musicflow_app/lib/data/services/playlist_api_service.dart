@@ -20,11 +20,17 @@ class PlaylistApiService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        final List playlistsJson = data['playlists'] ?? [];
-        final playlists = playlistsJson
-            .map((json) => Playlist.fromJson(json))
-            .toList();
-
+        final rawPlaylists = data['playlists'];
+        final playlists = <Playlist>[];
+        if (rawPlaylists is List) {
+          for (final item in rawPlaylists) {
+            if (item is Map) {
+              try {
+                playlists.add(Playlist.fromJson(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          }
+        }
         return PlaylistResult(success: true, playlists: playlists);
       } else {
         return PlaylistResult(

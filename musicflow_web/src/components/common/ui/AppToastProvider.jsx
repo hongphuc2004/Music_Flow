@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, AlertTitle, CircularProgress, Slide, Snackbar } from '@mui/material';
-import AppToastContext from './AppToastContext';
+import AppToastContext from '../js/AppToastContext';
 
 const ToastSlide = (props) => <Slide {...props} direction="left" />;
 const DEFAULT_TOAST_DURATION = 3000;

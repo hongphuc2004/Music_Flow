@@ -48,7 +48,7 @@ import {
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { adminPremiumApi } from '../../services/admin/admin.service';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 const emptyPlanForm = {
   name: '',

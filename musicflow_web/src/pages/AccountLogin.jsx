@@ -27,8 +27,9 @@ import {
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../services/api';
 import { notifyClientSessionChanged } from '../hooks/useClientSession';
+import { syncArtistSession } from '../utils/artistSession';
 import ForgotPasswordDialog from '../components/auth/ForgotPasswordDialog';
-import FloatingTextField from '../components/common/FloatingTextField';
+import FloatingTextField from '../components/common/ui/FloatingTextField';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -179,9 +180,14 @@ function AccountLogin() {
     setError('');
     try {
       const res = await api.post('/auth/login', formData);
-      const { token, user } = res.data;
+      const { token, user, artist, isArtist } = res.data;
       setAccessToken(token);
       localStorage.setItem('role', user.role);
+      if (user.role === 'artist' || isArtist) {
+        syncArtistSession(artist || user);
+        navigate('/artist/dashboard', { replace: true });
+        return;
+      }
       localStorage.setItem('userName', user.name || 'Listener');
       localStorage.setItem('email', user.email || '');
       localStorage.setItem('userId', user._id || '');

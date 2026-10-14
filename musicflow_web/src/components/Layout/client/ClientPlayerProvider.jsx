@@ -8,10 +8,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { resolveSongStreamUrl, clientSongsApi, clientUserApi } from '../../../services/client/client.service.js';
+import { resolveSongStreamUrl, clientSongsApi, clientUserApi, clientAdsApi } from '../../../services/client/client.service.js';
 import { useAssistant } from '../../../features/assistant/AssistantProvider.jsx';
 import { API_BASE_URL } from '../../../services/api.js';
-import useAppToast from '../../../components/common/useAppToast';
+import useAppToast from '../../../components/common/js/useAppToast';
 
 // Custom hooks extracted from this file
 import { useTracking } from '../../../hooks/player/useTracking.js';
@@ -65,6 +65,7 @@ function normalizeSong(song) {
     artistText,
     duration: song.duration || 0,
     audioMetadata: song.audioMetadata || null,
+    isPremium: Boolean(song.isPremium),
     streamUrl: song._id
       ? resolveSongStreamUrl(song._id)
       : song.streamUrl || song.audioUrl || '',
@@ -170,9 +171,7 @@ export function ClientPlayerProvider({ children }) {
           setUserTier('basic');
         } else {
           const planName = userObj?.premiumPlan?.name || '';
-          if (planName === 'Gói GO') {
-            setUserTier('go');
-          } else if (planName === 'Gói PLUS') {
+          if (planName === 'Gói PLUS') {
             setUserTier('plus');
           } else {
             setUserTier('premium');
@@ -183,6 +182,106 @@ export function ClientPlayerProvider({ children }) {
         console.error("Failed to load user premium status:", err);
       });
   }, [isLoggedIn]);
+
+  // --- Ad State & Zing MP3 Interruption System ---
+  const [adState, setAdState] = useState({
+    isAdPlaying: false,
+    currentAd: null,
+    remainingSeconds: 0,
+    canSkip: false,
+  });
+  const adAudioRef = useRef(null);
+  const completedSongsCountRef = useRef(0);
+  const adCountdownTimerRef = useRef(null);
+  const nextPendingSongRef = useRef(null);
+  const userTierRef = useRef(userTier);
+  useEffect(() => { userTierRef.current = userTier; }, [userTier]);
+  const isPremiumRef = useRef(isPremium);
+  useEffect(() => { isPremiumRef.current = isPremium; }, [isPremium]);
+
+  // --- Kho nhạc Premium 45s Preview State ---
+  const [openPremiumRequiredModal, setOpenPremiumRequiredModal] = useState(false);
+  const isPremiumPreview = Boolean(currentSong?.isPremium) && !(isPremium && userTier === 'premium');
+
+  const handleSkipAd = useCallback(() => {
+    if (adCountdownTimerRef.current) {
+      clearInterval(adCountdownTimerRef.current);
+      adCountdownTimerRef.current = null;
+    }
+    if (adAudioRef.current) {
+      try {
+        adAudioRef.current.pause();
+        adAudioRef.current.currentTime = 0;
+      } catch {
+        // ignore
+      }
+    }
+    setAdState({
+      isAdPlaying: false,
+      currentAd: null,
+      remainingSeconds: 0,
+      canSkip: false,
+    });
+
+    const pending = nextPendingSongRef.current;
+    if (pending) {
+      nextPendingSongRef.current = null;
+      if (typeof pending.play === 'function') {
+        pending.play();
+      }
+    }
+  }, []);
+
+  const triggerAdInterruption = useCallback((ad, onFinishedPlay) => {
+    const duration = ad.duration > 0 ? ad.duration : 12;
+    nextPendingSongRef.current = { play: onFinishedPlay };
+
+    setAdState({
+      isAdPlaying: true,
+      currentAd: ad,
+      remainingSeconds: duration,
+      canSkip: false,
+    });
+
+    // Ghi nhận impression lên server
+    if (ad._id || ad.id) {
+      clientAdsApi.recordImpression(ad._id || ad.id).catch(() => {});
+    }
+
+    // Tạm dừng audio chính
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    // Bắt đầu phát Ad audio
+    if (adAudioRef.current && ad.audioUrl) {
+      adAudioRef.current.src = ad.audioUrl;
+      adAudioRef.current.currentTime = 0;
+      adAudioRef.current.play().catch(() => {});
+    }
+
+    let elapsed = 0;
+    if (adCountdownTimerRef.current) clearInterval(adCountdownTimerRef.current);
+
+    adCountdownTimerRef.current = setInterval(() => {
+      elapsed += 1;
+      const remaining = Math.max(0, duration - elapsed);
+      // Cho phép bỏ qua sau 5 giây hoặc khi đếm ngược về 0
+      const canSkipNow = elapsed >= 5 || remaining <= 0;
+
+      setAdState((prev) => ({
+        ...prev,
+        remainingSeconds: remaining,
+        canSkip: canSkipNow,
+      }));
+
+      if (elapsed >= duration) {
+        clearInterval(adCountdownTimerRef.current);
+        adCountdownTimerRef.current = null;
+        handleSkipAd();
+      }
+    }, 1000);
+  }, [handleSkipAd]);
 
   const canPlayHQ = userTier === 'plus' || userTier === 'premium';
 
@@ -373,8 +472,20 @@ export function ClientPlayerProvider({ children }) {
       lastTimelineUpdateRef.current = now;
       setCurrentTime(audio.currentTime || 0);
 
-      // PREFETCH AUTOPLAY TRIGGER at 80% progress on last queue item
+      // GIỚI HẠN 45s CHO KHO NHẠC PREMIUM NẾU CHƯA CÓ GÓI PREMIUM VIP
       const activeSong = currentSongRef.current;
+      const isSongPremium = Boolean(activeSong?.isPremium);
+      const isFullPremium = isPremiumRef.current && userTierRef.current === 'premium';
+      if (isSongPremium && !isFullPremium && audio.currentTime >= 45) {
+        audio.pause();
+        audio.currentTime = 45;
+        setCurrentTime(45);
+        setIsPlaying(false);
+        setOpenPremiumRequiredModal(true);
+        return;
+      }
+
+      // PREFETCH AUTOPLAY TRIGGER at 80% progress on last queue item
       const rawDuration = audio.duration;
       const durationVal = (rawDuration && Number.isFinite(rawDuration) && rawDuration > 0)
         ? rawDuration
@@ -443,30 +554,53 @@ export function ClientPlayerProvider({ children }) {
       const nextSong = normalizeSong(activeQueue[nextIndex]);
       if (!nextSong?._id) { setIsPlaying(false); return; }
 
-      const currentVersion = ++playRequestVersionRef.current;
+      const playNextSongNormal = async () => {
+        const currentVersion = ++playRequestVersionRef.current;
 
-      queueIndexRef.current = nextIndex;
-      currentSongRef.current = nextSong;
-      resetPlayTracking(nextSong._id);
-      
-      try {
-        const streamResult = await fetchStreamUrl(nextSong._id, audioQualityRef.current);
-        if (currentVersion !== playRequestVersionRef.current) return;
-        audio.src = streamResult.url;
-        setActualAudioQuality(streamResult.resolvedQuality);
-      } catch (err) {
-        console.error("Ended handler failed to resolve ticket:", err);
-        if (currentVersion !== playRequestVersionRef.current) return;
-        audio.src = nextSong.streamUrl;
-        setActualAudioQuality('std');
+        queueIndexRef.current = nextIndex;
+        currentSongRef.current = nextSong;
+        resetPlayTracking(nextSong._id);
+        
+        try {
+          const streamResult = await fetchStreamUrl(nextSong._id, audioQualityRef.current);
+          if (currentVersion !== playRequestVersionRef.current) return;
+          audio.src = streamResult.url;
+          setActualAudioQuality(streamResult.resolvedQuality);
+        } catch (err) {
+          console.error("Ended handler failed to resolve ticket:", err);
+          if (currentVersion !== playRequestVersionRef.current) return;
+          audio.src = nextSong.streamUrl;
+          setActualAudioQuality('std');
+        }
+
+        setQueueIndex(nextIndex);
+        setCurrentSong(nextSong);
+        setCurrentTime(0);
+        loadLyrics(nextSong._id);
+        saveRecentPlayedSong(activeQueue[nextIndex]);
+        audio.play().catch(() => setIsPlaying(false));
+      };
+
+      // --- ZING MP3 AD INTERRUPTION CHECK ---
+      // Chỉ kiểm tra Ad khi người dùng nghe hết bài hát (handleEnded)
+      const currentUserTier = userTierRef.current || 'basic';
+      const isPaidTier = currentUserTier === 'plus' || currentUserTier === 'premium';
+      completedSongsCountRef.current += 1;
+
+      if (!isPaidTier) {
+        try {
+          const adCheck = await clientAdsApi.checkNextAd(completedSongsCountRef.current);
+          if (adCheck.data?.success && adCheck.data?.hasAd && adCheck.data?.ad) {
+            completedSongsCountRef.current = 0;
+            triggerAdInterruption(adCheck.data.ad, playNextSongNormal);
+            return;
+          }
+        } catch (adErr) {
+          console.warn('[ClientPlayerProvider] Ad check fallback:', adErr);
+        }
       }
 
-      setQueueIndex(nextIndex);
-      setCurrentSong(nextSong);
-      setCurrentTime(0);
-      loadLyrics(nextSong._id);
-      saveRecentPlayedSong(activeQueue[nextIndex]);
-      audio.play().catch(() => setIsPlaying(false));
+      await playNextSongNormal();
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -499,6 +633,7 @@ export function ClientPlayerProvider({ children }) {
     prefetchedSongIdRef,
     fetchStreamUrl,
     finishSessionAndReportFeedback,
+    triggerAdInterruption,
   ]);
 
   // ---------------------------------------------------------------------------
@@ -593,19 +728,63 @@ export function ClientPlayerProvider({ children }) {
       playSong(currentSong, { queue: queueRef.current });
       return;
     }
+    const isSongPremium = Boolean(currentSongRef.current?.isPremium);
+    const isFullPremium = isPremium && userTier === 'premium';
+    if (isSongPremium && !isFullPremium && audio.currentTime >= 45) {
+      setOpenPremiumRequiredModal(true);
+      return;
+    }
     if (audio.paused) {
       try { await audio.play(); } catch { setIsPlaying(false); }
     } else {
       audio.pause();
     }
-  }, [currentSong, playSong]);
+  }, [currentSong, playSong, isPremium, userTier]);
+
+  const pauseSong = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && !audio.paused) {
+      audio.pause();
+    }
+  }, []);
+
+  const resumeSong = useCallback(async () => {
+    const audio = audioRef.current;
+    if (audio && audio.paused && currentSongRef.current) {
+      const isSongPremium = Boolean(currentSongRef.current?.isPremium);
+      const isFullPremium = isPremium && userTier === 'premium';
+      if (isSongPremium && !isFullPremium && audio.currentTime >= 45) {
+        setOpenPremiumRequiredModal(true);
+        return;
+      }
+      try {
+        await audio.play();
+      } catch {
+        setIsPlaying(false);
+      }
+    }
+  }, [isPremium, userTier]);
 
   const seekTo = useCallback((nextTime) => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.currentTime = Number(nextTime) || 0;
+    const activeSong = currentSongRef.current;
+    const isSongPremium = Boolean(activeSong?.isPremium);
+    const isFullPremium = isPremium && userTier === 'premium';
+    const target = Number(nextTime) || 0;
+
+    if (isSongPremium && !isFullPremium && target > 45) {
+      audio.currentTime = 45;
+      setCurrentTime(45);
+      audio.pause();
+      setIsPlaying(false);
+      setOpenPremiumRequiredModal(true);
+      return;
+    }
+
+    audio.currentTime = target;
     setCurrentTime(audio.currentTime || 0);
-  }, []);
+  }, [isPremium, userTier]);
 
   const playPrevious = useCallback(async () => {
     const audio = audioRef.current;
@@ -731,12 +910,20 @@ export function ClientPlayerProvider({ children }) {
     userTier,
     canPlayHQ,
     isQualityLoading,
+    adState,
+    isAdPlaying: Boolean(adState.isAdPlaying),
+    currentAd: adState.currentAd,
+    adRemaining: adState.remainingSeconds,
+    adCanSkip: adState.canSkip,
+    openPremiumRequiredModal,
+    isPremiumPreview,
   }), [
     currentSong, queue, queueIndex, shuffle, repeatMode,
     isPlaying, currentTime, duration,
     lyricsData.lines, lyricsData.isSynced, lyricsData.plainText,
     lyricsLoading, activeLyricIndex, activeWordIndex, autoplay,
     audioQuality, actualAudioQuality, isPremium, userTier, canPlayHQ, isQualityLoading,
+    adState, openPremiumRequiredModal, isPremiumPreview,
   ]);
 
   const actionsValue = useMemo(() => ({
@@ -754,7 +941,13 @@ export function ClientPlayerProvider({ children }) {
     seekTo,
     toggleAutoplay,
     setAudioQuality,
-  }), [playSong, playPrevious, playNext, toggleShuffle, cycleRepeatMode, togglePlay, seekTo, toggleAutoplay, setAudioQuality]);
+    skipAd: handleSkipAd,
+    pauseSong,
+    resumeSong,
+    setOpenPremiumRequiredModal,
+    openPremiumModal: () => setOpenPremiumRequiredModal(true),
+    closePremiumModal: () => setOpenPremiumRequiredModal(false),
+  }), [playSong, playPrevious, playNext, toggleShuffle, cycleRepeatMode, togglePlay, seekTo, toggleAutoplay, setAudioQuality, handleSkipAd, pauseSong, resumeSong]);
 
   const metaValue = useMemo(() => ({ hasSong: Boolean(currentSong) }), [currentSong]);
 
@@ -763,6 +956,15 @@ export function ClientPlayerProvider({ children }) {
       <ClientPlayerActionsContext.Provider value={actionsValue}>
         <ClientPlayerStateContext.Provider value={stateValue}>
           {children}
+          <audio
+            ref={adAudioRef}
+            style={{ display: 'none' }}
+            onEnded={handleSkipAd}
+            onError={() => {
+              console.warn('[ClientPlayerProvider] Ad audio load error, continuing music');
+              handleSkipAd();
+            }}
+          />
         </ClientPlayerStateContext.Provider>
       </ClientPlayerActionsContext.Provider>
     </ClientPlayerMetaContext.Provider>

@@ -35,7 +35,6 @@ class User {
       final name = (premiumPlan['name'] ?? '').toString().toUpperCase();
       if (name.contains('PLUS')) return 'PLUS';
       if (name.contains('PREMIUM')) return 'PREMIUM';
-      if (name.contains('GO')) return 'GO';
     }
     return 'PREMIUM';
   }

@@ -1,7 +1,7 @@
 import { Suspense, useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
-import AppToastProvider from './components/common/AppToastProvider';
+import AppToastProvider from './components/common/ui/AppToastProvider';
 import { refreshAccessToken, setAccessToken } from './services/api';
 import { notifyClientSessionChanged } from './hooks/useClientSession';
 import { createLazyRoute, preloadRoute, preloadRoutesWhenIdle } from './utils/routePreload';
@@ -18,6 +18,7 @@ const Topics = createLazyRoute('/admin/topics');
 const Playlists = createLazyRoute('/admin/playlists');
 const Settings = createLazyRoute('/admin/settings');
 const AdminPremium = createLazyRoute('/admin/premium');
+const Advertisements = createLazyRoute('/admin/advertisements');
 const AdminLogin = createLazyRoute('/adminlogin');
 
 // Artist Pages
@@ -67,6 +68,9 @@ const ProtectedRoute = ({ children, role }) => {
   }
 
   if (role && userRole !== role) {
+    if (role === 'artist' && location.pathname === '/artist/dashboard' && (authMode === 'login' || authMode === 'register')) {
+      return children;
+    }
     return <Navigate to={roleDefaultRoute[userRole] || '/?auth=login'} replace />;
   }
 
@@ -257,7 +261,7 @@ function App() {
           divider: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
         },
         shape: {
-          borderRadius: 16,
+          borderRadius: 4,
         },
         typography: {
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
@@ -287,6 +291,23 @@ function App() {
             styleOverrides: {
               root: {
                 backgroundImage: 'none',
+              },
+              rounded: {
+                borderRadius: '12px',
+              },
+            },
+          },
+          MuiCard: {
+            styleOverrides: {
+              root: {
+                borderRadius: '12px',
+              },
+            },
+          },
+          MuiDialog: {
+            styleOverrides: {
+              paper: {
+                borderRadius: '14px',
               },
             },
           },
@@ -384,6 +405,14 @@ function App() {
                       }
                     />
                     <Route
+                      path="/admin/advertisements"
+                      element={
+                        <ProtectedRoute role="admin">
+                          <Advertisements />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
                       path="/admin/settings"
                       element={
                         <ProtectedRoute role="admin">
@@ -397,6 +426,7 @@ function App() {
                     <Route path="/songs" element={<ClientRedirect to="/admin/songs" />} />
                     <Route path="/topics" element={<ClientRedirect to="/admin/topics" />} />
                     <Route path="/playlists" element={<ClientRedirect to="/admin/playlists" />} />
+                    <Route path="/advertisements" element={<ClientRedirect to="/admin/advertisements" />} />
                     <Route path="/settings" element={<ClientRedirect to="/admin/settings" />} />
 
                     {/* Artist Portal Routes */}
@@ -514,7 +544,7 @@ function App() {
                     <Route
                       path="/premium"
                       element={
-                        <ClientRoute requireAuth>
+                        <ClientRoute>
                           <ClientPremium />
                         </ClientRoute>
                       }

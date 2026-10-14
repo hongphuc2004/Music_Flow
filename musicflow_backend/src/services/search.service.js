@@ -19,6 +19,7 @@ const geminiRouter = require("./geminiRouter.service");
 const geminiEmbedding = require("./geminiEmbedding.service");
 const { buildSearchRegexes, normalizeText, extractCleanLyrics, escapeRegex } = require("../utils/string.util");
 const { findArtistBySlugOrId } = require("../utils/artist.util");
+const { resolveGenreFromPrompt, ARTIST_ALIASES } = require("./aiIntent.service");
 const { SONG_PUBLIC_SELECT, ARTIST_POPULATE, TOPIC_POPULATE } = require("../repositories/song.repository");
 
 // ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ async function extractSemanticSearchIntent(query = "") {
 // Hybrid Scoring & Ranking Logic
 // ---------------------------------------------------------------------------
 
-function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], extraTitleRegexes = [], queryVector = null) {
+function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], extraTitleRegexes = [], queryVector = null, matchedTopics = []) {
   let score = 0;
   const songTitleNorm = normalizeText(song.title || "");
   const queryNorm = normalizeText(query || "");
@@ -253,6 +254,18 @@ function scoreSongRelevance(song, query, regexes, intent, matchedArtists = [], e
   }
 
   // =========================================================================
+  // 3.5. TOPIC & GENRE MATCHING (TIER 3.5)
+  // =========================================================================
+  if (Array.isArray(matchedTopics) && matchedTopics.length > 0) {
+    const songTopicIds = (song.topicIds || []).map((t) => String(t?._id || t));
+    const matchedTopicIdSet = new Set(matchedTopics.map((t) => String(t?._id || t)));
+    const matchesTopic = songTopicIds.some((id) => matchedTopicIdSet.has(id));
+    if (matchesTopic) {
+      score += 260;
+    }
+  }
+
+  // =========================================================================
   // 4. SEMANTIC INTENT MATCHES (Moods, Themes, Genre)
   // =========================================================================
   if (intent && intent.isNaturalQuery) {
@@ -326,6 +339,7 @@ const searchSongs = async ({
   query,
   artistId,
   topicId,
+  genre,
   letter,
   includeArtists = false,
   includePlaylists = false,
@@ -333,6 +347,7 @@ const searchSongs = async ({
 }) => {
   const conditions = [{ isPublic: true }];
   let matchedArtists = [];
+  let matchedTopics = [];
   let matchedPlaylists = [];
   let regexes = [];
   let intent = null;
@@ -352,6 +367,24 @@ const searchSongs = async ({
         .sort({ name: 1 })
         .limit(12)
         .lean();
+
+      // 1.1 Check artist alias dictionary if not matched directly
+      if (matchedArtists.length === 0) {
+        const normQuery = normalizeText(rawQuery);
+        for (const [alias, standardName] of Object.entries(ARTIST_ALIASES)) {
+          const normAlias = normalizeText(alias);
+          const aliasRegex = new RegExp(`(^|\\s)${escapeRegex(normAlias)}(\\s|$)`, "i");
+          if (aliasRegex.test(normQuery)) {
+            const standardArtist = await Artist.findOne({
+              name: { $regex: new RegExp(`^${escapeRegex(standardName)}$`, "i") },
+            }).select("_id name avatar isVerified followersCount").lean();
+            if (standardArtist) {
+              matchedArtists.push(standardArtist);
+              break;
+            }
+          }
+        }
+      }
 
       // If exact regex did not match artist, check if query contains artist's name AS WHOLE WORDS (preventing "min" matching "minh")
       if (matchedArtists.length === 0) {
@@ -399,6 +432,23 @@ const searchSongs = async ({
         }
       }
 
+      // 1.5 Match Topic / Genre documents
+      const allTopics = await Topic.find({}).lean();
+      const normQuery = normalizeText(rawQuery);
+      const resolvedGenre = resolveGenreFromPrompt(rawQuery);
+
+      if (resolvedGenre) {
+        const gTopic = allTopics.find((t) => t.name === resolvedGenre.topicName);
+        if (gTopic) matchedTopics.push(gTopic);
+      }
+
+      for (const t of allTopics) {
+        if (matchedTopics.some((mt) => mt._id.toString() === t._id.toString())) continue;
+        const tNorm = normalizeText(t.name);
+        if (tNorm && (normQuery.includes(tNorm) || tNorm.includes(normQuery))) {
+          matchedTopics.push(t);
+        }
+      }
 
       // 2. Match Playlists if requested
       if (includePlaylists) {
@@ -445,6 +495,12 @@ const searchSongs = async ({
       });
     }
 
+    if (matchedTopics.length > 0) {
+      queryOrConditions.push({
+        topicIds: { $in: matchedTopics.map((t) => t._id) },
+      });
+    }
+
     // If semantic intent matched moods or themes, expand candidate search pool
     if (intent && intent.isNaturalQuery) {
       if (intent.targetMoods.length > 0) {
@@ -464,6 +520,15 @@ const searchSongs = async ({
 
     if (queryOrConditions.length > 0) {
       conditions.push({ $or: queryOrConditions });
+    }
+  }
+
+  if (genre) {
+    const resolved = resolveGenreFromPrompt(genre);
+    const gName = resolved ? resolved.topicName : genre;
+    const gTopic = await Topic.findOne({ name: { $regex: new RegExp(`^${escapeRegex(gName)}$`, "i") } });
+    if (gTopic) {
+      conditions.push({ topicIds: gTopic._id });
     }
   }
 
@@ -541,7 +606,7 @@ const searchSongs = async ({
     if (s.embedding) delete s.embedding; // Strip large embedding values from output payload
     return {
       song: s,
-      score: scoreSongRelevance(song, rawQuery, regexes, intent, matchedArtists, extraTitleRegexes, queryVector),
+      score: scoreSongRelevance(song, rawQuery, regexes, intent, matchedArtists, extraTitleRegexes, queryVector, matchedTopics),
     };
   });
 
@@ -553,6 +618,7 @@ const searchSongs = async ({
   return {
     songs: rankedSongs,
     artists: matchedArtists,
+    topics: matchedTopics,
     playlists: matchedPlaylists,
     intent: intent?.isNaturalQuery ? intent : null,
   };

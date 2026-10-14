@@ -30,8 +30,8 @@ import {
   getSocialShareUrl,
   triggerNativeShare,
   getQrCodeImageUrl,
-} from '../../utils/shareUtil';
-import useAppToast from './useAppToast';
+} from '../../../utils/shareUtil';
+import useAppToast from '../js/useAppToast';
 
 const SOCIAL_CHANNELS = [
   {

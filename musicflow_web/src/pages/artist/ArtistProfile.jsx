@@ -29,7 +29,7 @@ import ArtistProfileDialog from './ArtistProfileDialog';
 import { artistApi } from '../../services/artist/artist.service';
 import { syncArtistSession } from '../../utils/artistSession';
 import { buildArtistProfilePayload, createArtistProfileForm } from '../../utils/artistProfile';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import ChangePasswordCard from '../../components/auth/ChangePasswordCard';
 
 function ArtistProfile() {
@@ -161,7 +161,7 @@ function ArtistProfile() {
             elevation={0} 
             sx={{ 
               position: 'relative',
-              borderRadius: 6,
+              borderRadius: 3.5,
               overflow: 'hidden',
               height: { xs: 260, md: 360 },
               border: '1px solid',
@@ -271,7 +271,7 @@ function ArtistProfile() {
                   fontWeight: 800,
                   px: 4,
                   py: 1.5,
-                  borderRadius: 4.5,
+                  borderRadius: 3,
                   alignSelf: { xs: 'stretch', md: 'flex-end' },
                   boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
                   '&:hover': {
@@ -293,7 +293,7 @@ function ArtistProfile() {
                 elevation={0}
                 sx={{ 
                   p: 3, 
-                  borderRadius: 5, 
+                  borderRadius: 3, 
                   border: '1px solid', 
                   borderColor: 'divider',
                   display: 'flex', 
@@ -309,7 +309,7 @@ function ArtistProfile() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Box sx={{ p: 2, borderRadius: 3.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: 'primary.main' }}>
+                <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: 'rgba(108, 99, 255, 0.08)', color: 'primary.main' }}>
                   <PeopleIcon sx={{ fontSize: 28 }} />
                 </Box>
                 <Box>
@@ -324,7 +324,7 @@ function ArtistProfile() {
                 elevation={0}
                 sx={{ 
                   p: 3, 
-                  borderRadius: 5, 
+                  borderRadius: 3, 
                   border: '1px solid', 
                   borderColor: 'divider',
                   display: 'flex', 
@@ -340,7 +340,7 @@ function ArtistProfile() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Box sx={{ p: 2, borderRadius: 3.5, bgcolor: 'rgba(0, 188, 212, 0.08)', color: 'secondary.main' }}>
+                <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: 'rgba(0, 188, 212, 0.08)', color: 'secondary.main' }}>
                   <TrendingIcon sx={{ fontSize: 28 }} />
                 </Box>
                 <Box>
@@ -355,7 +355,7 @@ function ArtistProfile() {
                 elevation={0}
                 sx={{ 
                   p: 3, 
-                  borderRadius: 5, 
+                  borderRadius: 3, 
                   border: '1px solid', 
                   borderColor: 'divider',
                   display: 'flex', 
@@ -389,7 +389,7 @@ function ArtistProfile() {
               <Card 
                 elevation={0} 
                 sx={{ 
-                  borderRadius: 6, 
+                  borderRadius: 3.5, 
                   border: '1px solid', 
                   borderColor: 'divider', 
                   bgcolor: 'background.paper',
@@ -408,7 +408,7 @@ function ArtistProfile() {
                         <Box sx={{
                           width: 48,
                           height: 48,
-                          borderRadius: 3.5,
+                          borderRadius: 2.5,
                           display: 'grid',
                           placeItems: 'center',
                           backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.15)' : '#eef2ff',
@@ -444,7 +444,7 @@ function ArtistProfile() {
               <Card 
                 elevation={0} 
                 sx={{ 
-                  borderRadius: 6, 
+                  borderRadius: 3.5, 
                   border: '1px solid', 
                   borderColor: 'divider', 
                   bgcolor: 'background.paper',
@@ -473,7 +473,7 @@ function ArtistProfile() {
                       sx={{
                         width: '100%',
                         maxWidth: 260,
-                        borderRadius: 5,
+                        borderRadius: 3,
                         overflow: 'hidden',
                         bgcolor: (theme) => theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
                         border: '1px solid',

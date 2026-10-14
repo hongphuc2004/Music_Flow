@@ -11,10 +11,11 @@
 
 ### 2. Backend API (`musicflow_backend`)
 - [Backend Overview](./backend/README.md) — Cấu trúc dự án, môi trường, background jobs, middleware chain.
-- [Database Models](./backend/models.md) — Toàn bộ 24 Mongoose Schemas (User, Song, Plan, Subscription, Lyrics...).
-- [API Reference](./backend/api.md) — Toàn bộ 18 nhóm REST endpoints chi tiết.
+- [Database Models](./backend/models.md) — Toàn bộ 25 Mongoose Schemas (User, Song, Plan, Subscription, Advertisement...).
+- [API Reference](./backend/api.md) — Toàn bộ 20 nhóm REST endpoints chi tiết.
 - [Authentication Flow](./backend/auth.md) — Quy trình xác thực JWT, Google OAuth, Refresh token.
 - [AI Architecture & Suite](./backend/ai.md) — AI Orchestrator, Gemini Multi-model, Mistral Enricher, Auto-Tagging & Moderation.
+- [Hệ thống Quảng cáo (Ads System)](./advertisement_system.md) — Kiến trúc Freemium, Audio Ads xen kẽ, Dynamic Banner, Tracking & Admin Portal.
 
 ### 3. Mobile App (`musicflow_app`)
 - [Mobile Overview](./mobile/README.md) — Cấu trúc thư mục Flutter, dependencies, hướng dẫn build APK.

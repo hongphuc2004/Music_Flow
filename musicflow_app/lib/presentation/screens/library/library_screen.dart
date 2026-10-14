@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/song_model.dart';
@@ -74,25 +75,33 @@ class LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _loadData() async {
-    await _checkLoginStatus();
-    await Future.wait([
-      _loadPlaylists(),
-      _loadRecentHistory(),
-      _loadFavorites(),
-      _loadUploadedSongsCount(),
-      _loadDownloadedSongsCount(),
-    ]);
+    try {
+      await _checkLoginStatus();
+      await Future.wait([
+        _loadPlaylists(),
+        _loadRecentHistory(),
+        _loadFavorites(),
+        _loadUploadedSongsCount(),
+        _loadDownloadedSongsCount(),
+      ]);
+    } catch (e) {
+      debugPrint('[LibraryScreen] _loadData error: $e');
+    }
   }
 
   Future<void> _checkLoginStatus() async {
-    final isLoggedIn = await AuthService.isLoggedIn();
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = isLoggedIn;
-        if (!isLoggedIn) {
-          _clearUserScopedData();
-        }
-      });
+    try {
+      final isLoggedIn = await AuthService.isLoggedIn();
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = isLoggedIn;
+          if (!isLoggedIn) {
+            _clearUserScopedData();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[LibraryScreen] _checkLoginStatus error: $e');
     }
   }
 
@@ -125,25 +134,36 @@ class LibraryScreenState extends State<LibraryScreen> {
       return;
     }
 
-    final result = await PlaylistApiService.getPlaylists();
+    try {
+      final result = await PlaylistApiService.getPlaylists();
 
-    if (mounted && result.success) {
-      setState(() {
-        _playlists = result.playlists ?? [];
-      });
+      if (mounted && result.success) {
+        setState(() {
+          _playlists = result.playlists ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint('[LibraryScreen] _loadPlaylists error: $e');
     }
   }
 
   Future<void> _loadRecentHistory() async {
-    setState(() => _isLoadingHistory = true);
+    try {
+      setState(() => _isLoadingHistory = true);
 
-    final history = await PlayHistoryService.getRecentHistory(limit: 6);
+      final history = await PlayHistoryService.getRecentHistory(limit: 6);
 
-    if (mounted) {
-      setState(() {
-        _isLoadingHistory = false;
-        _recentHistory = history;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+          _recentHistory = history;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingHistory = false);
+      }
+      debugPrint('[LibraryScreen] _loadRecentHistory error: $e');
     }
   }
 
@@ -157,12 +177,16 @@ class LibraryScreenState extends State<LibraryScreen> {
       return;
     }
 
-    final result = await FavoriteService.getFavorites();
+    try {
+      final result = await FavoriteService.getFavorites();
 
-    if (mounted && result.success) {
-      setState(() {
-        _favoriteSongs = result.favorites ?? [];
-      });
+      if (mounted && result.success) {
+        setState(() {
+          _favoriteSongs = result.favorites ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint('[LibraryScreen] _loadFavorites error: $e');
     }
   }
 
@@ -176,17 +200,21 @@ class LibraryScreenState extends State<LibraryScreen> {
       return;
     }
 
-    final result = await SongApiService.getMyUploads();
+    try {
+      final result = await SongApiService.getMyUploads();
 
-    if (mounted && result.success) {
-      setState(() {
-        _uploadedSongsCount = result.songs.length;
-      });
+      if (mounted && result.success) {
+        setState(() {
+          _uploadedSongsCount = result.songs.length;
+        });
+      }
+    } catch (e) {
+      debugPrint('[LibraryScreen] _loadUploadedSongsCount error: $e');
     }
   }
 
   Future<void> _loadDownloadedSongsCount() async {
-    if (!_isLoggedIn) {
+    if (!_isLoggedIn || kIsWeb) {
       if (mounted) {
         setState(() {
           _downloadedSongsCount = 0;
@@ -195,12 +223,21 @@ class LibraryScreenState extends State<LibraryScreen> {
       return;
     }
 
-    final count = await OfflineSongService().getDownloadedSongsCount();
+    try {
+      final count = await OfflineSongService().getDownloadedSongsCount();
 
-    if (mounted) {
-      setState(() {
-        _downloadedSongsCount = count;
-      });
+      if (mounted) {
+        setState(() {
+          _downloadedSongsCount = count;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloadedSongsCount = 0;
+        });
+      }
+      debugPrint('[LibraryScreen] _loadDownloadedSongsCount error: $e');
     }
   }
 

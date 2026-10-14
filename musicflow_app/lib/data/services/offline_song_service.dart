@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
@@ -29,16 +30,21 @@ class OfflineSongService {
   }
 
   Future<Box<dynamic>> _openBox() async {
-    if (!_hiveInitialized) {
-      await Hive.initFlutter();
-      _hiveInitialized = true;
-    }
+    try {
+      if (!_hiveInitialized) {
+        await Hive.initFlutter();
+        _hiveInitialized = true;
+      }
 
-    if (Hive.isBoxOpen(_boxName)) {
-      return Hive.box<dynamic>(_boxName);
-    }
+      if (Hive.isBoxOpen(_boxName)) {
+        return Hive.box<dynamic>(_boxName);
+      }
 
-    return Hive.openBox<dynamic>(_boxName);
+      return await Hive.openBox<dynamic>(_boxName);
+    } catch (e) {
+      debugPrint('[OfflineSongService] Hive openBox error: $e');
+      rethrow;
+    }
   }
 
   Future<String> _getDownloadFolderPath() async {
@@ -61,47 +67,72 @@ class OfflineSongService {
   }
 
   Future<List<DownloadedSong>> _getAllDownloadedSongs() async {
-    final boxRef = await box;
-    final items = <DownloadedSong>[];
+    if (kIsWeb) return [];
+    try {
+      final boxRef = await box;
+      final items = <DownloadedSong>[];
 
-    for (final key in boxRef.keys) {
-      final raw = boxRef.get(key);
-      if (raw is Map) {
-        items.add(DownloadedSong.fromMap(Map<String, dynamic>.from(raw)));
+      for (final key in boxRef.keys) {
+        final raw = boxRef.get(key);
+        if (raw is Map) {
+          try {
+            items.add(DownloadedSong.fromMap(Map<String, dynamic>.from(raw)));
+          } catch (_) {}
+        }
       }
-    }
 
-    return items;
+      return items;
+    } catch (e) {
+      debugPrint('[OfflineSongService] _getAllDownloadedSongs error: $e');
+      return [];
+    }
   }
 
   Future<List<DownloadedSong>> getAllDownloadedSongs() async {
-    final items = await _getAllDownloadedSongs();
-    items.sort((a, b) => b.downloadedAt.compareTo(a.downloadedAt));
-    await _syncDownloadedSongsToServer(items);
-    return items;
+    if (kIsWeb) return [];
+    try {
+      final items = await _getAllDownloadedSongs();
+      items.sort((a, b) => b.downloadedAt.compareTo(a.downloadedAt));
+      await _syncDownloadedSongsToServer(items);
+      return items;
+    } catch (e) {
+      debugPrint('[OfflineSongService] getAllDownloadedSongs error: $e');
+      return [];
+    }
   }
 
   Future<int> getDownloadedSongsCount() async {
-    final items = await getAllDownloadedSongs();
-    return items.length;
+    if (kIsWeb) return 0;
+    try {
+      final items = await getAllDownloadedSongs();
+      return items.length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<List<Song>> getDownloadedSongsAsSongs() async {
-    final items = await getAllDownloadedSongs();
-    return items
-        .map(
-          (item) => Song(
-            id: item.songId,
-            title: item.title,
-            artists: item.artist.split(', '),
-            audioUrl: item.remoteAudioUrl,
-            imageUrl: item.imageUrl ?? '',
-            lyrics: '',
-            isPublic: true,
-            duration: item.duration,
-          ),
-        )
-        .toList();
+    if (kIsWeb) return [];
+    try {
+      final items = await getAllDownloadedSongs();
+      return items
+          .map(
+            (item) => Song(
+              id: item.songId,
+              title: item.title,
+              artists: item.artist.split(', '),
+              audioUrl: item.remoteAudioUrl,
+              imageUrl: item.imageUrl ?? '',
+              lyrics: '',
+              isPublic: true,
+              duration: item.duration,
+            ),
+          )
+          .toList();
+    } catch (e) {
+      debugPrint('[OfflineSongService] getDownloadedSongsAsSongs error: $e');
+      return [];
+    }
   }
 
   Future<void> _touchSongAccess(String songId) async {
@@ -153,6 +184,12 @@ class OfflineSongService {
   }
 
   Future<OfflineDownloadResult> downloadSong(Song song) async {
+    if (kIsWeb) {
+      return OfflineDownloadResult(
+        success: false,
+        message: 'Tính năng tải nhạc ngoại tuyến chỉ hỗ trợ trên ứng dụng di động.',
+      );
+    }
     try {
       final existing = await getDownloadedSong(song.id);
       if (existing != null && await File(existing.localPath).exists()) {

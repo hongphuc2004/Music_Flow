@@ -33,6 +33,7 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import PremiumBadge from '../../components/common/ui/PremiumBadge';
 import { getArtistPath } from '../../utils/shareUtil';
 
 const PERIODS = ['Today', 'This Week', 'This Month'];
@@ -207,7 +208,7 @@ export default function ClientRankings() {
                         elevation={0}
                         sx={{
                           p: 2,
-                          borderRadius: 4,
+                          borderRadius: 3,
                           border: '2px solid rgba(148, 163, 184, 0.25)',
                           background: (theme) => theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.4)' : '#fff',
                           textAlign: 'center',
@@ -240,9 +241,12 @@ export default function ClientRankings() {
                         <Box sx={{ display: 'inline-flex', bgcolor: '#e2e8f0', color: '#475569', borderRadius: 2, px: 1.25, py: 0.25, mb: 1, fontWeight: 900, fontSize: 11 }}>
                           #2
                         </Box>
-                        <Typography variant="body2" fontWeight={800} noWrap sx={{ mb: 0.25 }}>
-                          {topThree[0].title}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.25 }}>
+                          <Typography variant="body2" fontWeight={800} noWrap>
+                            {topThree[0].title}
+                          </Typography>
+                          {Boolean(topThree[0].isPremium) && <PremiumBadge />}
+                        </Box>
                         <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                           {Array.isArray(topThree[0].artists) ? topThree[0].artists[0]?.name : 'Unknown'}
                         </Typography>
@@ -259,7 +263,7 @@ export default function ClientRankings() {
                         elevation={0}
                         sx={{
                           p: 3,
-                          borderRadius: 4.5,
+                          borderRadius: 3.5,
                           border: '2px solid rgba(251, 191, 36, 0.4)',
                           background: (theme) => theme.palette.mode === 'dark'
                             ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(30, 41, 59, 0.6) 100%)'
@@ -300,9 +304,12 @@ export default function ClientRankings() {
                         <Box sx={{ display: 'inline-flex', bgcolor: '#fef3c7', color: '#d97706', borderRadius: 2, px: 1.75, py: 0.4, mb: 1, fontWeight: 900, fontSize: 12 }}>
                           Quán Quân #1
                         </Box>
-                        <Typography variant="body1" fontWeight={900} noWrap sx={{ mb: 0.35 }}>
-                          {topThree[1].title}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.35 }}>
+                          <Typography variant="body1" fontWeight={900} noWrap>
+                            {topThree[1].title}
+                          </Typography>
+                          {Boolean(topThree[1].isPremium) && <PremiumBadge />}
+                        </Box>
                         <Typography variant="body2" color="text.secondary" noWrap sx={{ display: 'block' }}>
                           {Array.isArray(topThree[1].artists) ? topThree[1].artists[0]?.name : 'Unknown'}
                         </Typography>
@@ -319,7 +326,7 @@ export default function ClientRankings() {
                         elevation={0}
                         sx={{
                           p: 2,
-                          borderRadius: 4,
+                          borderRadius: 3,
                           border: '2px solid rgba(234, 88, 12, 0.25)',
                           background: (theme) => theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.4)' : '#fff',
                           textAlign: 'center',
@@ -352,9 +359,12 @@ export default function ClientRankings() {
                         <Box sx={{ display: 'inline-flex', bgcolor: '#ffedd5', color: '#c2410c', borderRadius: 2, px: 1.25, py: 0.25, mb: 1, fontWeight: 900, fontSize: 11 }}>
                           #3
                         </Box>
-                        <Typography variant="body2" fontWeight={800} noWrap sx={{ mb: 0.25 }}>
-                          {topThree[2].title}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mb: 0.25 }}>
+                          <Typography variant="body2" fontWeight={800} noWrap>
+                            {topThree[2].title}
+                          </Typography>
+                          {Boolean(topThree[2].isPremium) && <PremiumBadge />}
+                        </Box>
                         <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                           {Array.isArray(topThree[2].artists) ? topThree[2].artists[0]?.name : 'Unknown'}
                         </Typography>
@@ -373,7 +383,7 @@ export default function ClientRankings() {
                     elevation={0}
                     sx={{
                       p: 0.5,
-                      borderRadius: 3.5,
+                      borderRadius: 3,
                       border: '1px solid',
                       borderColor: 'divider',
                       bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.4)' : '#fff',
@@ -574,9 +584,12 @@ export default function ClientRankings() {
 
                         {/* Song Details */}
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                          <Typography variant="body2" fontWeight={800} noWrap>
-                            {song.title}
-                          </Typography>
+                          <Stack direction="row" alignItems="center" spacing={0.8} sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={800} noWrap sx={{ minWidth: 0, flexShrink: 1 }}>
+                              {song.title}
+                            </Typography>
+                            {Boolean(song.isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                          </Stack>
                           <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.25 }}>
                             {Array.isArray(song.artists)
                               ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')

@@ -57,11 +57,14 @@ import {
   Close as CloseIcon,
   Category as CategoryIcon,
   SecurityRounded as SecurityIcon,
+  SubtitlesRounded as LyricsIcon,
 } from '@mui/icons-material';
 
 import { Layout } from '../../components/Layout';
 import { songsApi, topicsApi, accountsApi } from '../../services/admin/admin.service';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
+import ArtistLyricsDialog from '../artist/ArtistLyricsDialog';
+import PremiumBadge from '../../components/common/ui/PremiumBadge';
 
 const Transition = forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -73,6 +76,7 @@ const emptyFormData = {
   topicId: '',
   lyrics: '',
   isPublic: true,
+  isPremium: false,
   imageUrl: '',
 };
 
@@ -90,6 +94,7 @@ function Songs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialog, setDeleteDialog] = useState({ open: false, song: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [lyricsDialog, setLyricsDialog] = useState({ open: false, song: null });
   const [topics, setTopics] = useState([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [dialogTab, setDialogTab] = useState(0);
@@ -229,6 +234,37 @@ function Songs() {
     }
   };
 
+  const handlePremiumChange = async (song) => {
+    const newStatus = !song.isPremium;
+    // Cập nhật trạng thái cục bộ ngay lập tức (Optimistic Update)
+    setSongs((prevSongs) =>
+      prevSongs.map((s) =>
+        s._id === song._id ? { ...s, isPremium: newStatus } : s
+      )
+    );
+
+    try {
+      await songsApi.updatePremium(song._id, newStatus);
+      showToast({
+        severity: 'success',
+        title: 'Thành công!',
+        message: newStatus
+          ? 'Đã chuyển bài hát sang Kho nhạc Premium (VIP).'
+          : 'Đã chuyển bài hát về chế độ Miễn phí.',
+      });
+    } catch (err) {
+      // Revert lại trạng thái cũ nếu gặp lỗi
+      setSongs((prevSongs) =>
+        prevSongs.map((s) =>
+          s._id === song._id ? { ...s, isPremium: song.isPremium } : s
+        )
+      );
+      const message = err.response?.data?.message || 'Cập nhật trạng thái Premium thất bại.';
+      setError(message);
+      showToast({ severity: 'error', title: 'Lỗi cập nhật', message });
+    }
+  };
+
   const openCreateDialog = () => {
     setEditingSong(null);
     setFormData(emptyFormData);
@@ -249,6 +285,7 @@ function Songs() {
       topicId: song.topicId?._id || song.topicId || '',
       lyrics: song.lyrics || '',
       isPublic: !!song.isPublic,
+      isPremium: !!song.isPremium,
       imageUrl: song.imageUrl || '',
     });
     setAudioFile(null);
@@ -304,6 +341,7 @@ function Songs() {
       payload.append('artist', formData.artists.join(', '));
       payload.append('lyrics', formData.lyrics || '');
       payload.append('isPublic', String(formData.isPublic));
+      payload.append('isPremium', String(Boolean(formData.isPremium)));
       payload.append('topicId', formData.topicId || '');
       if (audioFile) payload.append('audio', audioFile);
       if (imageFile) payload.append('image', imageFile);
@@ -513,6 +551,7 @@ function Songs() {
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Nguồn Upload</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Kiểm duyệt AI</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Công khai</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Premium (VIP)</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Ngày đăng</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 800, color: 'text.secondary', pr: 3 }}>Hành động</TableCell>
                   </TableRow>
@@ -520,7 +559,7 @@ function Songs() {
                 <TableBody>
                   {songs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 8, color: 'text.secondary' }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 8, color: 'text.secondary' }}>
                         Không có dữ liệu bài hát nào phù hợp.
                       </TableCell>
                     </TableRow>
@@ -536,7 +575,12 @@ function Songs() {
                             >
                               <MusicNoteIcon />
                             </Avatar>
-                            <Typography fontWeight={700} noWrap sx={{ maxWidth: 180 }}>{song.title}</Typography>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Stack direction="row" alignItems="center" spacing={0.8}>
+                                <Typography fontWeight={700} noWrap sx={{ maxWidth: 180 }}>{song.title}</Typography>
+                                {Boolean(song.isPremium) && <PremiumBadge />}
+                              </Stack>
+                            </Box>
                           </Box>
                         </TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>{song.artist}</TableCell>
@@ -612,6 +656,24 @@ function Songs() {
                             color="success"
                           />
                         </TableCell>
+                        <TableCell>
+                          <Stack direction="row" alignItems="center" spacing={0.8}>
+                            <Switch
+                              checked={Boolean(song.isPremium)}
+                              onChange={() => handlePremiumChange(song)}
+                              size="small"
+                              sx={{
+                                '& .MuiSwitch-switchBase.Mui-checked': {
+                                  color: '#e5ac18',
+                                },
+                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                  bgcolor: '#e5ac18 !important',
+                                },
+                              }}
+                            />
+                            {Boolean(song.isPremium) && <PremiumBadge />}
+                          </Stack>
+                        </TableCell>
                         <TableCell sx={{ color: 'text.secondary', fontWeight: 500 }}>{formatDate(song.createdAt)}</TableCell>
                         <TableCell align="right" sx={{ pr: 3 }}>
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
@@ -628,14 +690,19 @@ function Songs() {
                                 </IconButton>
                               </span>
                             </Tooltip>
-                            <Tooltip title="Nghe thử" arrow>
+                            <Tooltip title="Quản lý Lời bài hát (Lyrics & LRC)" arrow>
                               <IconButton
                                 size="small"
-                                color="success"
-                                onClick={() => window.open(song.audioUrl, '_blank')}
-                                sx={{ bgcolor: 'rgba(76,175,80,0.06)', borderRadius: 1.5, border: '1px solid rgba(76,175,80,0.1)' }}
+                                onClick={() => setLyricsDialog({ open: true, song })}
+                                sx={{
+                                  color: '#00bcd4',
+                                  bgcolor: 'rgba(0,188,212,0.08)',
+                                  borderRadius: 1.5,
+                                  border: '1px solid rgba(0,188,212,0.2)',
+                                  '&:hover': { bgcolor: '#00bcd4', color: '#fff' },
+                                }}
                               >
-                                <PlayIcon fontSize="small" />
+                                <LyricsIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Sửa bài hát" arrow>
@@ -975,7 +1042,7 @@ function Songs() {
                 )}
               </Box>
 
-              <Box sx={{ pt: 2.5 }}>
+              <Box sx={{ pt: 2.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -984,6 +1051,24 @@ function Songs() {
                     />
                   }
                   label="Đặt bài hát ở chế độ Công khai (Public)"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.isPremium}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, isPremium: e.target.checked }))}
+                      sx={{
+                        '& .Mui-checked': { color: '#e5ac18' },
+                        '& .Mui-checked + .MuiSwitch-track': { bgcolor: '#e5ac18 !important' },
+                      }}
+                    />
+                  }
+                  label={
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <span>Kho nhạc Premium (VIP)</span>
+                      <PremiumBadge />
+                    </Stack>
+                  }
                 />
               </Box>
             </Stack>
@@ -1186,6 +1271,13 @@ function Songs() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ArtistLyricsDialog
+        open={lyricsDialog.open}
+        song={lyricsDialog.song}
+        onClose={() => setLyricsDialog({ open: false, song: null })}
+        onSuccess={() => fetchSongs()}
+      />
     </Layout>
   );
 }

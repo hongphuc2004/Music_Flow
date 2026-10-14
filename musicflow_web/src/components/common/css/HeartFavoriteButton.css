@@ -1,0 +1,131 @@
+.heart-container {
+  --heart-color: rgb(255, 91, 137);
+  --heart-outline-color: rgba(255, 255, 255, 0.7);
+  --heart-size: 38px;
+  position: relative;
+  width: var(--heart-size);
+  height: var(--heart-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  vertical-align: middle;
+}
+
+.heart-container:hover {
+  transform: scale(1.12);
+}
+
+.heart-container:active {
+  transform: scale(0.92);
+}
+
+.heart-container .checkbox {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 20;
+  cursor: pointer;
+}
+
+.heart-container .svg-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  pointer-events: none;
+}
+
+.heart-container .svg-outline,
+.heart-container .svg-filled {
+  width: calc(var(--heart-size) * 0.65);
+  height: calc(var(--heart-size) * 0.65);
+  position: absolute;
+  transition: fill 0.25s ease, opacity 0.2s ease;
+}
+
+.heart-container .svg-outline {
+  fill: var(--heart-outline-color);
+  display: block;
+}
+
+.heart-container:hover .svg-outline {
+  fill: var(--heart-color);
+  opacity: 0.95;
+}
+
+.heart-container .svg-filled {
+  fill: var(--heart-color);
+  display: none;
+  filter: drop-shadow(0 2px 8px rgba(255, 91, 137, 0.45));
+}
+
+.heart-container .svg-celebrate {
+  position: absolute;
+  width: calc(var(--heart-size) * 1.6);
+  height: calc(var(--heart-size) * 1.6);
+  display: none;
+  stroke: var(--heart-color);
+  fill: var(--heart-color);
+  stroke-width: 2px;
+  pointer-events: none;
+}
+
+/* Khi active (đã thích) */
+.heart-container.is-active .svg-outline,
+.heart-container .checkbox:checked ~ .svg-container .svg-outline {
+  display: none;
+}
+
+.heart-container.is-active .svg-filled,
+.heart-container .checkbox:checked ~ .svg-container .svg-filled {
+  display: block;
+  animation: keyframes-svg-filled 0.8s ease;
+}
+
+.heart-container.is-active.is-celebrating .svg-celebrate,
+.heart-container .checkbox:checked ~ .svg-container .svg-celebrate {
+  display: block;
+  animation: keyframes-svg-celebrate 0.55s ease forwards;
+}
+
+@keyframes keyframes-svg-filled {
+  0% {
+    transform: scale(0);
+  }
+  28% {
+    transform: scale(1.28);
+  }
+  55% {
+    transform: scale(0.95);
+    filter: brightness(1.4);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes keyframes-svg-celebrate {
+  0% {
+    transform: scale(0);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+    display: none;
+  }
+}

@@ -136,3 +136,11 @@ export const clientNotificationsApi = {
 
 // Song stream url resolver
 export const resolveSongStreamUrl = (songId) => `${API_BASE_URL}/songs/${songId}/stream`;
+
+// Client Ads API
+export const clientAdsApi = {
+  checkNextAd: (songsPlayedCount = 0) => api.post('/ads/check-next', { songsPlayedCount }),
+  getBannerAds: () => api.get('/ads/banners'),
+  recordImpression: (adId) => api.post(`/ads/${adId}/impression`),
+  recordClick: (adId) => api.post(`/ads/${adId}/click`),
+};

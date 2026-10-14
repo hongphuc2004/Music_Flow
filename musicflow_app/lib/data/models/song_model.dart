@@ -15,6 +15,7 @@ class Song {
   final int? bitrate;
   final bool hasHighQualitySource;
   final int fileSize;
+  final bool isPremium;
 
   // Global cache of artist metadata to avoid circular dependencies
   static final Map<String, String> artistAvatars = {};
@@ -38,6 +39,7 @@ class Song {
     this.bitrate,
     this.hasHighQualitySource = false,
     this.fileSize = 0,
+    this.isPremium = false,
   });
 
   /// Có phải là bài hát chất lượng cao (320kbps trở lên hoặc lossless)
@@ -146,11 +148,20 @@ class Song {
 
     final audioMeta = json['audioMetadata'] is Map ? json['audioMetadata'] as Map : null;
     final audioFormat = audioMeta?['format']?.toString() ?? 'mp3';
-    final bitrate = (audioMeta?['bitrate'] as num?)?.toInt();
     final hasHighQualitySource =
         audioMeta?['hasHighQualitySource'] == true ||
         json['hasHighQualitySource'] == true;
-    final fileSize = (json['fileSize'] as num?)?.toInt() ?? 0;
+    final durationNum = json['duration'] is num
+        ? (json['duration'] as num).toDouble()
+        : double.tryParse(json['duration']?.toString() ?? '');
+    final bitrate = (audioMeta?['bitrate'] as num?)?.toInt() ??
+        int.tryParse(audioMeta?['bitrate']?.toString() ?? '');
+    final fileSize = (json['fileSize'] as num?)?.toInt() ??
+        int.tryParse(json['fileSize']?.toString() ?? '') ??
+        0;
+    final likeCount = (json['likeCount'] as num?)?.toInt() ??
+        int.tryParse(json['likeCount']?.toString() ?? '') ??
+        0;
 
     return Song(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -161,14 +172,15 @@ class Song {
       lyrics: (json['lyrics'] ?? '').toString(),
       uploadedBy: json['uploadedBy']?.toString(),
       isPublic: json['isPublic'] == true,
-      duration: json['duration'] != null ? (json['duration'] as num).toDouble() : null,
+      duration: durationNum,
       playCount: playCount,
-      likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+      likeCount: likeCount,
       topicIds: topicIds,
       audioFormat: audioFormat,
       bitrate: bitrate,
       hasHighQualitySource: hasHighQualitySource,
       fileSize: fileSize,
+      isPremium: json['isPremium'] == true,
     );
   }
 
@@ -192,6 +204,7 @@ class Song {
         'hasHighQualitySource': hasHighQualitySource,
       },
       'fileSize': fileSize,
+      'isPremium': isPremium,
     };
   }
 
@@ -208,6 +221,7 @@ class Song {
     int? bitrate,
     bool? hasHighQualitySource,
     int? fileSize,
+    bool? isPremium,
   }) {
     return Song(
       id: id,
@@ -226,6 +240,7 @@ class Song {
       bitrate: bitrate ?? this.bitrate,
       hasHighQualitySource: hasHighQualitySource ?? this.hasHighQualitySource,
       fileSize: fileSize ?? this.fileSize,
+      isPremium: isPremium ?? this.isPremium,
     );
   }
 }

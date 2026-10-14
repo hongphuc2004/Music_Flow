@@ -103,6 +103,9 @@ router.post("/:id/auto-tag", authMiddleware, songController.autoTagSong);
 // 🔄 TOGGLE PUBLIC/PRIVATE (AUTH REQUIRED - OWNER OR ARTIST)
 router.patch("/:id/toggle-public", authMiddleware, songController.togglePublic);
 
+// 💎 TOGGLE PREMIUM (AUTH REQUIRED - OWNER OR ARTIST)
+router.patch("/:id/toggle-premium", authMiddleware, songController.togglePremium);
+
 // 🗑️ DELETE SONG (AUTH REQUIRED - OWNER OR ARTIST)
 router.delete("/:id", authMiddleware, songController.deleteSong);
 

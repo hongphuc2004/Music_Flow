@@ -27,8 +27,9 @@ import {
   Headphones as HeadphonesIcon,
   ViewSidebarRounded as SidebarIcon,
   WorkspacePremiumRounded as PremiumIcon,
+  CampaignRounded as CampaignIcon,
 } from '@mui/icons-material';
-import useAppToast from '../../common/useAppToast';
+import useAppToast from '../../common/js/useAppToast';
 import { preloadRoute } from '../../../utils/routePreload';
 import { logout } from '../../../services/api';
 
@@ -42,6 +43,7 @@ const menuItems = [
   { text: 'Chủ Đề', icon: <CategoryIcon />, path: '/admin/topics' },
   { text: 'Playlists', icon: <PlaylistIcon />, path: '/admin/playlists' },
   { text: 'Premium', icon: <PremiumIcon />, path: '/admin/premium' },
+  { text: 'Quảng Cáo', icon: <CampaignIcon />, path: '/admin/advertisements' },
   { text: 'Cài Đặt', icon: <SettingsIcon />, path: '/admin/settings' },
 ];
 

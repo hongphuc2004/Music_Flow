@@ -21,7 +21,7 @@ import {
   LightModeRounded as LightModeIcon,
 } from '@mui/icons-material';
 import { styled, alpha } from '@mui/material/styles';
-import useAppToast from '../../common/useAppToast';
+import useAppToast from '../../common/js/useAppToast';
 import { logout } from '../../../services/api';
 import { ColorModeContext } from '../../../context/ColorModeContext';
 

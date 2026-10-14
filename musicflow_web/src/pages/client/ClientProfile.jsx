@@ -31,7 +31,7 @@ import {
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientUserApi, clientSongsApi, clientPlansApi, clientSubscriptionApi } from '../../services/client/client.service';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import { notifyClientSessionChanged } from '../../hooks/useClientSession';
 import { useNavigate } from 'react-router-dom';
@@ -80,7 +80,6 @@ function ClientProfile() {
     if (!isPremium) return 'BASIC';
     if (resolvedPlanName) {
       const upper = resolvedPlanName.toUpperCase();
-      if (upper.includes('GO')) return 'GO';
       if (upper.includes('PLUS')) return 'PLUS';
       if (upper.includes('PREMIUM')) return 'PREMIUM';
       return resolvedPlanName;
@@ -99,25 +98,13 @@ function ClientProfile() {
 
   const planQuota = useMemo(() => {
     switch (currentPlanBadge) {
-      case 'GO':
-        return {
-          uploadMax: 250,
-          uploadLabel: '250 MB',
-          downloadMax: 300,
-          downloadLabel: '300 MB',
-          aiRequests: '10 lượt/ngày',
-          soundQuality: 'Âm Thanh Tiêu Chuẩn 128kbps',
-          unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 250 MB',
-          descUpload: '🌟 Gói GO hỗ trợ tải lên bài hát tối đa 250 MB.',
-          descDownload: '🌟 Gói GO hỗ trợ tải bài hát về nghe offline tối đa 300 MB.',
-        };
       case 'PLUS':
         return {
           uploadMax: 500,
           uploadLabel: '500 MB',
           downloadMax: 700,
           downloadLabel: '700 MB',
-          aiRequests: '15 lượt/ngày',
+          aiRequests: '50 lượt/ngày',
           soundQuality: 'Âm Thanh HQ 320kbps',
           unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 500 MB',
           descUpload: '🌟 Gói PLUS hỗ trợ tải lên bài hát tối đa 500 MB.',
@@ -129,7 +116,7 @@ function ClientProfile() {
           uploadLabel: '1 GB',
           downloadMax: 1024,
           downloadLabel: '1 GB',
-          aiRequests: '20 lượt/ngày',
+          aiRequests: '100 lượt/ngày',
           soundQuality: 'Âm Thanh HQ 320kbps',
           unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 1 GB',
           descUpload: '🌟 Gói PREMIUM hỗ trợ tải lên bài hát tối đa 1 GB (1024 MB).',
@@ -141,7 +128,7 @@ function ClientProfile() {
           uploadLabel: '100 MB',
           downloadMax: 100,
           downloadLabel: '100 MB',
-          aiRequests: '5 lượt/ngày',
+          aiRequests: '3 lượt/ngày',
           soundQuality: 'Âm Thanh Tiêu Chuẩn 128kbps',
           unlimitedStorageLabel: 'Lưu Trữ Nhạc Tối Đa 100 MB',
           descUpload: '⚡ Bản miễn phí giới hạn tối đa 100 MB tải bài hát lên hệ thống.',
@@ -286,7 +273,7 @@ function ClientProfile() {
           <Box
             sx={{
               minHeight: { xs: 260, md: 220 },
-              borderRadius: '28px',
+              borderRadius: '16px',
               position: 'relative',
               overflow: 'hidden',
               backgroundImage: isPremium
@@ -401,7 +388,7 @@ function ClientProfile() {
                         sx={{
                           fontWeight: 900,
                           fontSize: 11,
-                          bgcolor: currentPlanBadge === 'GO' ? '#6c63ff' : currentPlanBadge === 'PLUS' ? '#7c3aed' : '#f59e0b',
+                          bgcolor: currentPlanBadge === 'PLUS' ? '#7c3aed' : '#f59e0b',
                           color: currentPlanBadge === 'PREMIUM' ? '#090d1a' : '#fff',
                           boxShadow: currentPlanBadge === 'PREMIUM' ? '0 4px 14px rgba(245, 158, 11, 0.4)' : '0 4px 14px rgba(108, 99, 255, 0.4)',
                         }}
@@ -477,7 +464,7 @@ function ClientProfile() {
                   elevation={0}
                   sx={{
                     p: 3.5,
-                    borderRadius: '24px',
+                    borderRadius: '14px',
                     bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                     backdropFilter: 'blur(16px)',
@@ -531,7 +518,7 @@ function ClientProfile() {
                   elevation={0}
                   sx={{
                     p: 3.5,
-                    borderRadius: '24px',
+                    borderRadius: '14px',
                     bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.65)' : '#ffffff',
                     border: isPremium ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(108, 99, 255, 0.3)',
                     position: 'relative',
@@ -634,7 +621,7 @@ function ClientProfile() {
                     <Box
                       sx={{
                         p: 2.5,
-                        borderRadius: '20px',
+                        borderRadius: '12px',
                         bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc',
                         border: '1px solid rgba(255, 255, 255, 0.06)',
                       }}
@@ -764,7 +751,7 @@ function ClientProfile() {
                 elevation={0}
                 sx={{
                   p: 3.5,
-                  borderRadius: '24px',
+                  borderRadius: '14px',
                   bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   backdropFilter: 'blur(16px)',

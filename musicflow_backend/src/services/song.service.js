@@ -215,7 +215,7 @@ const registerPlay = async (songId, req) => {
     if (updatedSong) {
       const newPlayCount = updatedSong.playCount || 0;
       const oldPlayCount = newPlayCount - 1;
-      const milestones = [1000, 10000, 50000, 100000, 500000, 1000000];
+      const milestones = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
       const crossedMilestone = milestones.find((m) => oldPlayCount < m && newPlayCount >= m);
 
       if (crossedMilestone && Array.isArray(updatedSong.artists) && updatedSong.artists.length > 0) {
@@ -310,10 +310,7 @@ const downloadSong = async (songId, userId) => {
 
     if (user && hasPremiumAccess(user)) {
       const planName = user.premiumPlan?.name || "";
-      if (planName === "Gói GO") {
-        downloadLimitBytes = 300 * 1024 * 1024; // GO: 300MB
-        planLabel = "Premium GO";
-      } else if (planName === "Gói PLUS") {
+      if (planName === "Gói PLUS") {
         downloadLimitBytes = 700 * 1024 * 1024; // PLUS: 700MB
         planLabel = "Premium PLUS";
       } else {
@@ -346,8 +343,10 @@ const downloadSong = async (songId, userId) => {
           ? `${(downloadLimitBytes / (1024 * 1024 * 1024)).toFixed(0)}GB`
           : `${(downloadLimitBytes / (1024 * 1024)).toFixed(0)}MB`;
 
-        const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải xuống. Bạn đã dùng ${(totalDownloadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp cần tải mới là ${(newDownloadSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải xuống thêm.`);
+        const err = new Error("Bạn đã sử dụng hết dung lượng tải nhạc offline. Nâng cấp gói để có thêm dung lượng.");
         err.status = 403;
+        err.code = "DOWNLOAD_QUOTA_EXCEEDED";
+        err.limitMbStr = limitMbStr;
         throw err;
       }
     }
@@ -512,10 +511,7 @@ const uploadSong = async (body, files, userId, userRole) => {
 
     if (user && hasPremiumAccess(user)) {
       const planName = user.premiumPlan?.name || "";
-      if (planName === "Gói GO") {
-        uploadLimitBytes = 250 * 1024 * 1024; // GO: 250MB
-        planLabel = "Premium GO";
-      } else if (planName === "Gói PLUS") {
+      if (planName === "Gói PLUS") {
         uploadLimitBytes = 500 * 1024 * 1024; // PLUS: 500MB
         planLabel = "Premium PLUS";
       } else {
@@ -535,8 +531,10 @@ const uploadSong = async (body, files, userId, userRole) => {
       const limitMbStr = uploadLimitBytes >= 1024 * 1024 * 1024
         ? `${(uploadLimitBytes / (1024 * 1024 * 1024)).toFixed(0)}GB`
         : `${(uploadLimitBytes / (1024 * 1024)).toFixed(0)}MB`;
-      const err = new Error(`Tài khoản ${planLabel} bị giới hạn ${limitMbStr} dung lượng tải lên. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp tải lên mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp gói cao hơn để tải thêm.`);
+      const err = new Error("🔒 Dung lượng lưu trữ đã đầy — nâng cấp gói để tiếp tục tải nhạc lên.");
       err.status = 403;
+      err.code = "STORAGE_QUOTA_EXCEEDED";
+      err.limitMbStr = limitMbStr;
       throw err;
     }
   }
@@ -567,13 +565,9 @@ const uploadSong = async (body, files, userId, userRole) => {
     if (totalUploadedBytes + newFileSize > maxStorageBytes) {
       safeUnlink(audioFile.path);
       if (imageFile) safeUnlink(imageFile.path);
-      const limitStr = isPro ? "5GB" : "500MB";
-      const err = new Error(
-        isPro
-          ? `Tài khoản Artist Studio Pro đã sử dụng hết hạn mức lưu trữ ${limitStr}. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB.`
-          : `Tài khoản Artist Free đã sử dụng hết hạn mức lưu trữ ${limitStr}. Bạn đã dùng ${(totalUploadedBytes / (1024 * 1024)).toFixed(1)}MB, tệp mới là ${(newFileSize / (1024 * 1024)).toFixed(1)}MB. Vui lòng nâng cấp Artist Studio Pro để nhận 5GB lưu trữ.`
-      );
+      const err = new Error("🔒 Dung lượng lưu trữ đã đầy — nâng cấp gói để tiếp tục tải nhạc lên.");
       err.status = 403;
+      err.code = "STORAGE_QUOTA_EXCEEDED";
       throw err;
     }
   }
@@ -620,6 +614,7 @@ const uploadSong = async (body, files, userId, userRole) => {
       source,
       uploadedBy: userId,
       isPublic: body.isPublic === "true" || body.isPublic === true,
+      isPremium: body.isPremium === "true" || body.isPremium === true,
       audioUrl: audio.secure_url,
       audioPublicId: audio.public_id,
       duration: audio.duration,
@@ -696,6 +691,8 @@ const updateSong = async (songId, body, files, userId, userRole) => {
   if (typeof body.topicIds !== "undefined") song.topicIds = parsedTopicIds;
   if (typeof body.isPublic !== "undefined")
     song.isPublic = body.isPublic === "true" || body.isPublic === true;
+  if (typeof body.isPremium !== "undefined")
+    song.isPremium = body.isPremium === "true" || body.isPremium === true;
 
   try {
     if (audioFile) {
@@ -771,6 +768,53 @@ const togglePublic = async (songId, userId) => {
   return {
     isPublic: song.isPublic,
     message: song.isPublic ? "Đã công khai bài hát" : "Đã chuyển sang riêng tư",
+  };
+};
+
+/**
+ * Toggle a song's isPremium flag.
+ * Only the uploader or an artist on the song may do this.
+ *
+ * @param {string} songId
+ * @param {string} userId
+ * @param {boolean} [requestedStatus]
+ * @returns {Promise<{ isPremium: boolean, message: string }>}
+ */
+const togglePremium = async (songId, userId, requestedStatus) => {
+  const song = await songRepo.findById(songId);
+  if (!song) {
+    const err = new Error("Không tìm thấy bài hát");
+    err.status = 404;
+    throw err;
+  }
+
+  const isUploader =
+    song.uploadedBy &&
+    (song.uploadedBy.toString() === userId ||
+      song.uploadedBy._id?.toString() === userId);
+  const isArtist =
+    song.artists &&
+    song.artists.some(
+      (a) => a.toString() === userId || a._id?.toString() === userId
+    );
+
+  if (!isUploader && !isArtist) {
+    const err = new Error("Bạn không có quyền thay đổi trạng thái Premium");
+    err.status = 403;
+    throw err;
+  }
+
+  song.isPremium =
+    typeof requestedStatus !== "undefined"
+      ? Boolean(requestedStatus)
+      : !song.isPremium;
+  await song.save();
+
+  return {
+    isPremium: song.isPremium,
+    message: song.isPremium
+      ? "Đã chuyển thành bài hát Premium (VIP)"
+      : "Đã chuyển thành bài hát thường (Miễn phí)",
   };
 };
 
@@ -1528,6 +1572,7 @@ module.exports = {
   uploadSong,
   updateSong,
   togglePublic,
+  togglePremium,
   deleteSong,
   getLyrics,
   getFlowchart,

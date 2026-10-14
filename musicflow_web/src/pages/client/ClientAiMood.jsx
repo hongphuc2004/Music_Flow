@@ -24,17 +24,21 @@ import {
   PlayArrowRounded as PlayIcon,
   PlayCircleRounded as PlayAllIcon,
   PersonRounded as UserIcon,
-  ExpandMoreRounded as ChevronIcon,
   MusicNoteRounded as MusicIcon,
   ChevronLeftRounded as CollapseIcon,
   HistoryRounded as HistoryIcon,
   DownloadRounded as DownloadIcon,
   OpenInNewRounded as OpenIcon,
+  MicRounded as MicIcon,
+  GraphicEqRounded as EqualizerIcon,
+  HeadphonesRounded as HeadphonesIcon,
+  QueueMusicRounded as PlaylistIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { useAssistant } from '../../features/assistant/AssistantProvider';
-import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
+import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import useClientSession from '../../hooks/useClientSession';
+import useVoiceRecognition from '../../hooks/useVoiceRecognition';
 
 const QUICK_PROMPTS = [
   { emoji: '🌧️', label: 'Nhạc buồn lofi', prompt: 'Nhạc buồn lofi cho đêm mưa' },
@@ -52,6 +56,183 @@ function _formatSongDuration(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// Format bot message content into structured music chips & highlighted cards
+function FormattedBotContent({ content }) {
+  if (!content) return null;
+  const lines = content.split('\n');
+
+  return (
+    <Stack spacing={0.75} sx={{ width: '100%' }}>
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <Box key={idx} sx={{ height: 4 }} />;
+        }
+
+        // Check if line is numbered song list: e.g. "1. Cô Đơn Trong Nhà Mình - Hoài Lâm"
+        const numberedMatch = trimmed.match(/^(\d+)[\.\)]\s*(.+)$/);
+        if (numberedMatch) {
+          const num = numberedMatch[1];
+          const rawTitle = numberedMatch[2];
+          const parts = rawTitle.split(/\s*-\s*/);
+          const title = parts[0];
+          const artist = parts.slice(1).join(' - ');
+
+          return (
+            <Box
+              key={idx}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                p: '8px 12px',
+                borderRadius: '12px',
+                bgcolor: (theme) =>
+                  theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)',
+                border: '1px solid',
+                borderColor: (theme) =>
+                  theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.22)' : 'rgba(139, 92, 246, 0.14)',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  bgcolor: (theme) =>
+                    theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.18)' : 'rgba(139, 92, 246, 0.12)',
+                  borderColor: '#8b5cf6',
+                  transform: 'translateX(4px)',
+                  boxShadow: '0 4px 14px rgba(139, 92, 246, 0.15)',
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                  color: '#ffffff',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 2px 6px rgba(124, 58, 237, 0.35)',
+                }}
+              >
+                {num}
+              </Box>
+              <MusicIcon sx={{ fontSize: 16, color: '#8b5cf6', flexShrink: 0 }} />
+              <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                <Typography
+                  component="span"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    color: 'text.primary',
+                  }}
+                >
+                  {title}
+                </Typography>
+                {artist && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      ml: 1,
+                      fontSize: '0.82rem',
+                      color: (theme) => (theme.palette.mode === 'dark' ? '#c084fc' : '#6b21a8'),
+                      fontWeight: 600,
+                    }}
+                  >
+                    — {artist}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          );
+        }
+
+        // Bullet point lines: e.g. "• Một đoạn lời bài hát..."
+        if (/^[•\-\*]\s*(.+)$/.test(trimmed)) {
+          const bulletText = trimmed.replace(/^[•\-\*]\s*/, '');
+          return (
+            <Stack key={idx} direction="row" spacing={1.25} alignItems="flex-start" sx={{ pl: 0.5, py: 0.25 }}>
+              <Box
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  bgcolor: '#8b5cf6',
+                  mt: '8px',
+                  flexShrink: 0,
+                  boxShadow: '0 0 8px rgba(139, 92, 246, 0.8)',
+                }}
+              />
+              <Typography
+                variant="body2"
+                sx={{
+                  lineHeight: 1.6,
+                  fontSize: '0.9rem',
+                  color: 'text.primary',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {bulletText}
+              </Typography>
+            </Stack>
+          );
+        }
+
+        // Quote line or lyrics mention
+        if (
+          trimmed.startsWith('Đoạn lời') ||
+          trimmed.startsWith('Lời bài hát') ||
+          trimmed.startsWith('>')
+        ) {
+          return (
+            <Box
+              key={idx}
+              sx={{
+                p: '10px 14px',
+                borderRadius: '10px',
+                borderLeft: '4px solid #8b5cf6',
+                bgcolor: (theme) =>
+                  theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.12)' : 'rgba(139, 92, 246, 0.08)',
+                my: 0.5,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  lineHeight: 1.6,
+                  fontSize: '0.92rem',
+                  color: 'text.primary',
+                  fontStyle: 'italic',
+                }}
+              >
+                {trimmed.replace(/^>\s*/, '')}
+              </Typography>
+            </Box>
+          );
+        }
+
+        // Regular text
+        return (
+          <Typography
+            key={idx}
+            variant="body2"
+            sx={{
+              lineHeight: 1.65,
+              fontSize: '0.925rem',
+              color: 'text.primary',
+              wordBreak: 'break-word',
+            }}
+          >
+            {trimmed}
+          </Typography>
+        );
+      })}
+    </Stack>
+  );
+}
 
 function PlaylistCard({ playlist, onPlaySong, onPlayAll }) {
   if (!playlist) return null;
@@ -62,16 +243,18 @@ function PlaylistCard({ playlist, onPlaySong, onPlayAll }) {
     <Paper
       elevation={0}
       sx={{
-        mt: 1.5,
-        borderRadius: 3,
+        mt: 2,
+        borderRadius: 3.5,
         overflow: 'hidden',
         border: '1px solid',
         borderColor: (theme) =>
-          theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.15)',
+          theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.35)' : 'rgba(139, 92, 246, 0.25)',
         background: (theme) =>
           theme.palette.mode === 'dark'
-            ? 'linear-gradient(135deg, rgba(30, 27, 75, 0.6), rgba(15, 23, 42, 0.8))'
-            : 'linear-gradient(135deg, #fefefe, #f5f3ff)',
+            ? 'linear-gradient(135deg, rgba(26, 20, 56, 0.75) 0%, rgba(15, 23, 42, 0.9) 100%)'
+            : 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)',
+        backdropFilter: 'blur(16px)',
+        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
       }}
     >
       {/* Header */}
@@ -79,46 +262,88 @@ function PlaylistCard({ playlist, onPlaySong, onPlayAll }) {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ px: 2, py: 1.25, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.05)' }}
+        sx={{
+          px: 2.25,
+          py: 1.5,
+          background: (theme) =>
+            theme.palette.mode === 'dark'
+              ? 'linear-gradient(90deg, rgba(124, 58, 237, 0.25) 0%, rgba(6, 182, 212, 0.1) 100%)'
+              : 'linear-gradient(90deg, rgba(124, 58, 237, 0.12) 0%, rgba(6, 182, 212, 0.05) 100%)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <SparklesIcon sx={{ fontSize: 16, color: '#8b5cf6' }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
-            {playlist.title || 'Mood Playlist'}
-          </Typography>
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.4)',
+            }}
+          >
+            <PlaylistIcon sx={{ fontSize: 18, color: '#fff' }} />
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.92rem', lineHeight: 1.2 }}>
+              {playlist.title || 'Mood Playlist'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+              {songs.length} bài hát được gợi ý
+            </Typography>
+          </Box>
         </Stack>
 
-        {isFallback && (
-          <Chip
-            label="Gợi ý gần nhất"
-            size="small"
-            sx={{ bgcolor: 'rgba(251,191,36,0.15)', color: '#f59e0b', fontWeight: 700, fontSize: 10 }}
-          />
-        )}
-        {!isFallback && songs.length > 0 && (
-          <Chip
-            label="Phù hợp"
-            size="small"
-            sx={{ bgcolor: 'rgba(139,92,246,0.15)', color: '#8b5cf6', fontWeight: 700, fontSize: 10 }}
-          />
-        )}
-        {songs.length > 0 && (
-          <Tooltip title="Phát tất cả">
-            <IconButton
+        <Stack direction="row" spacing={1} alignItems="center">
+          {isFallback && (
+            <Chip
+              label="Gợi ý gần nhất"
               size="small"
+              sx={{ bgcolor: 'rgba(251,191,36,0.18)', color: '#f59e0b', fontWeight: 800, fontSize: 10.5 }}
+            />
+          )}
+          {!isFallback && songs.length > 0 && (
+            <Chip
+              label="Khớp tâm trạng"
+              size="small"
+              sx={{ bgcolor: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontWeight: 800, fontSize: 10.5 }}
+            />
+          )}
+          {songs.length > 0 && (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<PlayAllIcon sx={{ fontSize: 16 }} />}
               onClick={() => onPlayAll(songs)}
-              sx={{ color: '#8b5cf6', '&:hover': { bgcolor: 'rgba(139,92,246,0.12)' } }}
+              sx={{
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: 'none',
+                px: 1.75,
+                py: 0.5,
+                boxShadow: '0 4px 12px rgba(124, 58, 237, 0.4)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #6d28d9, #4f46e5)',
+                  boxShadow: '0 6px 16px rgba(124, 58, 237, 0.6)',
+                  transform: 'scale(1.02)',
+                },
+              }}
             >
-              <PlayAllIcon />
-            </IconButton>
-          </Tooltip>
-        )}
+              Phát tất cả
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
-      <Divider />
-
       {/* Song list */}
-      <Stack spacing={0}>
+      <Stack spacing={0} sx={{ maxHeight: 320, overflowY: 'auto' }}>
         {songs.slice(0, 15).map((song, idx) => (
           <Stack
             key={song._id || idx}
@@ -128,42 +353,75 @@ function PlaylistCard({ playlist, onPlaySong, onPlayAll }) {
             onClick={() => onPlaySong(song, songs)}
             sx={{
               px: 2,
-              py: 1,
+              py: 1.25,
               cursor: 'pointer',
+              borderBottom: '1px solid',
+              borderColor: 'rgba(255, 255, 255, 0.04)',
               transition: 'all 0.2s ease',
               '&:hover': {
                 bgcolor: (theme) =>
-                  theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                  theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.12)' : 'rgba(139, 92, 246, 0.08)',
               },
-              '&:hover .song-play-indicator': { opacity: 1 },
+              '&:hover .song-play-indicator': { opacity: 1, transform: 'scale(1.05)' },
             }}
           >
+            <Box
+              sx={{
+                width: 22,
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'text.secondary',
+                textAlign: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {idx + 1}
+            </Box>
+
             <Avatar
               src={song.imageUrl || undefined}
               variant="rounded"
               sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 1.5,
+                width: 44,
+                height: 44,
+                borderRadius: 2,
                 flexShrink: 0,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.04)',
+                bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)'),
                 color: '#7c3aed',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
               }}
             >
               <MusicIcon sx={{ fontSize: 22 }} />
             </Avatar>
+
             <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-              <Typography variant="body2" noWrap sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+              <Typography variant="body2" noWrap sx={{ fontWeight: 700, fontSize: '0.88rem' }}>
                 {song.title}
               </Typography>
-              <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block', fontSize: '0.75rem' }}>
+              <Typography variant="caption" noWrap sx={{ color: 'text.secondary', display: 'block', fontSize: '0.78rem' }}>
                 {(song.artists || []).map((a) => a.name || a).join(', ') || 'Nhiều nghệ sĩ'}
               </Typography>
             </Box>
 
-            <Box className="song-play-indicator" sx={{ opacity: 0, transition: 'opacity 0.2s', flexShrink: 0 }}>
-              <IconButton size="small" sx={{ color: '#8b5cf6' }}>
-                <PlayIcon sx={{ fontSize: 20 }} />
+            <Box
+              className="song-play-indicator"
+              sx={{
+                opacity: 0,
+                transform: 'scale(0.9)',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+              }}
+            >
+              <IconButton
+                size="small"
+                sx={{
+                  color: '#fff',
+                  bgcolor: '#7c3aed',
+                  boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)',
+                  '&:hover': { bgcolor: '#6d28d9' },
+                }}
+              >
+                <PlayIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Box>
           </Stack>
@@ -189,72 +447,70 @@ function MessageBubble({ message, playlists, onPlaySong, onPlayAll }) {
     : '';
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', mb: 2.5 }}>
-      <Stack direction={isUser ? 'row-reverse' : 'row'} spacing={1.25} alignItems="flex-start">
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', mb: 3 }}>
+      <Stack direction={isUser ? 'row-reverse' : 'row'} spacing={1.5} alignItems="flex-start" sx={{ maxWidth: '100%' }}>
         {/* Avatar */}
         <Avatar
-          src={isUser && userAvatar ? userAvatar : undefined}
+          src={isUser ? (userAvatar || undefined) : '/ai-assistant-icon.png'}
           sx={{
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             flexShrink: 0,
             background: isUser
               ? 'linear-gradient(135deg, #7c3aed, #4f46e5)'
-              : 'linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)',
+              : 'transparent',
             boxShadow: isUser
-              ? '0 4px 12px rgba(124, 58, 237, 0.3)'
-              : '0 4px 14px rgba(139, 92, 246, 0.35)',
-            border: isUser ? '2px solid rgba(255,255,255,0.15)' : '2px solid rgba(139, 92, 246, 0.3)',
+              ? '0 4px 14px rgba(124, 58, 237, 0.35)'
+              : '0 4px 18px rgba(139, 92, 246, 0.45)',
+            border: isUser ? '2px solid rgba(255,255,255,0.2)' : '2px solid rgba(255, 255, 255, 0.4)',
           }}
         >
-          {isUser ? (
-            <UserIcon sx={{ fontSize: 18, color: '#fff' }} />
-          ) : (
-            <SparklesIcon sx={{ fontSize: 18, color: '#fff' }} />
-          )}
+          {isUser && <UserIcon sx={{ fontSize: 20, color: '#fff' }} />}
         </Avatar>
 
         {/* Content Box */}
-        <Box sx={{ maxWidth: imageUrl ? { xs: '100%', sm: 440 } : { xs: '88%', md: '75%' } }}>
+        <Box sx={{ maxWidth: imageUrl ? { xs: '100%', sm: 460 } : { xs: '90%', md: '80%' } }}>
           <Paper
             elevation={0}
             sx={{
-              p: imageUrl ? 1.5 : 2,
-              borderRadius: isUser ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+              p: imageUrl ? 1.75 : 2.25,
+              borderRadius: isUser ? '22px 4px 22px 22px' : '4px 22px 22px 22px',
               background: isUser
-                ? 'linear-gradient(135deg, #7c3aed, #6366f1)'
+                ? 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)'
                 : (theme) =>
                     theme.palette.mode === 'dark'
-                      ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95))'
-                      : 'linear-gradient(135deg, #ffffff, #f8fafc)',
+                      ? 'linear-gradient(135deg, rgba(22, 27, 46, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                      : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
               border: isUser ? 'none' : '1px solid',
               borderColor: (theme) =>
-                theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.25)' : 'rgba(226, 232, 240, 0.8)',
+                theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.25)' : 'rgba(226, 232, 240, 0.85)',
               boxShadow: (theme) =>
                 isUser
-                  ? '0 4px 16px rgba(124, 58, 237, 0.25)'
+                  ? '0 6px 20px rgba(124, 58, 237, 0.3)'
                   : theme.palette.mode === 'dark'
-                  ? '0 8px 24px rgba(0, 0, 0, 0.35)'
+                  ? '0 10px 30px rgba(0, 0, 0, 0.35), 0 0 12px rgba(139, 92, 246, 0.08)'
                   : '0 4px 20px rgba(0, 0, 0, 0.06)',
-              backdropFilter: 'blur(12px)',
+              backdropFilter: 'blur(16px)',
             }}
           >
             {cleanContent && (
-              <Typography
-                variant="body2"
-                sx={{
-                  color: isUser ? '#fff' : 'text.primary',
-                  lineHeight: 1.65,
-                  fontSize: '0.925rem',
-                  fontWeight: isUser ? 500 : 400,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  mb: imageUrl ? 1.5 : 0,
-                  px: imageUrl ? 0.5 : 0,
-                }}
-              >
-                {cleanContent}
-              </Typography>
+              isUser ? (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: '#ffffff',
+                    lineHeight: 1.65,
+                    fontSize: '0.94rem',
+                    fontWeight: 500,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {cleanContent}
+                </Typography>
+              ) : (
+                <FormattedBotContent content={cleanContent} />
+              )
             )}
 
             {/* Render AI Generated Image Showcase Card */}
@@ -267,13 +523,14 @@ function MessageBubble({ message, playlists, onPlaySong, onPlayAll }) {
                   boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
                   bgcolor: 'rgba(15, 23, 42, 0.6)',
                   width: '100%',
+                  mt: cleanContent ? 1.5 : 0,
                 }}
               >
                 <Box
                   sx={{
                     position: 'relative',
                     width: '100%',
-                    paddingTop: '100%', // 1:1 Aspect Ratio Square
+                    paddingTop: '100%', // 1:1 Aspect Ratio
                     overflow: 'hidden',
                     bgcolor: '#0f172a',
                     cursor: 'pointer',
@@ -398,48 +655,56 @@ function MessageBubble({ message, playlists, onPlaySong, onPlayAll }) {
 
 function ThinkingBubble() {
   return (
-    <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 2 }}>
+    <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2.5 }}>
       <Avatar
+        src="/ai-assistant-icon.png"
         sx={{
-          width: 34,
-          height: 34,
-          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899)',
-          boxShadow: (theme) => theme.palette.mode === 'dark' 
-            ? '0 2px 8px rgba(0,0,0,0.4)' 
-            : '0 2px 8px rgba(124,58,237,0.15)',
+          width: 40,
+          height: 40,
+          boxShadow: '0 4px 16px rgba(139, 92, 246, 0.4)',
+          border: '2px solid rgba(255, 255, 255, 0.35)',
         }}
-      >
-        <SparklesIcon sx={{ fontSize: 16, color: '#fff' }} />
-      </Avatar>
+      />
       <Paper
         elevation={0}
         sx={{
           px: 2.5,
-          py: 1.5,
-          borderRadius: '18px 18px 18px 4px',
+          py: 1.75,
+          borderRadius: '4px 20px 20px 20px',
           border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(31,41,55,0.8)' : 'rgba(255,255,255,0.85)',
+          borderColor: 'rgba(139, 92, 246, 0.25)',
+          background: (theme) =>
+            theme.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, rgba(22, 27, 46, 0.85), rgba(15, 23, 42, 0.95))'
+              : 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(16px)',
+          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
         }}
       >
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          {[0, 1, 2].map((i) => (
-            <Box
-              key={i}
-              sx={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                bgcolor: '#8b5cf6',
-                animation: 'bounce 1.2s ease-in-out infinite',
-                animationDelay: `${i * 0.18}s`,
-                '@keyframes bounce': {
-                  '0%, 80%, 100%': { transform: 'scale(0.6)', opacity: 0.4 },
-                  '40%': { transform: 'scale(1)', opacity: 1 },
-                },
-              }}
-            />
-          ))}
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          {/* Animated sound wave bars */}
+          <Stack direction="row" spacing={0.4} alignItems="center" sx={{ height: 18 }}>
+            {[0.4, 0.9, 0.6, 1.0, 0.5].map((h, i) => (
+              <Box
+                key={i}
+                sx={{
+                  width: 3,
+                  height: 16,
+                  borderRadius: 2,
+                  background: 'linear-gradient(to top, #7c3aed, #06b6d4)',
+                  animation: `equalizerWave 1.2s ease-in-out infinite alternate`,
+                  animationDelay: `${i * 0.18}s`,
+                  '@keyframes equalizerWave': {
+                    '0%': { transform: 'scaleY(0.3)' },
+                    '100%': { transform: 'scaleY(1)' },
+                  },
+                }}
+              />
+            ))}
+          </Stack>
+          <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
+            AI DJ đang phân tích cảm xúc & tìm kiếm giai điệu phù hợp...
+          </Typography>
         </Stack>
       </Paper>
     </Stack>
@@ -447,9 +712,10 @@ function ThinkingBubble() {
 }
 
 export default function ClientAiMood() {
-  const { playSong } = useClientPlayerActions();
-  const chatEndRef = useRef(null);
-
+  const { isPlaying } = useClientPlayer();
+  const { playSong, pauseSong, resumeSong } = useClientPlayerActions();
+  const wasPlayingRef = useRef(false);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
 
   const {
@@ -473,19 +739,80 @@ export default function ClientAiMood() {
     () => localStorage.getItem('musicflow-ai-history-open') !== 'false'
   );
 
+  const {
+    isSupported: isVoiceSupported,
+    isListening: isVoiceListening,
+    startListening: startVoiceListening,
+    stopListening: stopVoiceListening,
+  } = useVoiceRecognition();
+
+  const handleToggleVoice = () => {
+    if (isVoiceListening) {
+      stopVoiceListening();
+      if (wasPlayingRef.current) {
+        wasPlayingRef.current = false;
+        resumeSong?.();
+      }
+      return;
+    }
+    if (!isVoiceSupported) {
+      setError('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API.');
+      return;
+    }
+
+    if (isPlaying) {
+      wasPlayingRef.current = true;
+      pauseSong?.();
+    } else {
+      wasPlayingRef.current = false;
+    }
+
+    setError('');
+    startVoiceListening({
+      lang: 'vi-VN',
+      silenceTimeoutMs: 1400,
+      onResult: (text) => {
+        setPrompt(text);
+      },
+      onEnd: (cleanedText, rawText) => {
+        if (wasPlayingRef.current) {
+          wasPlayingRef.current = false;
+          resumeSong?.();
+        }
+        const text = cleanedText || rawText || '';
+        if (text) {
+          setPrompt(text);
+          inputRef.current?.focus();
+        }
+      },
+      onError: (err) => {
+        if (wasPlayingRef.current) {
+          wasPlayingRef.current = false;
+          resumeSong?.();
+        }
+        setError(err.message);
+      },
+    });
+  };
+
   const setHistoryPanelVisibility = (open) => {
     setHistoryPanelOpen(open);
     localStorage.setItem('musicflow-ai-history-open', String(open));
   };
 
-  const scrollToBottom = useCallback(() => {
+  // Cuộn nội bộ trong container tin nhắn, KHÔNG gọi scrollIntoView để tránh làm trôi cả trang web
+  const scrollToBottom = useCallback((smooth = true) => {
     requestAnimationFrame(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: smooth ? 'smooth' : 'auto',
+        });
+      }
     });
   }, []);
 
   const { isLoggedIn, userId } = useClientSession();
-
   const hasInitializedRef = useRef(false);
 
   // Load history on mount or when session changes
@@ -521,18 +848,11 @@ export default function ClientAiMood() {
     return () => {
       isSubscribed = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, userId, setScope, loadConversations, loadConversationDetail]);
 
-
-
-
-
-
-  // Load conversation details when active conversation changes or when click history
   const loadConversation = async (conversationId) => {
     await loadConversationDetail(conversationId);
-    setTimeout(scrollToBottom, 100);
+    // Khi người dùng bấm chọn 1 cuộc hội thoại cũ, giữ nguyên viewport trang web (không ép cuộn màn hình)
   };
 
   const handleSend = async (overridePrompt) => {
@@ -543,7 +863,7 @@ export default function ClientAiMood() {
     setError('');
     
     await sendMessage(text);
-    setTimeout(scrollToBottom, 100);
+    setTimeout(() => scrollToBottom(true), 100);
   };
 
   const handleNewConversation = () => {
@@ -570,169 +890,244 @@ export default function ClientAiMood() {
   const isEmpty = messages.length === 0 && playlists.length === 0 && !isHistoryLoading;
 
   return (
-    <ClientLayout title="AI Mood Music">
+    <ClientLayout title="AI Mood DJ">
       <Box
         sx={{
           display: 'flex',
           gap: 2.5,
-          height: 'calc(100vh - 140px)',
-          minHeight: 500,
+          height: 'calc(100vh - 130px)',
+          minHeight: 560,
+          position: 'relative',
         }}
       >
         {/* ── LEFT PANEL: Conversation History ── */}
         {historyPanelOpen && (
-        <Paper
-          sx={{
-            width: { xs: 0, md: 280 },
-            display: { xs: 'none', md: 'flex' },
-            flexDirection: 'column',
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          {/* Header */}
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={1}
+          <Paper
+            elevation={0}
             sx={{
-              px: 2,
-              py: 1.75,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(99,102,241,0.08))',
-              borderBottom: '1px solid',
+              width: { xs: 0, md: 290 },
+              display: { xs: 'none', md: 'flex' },
+              flexDirection: 'column',
+              borderRadius: 4,
+              border: '1px solid',
               borderColor: 'divider',
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(15, 20, 36, 0.75)' : 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(16px)',
+              overflow: 'hidden',
+              flexShrink: 0,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
             }}
           >
-            <SparklesIcon sx={{ color: '#8b5cf6', fontSize: 20 }} />
-            <Typography fontWeight={800} fontSize={14} sx={{ flexGrow: 1 }}>
-              Cuộc trò chuyện
-            </Typography>
-            <Tooltip title="Cuộc trò chuyện mới">
-              <IconButton
-                size="small"
-                onClick={handleNewConversation}
+            {/* Header */}
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{
+                px: 2.25,
+                py: 2,
+                background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(6, 182, 212, 0.08) 100%)',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Box
                 sx={{
-                  color: '#8b5cf6',
-                  '&:hover': { bgcolor: 'rgba(139,92,246,0.12)' },
+                  width: 32,
+                  height: 32,
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)',
                 }}
               >
-                <AddIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Đóng lịch sử trò chuyện">
-              <IconButton
-                size="small"
-                onClick={() => setHistoryPanelVisibility(false)}
-                sx={{ color: 'text.secondary' }}
-              >
-                <CollapseIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-
-          {/* List */}
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1 }}>
-            {isHistoryLoading ? (
-              <Stack spacing={1} sx={{ p: 1 }}>
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} variant="rounded" height={48} sx={{ borderRadius: 2 }} />
-                ))}
-              </Stack>
-            ) : conversations.length === 0 ? (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 4 }}>
-                Chưa có cuộc trò chuyện nào
+                <HistoryIcon sx={{ color: '#fff', fontSize: 18 }} />
+              </Box>
+              <Typography fontWeight={800} fontSize={14.5} sx={{ flexGrow: 1, letterSpacing: -0.2 }}>
+                Lịch sử cuộc trò chuyện
               </Typography>
-            ) : (
-              <Stack spacing={0.5}>
-                {conversations.map((conv) => {
-                  const isActive = conv._id === activeConversationId;
-                  return (
-                    <Stack
-                      key={conv._id}
-                      direction="row"
-                      alignItems="center"
-                      onClick={() => loadConversation(conv._id)}
-                      sx={{
-                        px: 1.5,
-                        py: 1.25,
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        bgcolor: isActive
-                          ? 'rgba(139,92,246,0.12)'
-                          : 'transparent',
-                        borderLeft: isActive ? '3px solid #8b5cf6' : '3px solid transparent',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
+
+              <Tooltip title="Thu gọn danh sách">
+                <IconButton
+                  size="small"
+                  onClick={() => setHistoryPanelVisibility(false)}
+                  sx={{
+                    color: 'text.secondary',
+                    borderRadius: '8px',
+                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.08)' },
+                  }}
+                >
+                  <CollapseIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+
+            {/* New Conversation Button */}
+            <Box sx={{ p: 1.5, pb: 1 }}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleNewConversation}
+                sx={{
+                  py: 1.1,
+                  borderRadius: 3,
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  textTransform: 'none',
+                  boxShadow: '0 4px 16px rgba(124, 58, 237, 0.35)',
+                  transition: 'all 0.25s ease',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 6px 20px rgba(124, 58, 237, 0.5)',
+                  },
+                }}
+              >
+                Cuộc trò chuyện mới
+              </Button>
+            </Box>
+
+            {/* List */}
+            <Box
+              sx={{
+                flexGrow: 1,
+                overflowY: 'auto',
+                px: 1.25,
+                py: 0.5,
+                '&::-webkit-scrollbar': { width: '4px' },
+                '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(139, 92, 246, 0.25)', borderRadius: '4px' },
+              }}
+            >
+              {isHistoryLoading ? (
+                <Stack spacing={1} sx={{ p: 1 }}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} variant="rounded" height={44} sx={{ borderRadius: 2.5 }} />
+                  ))}
+                </Stack>
+              ) : conversations.length === 0 ? (
+                <Stack alignItems="center" justifyContent="center" sx={{ height: '60%', textAlign: 'center', px: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: 12 }}>
+                    Chưa có cuộc trò chuyện nào. Hãy bắt đầu chia sẻ tâm trạng của bạn!
+                  </Typography>
+                </Stack>
+              ) : (
+                <Stack spacing={0.75}>
+                  {conversations.map((conv) => {
+                    const isActive = conv._id === activeConversationId;
+                    return (
+                      <Stack
+                        key={conv._id}
+                        direction="row"
+                        alignItems="center"
+                        onClick={() => loadConversation(conv._id)}
+                        sx={{
+                          px: 1.5,
+                          py: 1.2,
+                          borderRadius: 2.5,
+                          cursor: 'pointer',
                           bgcolor: isActive
-                            ? 'rgba(139,92,246,0.15)'
-                            : (theme) => theme.palette.mode === 'dark'
-                              ? 'rgba(255,255,255,0.04)'
-                              : 'rgba(0,0,0,0.03)',
-                        },
-                      }}
-                    >
-                      <Typography
-                        variant="body2"
-                        fontWeight={isActive ? 700 : 500}
-                        noWrap
-                        sx={{
-                          flexGrow: 1,
-                          fontSize: 13,
-                          color: isActive ? '#8b5cf6' : 'text.primary',
+                            ? (theme) =>
+                                theme.palette.mode === 'dark'
+                                  ? 'rgba(139, 92, 246, 0.2)'
+                                  : 'rgba(139, 92, 246, 0.12)'
+                            : 'transparent',
+                          border: '1px solid',
+                          borderColor: isActive ? 'rgba(139, 92, 246, 0.45)' : 'transparent',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          '&:hover': {
+                            bgcolor: isActive
+                              ? 'rgba(139, 92, 246, 0.25)'
+                              : (theme) =>
+                                  theme.palette.mode === 'dark'
+                                    ? 'rgba(255, 255, 255, 0.05)'
+                                    : 'rgba(0, 0, 0, 0.04)',
+                            transform: 'translateX(2px)',
+                          },
                         }}
                       >
-                        {conv.title || 'Mood Music'}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv._id); }}
-                        sx={{
-                          opacity: 0,
-                          ml: 0.5,
-                          color: 'text.secondary',
-                          '.MuiStack-root:hover &': { opacity: 1 },
-                          '&:hover': { color: '#ef4444' },
-                          transition: 'opacity 0.15s ease',
-                        }}
-                      >
-                        <DeleteIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </Stack>
-                  );
-                })}
-              </Stack>
-            )}
-          </Box>
-        </Paper>
+                        <MusicIcon
+                          sx={{
+                            fontSize: 16,
+                            color: isActive ? '#a78bfa' : 'text.secondary',
+                            mr: 1,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Typography
+                          variant="body2"
+                          fontWeight={isActive ? 700 : 500}
+                          noWrap
+                          sx={{
+                            flexGrow: 1,
+                            fontSize: 13,
+                            color: isActive ? (theme) => (theme.palette.mode === 'dark' ? '#c084fc' : '#6b21a8') : 'text.primary',
+                          }}
+                        >
+                          {conv.title || 'Mood Music'}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteConversation(conv._id);
+                          }}
+                          sx={{
+                            opacity: 0,
+                            p: 0.5,
+                            ml: 0.5,
+                            color: 'text.secondary',
+                            '.MuiStack-root:hover &': { opacity: 1 },
+                            '&:hover': { color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.1)' },
+                            transition: 'opacity 0.15s ease',
+                          }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Stack>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
+          </Paper>
         )}
 
-        {/* ── RIGHT PANEL: Chat Area ── */}
+        {/* ── RIGHT PANEL: Main Chat Area ── */}
         <Stack sx={{ flexGrow: 1, minWidth: 0 }} spacing={0}>
           <Paper
+            elevation={0}
             sx={{
               flexGrow: 1,
               display: 'flex',
               flexDirection: 'column',
-              borderRadius: 3,
+              borderRadius: 4,
               border: '1px solid',
               borderColor: 'divider',
-              bgcolor: 'background.paper',
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(13, 17, 31, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(20px)',
               overflow: 'hidden',
+              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)',
             }}
           >
             {/* Chat header */}
             <Stack
               direction="row"
               alignItems="center"
-              spacing={1.5}
+              spacing={1.75}
               sx={{
-                px: 2.5,
-                py: 1.75,
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(20,184,166,0.06))',
+                px: { xs: 2, md: 3 },
+                py: 2,
+                background: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.16) 0%, rgba(6, 182, 212, 0.08) 100%)'
+                    : 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(6, 182, 212, 0.04) 100%)',
                 borderBottom: '1px solid',
                 borderColor: 'divider',
                 flexShrink: 0,
@@ -744,119 +1139,221 @@ export default function ClientAiMood() {
                     size="small"
                     onClick={() => setHistoryPanelVisibility(true)}
                     sx={{
-                      color: '#8b5cf6',
-                      bgcolor: 'rgba(139,92,246,0.1)',
-                      '&:hover': { bgcolor: 'rgba(139,92,246,0.18)' },
+                      color: '#a78bfa',
+                      bgcolor: 'rgba(139, 92, 246, 0.15)',
+                      borderRadius: 2.5,
+                      p: 1,
+                      '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.25)', transform: 'scale(1.05)' },
                     }}
                   >
                     <HistoryIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               )}
+
               <Box
                 sx={{
-                  width: 36,
-                  height: 36,
+                  position: 'relative',
+                  width: 46,
+                  height: 46,
                   borderRadius: '50%',
-                  bgcolor: 'rgba(139,92,246,0.15)',
-                  border: '1px solid rgba(139,92,246,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(124, 58, 237, 0.45)',
+                  flexShrink: 0,
+                  border: '2px solid rgba(255, 255, 255, 0.45)',
+                  overflow: 'hidden',
                 }}
               >
-                <SparklesIcon sx={{ color: '#8b5cf6', fontSize: 20 }} />
+                <Box
+                  component="img"
+                  src="/ai-assistant-icon.png"
+                  alt="AI Mood DJ"
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+                {/* Active Indicator Pulse */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    bgcolor: '#10b981',
+                    border: '2px solid #0f172a',
+                    boxShadow: '0 0 8px #10b981',
+                  }}
+                />
               </Box>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography fontWeight={800} fontSize={15}>
-                  AI Mood Music
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Mô tả cảm xúc · AI gợi ý nhạc từ thư viện · Kiến thức có thể chưa cập nhật sự kiện mới nhất
+
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Typography fontWeight={900} fontSize={{ xs: 15, md: 17 }} sx={{ letterSpacing: -0.3 }}>
+                    AI Mood Music DJ
+                  </Typography>
+                  <Chip
+                    label="GEMINI 2.5"
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: 10,
+                      fontWeight: 800,
+                      background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(6, 182, 212, 0.25))',
+                      color: '#a78bfa',
+                      border: '1px solid rgba(139, 92, 246, 0.35)',
+                    }}
+                  />
+                </Stack>
+                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontSize: 12, mt: 0.2 }}>
+                  Mô tả cảm xúc · AI gợi ý nhạc chuẩn xác từ kho MusicFlow theo thời gian thực
                 </Typography>
               </Box>
 
-
+              <Tooltip title="Bắt đầu phiên trò chuyện mới">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={handleNewConversation}
+                  sx={{
+                    borderRadius: 20,
+                    borderColor: 'rgba(139, 92, 246, 0.4)',
+                    color: (theme) => (theme.palette.mode === 'dark' ? '#c084fc' : '#7c3aed'),
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    px: 1.75,
+                    display: { xs: 'none', sm: 'inline-flex' },
+                    '&:hover': {
+                      borderColor: '#7c3aed',
+                      bgcolor: 'rgba(139, 92, 246, 0.1)',
+                    },
+                  }}
+                >
+                  Đoạn chat mới
+                </Button>
+              </Tooltip>
             </Stack>
 
             {/* Messages area */}
             <Box
+              ref={messagesContainerRef}
               sx={{
                 flexGrow: 1,
                 overflowY: 'auto',
-                p: { xs: 1.5, md: 2.5 },
+                p: { xs: 2, md: 3 },
                 display: 'flex',
                 flexDirection: 'column',
+                '&::-webkit-scrollbar': { width: '5px' },
+                '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(139, 92, 246, 0.2)', borderRadius: '4px' },
               }}
             >
               {isHistoryLoading ? (
-                <Stack spacing={2} sx={{ p: 1 }}>
+                <Stack spacing={2.5} sx={{ p: 1 }}>
                   {[1, 2, 3].map((i) => (
-                    <Stack key={i} direction={i % 2 === 0 ? 'row-reverse' : 'row'} spacing={1} alignItems="flex-start">
-                      <Skeleton variant="circular" width={32} height={32} />
-                      <Skeleton variant="rounded" width={`${40 + i * 12}%`} height={48} sx={{ borderRadius: 3 }} />
+                    <Stack key={i} direction={i % 2 === 0 ? 'row-reverse' : 'row'} spacing={1.5} alignItems="flex-start">
+                      <Skeleton variant="circular" width={40} height={40} />
+                      <Skeleton variant="rounded" width={`${45 + i * 15}%`} height={64} sx={{ borderRadius: 3 }} />
                     </Stack>
                   ))}
                 </Stack>
               ) : isEmpty ? (
-                /* Empty state */
-                <Stack alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: 4, textAlign: 'center' }}>
+                /* Hero Empty state */
+                <Stack alignItems="center" justifyContent="center" sx={{ flexGrow: 1, py: { xs: 3, md: 6 }, textAlign: 'center' }}>
+                  {/* Glowing Pulse Aura with AI Headset Icon */}
                   <Box
                     sx={{
-                      width: 80,
-                      height: 80,
+                      position: 'relative',
+                      width: 96,
+                      height: 96,
                       borderRadius: '50%',
-                      bgcolor: 'rgba(139,92,246,0.1)',
-                      border: '2px solid rgba(139,92,246,0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mb: 2.5,
-                      animation: 'pulse 2s ease-in-out infinite',
-                      '@keyframes pulse': {
-                        '0%, 100%': { boxShadow: '0 0 0 0 rgba(139,92,246,0.3)' },
-                        '50%': { boxShadow: '0 0 0 12px rgba(139,92,246,0)' },
+                      p: 0.5,
+                      border: '3px solid rgba(255, 255, 255, 0.45)',
+                      boxShadow: '0 10px 40px rgba(124, 58, 237, 0.55), 0 0 25px rgba(6, 182, 212, 0.35)',
+                      mb: 3,
+                      animation: 'heroPulse 3s infinite ease-in-out',
+                      '@keyframes heroPulse': {
+                        '0%, 100%': { transform: 'scale(1)', boxShadow: '0 10px 40px rgba(124, 58, 237, 0.55)' },
+                        '50%': { transform: 'scale(1.06)', boxShadow: '0 14px 50px rgba(6, 182, 212, 0.65)' },
                       },
                     }}
                   >
-                    <SparklesIcon sx={{ fontSize: 40, color: '#8b5cf6' }} />
+                    <Box
+                      component="img"
+                      src="/ai-assistant-icon.png"
+                      alt="AI DJ"
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
                   </Box>
-                  <Typography variant="h6" fontWeight={800} gutterBottom>
-                    Bạn đang cảm thấy thế nào?
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 380, mb: 3 }}>
-                    Hãy mô tả cảm xúc hoặc trạng thái của bạn, AI sẽ phân tích và gợi ý những bài nhạc phù hợp nhất từ thư viện MusicFlow.
+
+                  <Typography variant="h5" fontWeight={900} gutterBottom sx={{ letterSpacing: -0.5 }}>
+                    Hôm nay tâm trạng của bạn thế nào?
                   </Typography>
 
-                  {/* Quick prompts */}
-                  <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="center" sx={{ maxWidth: 520 }}>
+                  <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mb: 4, lineHeight: 1.6, fontSize: '0.96rem' }}>
+                    Hãy chia sẻ một câu chuyện, cảm xúc hoặc giai điệu bạn đang nhớ — AI DJ sẽ lắng nghe và gợi ý những bản nhạc chạm đúng trái tim bạn.
+                  </Typography>
+
+                  {/* Quick Prompts Grid */}
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                      gap: 1.5,
+                      maxWidth: 640,
+                      width: '100%',
+                    }}
+                  >
                     {QUICK_PROMPTS.map((qp) => (
-                      <Chip
+                      <Paper
                         key={qp.label}
-                        label={`${qp.emoji} ${qp.label}`}
                         onClick={() => handleSend(qp.prompt)}
-                        clickable
+                        elevation={0}
                         sx={{
-                          fontWeight: 650,
-                          fontSize: 13,
-                          py: 2,
-                          px: 1,
-                          borderRadius: '9999px',
+                          p: 1.75,
+                          borderRadius: 3,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
                           border: '1px solid',
-                          borderColor: 'rgba(108, 99, 255, 0.3)',
-                          bgcolor: 'rgba(108, 99, 255, 0.08)',
-                          color: 'text.primary',
-                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          borderColor: (theme) =>
+                            theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.15)',
+                          bgcolor: (theme) =>
+                            theme.palette.mode === 'dark' ? 'rgba(26, 21, 51, 0.6)' : 'rgba(245, 243, 255, 0.7)',
+                          backdropFilter: 'blur(10px)',
+                          transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
                           '&:hover': {
-                            bgcolor: 'rgba(108, 99, 255, 0.18)',
-                            borderColor: '#6c63ff',
-                            transform: 'translateY(-2px)',
-                            boxShadow: '0 4px 12px rgba(108, 99, 255, 0.25)',
+                            borderColor: '#8b5cf6',
+                            transform: 'translateY(-3px)',
+                            bgcolor: (theme) =>
+                              theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.12)',
+                            boxShadow: '0 8px 24px rgba(124, 58, 237, 0.25)',
                           },
                         }}
-                      />
+                      >
+                        <Typography sx={{ fontSize: 24 }}>{qp.emoji}</Typography>
+                        <Box sx={{ textAlign: 'left', minWidth: 0 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 13.5 }}>
+                            {qp.label}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11, display: 'block' }} noWrap>
+                            {qp.prompt}
+                          </Typography>
+                        </Box>
+                      </Paper>
                     ))}
-                  </Stack>
+                  </Box>
                 </Stack>
               ) : (
                 <>
@@ -872,34 +1369,37 @@ export default function ClientAiMood() {
                   {isLoading && <ThinkingBubble />}
                 </>
               )}
-              <div ref={chatEndRef} />
             </Box>
 
-            {/* Error */}
+            {/* Error banner */}
             {error && (
               <Alert
                 severity="error"
                 onClose={() => setError('')}
-                sx={{ mx: 2, mb: 1, borderRadius: 2 }}
+                sx={{ mx: 2.5, mb: 1.5, borderRadius: 3 }}
               >
                 {error}
               </Alert>
             )}
 
-            {/* Input area */}
+            {/* Input Dock */}
             <Box
               sx={{
-                px: { xs: 1.5, md: 2.5 },
-                pb: 2,
+                px: { xs: 2, md: 3 },
+                pb: 2.5,
                 pt: 1.5,
                 borderTop: '1px solid',
                 borderColor: 'divider',
                 flexShrink: 0,
+                background: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(180deg, rgba(13, 17, 31, 0.4) 0%, rgba(13, 17, 31, 0.95) 100%)'
+                    : 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.95) 100%)',
               }}
             >
-              {/* Quick prompts when chat is active */}
+              {/* Quick Mood Pills while in active conversation */}
               {!isEmpty && (
-                <Stack direction="row" spacing={0.75} sx={{ mb: 1.25, flexWrap: 'wrap', gap: 0.75 }}>
+                <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: 'wrap', gap: 0.75 }}>
                   {QUICK_PROMPTS.slice(0, 4).map((qp) => (
                     <Chip
                       key={qp.label}
@@ -909,19 +1409,105 @@ export default function ClientAiMood() {
                       clickable
                       disabled={isLoading}
                       sx={{
-                        fontSize: 11,
-                        fontWeight: 650,
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        py: 1.8,
+                        px: 0.5,
                         borderRadius: '9999px',
                         border: '1px solid',
-                        borderColor: 'divider',
-                        '&:hover': { borderColor: '#6c63ff', bgcolor: 'rgba(108, 99, 255, 0.08)' },
+                        borderColor: (theme) =>
+                          theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)',
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          borderColor: '#8b5cf6',
+                          bgcolor: 'rgba(139, 92, 246, 0.18)',
+                          transform: 'translateY(-1px)',
+                        },
                       }}
                     />
                   ))}
                 </Stack>
               )}
 
-              <Stack direction="row" spacing={1.25} alignItems="flex-end">
+              {/* Live Voice Status Banner */}
+              {isVoiceListening && (
+                <Box
+                  sx={{
+                    mb: 1.5,
+                    p: 1.5,
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.75,
+                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(139, 92, 246, 0.15))',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    boxShadow: '0 4px 20px rgba(239, 68, 68, 0.15)',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      bgcolor: 'error.main',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'pulseVoice 1.4s infinite ease-in-out',
+                      '@keyframes pulseVoice': {
+                        '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.6)' },
+                        '50%': { transform: 'scale(1.12)', boxShadow: '0 0 0 10px rgba(239, 68, 68, 0)' },
+                        '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0)' },
+                      },
+                    }}
+                  >
+                    <MicIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary', fontSize: 13.5 }}>
+                      AI DJ đang lắng nghe cảm xúc của bạn...
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 12 }}>
+                      {prompt ? `"${prompt}"` : 'Hãy nói câu hát, tên ca sĩ hoặc tâm trạng hiện tại của bạn...'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="error"
+                    onClick={stopVoiceListening}
+                    sx={{ borderRadius: 20, fontSize: 11.5, fontWeight: 700, textTransform: 'none', px: 2 }}
+                  >
+                    Hoàn tất
+                  </Button>
+                </Box>
+              )}
+
+              {/* Main Text Input & Actions */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  gap: 1.25,
+                  p: '6px 8px 6px 14px',
+                  borderRadius: 4,
+                  bgcolor: (theme) =>
+                    theme.palette.mode === 'dark' ? 'rgba(25, 30, 50, 0.7)' : 'rgba(241, 245, 249, 0.9)',
+                  border: '1.5px solid',
+                  borderColor: (theme) =>
+                    theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)',
+                  transition: 'all 0.25s ease',
+                  '&:focus-within': {
+                    borderColor: '#8b5cf6',
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(25, 30, 50, 0.95)' : '#ffffff',
+                    boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)',
+                  },
+                }}
+              >
                 <TextField
                   inputRef={inputRef}
                   fullWidth
@@ -936,36 +1522,70 @@ export default function ClientAiMood() {
                     }
                   }}
                   disabled={isLoading}
-                  placeholder="Ví dụ: Nhạc buồn lofi cho đêm mưa, hoặc nhạc của Sơn Tùng..."
+                  placeholder={
+                    isVoiceListening
+                      ? 'Đang nhận diện giọng nói của bạn...'
+                      : 'Ví dụ: Nhạc buồn lofi cho đêm mưa, hoặc bài hát có lời Điều anh hối tiếc nhất...'
+                  }
+                  variant="standard"
                   InputProps={{
+                    disableUnderline: true,
                     sx: {
-                      borderRadius: 3,
-                      fontSize: 14,
-                    },
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': { borderColor: '#6c63ff' },
-                      '&.Mui-focused fieldset': { borderColor: '#6c63ff' },
+                      fontSize: 14.5,
+                      py: 0.75,
                     },
                   }}
                 />
+
+                {/* Voice Mic Button */}
+                <Tooltip title={isVoiceListening ? 'Đang nghe... Bấm để dừng' : 'Trò chuyện bằng giọng nói'}>
+                  <IconButton
+                    onClick={handleToggleVoice}
+                    disabled={isLoading}
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 3,
+                      flexShrink: 0,
+                      background: isVoiceListening
+                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                        : (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'),
+                      color: isVoiceListening ? '#fff' : 'text.primary',
+                      boxShadow: isVoiceListening ? '0 0 16px rgba(239, 68, 68, 0.5)' : 'none',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        background: isVoiceListening
+                          ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                          : 'rgba(139, 92, 246, 0.18)',
+                        color: isVoiceListening ? '#fff' : '#8b5cf6',
+                        transform: 'scale(1.06)',
+                      },
+                    }}
+                  >
+                    <MicIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+
+                {/* Send Button */}
                 <IconButton
                   onClick={() => handleSend()}
                   disabled={!prompt.trim() || isLoading}
                   sx={{
-                    width: 46,
-                    height: 46,
-                    background: prompt.trim() && !isLoading ? 'linear-gradient(135deg, #8c85ff 0%, #6c63ff 100%)' : 'action.disabledBackground',
-                    color: '#fff',
-                    borderRadius: 2.5,
+                    width: 44,
+                    height: 44,
+                    background:
+                      prompt.trim() && !isLoading
+                        ? 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)'
+                        : 'action.disabledBackground',
+                    color: '#ffffff',
+                    borderRadius: 3,
                     flexShrink: 0,
-                    transition: 'all 0.2s ease',
-                    boxShadow: prompt.trim() && !isLoading ? '0 4px 14px rgba(108, 99, 255, 0.4)' : 'none',
+                    transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    boxShadow: prompt.trim() && !isLoading ? '0 4px 16px rgba(124, 58, 237, 0.45)' : 'none',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #7b74f5 0%, #5246e2 100%)',
-                      transform: 'scale(1.05)',
-                      boxShadow: '0 6px 18px rgba(108, 99, 255, 0.55)',
+                      background: 'linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%)',
+                      transform: 'scale(1.08) rotate(-4deg)',
+                      boxShadow: '0 6px 22px rgba(124, 58, 237, 0.6)',
                     },
                     '&.Mui-disabled': { color: 'action.disabled' },
                   }}
@@ -976,9 +1596,10 @@ export default function ClientAiMood() {
                     <SendIcon fontSize="small" />
                   )}
                 </IconButton>
-              </Stack>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, pl: 0.5 }}>
-                Nhấn Enter để gửi · Shift+Enter để xuống dòng
+              </Box>
+
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, pl: 0.5, fontSize: 11.5 }}>
+                Nhấn <b>Enter</b> để gửi · <b>Shift+Enter</b> để xuống dòng · Nhấn biểu tượng <b>Micro</b> để nói
               </Typography>
             </Box>
           </Paper>

@@ -47,14 +47,18 @@ import { getArtistPath } from '../../utils/shareUtil';
 import ClientQueueDrawer from '../../components/Layout/client/ClientQueueDrawer';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import useClientSession from '../../hooks/useClientSession';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 import PlayingEqualizer from '../../components/Layout/client/ClientPlayingEqualizer';
 import { getOptimizedImageUrl } from '../../utils/imageUtil';
-import ShareSongModal from '../../components/common/ShareSongModal';
+import ShareSongModal from '../../components/common/ui/ShareSongModal';
+import HeartFavoriteButton from '../../components/common/ui/HeartFavoriteButton';
+import ClientAdBannerCard from '../../components/common/ui/ClientAdBannerCard';
+import PremiumBadge from '../../components/common/ui/PremiumBadge';
+import PreviewDurationMarker from '../../components/common/ui/PreviewDurationMarker';
 
 
 
@@ -90,6 +94,8 @@ function ClientHome() {
     playNext,
     handleNext,
     handlePrevious,
+    isPremiumPreview,
+    setOpenPremiumRequiredModal,
   } = useClientPlayer();
   const [songs, setSongs] = useState([]);
   const [playlists, setPlaylists] = useState([]);
@@ -173,7 +179,20 @@ function ClientHome() {
       }
     };
     checkFavorite();
-    return () => { ignore = true; };
+
+    const handleFavEvent = (e) => {
+      const { songId, isFavorite } = e.detail || {};
+      if (activeHeroSong?._id && songId === activeHeroSong._id) {
+        setFavorite(Boolean(isFavorite));
+      }
+    };
+
+    window.addEventListener('musicflow-favorite-changed', handleFavEvent);
+
+    return () => {
+      ignore = true;
+      window.removeEventListener('musicflow-favorite-changed', handleFavEvent);
+    };
   }, [activeHeroSong?._id, isLoggedIn]);
 
   const handleToggleFavoriteHero = async () => {
@@ -185,13 +204,21 @@ function ClientHome() {
     }
     try {
       const response = await clientFavoritesApi.toggle(activeHeroSong._id);
-      const next = response.data?.isFavorite ?? !favorite;
+      const next = typeof response.data?.isFavorite === 'boolean'
+        ? response.data.isFavorite
+        : !favorite;
       setFavorite(next);
       showToast({
         severity: 'success',
         title: 'Thành công',
         message: next ? 'Đã thêm bài hát vào danh sách yêu thích.' : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
       });
+
+      window.dispatchEvent(
+        new CustomEvent('musicflow-favorite-changed', {
+          detail: { songId: activeHeroSong._id, isFavorite: next, song: activeHeroSong },
+        })
+      );
     } catch (error) {
       showToast({ severity: 'error', title: 'Lỗi', message: error.response?.data?.message || 'Không thể cập nhật yêu thích.' });
     }
@@ -605,30 +632,42 @@ function ClientHome() {
                   {/* Progress Bar (if song is loaded) */}
                   {currentSong && (
                     <Box sx={{ width: '100%', pr: { md: 2 } }}>
-                      <Slider
-                        size="small"
-                        min={0}
-                        max={displayDuration || 1}
-                        value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
-                        onChange={(_, val) => setScrubTime(Number(val))}
-                        onChangeCommitted={(_, val) => {
-                          seekTo(val);
-                          setScrubTime(null);
-                        }}
-                        sx={{
-                          color: '#6c63ff',
-                          height: 4,
-                          py: 1,
-                          '& .MuiSlider-thumb': {
-                            width: 10,
-                            height: 10,
-                            '&:hover, &.Mui-focusVisible': {
-                              boxShadow: '0 0 0 8px rgba(108, 99, 255, 0.2)',
+                      <Box sx={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+                        <Slider
+                          size="small"
+                          min={0}
+                          max={displayDuration || 1}
+                          value={Math.min(scrubTime ?? currentTime, displayDuration || 1)}
+                          onChange={(_, val) => setScrubTime(Number(val))}
+                          onChangeCommitted={(_, val) => {
+                            seekTo(val);
+                            setScrubTime(null);
+                          }}
+                          sx={{
+                            color: '#6c63ff',
+                            height: 4,
+                            py: 1,
+                            '& .MuiSlider-thumb': {
+                              width: 10,
+                              height: 10,
+                              zIndex: 2,
+                              '&:hover, &.Mui-focusVisible': {
+                                boxShadow: '0 0 0 8px rgba(108, 99, 255, 0.2)',
+                              },
                             },
-                          },
-                          '& .MuiSlider-rail': { opacity: 0.25, bgcolor: '#fff' },
-                        }}
-                      />
+                            '& .MuiSlider-rail': { opacity: 0.25, bgcolor: '#fff' },
+                            '& .MuiSlider-track': { zIndex: 1 },
+                          }}
+                        />
+
+                        {/* Vạch ngăn giới hạn nghe thử 45s (Zing MP3 style) */}
+                        <PreviewDurationMarker
+                          isPremiumPreview={isPremiumPreview}
+                          duration={displayDuration}
+                          cutoffSeconds={45}
+                          onOpenModal={() => setOpenPremiumRequiredModal?.(true)}
+                        />
+                      </Box>
                       <Stack direction="row" justifyContent="space-between" sx={{ mt: -0.5 }}>
                         <Typography variant="caption" sx={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>
                           {formatDuration(scrubTime ?? currentTime)}
@@ -723,23 +762,16 @@ function ClientHome() {
                         py: 0.4,
                       }}
                     >
-                      <Tooltip title={favorite ? 'Bỏ thích' : 'Yêu thích'} arrow>
-                        <IconButton
-                          size="small"
-                          onClick={handleToggleFavoriteHero}
-                          sx={{
-                            color: favorite ? '#ff4081' : 'rgba(255, 255, 255, 0.85)',
-                            p: 0.75,
-                            '&:hover': {
-                              transform: 'scale(1.15)',
-                              color: '#ff4081',
-                              bgcolor: 'rgba(255, 64, 129, 0.15)',
-                            },
-                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                          }}
-                        >
-                          {favorite ? <FavoriteIcon sx={{ fontSize: 18 }} /> : <FavoriteBorderIcon sx={{ fontSize: 18 }} />}
-                        </IconButton>
+                      <Tooltip title={favorite ? 'Bỏ thích' : 'Thêm vào yêu thích'} arrow>
+                        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                          <HeartFavoriteButton
+                            checked={favorite}
+                            onChange={handleToggleFavoriteHero}
+                            size={32}
+                            color="#ff4081"
+                            outlineColor="rgba(255, 255, 255, 0.85)"
+                          />
+                        </Box>
                       </Tooltip>
 
                       <Tooltip title="Tải xuống bài hát" arrow>
@@ -834,7 +866,7 @@ function ClientHome() {
                 <Box
                   sx={{
                     p: { xs: 2, sm: 2.5 },
-                    borderRadius: '24px',
+                    borderRadius: '14px',
                     bgcolor: 'rgba(6, 9, 18, 0.55)',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                     backdropFilter: 'blur(20px)',
@@ -1030,6 +1062,9 @@ function ClientHome() {
           </Box>
         )}
 
+        {/* ── Banner Quảng Cáo Gói PLUS (Phong cách Zing MP3 VIP Banner) ── */}
+        <ClientAdBannerCard />
+
         {/* ── 3. ⚡ TRẠM NĂNG LƯỢNG CẢM XÚC: "THE MOOD REACTOR ORBS" ── */}
         {(activeTabFilter === 'all' || activeTabFilter === 'mood') && (
           <Box>
@@ -1062,7 +1097,7 @@ function ClientHome() {
                       className="glass-card-interactive"
                       sx={{
                         p: 2.25,
-                        borderRadius: '24px',
+                        borderRadius: '14px',
                         cursor: 'pointer',
                         textAlign: 'center',
                         position: 'relative',
@@ -1135,7 +1170,7 @@ function ClientHome() {
                         gap: 2,
                         p: 1.25,
                         pr: 2,
-                        borderRadius: '20px',
+                        borderRadius: '12px',
                         cursor: 'pointer',
                         bgcolor: (theme) => isCurrent
                           ? (theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.12)')
@@ -1277,7 +1312,7 @@ function ClientHome() {
                   className="podium-silver"
                   sx={{
                     p: 3,
-                    borderRadius: '28px',
+                    borderRadius: '14px',
                     textAlign: 'center',
                     cursor: 'pointer',
                     minHeight: 260,
@@ -1294,11 +1329,14 @@ function ClientHome() {
                   </Typography>
                   <Avatar
                     src={getOptimizedImageUrl(top3Podium[1].imageUrl, 'song_card')}
-                    sx={{ width: 80, height: 80, borderRadius: '20px', mb: 1.5, boxShadow: '0 8px 24px rgba(0, 229, 255, 0.35)' }}
+                    sx={{ width: 80, height: 80, borderRadius: '12px', mb: 1.5, boxShadow: '0 8px 24px rgba(0, 229, 255, 0.35)' }}
                   />
-                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%', color: '#fff' }}>
-                    {top3Podium[1].title}
-                  </Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.6} sx={{ maxWidth: '100%', mb: 0.5 }}>
+                    <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ color: '#fff' }}>
+                      {top3Podium[1].title}
+                    </Typography>
+                    {Boolean(top3Podium[1].isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                  </Stack>
                   <Typography variant="caption" noWrap sx={{ maxWidth: '100%', fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)' }}>
                     {Array.isArray(top3Podium[1].artists) ? top3Podium[1].artists.map(a => a?.name).join(', ') : top3Podium[1].artistText}
                   </Typography>
@@ -1318,7 +1356,7 @@ function ClientHome() {
                   className="podium-gold"
                   sx={{
                     p: 3.5,
-                    borderRadius: '32px',
+                    borderRadius: '16px',
                     textAlign: 'center',
                     cursor: 'pointer',
                     minHeight: 300,
@@ -1335,11 +1373,14 @@ function ClientHome() {
                   </Typography>
                   <Avatar
                     src={getOptimizedImageUrl(top3Podium[0].imageUrl, 'song_card')}
-                    sx={{ width: 100, height: 100, borderRadius: '24px', mb: 1.5, boxShadow: '0 12px 30px rgba(255, 215, 0, 0.45)' }}
+                    sx={{ width: 100, height: 100, borderRadius: '14px', mb: 1.5, boxShadow: '0 12px 30px rgba(255, 215, 0, 0.45)' }}
                   />
-                  <Typography variant="h6" fontWeight={950} noWrap sx={{ maxWidth: '100%', fontSize: 18, color: '#fff' }}>
-                    {top3Podium[0].title}
-                  </Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.8} sx={{ maxWidth: '100%', mb: 0.5 }}>
+                    <Typography variant="h6" fontWeight={950} noWrap sx={{ fontSize: 18, color: '#fff' }}>
+                      {top3Podium[0].title}
+                    </Typography>
+                    {Boolean(top3Podium[0].isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                  </Stack>
                   <Typography variant="caption" noWrap sx={{ maxWidth: '100%', fontWeight: 700, color: 'rgba(255, 255, 255, 0.75)' }}>
                     {Array.isArray(top3Podium[0].artists) ? top3Podium[0].artists.map(a => a?.name).join(', ') : top3Podium[0].artistText}
                   </Typography>
@@ -1359,7 +1400,7 @@ function ClientHome() {
                   className="podium-bronze"
                   sx={{
                     p: 3,
-                    borderRadius: '28px',
+                    borderRadius: '14px',
                     textAlign: 'center',
                     cursor: 'pointer',
                     minHeight: 240,
@@ -1378,9 +1419,12 @@ function ClientHome() {
                     src={getOptimizedImageUrl(top3Podium[2].imageUrl, 'song_card')}
                     sx={{ width: 76, height: 76, borderRadius: '18px', mb: 1.5, boxShadow: '0 8px 24px rgba(192, 132, 252, 0.35)' }}
                   />
-                  <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ maxWidth: '100%', color: '#fff' }}>
-                    {top3Podium[2].title}
-                  </Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.6} sx={{ maxWidth: '100%', mb: 0.5 }}>
+                    <Typography variant="subtitle1" fontWeight={900} noWrap sx={{ color: '#fff' }}>
+                      {top3Podium[2].title}
+                    </Typography>
+                    {Boolean(top3Podium[2].isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                  </Stack>
                   <Typography variant="caption" noWrap sx={{ maxWidth: '100%', fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)' }}>
                     {Array.isArray(top3Podium[2].artists) ? top3Podium[2].artists.map(a => a?.name).join(', ') : top3Podium[2].artistText}
                   </Typography>
@@ -1441,7 +1485,7 @@ function ClientHome() {
                     className="glass-card-interactive"
                     sx={{
                       p: 2,
-                      borderRadius: '22px',
+                      borderRadius: '12px',
                       cursor: 'pointer',
                       bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(14, 18, 34, 0.65)' : 'rgba(255, 255, 255, 0.95)',
                       border: '1px solid',

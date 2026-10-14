@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/music_flow_backdrop.dart';
 import '../../../core/theme/app_theme.dart';
@@ -50,12 +51,20 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
 
   Future<void> _loadDownloadedSongs() async {
     setState(() => _isLoading = true);
-    final songs = await _offlineService.getDownloadedSongsAsSongs();
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _downloadedSongs = songs;
-    });
+    try {
+      final songs = await _offlineService.getDownloadedSongsAsSongs();
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _downloadedSongs = songs;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _downloadedSongs = [];
+      });
+    }
   }
 
   List<Song> get _filteredSongs {
@@ -727,6 +736,69 @@ class _DownloadedSongsScreenState extends State<DownloadedSongsScreen> {
   Widget _buildEmptyState() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    if (kIsWeb) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 104,
+                height: 104,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.cloud_done_rounded,
+                    size: 52,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Nghe nhạc ngoại tuyến',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Tính năng lưu bài hát nghe ngoại tuyến chỉ hỗ trợ trên ứng dụng MusicFlow Mobile (Android / iOS). Trên Web, bạn có thể thưởng thức toàn bộ bài hát trực tuyến.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Quay lại Thư viện', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Center(
       child: Padding(

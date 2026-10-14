@@ -23,7 +23,7 @@ import {
   KeyRounded as KeyIcon,
 } from '@mui/icons-material';
 import { forgotPassword, verifyOtp, resetPassword } from '../../services/api';
-import FloatingTextField from '../common/FloatingTextField';
+import FloatingTextField from '../common/ui/FloatingTextField';
 
 export default function ForgotPasswordDialog({
   open,

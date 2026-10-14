@@ -223,9 +223,14 @@ exports.getAllSongs = async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query);
     res.set("Cache-Control", "public, max-age=30");
 
+    const filter = {};
+    if (typeof req.query.isPremium !== "undefined") {
+      filter.isPremium = req.query.isPremium === "true";
+    }
+
     const [songs, total] = await Promise.all([
-      songRepo.findPublicWithPopulate({}, { skip, limit }),
-      songRepo.countPublic(),
+      songRepo.findPublicWithPopulate(filter, { skip, limit }),
+      songRepo.countPublic(filter),
     ]);
 
     setPaginationHeaders(res, { page, limit, total });
@@ -397,6 +402,20 @@ exports.togglePublic = async (req, res) => {
     return res.json({ success: true, ...result });
   } catch (error) {
     return handleError(res, error, "Thay đổi thất bại");
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 💎 TOGGLE PREMIUM (AUTH REQUIRED - OWNER OR ARTIST)
+// ---------------------------------------------------------------------------
+
+exports.togglePremium = async (req, res) => {
+  try {
+    const { isPremium } = req.body;
+    const result = await songService.togglePremium(req.params.id, req.userId, isPremium);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    return handleError(res, error, "Thay đổi trạng thái Premium thất bại");
   }
 };
 

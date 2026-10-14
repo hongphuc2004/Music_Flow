@@ -21,7 +21,7 @@ import {
   CheckCircleRounded as CheckIcon,
 } from '@mui/icons-material';
 import { changePassword } from '../../services/api';
-import useAppToast from '../common/useAppToast';
+import useAppToast from '../common/js/useAppToast';
 
 export default function ChangePasswordCard({ hasPassword = true, isGoogle = false, role = 'user' }) {
   const { showToast } = useAppToast();

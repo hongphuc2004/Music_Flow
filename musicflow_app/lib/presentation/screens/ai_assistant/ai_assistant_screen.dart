@@ -526,14 +526,18 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6C63FF), Color(0xFF00E5FF)],
-                ),
-                borderRadius: BorderRadius.circular(10),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
               ),
-              child: const Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/ai_dj_icon.png',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
             const SizedBox(width: 10),
             Column(
@@ -660,21 +664,29 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         children: [
           const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6C63FF), Color(0xFF00E5FF)],
-              ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6C63FF).withOpacity(0.4),
+                  color: const Color(0xFF7C3AED).withOpacity(0.55),
                   blurRadius: 28,
-                  spreadRadius: 2,
+                  spreadRadius: 3,
+                ),
+                BoxShadow(
+                  color: const Color(0xFF00E5FF).withOpacity(0.35),
+                  blurRadius: 16,
+                  spreadRadius: 1,
                 ),
               ],
             ),
-            child: const Icon(Icons.auto_awesome_rounded, size: 40, color: Colors.white),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/ai_dj_icon.png',
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           const Text(
@@ -755,12 +767,18 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             children: [
               if (isAssistant) ...[
                 Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [Color(0xFF6C63FF), Color(0xFF00E5FF)]),
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
                   ),
-                  child: const Icon(Icons.auto_awesome_rounded, size: 14, color: Colors.white),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/ai_dj_icon.png',
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
               ],

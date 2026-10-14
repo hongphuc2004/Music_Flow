@@ -39,7 +39,7 @@ import {
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSongsApi, clientTopicsApi, clientPlaylistsApi, clientArtistApi } from '../../services/client/client.service';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 import { scheduleIdleTask } from '../../utils/scheduleIdleTask';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
@@ -572,11 +572,25 @@ function ClientGenres() {
     return () => clearTimeout(timer);
   }, [query, defaultSongs, runSearch]);
 
-  const fetchTopicSongs = useCallback(async (item) => {
-    const itemId = item.id || item._id;
-    const itemName = item.title || item.name || item.topicName || 'Chủ đề';
+  const getTopicSlug = useCallback((item) => {
+    if (!item) return '';
+    // Nếu là item tĩnh có id dạng chữ (như 'nation-usuk', 'mood-study', 'vpop'):
+    if (item.id && typeof item.id === 'string' && !item.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return item.id;
+    }
+    // Ưu tiên slug thân thiện chữ không dấu tạo từ tên (ví dụ: 'viet-nam', 'chill', 'hip-hop-rap')
+    const itemName = item.name || item.title || item.topicName || '';
+    if (itemName) {
+      return toSlug(itemName);
+    }
+    return item._id || item.id || '';
+  }, []);
 
-    setSelectedTopic(itemId);
+  const fetchTopicSongs = useCallback(async (item, activeSlug) => {
+    const itemName = item.title || item.name || item.topicName || 'Chủ đề';
+    const slugKey = activeSlug || getTopicSlug(item) || item._id;
+
+    setSelectedTopic(slugKey);
     setSelectedTitle(itemName);
     setQuery('');
 
@@ -630,11 +644,10 @@ function ClientGenres() {
     } finally {
       setLoading(false);
     }
-  }, [topics]);
+  }, [topics, getTopicSlug]);
 
   const handleSelectCategory = useCallback((item) => {
-    const itemName = item.title || item.name || item.topicName;
-    const slug = item.id || item._id || toSlug(itemName);
+    const slug = getTopicSlug(item);
     const newParams = new URLSearchParams(searchParams);
     newParams.set('topic', slug);
     newParams.delete('cat');
@@ -642,7 +655,7 @@ function ClientGenres() {
     newParams.delete('query');
     newParams.delete('tab');
     setSearchParams(newParams);
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, getTopicSlug]);
 
   useEffect(() => {
     const topicParam = searchParams.get('topic') || searchParams.get('cat') || searchParams.get('genre') || searchParams.get('id');
@@ -655,7 +668,18 @@ function ClientGenres() {
             (t) => t._id === normalizedParam || toSlug(t.name) === normalizedParam || t.name.toLowerCase() === normalizedParam.toLowerCase()
           );
           if (dynamicMatch) {
-            fetchTopicSongs(dynamicMatch);
+            // Tự động chuẩn hóa URL về slug thân thiện nếu trên URL là ObjectId cũ
+            const cleanSlug = toSlug(dynamicMatch.name);
+            if (dynamicMatch._id === normalizedParam && cleanSlug) {
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set('topic', cleanSlug);
+                return next;
+              }, { replace: true });
+              fetchTopicSongs(dynamicMatch, cleanSlug);
+              return;
+            }
+            fetchTopicSongs(dynamicMatch, normalizedParam);
             return;
           }
         }
@@ -673,16 +697,16 @@ function ClientGenres() {
         );
         
         if (curatedMatch) {
-          fetchTopicSongs(curatedMatch);
+          fetchTopicSongs(curatedMatch, normalizedParam);
         } else if (topics.length > 0) {
           const fallbackMatch = findMatchingDbTopic({ name: normalizedParam, topicName: normalizedParam, id: normalizedParam }, topics) || topics.find((t) => toSlug(t.name).includes(toSlug(normalizedParam)));
           if (fallbackMatch) {
-            fetchTopicSongs(fallbackMatch);
+            fetchTopicSongs(fallbackMatch, normalizedParam);
           } else {
-            fetchTopicSongs({ id: normalizedParam, name: normalizedParam, query: normalizedParam });
+            fetchTopicSongs({ id: normalizedParam, name: normalizedParam, query: normalizedParam }, normalizedParam);
           }
         } else {
-          fetchTopicSongs({ id: normalizedParam, name: normalizedParam, query: normalizedParam });
+          fetchTopicSongs({ id: normalizedParam, name: normalizedParam, query: normalizedParam }, normalizedParam);
         }
       }
     } else {
@@ -692,7 +716,7 @@ function ClientGenres() {
         setSongs(defaultSongs);
       }
     }
-  }, [searchParams, topics, defaultSongs, selectedTopic, fetchTopicSongs]);
+  }, [searchParams, topics, defaultSongs, selectedTopic, fetchTopicSongs, setSearchParams]);
 
   const activeTopicTab = searchParams.get('tab') || 'all';
 
@@ -787,7 +811,11 @@ function ClientGenres() {
     const moodMatch = MOODS_ITEMS.find(m => m.id === selectedTopic);
     if (moodMatch) return moodMatch.gradient;
     
-    const dbMatchIndex = topics.findIndex(t => t._id === selectedTopic);
+    const dbMatchIndex = topics.findIndex(t => 
+      t._id === selectedTopic || 
+      toSlug(t.name) === selectedTopic || 
+      t.name.toLowerCase() === selectedTitle.toLowerCase()
+    );
     if (dbMatchIndex !== -1) return getTopicGradient(selectedTitle, dbMatchIndex);
 
     return 'linear-gradient(180deg, rgba(108, 99, 255, 0.45) 0%, rgba(10, 15, 30, 0.95) 100%)';
@@ -810,7 +838,11 @@ function ClientGenres() {
     const moodMatch = MOODS_ITEMS.find(m => m.id === selectedTopic);
     if (moodMatch) return moodMatch.image;
     
-    const dbMatchIndex = topics.findIndex(t => t._id === selectedTopic);
+    const dbMatchIndex = topics.findIndex(t => 
+      t._id === selectedTopic || 
+      toSlug(t.name) === selectedTopic || 
+      t.name.toLowerCase() === selectedTitle.toLowerCase()
+    );
     if (dbMatchIndex !== -1) return getTopicImage(selectedTitle, dbMatchIndex);
 
     return 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1400&auto=format&fit=crop&q=80';
@@ -1044,7 +1076,7 @@ function ClientGenres() {
                     sx={{
                       p: 3,
                       height: 160,
-                      borderRadius: '24px',
+                      borderRadius: '14px',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
@@ -1101,7 +1133,7 @@ function ClientGenres() {
                     sx={{
                       p: 2.5,
                       height: 130,
-                      borderRadius: '24px',
+                      borderRadius: '14px',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
@@ -1149,7 +1181,7 @@ function ClientGenres() {
                     sx={{
                       p: 2.5,
                       height: 130,
-                      borderRadius: '24px',
+                      borderRadius: '14px',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
@@ -1188,7 +1220,7 @@ function ClientGenres() {
             <Box
               sx={{
                 p: { xs: 3, sm: 4 },
-                borderRadius: '28px',
+                borderRadius: '14px',
                 bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.6)' : '#ffffff',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 backdropFilter: 'blur(16px)',
@@ -1209,7 +1241,7 @@ function ClientGenres() {
                         sx={{
                           p: 2,
                           height: 110,
-                          borderRadius: '20px',
+                          borderRadius: '12px',
                           cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
@@ -1286,7 +1318,7 @@ function ClientGenres() {
                       height: '100%',
                       minHeight: 280,
                       p: { xs: 3, sm: 4 },
-                      borderRadius: '28px',
+                      borderRadius: '14px',
                       position: 'relative',
                       overflow: 'hidden',
                       backgroundImage: `${activeGradient}, url(${activeImage})`,
@@ -1405,7 +1437,7 @@ function ClientGenres() {
                         height: '100%',
                         minHeight: 280,
                         p: 3,
-                        borderRadius: '28px',
+                        borderRadius: '14px',
                         bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.65)' : '#ffffff',
                         border: '1px solid rgba(255, 255, 255, 0.08)',
                         backdropFilter: 'blur(16px)',
@@ -1485,7 +1517,7 @@ function ClientGenres() {
                       </Typography>
                     </Box>
                   ) : (
-                    <Box sx={{ p: 4, height: '100%', borderRadius: '28px', border: '1px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ p: 4, height: '100%', borderRadius: '14px', border: '1px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Typography variant="body2" color="text.secondary">Chưa có giai điệu nào</Typography>
                     </Box>
                   )}
@@ -1493,7 +1525,7 @@ function ClientGenres() {
               </Grid>
 
               {songs.length === 0 ? (
-                <Box sx={{ p: 6, textAlign: 'center', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.15)', bgcolor: 'rgba(255,255,255,0.02)' }}>
+                <Box sx={{ p: 6, textAlign: 'center', borderRadius: '14px', border: '1px dashed rgba(255,255,255,0.15)', bgcolor: 'rgba(255,255,255,0.02)' }}>
                   <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>
                     Chủ đề này chưa có bài hát nào
                   </Typography>
@@ -1513,7 +1545,7 @@ function ClientGenres() {
                         <Box
                           sx={{
                             p: { xs: 2.5, sm: 3.5 },
-                            borderRadius: '28px',
+                            borderRadius: '14px',
                             bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
                             border: '1px solid rgba(255, 255, 255, 0.08)',
                             backdropFilter: 'blur(16px)',
@@ -1608,7 +1640,7 @@ function ClientGenres() {
                             <Box
                               sx={{
                                 p: 2.5,
-                                borderRadius: '24px',
+                                borderRadius: '14px',
                                 bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
                                 border: '1px solid rgba(255, 255, 255, 0.08)',
                               }}
@@ -1674,7 +1706,7 @@ function ClientGenres() {
                               onClick={() => navigate(`/collections/${relatedPlaylists[0]._id}`)}
                               sx={{
                                 p: 2.5,
-                                borderRadius: '24px',
+                                borderRadius: '14px',
                                 background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.2) 100%)',
                                 border: '1px solid rgba(6, 182, 212, 0.3)',
                                 cursor: 'pointer',
@@ -1785,7 +1817,7 @@ function ClientGenres() {
                                 onClick={() => navigate(getArtistPath(artist))}
                                 sx={{
                                   p: 2,
-                                  borderRadius: '24px',
+                                  borderRadius: '14px',
                                   bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
                                   border: '1px solid rgba(255, 255, 255, 0.08)',
                                   textAlign: 'center',

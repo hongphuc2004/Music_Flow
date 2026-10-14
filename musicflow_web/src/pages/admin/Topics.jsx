@@ -44,7 +44,7 @@ import {
 } from '@mui/icons-material';
 import { Layout } from '../../components/Layout';
 import { topicsApi, songsApi } from '../../services/admin/admin.service';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 function Topics() {
   const { showToast } = useAppToast();

@@ -16,6 +16,8 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientFavoritesApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import HeartFavoriteButton from '../../components/common/ui/HeartFavoriteButton';
+import PremiumBadge from '../../components/common/ui/PremiumBadge';
 
 function ClientFavorites() {
   const { playSong } = useClientPlayerActions();
@@ -40,10 +42,32 @@ function ClientFavorites() {
     fetchFavorites();
   }, []);
 
+  useEffect(() => {
+    const handleFavoriteChanged = (e) => {
+      const { songId, isFavorite } = e.detail || {};
+      if (!songId) return;
+      if (!isFavorite) {
+        setFavorites((prev) => prev.filter((song) => song._id !== songId));
+      } else {
+        fetchFavorites();
+      }
+    };
+
+    window.addEventListener('musicflow-favorite-changed', handleFavoriteChanged);
+    return () => {
+      window.removeEventListener('musicflow-favorite-changed', handleFavoriteChanged);
+    };
+  }, []);
+
   const handleRemove = async (songId) => {
     try {
       await clientFavoritesApi.remove(songId);
       setFavorites((prev) => prev.filter((song) => song._id !== songId));
+      window.dispatchEvent(
+        new CustomEvent('musicflow-favorite-changed', {
+          detail: { songId, isFavorite: false },
+        })
+      );
     } catch (err) {
       setError(err.response?.data?.message || 'Không thể xóa bài hát khỏi yêu thích.');
     }
@@ -91,7 +115,10 @@ function ClientFavorites() {
                         <MusicIcon sx={{ fontSize: 24 }} />
                       </Avatar>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                        <Typography fontWeight={700} noWrap>{song.title}</Typography>
+                        <Stack direction="row" alignItems="center" spacing={0.8} sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={700} noWrap sx={{ minWidth: 0, flexShrink: 1 }}>{song.title}</Typography>
+                          {Boolean(song.isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                        </Stack>
                         <Typography variant="caption" color="text.secondary" noWrap>
                           {Array.isArray(song.artists)
                             ? song.artists.map((artist) => artist?.name).filter(Boolean).join(', ')
@@ -101,17 +128,24 @@ function ClientFavorites() {
                       <Button size="small" onClick={(event) => { event.stopPropagation(); playSong(song, { queue: favorites }); }}>
                         Play
                       </Button>
-                      <ClientSongMoreMenu song={song} />
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={(event) => {
+                      <ClientSongMoreMenu
+                        song={song}
+                        onFavoriteChange={(targetSongId, isFav) => {
+                          if (!isFav) {
+                            setFavorites((prev) => prev.filter((s) => s._id !== targetSongId));
+                          }
+                        }}
+                      />
+                      <HeartFavoriteButton
+                        checked={true}
+                        onChange={(event) => {
                           event.stopPropagation();
                           handleRemove(song._id);
                         }}
-                      >
-                        Xoa
-                      </Button>
+                        size={34}
+                        color="#ff4e7c"
+                        title="Bỏ bài hát khỏi yêu thích"
+                      />
                     </Stack>
                   </Paper>
                 ))}

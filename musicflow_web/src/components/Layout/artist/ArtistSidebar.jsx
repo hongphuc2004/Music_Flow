@@ -27,7 +27,7 @@ import {
   MusicNote as MusicNoteIcon,
   WorkspacePremiumRounded as WorkspacePremiumIcon,
 } from '@mui/icons-material';
-import useAppToast from '../../common/useAppToast';
+import useAppToast from '../../common/js/useAppToast';
 import { logout } from '../../../services/api';
 import { preloadRoute } from '../../../utils/routePreload';
 

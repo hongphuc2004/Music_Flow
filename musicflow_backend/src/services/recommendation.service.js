@@ -333,6 +333,7 @@ const getRecommendedSongs = async (limit = 12) => {
         topicIds: 1,
         uploadedBy: 1,
         isPublic: 1,
+        isPremium: 1,
         audioUrl: 1,
         duration: 1,
         imageUrl: 1,

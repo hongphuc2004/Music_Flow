@@ -26,7 +26,7 @@ import {
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
-import FloatingTextField from '../../components/common/FloatingTextField';
+import FloatingTextField from '../../components/common/ui/FloatingTextField';
 
 const ArtistRegister = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '', avatar: '', bio: '' });

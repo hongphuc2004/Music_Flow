@@ -11,6 +11,8 @@ import 'package:musicflow_app/data/services/comment_service.dart';
 import 'package:musicflow_app/data/services/like_service.dart';
 import 'package:musicflow_app/data/services/lyrics_api_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
+import 'package:musicflow_app/data/services/auth_service.dart';
+import 'package:musicflow_app/presentation/screens/premium/premium_screen.dart';
 import 'package:musicflow_app/presentation/widgets/player_bottom_action_bar.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/presentation/widgets/song_comments_sheet.dart';
@@ -19,7 +21,10 @@ import 'package:musicflow_app/presentation/widgets/song_share_sheet.dart';
 import 'package:musicflow_app/presentation/widgets/rive/rive_play_pause_button.dart';
 import 'package:musicflow_app/presentation/widgets/rive/rive_audio_visualizer.dart';
 import 'package:musicflow_app/presentation/widgets/rive/rive_playback_controls.dart';
+import 'package:musicflow_app/presentation/widgets/ad_interruption_overlay.dart';
 import 'package:musicflow_app/core/utils/app_toast.dart';
+import 'package:musicflow_app/presentation/widgets/premium_badge.dart';
+import 'package:musicflow_app/presentation/widgets/premium_required_dialog.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -118,6 +123,14 @@ class _PlayerScreenState extends State<PlayerScreen>
     _loadLyricsForCurrentSong();
 
     _globalAudioState.addListener(_onGlobalAudioStateChanged);
+    _globalAudioState.premiumRequiredModalNotifier.addListener(_onPremiumModalTriggered);
+  }
+
+  void _onPremiumModalTriggered() {
+    if (_globalAudioState.premiumRequiredModalNotifier.value && mounted) {
+      _globalAudioState.dismissPremiumRequiredModal();
+      PremiumRequiredDialog.show(context);
+    }
   }
 
   void _onGlobalAudioStateChanged() {
@@ -321,6 +334,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   @override
   void dispose() {
     _globalAudioState.removeListener(_onGlobalAudioStateChanged);
+    _globalAudioState.premiumRequiredModalNotifier.removeListener(_onPremiumModalTriggered);
     _pageController.dispose();
     _queueScrollController.dispose();
     _discRotationController.dispose();
@@ -415,11 +429,27 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (success) {
         _showActionMessage('Đã lưu bài hát offline thành công!');
       } else {
-        _showActionMessage('Tải nhạc thất bại. Vui lòng thử lại sau.');
+        final msg = result.message;
+        if (msg.contains('dung lượng') || msg.contains('hết') || msg.contains('gói') || msg.contains('403')) {
+          _showDownloadQuotaModal(
+            customMessage: msg.isNotEmpty
+                ? msg
+                : 'Bạn đã sử dụng hết dung lượng tải nhạc offline. Nâng cấp gói để có thêm dung lượng.',
+          );
+        } else {
+          _showActionMessage(msg.isNotEmpty ? msg : 'Tải nhạc thất bại. Vui lòng thử lại sau.');
+        }
       }
     } catch (e) {
       if (mounted) {
-        _showActionMessage('Lỗi tải xuống: $e');
+        final errStr = e.toString();
+        if (errStr.contains('dung lượng') || errStr.contains('hết') || errStr.contains('gói')) {
+          _showDownloadQuotaModal(
+            customMessage: 'Bạn đã sử dụng hết dung lượng tải nhạc offline. Nâng cấp gói để có thêm dung lượng.',
+          );
+        } else {
+          _showActionMessage('Lỗi tải xuống: $e');
+        }
       }
     } finally {
       if (mounted) {
@@ -594,6 +624,8 @@ class _PlayerScreenState extends State<PlayerScreen>
               ],
             ),
           ),
+          // Audio Ad Interruption Overlay (Hiển thị khi phát quảng cáo xen kẽ)
+          const AdInterruptionOverlay(),
         ],
       ),
     );
@@ -1107,20 +1139,36 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildSongInfo() {
+    final user = AuthService.currentUserNotifier.value;
+    final isHQUnlocked = user != null &&
+        user.hasActivePremium &&
+        (user.planBadge == 'PLUS' || user.planBadge == 'PREMIUM');
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         children: [
-          Text(
-            _currentSong.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  _currentSong.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              if (_currentSong.isPremium) ...[
+                const SizedBox(width: 8),
+                const PremiumBadge(fontSize: 10),
+              ],
+            ],
           ),
           const SizedBox(height: 6),
           GestureDetector(
@@ -1139,8 +1187,322 @@ class _PlayerScreenState extends State<PlayerScreen>
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 4),
+          if (_globalAudioState.isPremiumPreview)
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5AC18),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x44E5AC18),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      'Nâng cấp tài khoản Premium để nghe trọn bài hát. ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Tìm hiểu ngay',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w900,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+
+          // Quality Badge (Quality Gate)
+          GestureDetector(
+            onTap: () => _showQualityGateModal(isHQUnlocked),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isHQUnlocked
+                    ? const Color(0xFF6C63FF).withOpacity(0.2)
+                    : Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isHQUnlocked
+                      ? const Color(0xFF6C63FF).withOpacity(0.6)
+                      : Colors.white.withOpacity(0.15),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isHQUnlocked
+                        ? Icons.auto_awesome_rounded
+                        : Icons.lock_outline_rounded,
+                    size: 13,
+                    color: isHQUnlocked ? const Color(0xFF6C63FF) : Colors.white60,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    isHQUnlocked
+                        ? 'HQ 320kbps • Lossless'
+                        : '128kbps • Chuẩn (Chạm để nâng cấp HQ)',
+                    style: TextStyle(
+                      color:
+                          isHQUnlocked ? const Color(0xFF6C63FF) : Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showQualityGateModal(bool isHQUnlocked) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1435),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6C63FF).withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.headphones_rounded,
+                color: Color(0xFF6C63FF),
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isHQUnlocked
+                  ? 'Âm thanh Studio HQ 320kbps'
+                  : 'Mở khóa âm thanh Studio HQ 320kbps',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              isHQUnlocked
+                  ? 'Tài khoản của bạn đã được kích hoạt chất lượng Lossless 320kbps cao nhất với dải bass sâu và vocal chân thực.'
+                  : 'Chất lượng 320kbps sắc nét gấp 3 lần chuẩn thông thường, giữ trọn vẹn chi tiết âm thanh phòng thu. Quyền lợi độc quyền của Gói PLUS & PREMIUM.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (!isHQUnlocked)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Nâng cấp Gói PLUS (49.000đ/tháng)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white12,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Đã kích hoạt',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Đóng',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDownloadQuotaModal({String? customMessage}) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1435),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00BCD4).withOpacity(0.18),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                color: Color(0xFF00BCD4),
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Hết dung lượng tải nhạc offline',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              customMessage ??
+                  'Bạn đã sử dụng hết dung lượng tải nhạc offline. Nâng cấp gói để có thêm dung lượng.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Nâng cấp gói ngay',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Để sau',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

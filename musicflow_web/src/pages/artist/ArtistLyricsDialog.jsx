@@ -44,7 +44,7 @@ import {
 } from '@mui/icons-material';
 import { artistApi } from '../../services/artist/artist.service';
 import { parseLyrics, findActiveLyricIndex, findActiveWordIndex } from '../../utils/lyrics';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 function formatTime(seconds) {
   const total = Math.max(0, Number(seconds) || 0);

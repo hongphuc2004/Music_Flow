@@ -10,6 +10,10 @@ import '../../../data/models/topic_model.dart';
 import '../../../presentation/widgets/mini_player_wrapper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:musicflow_app/core/audio/global_audio_state.dart';
+import 'package:musicflow_app/presentation/screens/premium/premium_screen.dart';
+
+import '../../../data/services/auth_service.dart';
+import '../login/login_screen.dart';
 
 class YourUploadsScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -25,6 +29,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
   final GlobalAudioState _audioState = GlobalAudioState();
   List<Song> _uploadedSongs = [];
   bool _isLoading = false;
+  bool _isLoggedIn = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   bool _isSearchVisible = false;
@@ -32,7 +37,7 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUploadedSongs();
+    _loadData();
     _audioState.addListener(_onAudioChanged);
   }
 
@@ -45,6 +50,20 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
 
   void _onAudioChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadData() async {
+    await _checkLoginStatus();
+    if (_isLoggedIn) {
+      await _loadUploadedSongs();
+    }
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final isLoggedIn = await AuthService.isLoggedIn();
+    if (mounted) {
+      setState(() => _isLoggedIn = isLoggedIn);
+    }
   }
 
   Future<void> _loadUploadedSongs() async {
@@ -499,9 +518,75 @@ class _YourUploadsScreenState extends State<YourUploadsScreen> {
               ? const Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 )
+              : !_isLoggedIn
+              ? _buildLoginPrompt()
               : _uploadedSongs.isEmpty
               ? _buildEmptyState()
               : _buildSongList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginPrompt() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_upload_rounded,
+                size: 56,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Yêu cầu đăng nhập',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: isDark ? Colors.white : AppColors.lightTextPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Đăng nhập để xem và quản lý những bài hát bạn đã tải lên hệ thống MusicFlow',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                ).then((_) => _loadData());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
+                elevation: 4,
+              ),
+              child: const Text('Đăng nhập ngay', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );
@@ -1209,8 +1294,114 @@ class _UploadBottomSheetState extends State<_UploadBottomSheet> {
         Navigator.of(context).pop(true);
       }
     } else {
-      _showError(result.message);
+      final msg = result.message;
+      if (msg.contains('Dung lượng lưu trữ đã đầy') || msg.contains('dung lượng')) {
+        _showStorageQuotaModal(msg);
+      } else {
+        _showError(msg);
+      }
     }
+  }
+
+  void _showStorageQuotaModal(String message) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1435),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFB300).withOpacity(0.18),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_clock_rounded,
+                color: Color(0xFFFFB300),
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Dung lượng lưu trữ đã đầy',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message.isNotEmpty
+                  ? message
+                  : '🔒 Dung lượng lưu trữ đã đầy — nâng cấp gói để tiếp tục tải nhạc lên.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Nâng cấp gói ngay',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Để sau',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {

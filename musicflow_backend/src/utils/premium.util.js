@@ -20,9 +20,6 @@ function getUserTier(user) {
     return "basic";
   }
   const planName = user.premiumPlan?.name || "";
-  if (planName === "Gói GO") {
-    return "go";
-  }
   if (planName === "Gói PLUS") {
     return "plus";
   }

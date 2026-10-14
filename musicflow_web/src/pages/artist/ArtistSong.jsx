@@ -34,6 +34,7 @@ import {
   Divider,
   Autocomplete,
   Slide,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -57,7 +58,8 @@ import {
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import ArtistLyricsDialog from './ArtistLyricsDialog';
 import api from '../../services/api';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
+import PremiumBadge from '../../components/common/ui/PremiumBadge';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -79,7 +81,7 @@ function ArtistSong() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [dialogTab, setDialogTab] = useState(0);
   const [editingSong, setEditingSong] = useState(null);
-  const [formData, setFormData] = useState({ title: '', lyrics: '', imageUrl: '', collaborators: '' });
+  const [formData, setFormData] = useState({ title: '', lyrics: '', imageUrl: '', collaborators: '', isPremium: false });
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [createLoading, setCreateLoading] = useState(false);
@@ -175,7 +177,7 @@ function ArtistSong() {
 
   const openCreateDialog = () => {
     setEditingSong(null);
-    setFormData({ title: '', lyrics: '', imageUrl: '', collaborators: '' });
+    setFormData({ title: '', lyrics: '', imageUrl: '', collaborators: '', isPremium: false });
     setAudioFile(null);
     setImageFile(null);
     setShowFullLyrics(false);
@@ -190,6 +192,7 @@ function ArtistSong() {
       title: song.title || '',
       lyrics: song.lyrics || '',
       imageUrl: '', // Để trống input khi mở dialog, chỉ nhập khi muốn đổi link ảnh mới
+      isPremium: Boolean(song.isPremium),
       collaborators: song.artists
         ?.filter((a) => a?._id && a._id !== localStorage.getItem('artistId'))
         .map((a) => a?.name || a?.email || a?._id)
@@ -257,6 +260,7 @@ function ArtistSong() {
       const finalImageUrl = formData.imageUrl.trim() || (isEditing ? (editingSong?.imageUrl || '') : '');
       uploadData.append('imageUrl', finalImageUrl);
       uploadData.append('isPublic', 'true');
+      uploadData.append('isPremium', String(Boolean(formData.isPremium)));
       
       if (audioFile) uploadData.append('audio', audioFile);
       if (imageFile) uploadData.append('image', imageFile);
@@ -332,7 +336,7 @@ function ArtistSong() {
           elevation={0}
           sx={{
             overflow: 'hidden',
-            borderRadius: 6,
+            borderRadius: 3.5,
             background: (theme) => theme.palette.mode === 'dark'
               ? 'linear-gradient(135deg, rgba(108, 99, 255, 0.95) 0%, rgba(0, 188, 212, 0.9) 100%)'
               : 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)',
@@ -513,13 +517,14 @@ function ArtistSong() {
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Thời lượng</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Ngày tải</TableCell>
                     <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Phân phối</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: 'text.secondary' }}>Premium (VIP)</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 800, pr: 3, color: 'text.secondary' }}>Hành động</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredSongs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 10 }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
                         <Stack spacing={1.5} alignItems="center" justifyContent="center">
                           <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'action.hover' }}>
                             <QueueMusicIcon sx={{ fontSize: 44, color: 'text.disabled' }} />
@@ -565,9 +570,12 @@ function ArtistSong() {
                                 <MusicNoteIcon sx={{ fontSize: 28 }} />
                               </Avatar>
                               <Box sx={{ minWidth: 0 }}>
-                                <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ maxWidth: { xs: 150, sm: 260 } }}>
-                                  {song.title}
-                                </Typography>
+                                <Stack direction="row" alignItems="center" spacing={0.8}>
+                                  <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ maxWidth: { xs: 150, sm: 260 } }}>
+                                    {song.title}
+                                  </Typography>
+                                  {Boolean(song.isPremium) && <PremiumBadge />}
+                                </Stack>
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} noWrap sx={{ display: 'block', mt: 0.25 }}>
                                   {song.artists?.map(a => a.name).join(', ')}
                                 </Typography>
@@ -639,6 +647,45 @@ function ArtistSong() {
                                   bgcolor: song.isPublic ? 'rgba(46, 125, 50, 0.08)' : 'rgba(0,0,0,0.04)',
                                 }}
                               />
+                            </Stack>
+                          </TableCell>
+
+                          {/* Premium Switch */}
+                          <TableCell>
+                            <Stack direction="row" alignItems="center" spacing={1}>
+                              <Switch
+                                checked={Boolean(song.isPremium)}
+                                size="medium"
+                                onChange={async (e) => {
+                                  const newPremium = e.target.checked;
+                                  try {
+                                    setSongs(songs.map(s => s._id === song._id ? { ...s, isPremium: newPremium } : s));
+                                    await api.put(`/songs/${song._id}`, { isPremium: newPremium });
+                                    showToast({
+                                      severity: 'success',
+                                      title: 'Đã cập nhật',
+                                      message: newPremium ? 'Bản nhạc đã được chuyển vào Kho nhạc Premium (VIP).' : 'Bản nhạc đã chuyển sang chế độ Miễn phí.',
+                                    });
+                                  } catch (err) {
+                                    console.error("Failed to update premium status", err);
+                                    setSongs(songs.map(s => s._id === song._id ? { ...s, isPremium: !newPremium } : s));
+                                    showToast({
+                                      severity: 'error',
+                                      title: 'Cập nhật thất bại',
+                                      message: err.response?.data?.message || 'Không thể đổi trạng thái Premium.',
+                                    });
+                                  }
+                                }}
+                                sx={{
+                                  '& .MuiSwitch-switchBase.Mui-checked': {
+                                    color: '#e5ac18',
+                                  },
+                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                    bgcolor: '#e5ac18 !important',
+                                  }
+                                }}
+                              />
+                              {Boolean(song.isPremium) && <PremiumBadge />}
                             </Stack>
                           </TableCell>
 
@@ -1004,6 +1051,27 @@ function ArtistSong() {
                   </Button>
                 )}
               </Box>
+
+              <Box sx={{ pt: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(formData.isPremium)}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, isPremium: e.target.checked }))}
+                      sx={{
+                        '& .Mui-checked': { color: '#e5ac18' },
+                        '& .Mui-checked + .MuiSwitch-track': { bgcolor: '#e5ac18 !important' },
+                      }}
+                    />
+                  }
+                  label={
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Typography variant="body2" fontWeight={700}>Phát hành dưới dạng nhạc Premium (VIP)</Typography>
+                      <PremiumBadge />
+                    </Stack>
+                  }
+                />
+              </Box>
             </Stack>
           )}
 
@@ -1217,7 +1285,7 @@ function ArtistSong() {
       <Dialog
         open={deleteDialog.open}
         onClose={() => !deleteLoading && setDeleteDialog({ open: false, song: null })}
-        PaperProps={{ sx: { borderRadius: 5, minWidth: { xs: '90%', sm: 400 } } }}
+        PaperProps={{ sx: { borderRadius: 3, minWidth: { xs: '90%', sm: 400 } } }}
       >
         <DialogTitle sx={{ fontWeight: 800, pb: 1, color: 'error.main' }}>Xác nhận xóa bản nhạc</DialogTitle>
         <DialogContent>

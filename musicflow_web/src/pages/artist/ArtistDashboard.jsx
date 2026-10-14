@@ -44,7 +44,7 @@ import {
   createArtistProfileForm,
   formatDurationLabel,
 } from '../../utils/artistProfile';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 function ArtistDashboard() {
   const theme = useTheme();
@@ -66,7 +66,7 @@ function ArtistDashboard() {
   const isArtistLoggedIn = localStorage.getItem('role') === 'artist';
 
   const fetchDashboard = useCallback(async () => {
-    if (!isArtistLoggedIn && isAuthDialogRoute) {
+    if (localStorage.getItem('role') !== 'artist') {
       setLoading(false);
       setError('');
       return;
@@ -234,7 +234,7 @@ function ArtistDashboard() {
             elevation={0}
             sx={{
               overflow: 'hidden',
-              borderRadius: 6,
+              borderRadius: 3.5,
               border: '1px solid rgba(255, 255, 255, 0.08)',
               background: 'linear-gradient(135deg, #090d16 0%, #1a1e36 45%, #6c63ff 100%)',
               boxShadow: '0 20px 45px rgba(108, 99, 255, 0.15)',
@@ -343,7 +343,7 @@ function ArtistDashboard() {
                   <Card
                     elevation={0}
                     sx={{
-                      borderRadius: 5,
+                      borderRadius: 3,
                       backgroundColor: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.08)',
                       backdropFilter: 'blur(16px)',
@@ -397,7 +397,7 @@ function ArtistDashboard() {
                 elevation={0}
                 sx={{
                   p: 3,
-                  borderRadius: 5,
+                  borderRadius: 3,
                   border: '1px solid',
                   borderColor: 'divider',
                   background: (theme) => theme.palette.mode === 'dark' 
@@ -475,7 +475,7 @@ function ArtistDashboard() {
                   elevation={0}
                   sx={{
                     height: '100%',
-                    borderRadius: 5,
+                    borderRadius: 3,
                     border: '1px solid',
                     borderColor: 'divider',
                     backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#ffffff',
@@ -552,7 +552,7 @@ function ArtistDashboard() {
               <Card
                 elevation={0}
                 sx={{
-                  borderRadius: 5,
+                  borderRadius: 3,
                   border: '1px solid',
                   borderColor: 'divider',
                   backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff',
@@ -656,7 +656,7 @@ function ArtistDashboard() {
               <Stack spacing={4}>
                 {/* Visual Chart Card */}
                 {analytics.releasesByMonth && analytics.releasesByMonth.length > 0 && (
-                  <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff' }}>
+                  <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff' }}>
                     <CardContent sx={{ p: 3.5 }}>
                       <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
                         Catalog Releases Trend
@@ -723,7 +723,7 @@ function ArtistDashboard() {
                 )}
 
                 {/* Recent Releases Section */}
-                <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff' }}>
+                <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff' }}>
                   <CardContent sx={{ p: 3.5 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
                       <Box>
@@ -734,7 +734,7 @@ function ArtistDashboard() {
                     </Stack>
 
                     {songs.length === 0 ? (
-                      <Box sx={{ p: 4, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.01)', border: '1px dashed', borderColor: 'divider', textAlign: 'center' }}>
+                      <Box sx={{ p: 4, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.01)', border: '1px dashed', borderColor: 'divider', textAlign: 'center' }}>
                         <MusicNoteIcon sx={{ fontSize: 44, color: 'text.secondary', opacity: 0.4, mb: 1.5 }} />
                         <Typography fontWeight={700} sx={{ color: 'text.primary' }}>No songs yet</Typography>
                         <Typography color="text.secondary" variant="body2" sx={{ mt: 0.75, maxWidth: 360, mx: 'auto' }}>
@@ -866,7 +866,7 @@ function ArtistDashboard() {
 
             {/* Right Section: Profile Readiness Ring */}
             <Grid size={{ xs: 12, lg: 4 }}>
-              <Card elevation={0} sx={{ borderRadius: 5, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff', height: '100%' }}>
+              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#ffffff', height: '100%' }}>
                 <CardContent sx={{ p: 3.5, display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <Typography variant="h6" sx={{ fontWeight: 800 }}>Profile completion</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3.5 }}>
@@ -931,7 +931,7 @@ function ArtistDashboard() {
                     <Box
                       sx={{
                         p: 2,
-                        borderRadius: 4.5,
+                        borderRadius: 2.5,
                         backgroundColor: artist?.bio
                           ? 'rgba(16, 185, 129, 0.08)'
                           : (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.02)',
@@ -967,7 +967,7 @@ function ArtistDashboard() {
                     <Box
                       sx={{
                         p: 2,
-                        borderRadius: 4.5,
+                        borderRadius: 2.5,
                         backgroundColor: artist?.avatar
                           ? 'rgba(16, 185, 129, 0.08)'
                           : (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.02)',
@@ -1003,7 +1003,7 @@ function ArtistDashboard() {
                     <Box
                       sx={{
                         p: 2,
-                        borderRadius: 4.5,
+                        borderRadius: 2.5,
                         backgroundColor: songs.length > 0
                           ? 'rgba(16, 185, 129, 0.08)'
                           : (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.02)',

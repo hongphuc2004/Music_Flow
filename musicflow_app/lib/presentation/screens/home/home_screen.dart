@@ -19,6 +19,7 @@ import 'package:musicflow_app/presentation/screens/home/home_song_list_section.d
 import 'package:musicflow_app/presentation/screens/home/home_top_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_topic_section.dart';
 import 'package:musicflow_app/presentation/screens/home/home_new_releases_section.dart';
+import 'package:musicflow_app/presentation/widgets/ad_banner_widget.dart';
 import 'package:musicflow_app/presentation/widgets/voice_ai_dj_sheet.dart';
 import 'package:musicflow_app/presentation/screens/ai_dj/ai_dj_screen.dart';
 
@@ -527,7 +528,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       onSongTap: _onSongTap,
                       formatDuration: _formatDuration,
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
+                    const AdBannerWidget(),
+                    const SizedBox(height: 20),
                   ],
 
                   if (_featuredArtists.isNotEmpty) ...[

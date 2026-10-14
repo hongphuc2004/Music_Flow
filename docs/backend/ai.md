@@ -56,7 +56,7 @@ MusicFlow sở hữu kiến trúc AI đa mô hình kết hợp (**Google Gemini 
 - **Phạm vi hoạt động:** Tích hợp trên cả Web và Mobile (`AiAssistantScreen` và `AiFloatingAssistantOrb`).
 - **Multi-turn Context:** Duy trì mạch hội thoại qua `AssistantConversation` và `AssistantMessage`.
 - **Hệ thống Quota cá nhân hóa (`aiQuota.service.js`):**
-  - Giới hạn lượt chat mỗi ngày theo cấp tài khoản (Gói Free, Gói GO, Gói PLUS, Gói PREMIUM).
+  - Giới hạn lượt chat mỗi ngày theo cấp tài khoản (Gói Free, Gói PLUS, Gói PREMIUM).
   - Tự động nạp lại lượt (reset) vào 00:00 hàng ngày và gửi thông báo `Notification`.
 - **Xác nhận hành động (Action Confirmation):**
   - Khi AI đề xuất thực thi hành động can thiệp dữ liệu (ví dụ: tạo playlist mới, thêm bài hát vào yêu thích), AI trả về cấu trúc Intent Action.

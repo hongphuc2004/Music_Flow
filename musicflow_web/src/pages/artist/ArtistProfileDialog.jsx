@@ -36,7 +36,7 @@ function ArtistProfileDialog({
       maxWidth="sm"
       PaperProps={{
         sx: {
-          borderRadius: 6,
+          borderRadius: 3.5,
           boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
           overflow: 'hidden'
         }

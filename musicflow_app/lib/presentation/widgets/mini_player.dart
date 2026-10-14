@@ -5,6 +5,7 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/screens/player/player_screen.dart';
 import 'rive/rive_play_pause_button.dart';
 import 'rive/rive_audio_visualizer.dart';
+import 'package:musicflow_app/presentation/widgets/premium_badge.dart';
 
 class MiniPlayer extends StatefulWidget {
   final bool isPlaying;
@@ -282,14 +283,24 @@ class _MiniPlayerState extends State<MiniPlayer>
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.songTitle,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                widget.songTitle,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (widget.song?.isPremium == true) ...[
+              const SizedBox(width: 6),
+              const PremiumBadge(fontSize: 8),
+            ],
+          ],
         ),
         const SizedBox(height: 2),
         Row(

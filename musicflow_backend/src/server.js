@@ -33,6 +33,8 @@ const adminPremiumRoute = require("./routes/admin-premium.route");
 const notificationRoute = require("./routes/notification.route");
 
 const adminRoute = require("./routes/admin.route");
+const adminAdRoute = require("./routes/admin-ad.route");
+const adRoute = require("./routes/ad.route");
 const commentRoute = require("./routes/comment.route");
 const artistRoute = require("./routes/artist.route");
 const aiRoute = require("./routes/ai.route");
@@ -216,6 +218,8 @@ app.use("/api/subscriptions", subscriptionRoute);
 app.use("/api/admin/premium", adminPremiumRoute);
 app.use("/api/notifications", notificationRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/admin/ads", adminAdRoute);
+app.use("/api/ads", adRoute);
 
 app.use("/api/comments", commentRoute);
 

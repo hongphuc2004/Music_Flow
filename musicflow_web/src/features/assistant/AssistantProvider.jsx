@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clientAssistantApi } from '../../services/api';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 const AssistantContext = createContext(null);
 

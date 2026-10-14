@@ -8,6 +8,8 @@ import ClientFooter from './ClientFooter';
 import ClientAuthDialog from './ClientAuthDialog';
 import ClientSongCommentsDrawer from './ClientSongCommentsDrawer';
 import ClientQueueDrawer from './ClientQueueDrawer';
+import ClientAdInterruptionOverlay from './ClientAdInterruptionOverlay';
+import ClientAdPromoModal from '../../common/ui/ClientAdPromoModal';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientSongsApi } from '../../../services/client/client.service';
 
@@ -220,6 +222,8 @@ function ClientLayout({ children, title }) {
         targetSong={commentTargetSong}
       />
       <ClientAuthDialog />
+      <ClientAdInterruptionOverlay />
+      <ClientAdPromoModal />
     </Box>
   );
 }

@@ -16,6 +16,7 @@ import '../library/downloaded_songs_screen.dart';
 import '../library/your_uploads_screen.dart';
 import '../library/playlists_screen.dart';
 import '../settings/settings_screen.dart';
+import '../premium/premium_screen.dart';
 
 class AiDjScreen extends StatefulWidget {
   final Function(Song) onSongTap;
@@ -356,13 +357,16 @@ class _AiDjScreenState extends State<AiDjScreen> {
           widget.onPlayAll(responseSongs, startIndex: 0);
         }
         _scrollToBottom();
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
+      } else if (response.statusCode == 401) {
         setState(() => _errorMessage = 'Yêu cầu đăng nhập để chat với AI.');
       } else {
+        final msg = data['message']?.toString() ?? 'Đã xảy ra lỗi khi trợ lý nhạc AI xử lý.';
         setState(() {
-          _errorMessage =
-              data['message'] ?? 'Đã xảy ra lỗi khi trợ lý nhạc AI xử lý.';
+          _errorMessage = msg;
         });
+        if (response.statusCode == 403 && (msg.contains('lượt AI') || msg.contains('hạn mức') || msg.contains('hết'))) {
+          _showAiQuotaLimitModal(msg);
+        }
       }
     } catch (_) {
       setState(() {
@@ -373,6 +377,107 @@ class _AiDjScreenState extends State<AiDjScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showAiQuotaLimitModal(String message) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1435),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withOpacity(0.18),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                color: Color(0xFF8B5CF6),
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Hết lượt dùng AI DJ hôm nay',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message.isNotEmpty
+                  ? message
+                  : '🤖 Bạn đã sử dụng hết lượt AI hôm nay. Nâng cấp Gói PLUS để có thêm lượt sử dụng AI.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Nâng cấp Gói PLUS (20.000đ/tháng)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Để sau',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _executeClientActions(List<dynamic>? actions) {

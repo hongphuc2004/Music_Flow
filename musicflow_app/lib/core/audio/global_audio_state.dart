@@ -2,11 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'dart:math';
 import 'package:musicflow_app/core/config/api_config.dart';
+import 'package:musicflow_app/core/audio/ad_manager.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/core/audio/audio_player_service.dart';
 import 'package:musicflow_app/data/services/offline_song_service.dart';
 import 'package:musicflow_app/data/services/play_history_service.dart';
 import 'package:musicflow_app/data/services/song_api_service.dart';
+import 'package:musicflow_app/data/services/ad_service.dart';
+import 'package:musicflow_app/data/services/auth_service.dart';
 
 enum PlaybackRepeatMode { off, all, one }
 
@@ -51,6 +54,23 @@ class GlobalAudioState extends ChangeNotifier {
   bool get isAutoplayEnabled => _isAutoplayEnabled;
   PlaybackRepeatMode get repeatMode => _repeatMode;
 
+  final ValueNotifier<bool> premiumRequiredModalNotifier = ValueNotifier<bool>(false);
+
+  void triggerPremiumRequiredModal() {
+    premiumRequiredModalNotifier.value = true;
+  }
+
+  void dismissPremiumRequiredModal() {
+    premiumRequiredModalNotifier.value = false;
+  }
+
+  bool get isPremiumPreview {
+    if (_currentSong?.isPremium != true) return false;
+    final user = AuthService.currentUserNotifier.value;
+    final hasVip = user != null && user.hasActivePremium && user.planBadge == 'PREMIUM';
+    return !hasVip;
+  }
+
   void initialize() {
     if (_isInitialized) return;
     _isInitialized = true;
@@ -90,12 +110,34 @@ class GlobalAudioState extends ChangeNotifier {
         _lastNotifiedPosition = position;
         notifyListeners();
       }
+
+      // Giới hạn 45s cho kho nhạc Premium nếu chưa có gói VIP
+      if (isPremiumPreview && position.inSeconds >= 45) {
+        _audioService.pause();
+        _audioService.seek(const Duration(seconds: 45));
+        _currentPosition = const Duration(seconds: 45);
+        triggerPremiumRequiredModal();
+      }
+
+      // Preload quảng cáo ở 85% thời lượng bài hát để tránh gián đoạn
+      if (_progress >= 0.85) {
+        AdManager.instance.preloadNextAdIfNeeded(songProgress: _progress);
+      }
     });
 
     // Listen to completion
     _audioService.player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
-        playNext(fromCompletion: true);
+        if (AdManager.instance.hasReadyAd()) {
+          // Kích hoạt Audio Ad Interruption trước khi chuyển bài hát
+          AdManager.instance.playAdInterruption(
+            onFinished: () {
+              playNext(fromCompletion: true);
+            },
+          );
+        } else {
+          playNext(fromCompletion: true);
+        }
       }
     });
   }
@@ -122,6 +164,8 @@ class GlobalAudioState extends ChangeNotifier {
   void _playCurrentSong() {
     if (_currentSong == null) return;
 
+    dismissPremiumRequiredModal();
+
     // Reset position va set duration tu metadata ngay lap tuc
     _currentPosition = Duration.zero;
     _totalDuration = _currentSong!.durationAsDuration ?? Duration.zero;
@@ -129,6 +173,9 @@ class GlobalAudioState extends ChangeNotifier {
 
     // Record to play history
     PlayHistoryService.addToHistory(_currentSong!);
+
+    // Tăng bộ đếm bài hát cho AdManager
+    AdManager.instance.incrementSongsPlayed();
 
     _playWithBestSource();
   }
@@ -154,6 +201,43 @@ class GlobalAudioState extends ChangeNotifier {
     );
   }
 
+  Future<void> _checkAndPlayAdIfNeeded({required VoidCallback onProceed}) async {
+    // 1. Nếu đã có ad được preload sẵn sàng trong buffer -> Phát ngay
+    if (AdManager.instance.hasReadyAd()) {
+      debugPrint('[GlobalAudioState] Preloaded ad ready, executing interruption...');
+      _audioService.pause();
+      await AdManager.instance.playAdInterruption(onFinished: onProceed);
+      return;
+    }
+
+    // 2. Nếu chưa có ad preload nhưng đã đạt ngưỡng bài nghe -> Gọi API kiểm tra và phát ngay
+    // Ngưỡng tối thiểu là 5 bài (tài khoản basic) hoặc 8 bài (tài khoản go). Nếu chưa đủ 5 bài thì bỏ qua gọi API.
+    if (AdManager.instance.songsPlayedCount < 5) {
+      onProceed();
+      return;
+    }
+
+    try {
+      final decision = await AdService.checkNextAd(
+        songsPlayedCount: AdManager.instance.songsPlayedCount,
+      );
+      if (decision.hasAd && decision.ad != null) {
+        debugPrint('[GlobalAudioState] Backend required ad for count: ${AdManager.instance.songsPlayedCount}, playing...');
+        _audioService.pause();
+        await AdManager.instance.prepareAndPlayAd(
+          ad: decision.ad!,
+          userTier: decision.tier,
+          onFinished: onProceed,
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('[GlobalAudioState] Ad check fallback error: $e');
+    }
+
+    onProceed();
+  }
+
   Future<void> playNext({bool fromCompletion = false}) async {
     if (_playlist.isEmpty || _isChangingSong) return;
 
@@ -165,15 +249,20 @@ class GlobalAudioState extends ChangeNotifier {
 
     final nextIndex = _resolveNextIndex();
     if (nextIndex != null) {
-      _isChangingSong = true;
-      _currentIndex = nextIndex;
-      _currentSong = _playlist[_currentIndex];
-      notifyListeners();
-      _playCurrentSong();
+      // Tự động kiểm tra và chèn Audio Ad nếu đã đạt ngưỡng trước khi qua bài mới
+      await _checkAndPlayAdIfNeeded(
+        onProceed: () {
+          _isChangingSong = true;
+          _currentIndex = nextIndex;
+          _currentSong = _playlist[_currentIndex];
+          notifyListeners();
+          _playCurrentSong();
 
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _isChangingSong = false;
-      });
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isChangingSong = false;
+          });
+        },
+      );
       return;
     }
 
@@ -271,8 +360,24 @@ class GlobalAudioState extends ChangeNotifier {
     if (_isPlaying) {
       _audioService.pause();
     } else {
+      if (isPremiumPreview && _currentPosition.inSeconds >= 45) {
+        triggerPremiumRequiredModal();
+        return;
+      }
       _audioService.player.play();
     }
+  }
+
+  void seek(Duration position) {
+    if (isPremiumPreview && position.inSeconds > 45) {
+      _audioService.seek(const Duration(seconds: 45));
+      _audioService.pause();
+      _currentPosition = const Duration(seconds: 45);
+      triggerPremiumRequiredModal();
+      notifyListeners();
+      return;
+    }
+    _audioService.seek(position);
   }
 
   void playAtIndex(int index) {

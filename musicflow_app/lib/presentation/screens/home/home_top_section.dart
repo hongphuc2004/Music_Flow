@@ -3,14 +3,29 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../data/services/notification_api_service.dart';
+import '../../widgets/notification_bell_button.dart';
+import '../../widgets/notifications_sheet.dart';
 import 'home_shared.dart';
 
 
-class HomeTopBar extends StatelessWidget {
+class HomeTopBar extends StatefulWidget {
   final String displayName;
   final VoidCallback? onSearchTap;
 
   const HomeTopBar({super.key, required this.displayName, this.onSearchTap});
+
+  @override
+  State<HomeTopBar> createState() => _HomeTopBarState();
+}
+
+class _HomeTopBarState extends State<HomeTopBar> {
+  @override
+  void initState() {
+    super.initState();
+    NotificationApiService.fetchUnreadCount();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +81,7 @@ class HomeTopBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  displayName,
+                  widget.displayName,
                   style: TextStyle(
                     color: HomePalette.textPrimary(context),
                     fontSize: 18,
@@ -77,10 +92,31 @@ class HomeTopBar extends StatelessWidget {
               ],
             ),
           ),
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationApiService.unreadCountNotifier,
+            builder: (context, unreadCount, _) {
+              return NotificationBellButton(
+                hasUnread: unreadCount > 0,
+                unreadCount: unreadCount,
+                onTap: () {
+                  if (unreadCount > 0) {
+                    NotificationsSheet.show(context);
+                  } else {
+                    AppToast.showInfo(
+                      context,
+                      'Không có thông báo mới nào.',
+                      title: 'Thông báo',
+                    );
+                  }
+                },
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: onSearchTap,
+              onTap: widget.onSearchTap,
               borderRadius: BorderRadius.circular(16),
               child: Container(
                 width: 44,

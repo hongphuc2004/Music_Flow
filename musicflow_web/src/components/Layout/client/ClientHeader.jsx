@@ -21,6 +21,7 @@ import {
   Badge,
   Popover,
   Button,
+  Tooltip,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -40,15 +41,21 @@ import {
   CloseRounded as CloseIcon,
   ClearRounded as ClearIcon,
   TrendingUpRounded as TrendingIcon,
+  CheckCircleRounded as VerifiedIcon,
+  MicRounded as MicIcon,
 } from '@mui/icons-material';
-import useAppToast from '../../../components/common/useAppToast';
+import useAppToast from '../../../components/common/js/useAppToast';
 import { ColorModeContext } from '../../../context/ColorModeContext';
 import useClientSession from '../../../hooks/useClientSession';
 import { logout } from '../../../services/api';
-import { useClientPlayer } from './ClientPlayerProvider';
+import { useClientPlayer, useClientPlayerActions } from './ClientPlayerProvider';
 import ClientSongMoreMenu from './ClientSongMoreMenu';
 import { clientSongsApi, clientNotificationsApi } from '../../../services/client/client.service';
 import { getOptimizedImageUrl } from '../../../utils/imageUtil';
+import { getArtistPath } from '../../../utils/shareUtil';
+import useVoiceRecognition from '../../../hooks/useVoiceRecognition';
+import NotificationBellButton from '../../../components/common/ui/NotificationBellButton';
+import PremiumBadge from '../../../components/common/ui/PremiumBadge';
 
 const SEARCH_HISTORY_STORAGE_KEY = 'musicflow_search_history';
 const MAX_SEARCH_HISTORY = 5;
@@ -81,16 +88,25 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
   const { toggleColorMode, mode } = useContext(ColorModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchValue, setSearchValue] = useState('');
-  const [searchResults, setSearchResults] = useState({ songs: [], playlists: [] });
+  const [searchResults, setSearchResults] = useState({ songs: [], artists: [], playlists: [] });
   const [searchLoading, setSearchLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [searchHistory, setSearchHistory] = useState(() => readSearchHistory());
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notiAnchorEl, setNotiAnchorEl] = useState(null);
-  const { playSong } = useClientPlayer();
+  const { isPlaying } = useClientPlayer();
+  const { playSong, pauseSong, resumeSong } = useClientPlayerActions();
+  const wasPlayingRef = useRef(false);
   const { isLoggedIn, userName, userAvatar } = useClientSession();
   const userInitial = useMemo(() => (userName || 'U').charAt(0).toUpperCase(), [userName]);
+
+  const {
+    isSupported: isVoiceSupported,
+    isListening: isVoiceListening,
+    startListening: startVoiceListening,
+    stopListening: stopVoiceListening,
+  } = useVoiceRecognition();
 
   const saveHistory = useCallback((query) => {
     const trimmed = (query || '').trim();
@@ -205,7 +221,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
   useEffect(() => {
     const trimmed = searchValue.trim();
     if (!trimmed) {
-      setSearchResults({ songs: [], playlists: [] });
+      setSearchResults({ songs: [], artists: [], playlists: [] });
       setSearchLoading(false);
       return;
     }
@@ -222,16 +238,17 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
         if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
           setSearchResults({
             songs: Array.isArray(response.data.songs) ? response.data.songs : [],
+            artists: Array.isArray(response.data.artists) ? response.data.artists : [],
             playlists: Array.isArray(response.data.playlists) ? response.data.playlists : [],
           });
         } else if (Array.isArray(response.data)) {
-          setSearchResults({ songs: response.data, playlists: [] });
+          setSearchResults({ songs: response.data, artists: [], playlists: [] });
         } else {
-          setSearchResults({ songs: [], playlists: [] });
+          setSearchResults({ songs: [], artists: [], playlists: [] });
         }
       } catch (err) {
         console.warn('Header search error:', err);
-        setSearchResults({ songs: [], playlists: [] });
+        setSearchResults({ songs: [], artists: [], playlists: [] });
       } finally {
         setSearchLoading(false);
       }
@@ -272,14 +289,28 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
 
   const goToArtistLogin = () => {
     handleClose();
-    navigate('/artist/dashboard?auth=login');
+    if (localStorage.getItem('role') === 'artist') {
+      navigate('/artist/dashboard');
+    } else {
+      navigate('/artist/dashboard?auth=login');
+    }
   };
 
   const relatedKeywords = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
     if (!query) return [];
     const list = [];
+    const artists = Array.isArray(searchResults?.artists) ? searchResults.artists : [];
     const songs = Array.isArray(searchResults?.songs) ? searchResults.songs : [];
+
+    // Prioritize matching artist names
+    artists.forEach((a) => {
+      if (a.name && a.name.toLowerCase().includes(query)) {
+        if (!list.some((item) => item.toLowerCase() === a.name.toLowerCase())) {
+          list.push(a.name);
+        }
+      }
+    });
 
     // Prioritize songs whose title contains the query
     songs.forEach((s) => {
@@ -287,6 +318,13 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
         if (!list.some((item) => item.toLowerCase() === s.title.toLowerCase())) {
           list.push(s.title);
         }
+      }
+    });
+
+    // Then other artists from results
+    artists.forEach((a) => {
+      if (a.name && !list.some((item) => item.toLowerCase() === a.name.toLowerCase())) {
+        list.push(a.name);
       }
     });
 
@@ -312,13 +350,129 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
       saveHistory(trimmed);
       setSearchValue(trimmed);
     }
-    if (searchResults.songs.length > 0) {
-      playSong(searchResults.songs[0], { queue: searchResults.songs });
+    const songs = Array.isArray(searchResults?.songs) ? searchResults.songs : [];
+    const artists = Array.isArray(searchResults?.artists) ? searchResults.artists : [];
+    const playlists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
+
+    const matchedArtist = artists.find(
+      (a) => a.name && a.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (matchedArtist) {
+      navigate(getArtistPath(matchedArtist));
       setShowResults(false);
-    } else if (searchResults.playlists.length > 0) {
-      navigate(`/playlists/${searchResults.playlists[0]._id}`);
+    } else if (songs.length > 0) {
+      playSong(songs[0], { queue: songs });
+      setShowResults(false);
+    } else if (artists.length > 0) {
+      navigate(getArtistPath(artists[0]));
+      setShowResults(false);
+    } else if (playlists.length > 0) {
+      navigate(`/playlists/${playlists[0]._id || playlists[0].id}`);
       setShowResults(false);
     }
+  };
+
+  const handleToggleVoiceSearch = () => {
+    if (isVoiceListening) {
+      stopVoiceListening();
+      if (wasPlayingRef.current) {
+        wasPlayingRef.current = false;
+        resumeSong?.();
+      }
+      return;
+    }
+    if (!isVoiceSupported) {
+      showToast({
+        severity: 'warning',
+        title: 'Chưa hỗ trợ',
+        message: 'Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API.',
+      });
+      return;
+    }
+
+    // Tạm dừng nhạc nếu đang phát để Micro không thu phải âm thanh từ loa
+    if (isPlaying) {
+      wasPlayingRef.current = true;
+      pauseSong?.();
+    } else {
+      wasPlayingRef.current = false;
+    }
+
+    setShowResults(true);
+    startVoiceListening({
+      lang: 'vi-VN',
+      silenceTimeoutMs: 1300,
+      onResult: (text) => {
+        setSearchValue(text);
+      },
+      onEnd: async (cleanedQuery, rawQuery) => {
+        // Khôi phục nhạc nếu trước đó đang phát
+        if (wasPlayingRef.current) {
+          wasPlayingRef.current = false;
+          resumeSong?.();
+        }
+
+        const query = (cleanedQuery || rawQuery || '').trim();
+        if (!query) return;
+
+        setSearchValue(query);
+        saveHistory(query);
+        setShowResults(true);
+        setSearchLoading(true);
+
+        try {
+          const response = await clientSongsApi.search({
+            query,
+            includePlaylists: true,
+            includeArtists: true,
+            limit: 8,
+          });
+
+          if (response.data && typeof response.data === 'object') {
+            const songs = Array.isArray(response.data.songs) ? response.data.songs : [];
+            const artists = Array.isArray(response.data.artists) ? response.data.artists : [];
+            const playlists = Array.isArray(response.data.playlists) ? response.data.playlists : [];
+
+            setSearchResults({ songs, artists, playlists });
+
+            // 1. Nếu trùng khớp tên nghệ sĩ -> chuyển thẳng tới trang nghệ sĩ
+            const matchedArtist = artists.find(
+              (a) => a.name && a.name.toLowerCase() === query.toLowerCase()
+            );
+            if (matchedArtist) {
+              navigate(getArtistPath(matchedArtist));
+              setShowResults(false);
+              return;
+            }
+
+            // 2. Nếu trùng khớp tên bài hát -> phát luôn bài đó
+            const exactSong = songs.find(
+              (s) => s.title && s.title.toLowerCase() === query.toLowerCase()
+            );
+            if (exactSong) {
+              playSong(exactSong, { queue: songs });
+              setShowResults(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('[Voice Search] Direct search error:', err);
+        } finally {
+          setSearchLoading(false);
+        }
+      },
+      onError: (err) => {
+        if (wasPlayingRef.current) {
+          wasPlayingRef.current = false;
+          resumeSong?.();
+        }
+        showToast({
+          severity: 'error',
+          title: 'Lỗi giọng nói',
+          message: err.message,
+        });
+      },
+    });
   };
 
   const searchInputRef = useRef(null);
@@ -394,7 +548,7 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                 <SearchIcon sx={{ color: '#8c85ff', mr: 1, fontSize: 20 }} />
                 <InputBase
                   inputRef={searchInputRef}
-                  placeholder="Tìm kiếm bài hát, nghệ sĩ, lời bài hát..."
+                  placeholder={isVoiceListening ? "Đang lắng nghe bạn nói..." : "Tìm kiếm bài hát, nghệ sĩ, lời bài hát..."}
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
                   onFocus={() => setShowResults(true)}
@@ -413,11 +567,34 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                       setSearchValue('');
                       searchInputRef.current?.focus();
                     }}
-                    sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
+                    sx={{ p: 0.25, mr: 0.5, color: 'text.secondary', '&:hover': { color: 'text.primary' } }}
                   >
                     <ClearIcon sx={{ fontSize: 18 }} />
                   </IconButton>
                 )}
+                <Tooltip title={isVoiceListening ? "Đang nghe... Bấm để dừng" : "Tìm kiếm bằng giọng nói"}>
+                  <IconButton
+                    size="small"
+                    onClick={handleToggleVoiceSearch}
+                    sx={{
+                      p: 0.5,
+                      color: isVoiceListening ? '#ef4444' : (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.54)',
+                      bgcolor: isVoiceListening ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                      animation: isVoiceListening ? 'pulseVoice 1.4s infinite ease-in-out' : 'none',
+                      '@keyframes pulseVoice': {
+                        '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.5)' },
+                        '50%': { transform: 'scale(1.15)', boxShadow: '0 0 0 6px rgba(239, 68, 68, 0)' },
+                        '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(239, 68, 68, 0)' },
+                      },
+                      '&:hover': {
+                        color: isVoiceListening ? '#dc2626' : 'primary.main',
+                        bgcolor: isVoiceListening ? 'rgba(239, 68, 68, 0.25)' : 'rgba(108, 99, 255, 0.1)',
+                      },
+                    }}
+                  >
+                    <MicIcon sx={{ fontSize: 19 }} />
+                  </IconButton>
+                </Tooltip>
               </Box>
 
               {/* Floating Autocomplete & Search History Dropdown (ZingMP3 Style) */}
@@ -448,6 +625,45 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                     },
                   }}
                 >
+                  {/* Visual Voice Search Banner */}
+                  {isVoiceListening && (
+                    <Box
+                      sx={{
+                        p: 1.75,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(108, 99, 255, 0.12))',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: '50%',
+                          bgcolor: 'error.main',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          animation: 'pulseVoice 1.4s infinite ease-in-out',
+                        }}
+                      >
+                        <MicIcon sx={{ fontSize: 18 }} />
+                      </Box>
+                      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary', fontSize: 13 }}>
+                          Đang lắng nghe giọng nói...
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+                          {searchValue ? `"${searchValue}"` : "Hãy nói tên bài hát hoặc ca sĩ (ví dụ: 'Bùi Anh Tuấn', 'Hẹn Một Mai')..."}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
                   {/* TRƯỜNG HỢP 1: Chưa nhập chữ -> Hiển thị "Đề xuất cho bạn" & "Tìm kiếm gần đây" */}
                   {!searchValue.trim() ? (
                     <Box sx={{ py: 1 }}>
@@ -565,8 +781,9 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                       </Box>
                     ) : (() => {
                       const foundSongs = Array.isArray(searchResults?.songs) ? searchResults.songs : (Array.isArray(searchResults) ? searchResults : []);
+                      const foundArtists = Array.isArray(searchResults?.artists) ? searchResults.artists : [];
                       const foundPlaylists = Array.isArray(searchResults?.playlists) ? searchResults.playlists : [];
-                      const hasResults = foundSongs.length > 0 || foundPlaylists.length > 0;
+                      const hasResults = foundSongs.length > 0 || foundArtists.length > 0 || foundPlaylists.length > 0;
 
                       return (
                         <Box sx={{ py: 1 }}>
@@ -632,13 +849,92 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                           {!hasResults ? (
                             <Box sx={{ py: 2.5, px: 2, textAlign: 'center' }}>
                               <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: 13 }}>
-                                Không tìm thấy bài hát hoặc playlist nào phù hợp.
+                                Không tìm thấy bài hát, nghệ sĩ hoặc danh sách phát nào phù hợp.
                               </Typography>
                             </Box>
                           ) : (
                             <List disablePadding sx={{ pb: 0.5 }}>
+                              {/* Khối Nghệ Sĩ */}
+                              {foundArtists.length > 0 && (
+                                <>
+                                  <Box sx={{ px: 2, pt: 0.8, pb: 0.4 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 11.5 }}>
+                                      Nghệ sĩ ({foundArtists.length})
+                                    </Typography>
+                                  </Box>
+                                  {foundArtists.map((artist) => (
+                                    <ListItemButton
+                                      key={artist._id || artist.id}
+                                      onClick={() => {
+                                        saveHistory(searchValue.trim());
+                                        navigate(getArtistPath(artist));
+                                        setShowResults(false);
+                                      }}
+                                      sx={{
+                                        py: 0.85,
+                                        px: 1.5,
+                                        borderRadius: '8px',
+                                        mx: 1,
+                                        my: 0.25,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        '&:hover': {
+                                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(108, 99, 255, 0.12)' : 'rgba(108, 99, 255, 0.06)',
+                                        },
+                                      }}
+                                    >
+                                      <ListItemAvatar sx={{ minWidth: 46 }}>
+                                        <Avatar
+                                          src={getOptimizedImageUrl(artist.avatar, 'avatar')}
+                                          sx={{
+                                            width: 40,
+                                            height: 40,
+                                            border: '1.5px solid',
+                                            borderColor: 'primary.main',
+                                            bgcolor: 'rgba(108, 99, 255, 0.15)',
+                                            color: 'primary.main',
+                                          }}
+                                        >
+                                          <PersonIcon sx={{ fontSize: 20 }} />
+                                        </Avatar>
+                                      </ListItemAvatar>
+                                      <ListItemText
+                                        primary={
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                                            <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: 'text.primary' }} noWrap>
+                                              {artist.name}
+                                            </Typography>
+                                            {Boolean(artist.isVerified) && (
+                                              <VerifiedIcon sx={{ fontSize: 14, color: 'primary.main', flexShrink: 0 }} />
+                                            )}
+                                          </Box>
+                                        }
+                                        secondary={
+                                          artist.followersCount !== undefined && artist.followersCount > 0
+                                            ? `Nghệ sĩ • ${Number(artist.followersCount).toLocaleString('vi-VN')} người quan tâm`
+                                            : 'Nghệ sĩ'
+                                        }
+                                        secondaryTypographyProps={{
+                                          fontSize: 11.5,
+                                          color: 'text.secondary',
+                                          noWrap: true,
+                                        }}
+                                      />
+                                    </ListItemButton>
+                                  ))}
+                                </>
+                              )}
+
+                              {/* Khối Bài Hát */}
                               {foundSongs.length > 0 && (
                                 <>
+                                  {foundArtists.length > 0 && (
+                                    <Box sx={{ px: 2, pt: 1, pb: 0.4 }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 11.5 }}>
+                                        Bài hát ({foundSongs.length})
+                                      </Typography>
+                                    </Box>
+                                  )}
                                   {foundSongs.map((song) => (
                                     <ListItemButton
                                       key={song._id || song.id}
@@ -670,13 +966,26 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
                                           />
                                         </ListItemAvatar>
                                         <ListItemText
-                                          primary={song.title}
+                                          primary={
+                                            <Stack direction="row" alignItems="center" spacing={0.8} sx={{ minWidth: 0 }}>
+                                              <Typography
+                                                sx={{
+                                                  fontSize: 13.5,
+                                                  fontWeight: 700,
+                                                  color: 'text.primary',
+                                                  overflow: 'hidden',
+                                                  textOverflow: 'ellipsis',
+                                                  whiteSpace: 'nowrap',
+                                                  minWidth: 0,
+                                                  flexShrink: 1,
+                                                }}
+                                              >
+                                                {song.title}
+                                              </Typography>
+                                              {Boolean(song.isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                                            </Stack>
+                                          }
                                           secondary={(song.artists || []).map(a => typeof a === 'string' ? a : a?.name).filter(Boolean).join(', ')}
-                                          primaryTypographyProps={{
-                                            fontSize: 13.5,
-                                            fontWeight: 700,
-                                            noWrap: true,
-                                          }}
                                           secondaryTypographyProps={{
                                             fontSize: 11.5,
                                             noWrap: true,
@@ -768,11 +1077,11 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
           <IconButton onClick={toggleColorMode} color="inherit">
             {mode === 'dark' ? <LightModeIcon sx={{ color: '#fbbf24' }} /> : <DarkModeIcon />}
           </IconButton>
-          <IconButton color="inherit" onClick={handleNotiOpen}>
-            <Badge badgeContent={unreadCount} color="error" max={99}>
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
+          <NotificationBellButton
+            onClick={handleNotiOpen}
+            hasUnread={unreadCount > 0}
+            unreadCount={unreadCount}
+          />
           <Popover
             anchorEl={notiAnchorEl}
             open={Boolean(notiAnchorEl)}

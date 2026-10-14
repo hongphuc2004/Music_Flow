@@ -462,9 +462,17 @@ class SongApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final songs = (data['songs'] as List)
-            .map((e) => Song.fromJson(e))
-            .toList();
+        final rawSongs = data['songs'];
+        final songs = <Song>[];
+        if (rawSongs is List) {
+          for (final item in rawSongs) {
+            if (item is Map) {
+              try {
+                songs.add(Song.fromJson(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          }
+        }
         return MyUploadsResult(success: true, songs: songs);
       } else {
         return MyUploadsResult(

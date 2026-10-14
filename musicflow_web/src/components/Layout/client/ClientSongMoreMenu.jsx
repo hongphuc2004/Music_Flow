@@ -38,12 +38,13 @@ import {
 } from '@mui/icons-material';
 import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi } from '../../../services/client/client.service';
 import { useClientPlayerActions } from './ClientPlayerProvider';
-import useAppToast from '../../../components/common/useAppToast';
-import ShareSongModal from '../../common/ShareSongModal';
+import useAppToast from '../../../components/common/js/useAppToast';
+import ShareSongModal from '../../common/ui/ShareSongModal';
+import HeartFavoriteButton from '../../common/ui/HeartFavoriteButton';
 import { getArtistPath } from '../../../utils/shareUtil';
 
 
-function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
+function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist, onFavoriteChange }) {
   const navigate = useNavigate();
   const { playSong } = useClientPlayerActions();
   const { showToast } = useAppToast();
@@ -113,18 +114,28 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
     }
 
     try {
-      await clientFavoritesApi.toggle(songId);
-      setFavorite((prev) => {
-        const next = !prev;
-        showToast({
-          severity: 'success',
-          title: 'Thành công!',
-          message: next
-            ? 'Đã thêm bài hát vào danh sách yêu thích.'
-            : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
-        });
-        return next;
+      const response = await clientFavoritesApi.toggle(songId);
+      const next = typeof response.data?.isFavorite === 'boolean'
+        ? response.data.isFavorite
+        : !favorite;
+      setFavorite(next);
+      showToast({
+        severity: 'success',
+        title: 'Thành công!',
+        message: next
+          ? 'Đã thêm bài hát vào danh sách yêu thích.'
+          : 'Đã bỏ bài hát khỏi danh sách yêu thích.',
       });
+
+      if (typeof onFavoriteChange === 'function') {
+        onFavoriteChange(songId, next, song);
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('musicflow-favorite-changed', {
+          detail: { songId, isFavorite: next, song },
+        })
+      );
     } catch (error) {
       showToast({
         severity: 'error',
@@ -340,12 +351,13 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
         </MenuItem>
 
         <MenuItem onClick={handleToggleFavorite} sx={{ borderRadius: 2, py: 1 }}>
-          <ListItemIcon>
-            {favorite ? (
-              <FavoriteIcon fontSize="small" sx={{ color: '#ef4444' }} />
-            ) : (
-              <FavoriteBorderIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-            )}
+          <ListItemIcon sx={{ minWidth: 32 }}>
+            <HeartFavoriteButton
+              checked={favorite}
+              size={24}
+              color="#ff4e7c"
+              outlineColor="rgba(255, 255, 255, 0.6)"
+            />
           </ListItemIcon>
           <ListItemText
             primary={favorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
@@ -409,7 +421,7 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 4.5,
+            borderRadius: 3,
             p: 1,
             backdropFilter: 'blur(16px)',
           },
@@ -423,7 +435,7 @@ function ClientSongMoreMenu({ song, buttonSx, onEdit, onRemoveFromPlaylist }) {
         <DialogContent dividers sx={{ border: 'none', py: 1.5 }}>
           {/* Target Song Info preview */}
           {song && (
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2, p: 1.25, bgcolor: 'action.hover', borderRadius: 3 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2, p: 1.25, bgcolor: 'action.hover', borderRadius: 2 }}>
               <Avatar
                 src={song.imageUrl || undefined}
                 variant="rounded"

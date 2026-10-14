@@ -41,50 +41,78 @@ exports.getActivePlans = async (req, res) => {
       await artistPlanExists.save();
     }
 
+    // Xóa vĩnh viễn Gói GO nếu còn tồn tại
+    await Plan.deleteMany({ name: { $in: ["Gói GO", "GO"] } });
+
+    // Cập nhật giá 20k & 50k và hạn mức AI 20 & 50 requests cho Gói PLUS & Gói PREMIUM
+    await Plan.updateOne(
+      { name: "Gói PLUS" },
+      {
+        $set: {
+          price: 20000,
+          aiLimitPerDay: 20,
+          description: [
+            "Mở khóa Âm thanh chất lượng cao HQ 320kbps",
+            "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 700MB)",
+            "Tải lên tối đa 500MB bài hát lưu trữ",
+            "Trò chuyện AI DJ (20 lượt/ngày)",
+            "Không quảng cáo làm phiền",
+          ],
+          isActive: true,
+        },
+      }
+    );
+
+    await Plan.updateOne(
+      { name: "Gói PREMIUM" },
+      {
+        $set: {
+          price: 50000,
+          aiLimitPerDay: 50,
+          description: [
+            "Âm thanh chất lượng cao HQ 320kbps toàn diện",
+            "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 1GB)",
+            "Tải lên tối đa 1GB bài hát lưu trữ",
+            "Trò chuyện AI DJ (50 lượt/ngày, mô hình AI thông minh nhất)",
+            "Miễn 100% mọi loại quảng cáo",
+          ],
+          isActive: true,
+        },
+      }
+    );
+
     // Tự động seed gói User mặc định nếu DB trống gói User
-    const goPlanExists = await Plan.findOne({ name: "Gói GO" });
-    if (!goPlanExists) {
+    const plusPlanExists = await Plan.findOne({ name: "Gói PLUS" });
+    if (!plusPlanExists) {
       const defaultUserPlans = [
         {
-          name: "Gói GO",
-          price: 19000,
+          name: "Gói PLUS",
+          price: 20000,
           durationInDays: 30,
           description: [
-            "Chất lượng âm thanh Tiêu chuẩn (128kbps)",
-            "Tải nhạc ngoại tuyến 128kbps (Tối đa 300MB)",
-            "Tải lên tối đa 250MB bài hát lưu trữ",
-            "Trò chuyện AI DJ (20 lượt/ngày)"
+            "Mở khóa Âm thanh chất lượng cao HQ 320kbps",
+            "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 700MB)",
+            "Tải lên tối đa 500MB bài hát lưu trữ",
+            "Trò chuyện AI DJ (20 lượt/ngày)",
+            "Không quảng cáo làm phiền"
           ],
           targetRole: "user",
           aiLimitPerDay: 20,
           isActive: true
         },
         {
-          name: "Gói PLUS",
-          price: 49000,
-          durationInDays: 30,
-          description: [
-            "Mở khóa Âm thanh chất lượng cao HQ 320kbps",
-            "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 700MB)",
-            "Tải lên tối đa 500MB bài hát lưu trữ",
-            "Trò chuyện AI DJ (50 lượt/ngày)"
-          ],
-          targetRole: "user",
-          aiLimitPerDay: 50,
-          isActive: true
-        },
-        {
           name: "Gói PREMIUM",
-          price: 89000,
+          price: 50000,
           durationInDays: 30,
           description: [
             "Âm thanh chất lượng cao HQ 320kbps toàn diện",
             "Tải nhạc ngoại tuyến HQ 320kbps (Tối đa 1GB)",
             "Tải lên tối đa 1GB bài hát lưu trữ",
-            "Trò chuyện AI DJ (100 lượt/ngày, mô hình AI thông minh nhất)"
+            "Trò chuyện AI DJ (50 lượt/ngày, mô hình AI thông minh nhất)",
+            "Miễn 100% mọi loại quảng cáo"
           ],
           targetRole: "user",
-          aiLimitPerDay: 100,
+          aiLimitPerDay: 50,
           isActive: true
         }
       ];

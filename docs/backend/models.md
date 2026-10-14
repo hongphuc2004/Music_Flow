@@ -2,11 +2,11 @@
 
 Tất cả models dùng **Mongoose + MongoDB**.
 `timestamps: true` mặc định trên hầu hết schemas → tự động có `createdAt`, `updatedAt` (trừ bảng tối ưu append-only như `SongPlayEvent`).
-Hiện tại backend có **24 Models** phục vụ toàn bộ hệ sinh thái MusicFlow.
+Hiện tại backend có **25 Models** phục vụ toàn bộ hệ sinh thái MusicFlow.
 
 ---
 
-## Danh sách 24 Models
+## Danh sách 25 Models
 
 1. [User](#1-user)
 2. [Artist](#2-artist)
@@ -32,6 +32,7 @@ Hiện tại backend có **24 Models** phục vụ toàn bộ hệ sinh thái Mu
 22. [SongPlayEvent](#22-songplayevent)
 23. [SongDownloadEvent](#23-songdownloadevent)
 24. [SongShareEvent](#24-songshareevent)
+25. [Advertisement](#25-advertisement)
 
 ---
 
@@ -642,6 +643,33 @@ Theo dõi tương tác chia sẻ liên kết mạng xã hội (Facebook, Zalo, T
   userAgent: String
 }
 // Index: (songId, createdAt: -1)
+```
+
+---
+
+## 25. Advertisement
+
+Lưu trữ các chiến dịch quảng cáo âm thanh (Audio Ads) và banner tương tác (Banner Ads) trong mô hình Freemium. Quản lý trạng thái hiển thị, lượt hiển thị (Impression), lượt nhấp (Click) và gói tài khoản áp dụng.
+
+```js
+// src/models/ad.model.js
+{
+  title:            String (required, trim)
+  description:      String (default: "", trim)
+  type:             enum ["audio", "banner"] (default: "audio", indexed)
+  audioUrl:         String (default: "")
+  imageUrl:         String (default: "")
+  targetUrl:        String (default: "")
+  duration:         Number (default: 15, thời lượng ước tính tính bằng giây)
+  canSkip:          Boolean (default: false)
+  skipAfterSeconds: Number (default: 5)
+  applicableTiers:  [String enum: ["basic", "go", "plus", "premium"]] (default: ["basic", "go"])
+  isActive:         Boolean (default: true, indexed)
+  priority:         Number (default: 1)
+  impressionCount:  Number (default: 0)
+  clickCount:       Number (default: 0)
+}
+// Timestamps: true (createdAt, updatedAt)
 ```
 
 ---

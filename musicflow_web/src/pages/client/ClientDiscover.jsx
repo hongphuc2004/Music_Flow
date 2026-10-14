@@ -28,7 +28,9 @@ import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientPlaylistsApi, clientSongsApi, clientTopicsApi } from '../../services/client/client.service';
 import { useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
+import ClientAdBannerCard from '../../components/common/ui/ClientAdBannerCard';
 import { getArtistPath } from '../../utils/shareUtil';
+import { getOptimizedImageUrl } from '../../utils/imageUtil';
 
 const toSlug = (str) => {
   if (!str) return '';
@@ -331,7 +333,7 @@ function ClientDiscover() {
                   height: '100%',
                   minHeight: 330,
                   p: { xs: 3, sm: 4 },
-                  borderRadius: '28px',
+                  borderRadius: '14px',
                   background: (theme) => theme.palette.mode === 'dark'
                     ? 'linear-gradient(135deg, rgba(16, 22, 44, 0.9) 0%, rgba(8, 12, 26, 0.96) 100%)'
                     : 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
@@ -522,7 +524,7 @@ function ClientDiscover() {
                   height: '100%',
                   minHeight: 330,
                   p: 3,
-                  borderRadius: '28px',
+                  borderRadius: '14px',
                   background: 'linear-gradient(135deg, rgba(30, 24, 60, 0.85) 0%, rgba(12, 10, 30, 0.95) 100%)',
                   border: '1px solid rgba(236, 72, 153, 0.25)',
                   boxShadow: '0 24px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(236, 72, 153, 0.15)',
@@ -845,6 +847,9 @@ function ClientDiscover() {
             </Grid>
           </Box>
 
+          {/* ── Banner Quảng Cáo Gói PLUS (Phong cách Zing MP3 VIP Banner) ── */}
+          <ClientAdBannerCard />
+
           {/* ── 3.5. 🕒 DẤU CHÂN ÂM NHẠC GẦN ĐÂY (NẾU CÓ DỮ LIỆU) ── */}
           {(activeCategory === 'all' || activeCategory === 'recent') && recentQueue.length > 0 && (
             <Box>
@@ -855,38 +860,138 @@ function ClientDiscover() {
                 </Typography>
               </Stack>
               <Grid container spacing={2}>
-                {recentQueue.map((song) => (
-                  <Grid size={{ xs: 6, sm: 4, md: 2 }} key={`recent-feed-${song._id}`}>
-                    <Box
-                      onClick={() => playSong(song, { queue: recentQueue })}
-                      sx={{
-                        p: 1.25,
-                        borderRadius: '20px',
-                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        cursor: 'pointer',
-                        transition: 'all 0.25s ease',
-                        '&:hover': {
-                          borderColor: '#ec4899',
-                          transform: 'translateY(-4px)',
-                          boxShadow: '0 10px 24px -5px rgba(236, 72, 153, 0.35)',
-                        },
-                      }}
-                    >
-                      <Avatar
-                        src={song.imageUrl}
-                        variant="rounded"
-                        sx={{ width: '100%', aspectRatio: '1/1', height: 'auto', borderRadius: '14px', mb: 1 }}
-                      />
-                      <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
-                        {song.title}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }} noWrap display="block">
-                        {Array.isArray(song.artists) ? song.artists.map(a => a?.name).filter(Boolean).join(', ') : (song.artistText || 'Nhiều nghệ sĩ')}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                ))}
+                {recentQueue.map((song) => {
+                  const artistLabel = Array.isArray(song.artists)
+                    ? song.artists.map((a) => a?.name).filter(Boolean).join(', ')
+                    : (song.artistText || 'Nhiều nghệ sĩ');
+
+                  return (
+                    <Grid size={{ xs: 6, sm: 4, md: 2 }} key={`recent-feed-${song._id}`} sx={{ display: 'flex' }}>
+                      <Box
+                        onClick={() => playSong(song, { queue: recentQueue })}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          p: 1.25,
+                          borderRadius: '16px',
+                          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 22, 40, 0.55)' : '#ffffff',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          cursor: 'pointer',
+                          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                          '&:hover': {
+                            borderColor: '#ec4899',
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 28px -5px rgba(236, 72, 153, 0.35)',
+                            '& .recent-song-img': {
+                              transform: 'scale(1.06)',
+                            },
+                            '& .recent-song-play-overlay': {
+                              opacity: 1,
+                              transform: 'scale(1)',
+                            },
+                          },
+                        }}
+                      >
+                        {/* Container ảnh tỷ lệ vuông 1:1 cố định tuyệt đối */}
+                        <Box
+                          sx={{
+                            width: '100%',
+                            aspectRatio: '1 / 1',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            mb: 1.25,
+                            bgcolor: 'rgba(255, 255, 255, 0.05)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Box
+                            component="img"
+                            src={getOptimizedImageUrl(song.imageUrl, 'song_card')}
+                            alt={song.title}
+                            loading="lazy"
+                            className="recent-song-img"
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                              transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                            }}
+                          />
+
+                          {/* Overlay nút Play khi hover */}
+                          <Box
+                            className="recent-song-play-overlay"
+                            sx={{
+                              position: 'absolute',
+                              inset: 0,
+                              bgcolor: 'rgba(0, 0, 0, 0.35)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: 0,
+                              transform: 'scale(0.85)',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '50%',
+                                bgcolor: '#ec4899',
+                                color: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 12px rgba(236, 72, 153, 0.5)',
+                              }}
+                            >
+                              <PlayIcon sx={{ fontSize: 22, ml: 0.2 }} />
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* Thông tin bài hát: Căn đều chiều cao và cắt ngắn nếu quá dài */}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0, justifyContent: 'space-between' }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.875rem',
+                              lineHeight: 1.3,
+                              mb: 0.5,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={song.title}
+                          >
+                            {song.title}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              lineHeight: 1.2,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={artistLabel}
+                          >
+                            {artistLabel}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  );
+                })}
               </Grid>
             </Box>
           )}
@@ -912,7 +1017,7 @@ function ClientDiscover() {
                       height: '100%',
                       minHeight: 280,
                       p: 3.5,
-                      borderRadius: '28px',
+                      borderRadius: '14px',
                       background: (theme) => theme.palette.mode === 'dark'
                         ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(99, 102, 241, 0.25) 100%)'
                         : 'linear-gradient(135deg, #181c32 0%, #0e7490 100%)',

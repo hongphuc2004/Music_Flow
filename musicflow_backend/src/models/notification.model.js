@@ -28,6 +28,8 @@ const notificationSchema = new mongoose.Schema(
         "ai_quota_reset",
         "song_moderation_result",
         "admin_moderation_alert",
+        "artist_follow",
+        "artist_pro",
       ],
       default: "general",
       index: true,

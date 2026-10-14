@@ -33,10 +33,11 @@ import {
   AutoAwesomeRounded as SparklesIcon,
   ViewSidebarRounded as SidebarIcon,
 } from '@mui/icons-material';
-import useAppToast from '../../../components/common/useAppToast';
+import useAppToast from '../../../components/common/js/useAppToast';
 import useClientSession from '../../../hooks/useClientSession';
 import { preloadRoute } from '../../../utils/routePreload';
 import { logout } from '../../../services/api';
+import ClientSidebarPremiumBanner from './ClientSidebarPremiumBanner';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -77,7 +78,7 @@ function ClientSidebar({
   const userInitial = (userName || 'U').charAt(0).toUpperCase();
 
   const handleNavigate = (path) => {
-    const privatePaths = ['/library', '/profile', '/ai-mood', '/favorites', '/premium'];
+    const privatePaths = ['/library', '/profile', '/ai-mood', '/favorites'];
     if (!isLoggedIn && privatePaths.includes(path)) {
       showToast({
         severity: 'info',
@@ -111,7 +112,11 @@ function ClientSidebar({
 
   const handleArtistLogin = () => {
     onClose();
-    navigate('/artist/dashboard?auth=login');
+    if (localStorage.getItem('role') === 'artist') {
+      navigate('/artist/dashboard');
+    } else {
+      navigate('/artist/dashboard?auth=login');
+    }
   };
 
   const renderSidebarContent = (collapsed = false, showDesktopToggle = false) => (
@@ -371,6 +376,9 @@ function ClientSidebar({
 
       {/* Footer Area */}
       <Stack spacing={1.5} sx={{ p: collapsed ? 1 : 2, mt: 'auto' }}>
+        {/* Zing MP3 Style Banner khi nghe bài hát Premium */}
+        <ClientSidebarPremiumBanner collapsed={collapsed} />
+
         {/* Artist Studio Call-to-action */}
         {!isLoggedIn && !collapsed && (
           <Paper

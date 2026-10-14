@@ -36,6 +36,7 @@ export const songsApi = {
   }),
   delete: (id) => api.delete(`/admin/songs/${id}`),
   updateVisibility: (id, isPublic) => api.patch(`/admin/songs/${id}/visibility`, { isPublic }),
+  updatePremium: (id, isPremium) => api.patch(`/admin/songs/${id}/premium`, { isPremium }),
   moderate: (id) => api.post(`/admin/songs/${id}/moderate`),
 };
 
@@ -88,4 +89,15 @@ export const adminPremiumApi = {
   getTransactions: (params) => api.get('/admin/premium/transactions', { params }),
   // Subscriptions
   getSubscriptions: (params) => api.get('/admin/premium/subscriptions', { params }),
+};
+
+// Advertisements Management API
+export const adminAdsApi = {
+  getStats: () => api.get('/admin/ads/stats/overview'),
+  getAll: (params) => api.get('/admin/ads', { params }),
+  getById: (id) => api.get(`/admin/ads/${id}`),
+  create: (payload) => api.post('/admin/ads', payload),
+  update: (id, payload) => api.put(`/admin/ads/${id}`, payload),
+  toggleActive: (id) => api.patch(`/admin/ads/${id}/toggle`),
+  delete: (id) => api.delete(`/admin/ads/${id}`),
 };

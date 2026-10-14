@@ -15,6 +15,7 @@ const prunedModels = new Set(); // modelNames that returned 404
 const MODEL_ROUTING_RPD_LIMITS = {
   "gemini-3.5-flash-lite": 500,
   "gemini-3.1-flash-lite": 500,
+  "gemini-3.8-flash": 20,
   "gemini-3.7-flash": 20,
   "gemini-3.5-flash": 20,
   "gemini-2.5-flash": 20,
@@ -25,10 +26,9 @@ const MODEL_ROUTING_RPD_LIMITS = {
 
 // Model pools mapped strictly per MusicFlow subscription tier
 const TIER_MODEL_POOLS = {
-  premium: ["gemini-3.5-flash-lite", "gemini-3.7-flash"],
-  plus: ["gemini-3.5-flash", "gemini-3.1-flash-lite"],
-  go: ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-3-flash-preview"],
-  basic: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
+  premium: ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-flash-lite"],
+  plus: ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3-flash-preview"],
+  basic: ["gemini-2.5-flash", "gemini-3.5-flash"],
 };
 
 // Safe fallback pool for offline/emergency fallback
@@ -264,7 +264,7 @@ function classifyError(error) {
   if (status === 429 || fullText.includes("429") || fullText.includes("resource_exhausted") || fullText.includes("quota")) {
     // Explicit Daily Quota / RPD check
     const isDailyQuota =
-      (fullText.includes("daily") || fullText.includes("per day") || fullText.includes("requests per day") || fullText.includes("day quota")) &&
+      (fullText.includes("daily") || fullText.includes("per day") || fullText.includes("requests per day") || fullText.includes("day quota") || fullText.includes("generaterequestsperday") || fullText.includes("generate_content_free_tier_requests") || fullText.includes("quota exceeded")) &&
       !fullText.includes("rpm") &&
       !fullText.includes("tpm") &&
       !fullText.includes("per minute") &&

@@ -26,6 +26,8 @@ Base URL: `http://localhost:5001` (dev) | `https://music-flow-30us.onrender.com`
 16. [Admin — `/api/admin`](#16-admin--apiadmin)
 17. [Upload CDN — `/api/upload`](#17-upload-cdn--apiupload)
 18. [OpenGraph Social Share Crawler — `/share/*`](#18-opengraph-social-share-crawler--share)
+19. [Advertisements (Client) — `/api/ads`](#19-advertisements-client--apiads)
+20. [Admin Advertisements Management — `/api/admin/ads`](#20-admin-advertisements-management--apiadminads)
 
 ---
 
@@ -197,7 +199,7 @@ Hệ thống Trợ lý thông minh toàn năng đa phiên chat, kiểm soát h�
 
 | Method | Endpoint | Auth | Mô tả |
 |--------|----------|------|-------|
-| GET | `/` | — | Lấy danh sách các gói cước Premium đang kích hoạt (Gói GO, PLUS, PREMIUM) |
+| GET | `/` | — | Lấy danh sách các gói cước Premium đang kích hoạt (Gói PLUS, PREMIUM) |
 
 ---
 
@@ -279,3 +281,33 @@ Phục vụ hiển thị Preview Card giàu nội dung khi chia sẻ link lên F
 |--------|----------|------|-------|
 | GET | `/share/:artistSlug/:songSlug` | — | Render thẻ OpenGraph meta HTML theo slug nghệ sĩ và bài hát |
 | GET | `/share/songs/:id` | — | Render thẻ OpenGraph meta HTML theo ID bài hát (Backward compatibility) |
+
+---
+
+## 19. Advertisements (Client) — `/api/ads`
+
+Phục vụ phân phối quảng cáo âm thanh (Audio Ads) và banner tương tác cho người dùng gói miễn phí (Basic).
+
+| Method | Endpoint | Auth | Mô tả |
+|--------|----------|------|-------|
+| POST | `/check-next` | — | Kiểm tra và lấy quảng cáo âm thanh tiếp theo (dựa trên session bài nghe, tier) |
+| GET | `/banners` | — | Lấy danh sách banner quảng cáo hợp lệ để hiển thị trên web/app |
+| POST | `/:id/impression` | — | Ghi nhận 1 lượt hiển thị / phát quảng cáo thực tế (`impressionCount + 1`) |
+| POST | `/:id/click` | — | Ghi nhận 1 lượt click chuyển hướng vào liên kết quảng cáo (`clickCount + 1`) |
+
+---
+
+## 20. Admin Advertisements Management — `/api/admin/ads`
+
+Quản lý toàn bộ chiến dịch quảng cáo, yêu cầu đăng nhập với quyền `admin` (`role === "admin"`).
+
+| Method | Endpoint | Auth | Mô tả |
+|--------|----------|------|-------|
+| GET | `/stats/overview` | ✓ Admin | Thống kê tổng số chiến dịch, Audio Ads, Banner Ads, tổng Impression, Click và CTR trung bình |
+| GET | `/` | ✓ Admin | Danh sách chiến dịch có phân trang, lọc theo type (`audio`/`banner`), trạng thái (`isActive`), tìm kiếm theo tiêu đề |
+| GET | `/:id` | ✓ Admin | Xem chi tiết 1 chiến dịch quảng cáo |
+| POST | `/` | ✓ Admin | Tạo mới chiến dịch quảng cáo (hỗ trợ upload audio & banner qua `/api/upload/*`) |
+| PUT | `/:id` | ✓ Admin | Cập nhật thông tin, banner, audio, URL đích, quyền skip của chiến dịch |
+| PATCH | `/:id/toggle` | ✓ Admin | Bật / tắt nhanh trạng thái kích hoạt (`isActive`) của chiến dịch |
+| DELETE | `/:id` | ✓ Admin | Xóa chiến dịch quảng cáo khỏi hệ thống |
+

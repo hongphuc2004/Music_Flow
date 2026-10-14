@@ -28,8 +28,8 @@ import {
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../../../services/api';
 import { syncArtistSession } from '../../../utils/artistSession';
-import useAppToast from '../../../components/common/useAppToast';
-import FloatingTextField from '../../common/FloatingTextField';
+import useAppToast from '../../../components/common/js/useAppToast';
+import FloatingTextField from '../../common/ui/FloatingTextField';
 import ForgotPasswordDialog from '../../auth/ForgotPasswordDialog';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -129,7 +129,7 @@ function ArtistAuthDialog() {
   }, []);
 
   const closeDialog = useCallback(() => {
-    if (!localStorage.getItem('role')) {
+    if (!localStorage.getItem('role') || localStorage.getItem('role') !== 'artist') {
       navigate('/', { replace: true });
       setError('');
       return;

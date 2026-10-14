@@ -31,6 +31,8 @@ class _RiveHeartButtonState extends State<RiveHeartButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _burstController;
   late final Animation<double> _scaleAnimation;
+  bool _isHovered = false;
+  bool _isPressed = false;
 
   @override
   void initState() {
@@ -84,55 +86,76 @@ class _RiveHeartButtonState extends State<RiveHeartButton>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _handleTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: widget.size * 1.5,
-        height: widget.size * 1.5,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Particle burst ring
-            if (_burstController.isAnimating)
-              AnimatedBuilder(
-                animation: _burstController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    size: Size(widget.size * 1.5, widget.size * 1.5),
-                    painter: _ParticleBurstPainter(
-                      progress: _burstController.value,
-                      color: widget.activeColor,
-                    ),
-                  );
-                },
-              ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: _handleTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedScale(
+          scale: _isPressed
+              ? 0.92
+              : (_isHovered ? 1.15 : 1.0),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          child: SizedBox(
+            width: widget.size * 1.5,
+            height: widget.size * 1.5,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Particle burst ring
+                if (_burstController.isAnimating)
+                  AnimatedBuilder(
+                    animation: _burstController,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        size: Size(widget.size * 1.5, widget.size * 1.5),
+                        painter: _ParticleBurstPainter(
+                          progress: _burstController.value,
+                          color: widget.activeColor,
+                        ),
+                      );
+                    },
+                  ),
 
-            // Animated Heart Icon
-            ScaleTransition(
-              scale: _burstController.isAnimating
-                  ? _scaleAnimation
-                  : const AlwaysStoppedAnimation(1.0),
-              child: Icon(
-                widget.isLiked
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                color: widget.isLiked
-                    ? widget.activeColor
-                    : widget.inactiveColor,
-                size: widget.size,
-                shadows: widget.isLiked
-                    ? [
-                        BoxShadow(
-                          color: widget.activeColor.withOpacity(0.45),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        )
-                      ]
-                    : null,
-              ),
+                // Animated Heart Icon
+                ScaleTransition(
+                  scale: _burstController.isAnimating
+                      ? _scaleAnimation
+                      : const AlwaysStoppedAnimation(1.0),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      widget.isLiked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color: widget.isLiked
+                          ? widget.activeColor
+                          : (_isHovered
+                              ? widget.activeColor.withOpacity(0.9)
+                              : widget.inactiveColor),
+                      size: widget.size,
+                      shadows: (widget.isLiked || _isHovered)
+                          ? [
+                              BoxShadow(
+                                color: widget.activeColor
+                                    .withOpacity(_isHovered ? 0.5 : 0.35),
+                                blurRadius: _isHovered ? 14 : 10,
+                                spreadRadius: _isHovered ? 2 : 1,
+                              )
+                            ]
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

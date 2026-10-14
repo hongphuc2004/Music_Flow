@@ -9,6 +9,7 @@ import '../../data/models/song_model.dart';
 import '../../data/services/auth_service.dart';
 import 'rive/rive_ai_dj_mascot.dart';
 import 'rive/rive_audio_visualizer.dart';
+import '../screens/premium/premium_screen.dart';
 
 enum VoiceState { idle, listening, processing, speaking, responding, error }
 
@@ -634,9 +635,14 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
         );
 
       case VoiceState.error:
+        final isQuotaError = _errorMessage.contains('lượt AI') || _errorMessage.contains('Gói PLUS');
         return Column(
           children: [
-            const Icon(Icons.error_outline, color: AppColors.accentPink, size: 48),
+            Icon(
+              isQuotaError ? Icons.smart_toy_rounded : Icons.error_outline,
+              color: isQuotaError ? const Color(0xFF8B5CF6) : AppColors.accentPink,
+              size: 48,
+            ),
             const SizedBox(height: 12),
             Text(
               _errorMessage.isNotEmpty
@@ -645,6 +651,26 @@ class _VoiceAiDjSheetState extends State<VoiceAiDjSheet>
               style: const TextStyle(color: Colors.white, fontSize: 14),
               textAlign: TextAlign.center,
             ),
+            if (isQuotaError) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text(
+                  'Nâng cấp Gói PLUS ngay',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ],
         );
 

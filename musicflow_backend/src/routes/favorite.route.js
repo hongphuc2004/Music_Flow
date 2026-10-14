@@ -71,8 +71,9 @@ router.post("/add/:songId", authMiddleware, async (req, res) => {
       songId: songId,
     });
 
-    // Đồng bộ tăng likeCount trên bài hát
-    await Song.findByIdAndUpdate(songId, { $inc: { likeCount: 1 } });
+    // Đồng bộ likeCount trên bài hát
+    const exactLikeCount = await Favorite.countDocuments({ songId });
+    await Song.findByIdAndUpdate(songId, { $set: { likeCount: exactLikeCount } });
 
     res.json({
       success: true,
@@ -107,10 +108,9 @@ router.delete("/remove/:songId", authMiddleware, async (req, res) => {
       });
     }
 
-    // Đồng bộ giảm likeCount trên bài hát (đảm bảo không âm)
-    await Song.findByIdAndUpdate(songId, [
-      { $set: { likeCount: { $max: [0, { $subtract: [{ $ifNull: ["$likeCount", 0] }, 1] }] } } }
-    ]);
+    // Đồng bộ giảm likeCount trên bài hát chính xác theo DB
+    const exactLikeCount = await Favorite.countDocuments({ songId });
+    await Song.findByIdAndUpdate(songId, { $set: { likeCount: exactLikeCount } });
 
     res.json({
       success: true,
@@ -152,9 +152,10 @@ router.post("/toggle/:songId", authMiddleware, async (req, res) => {
 
     if (existingFav) {
       await Favorite.findByIdAndDelete(existingFav._id);
+      const exactLikeCount = await Favorite.countDocuments({ songId });
       updatedSong = await Song.findByIdAndUpdate(
         songId,
-        [{ $set: { likeCount: { $max: [0, { $subtract: [{ $ifNull: ["$likeCount", 0] }, 1] }] } } }],
+        { $set: { likeCount: exactLikeCount } },
         { new: true }
       );
       isFavorite = false;
@@ -163,9 +164,10 @@ router.post("/toggle/:songId", authMiddleware, async (req, res) => {
         userId: req.userId,
         songId: songId,
       });
+      const exactLikeCount = await Favorite.countDocuments({ songId });
       updatedSong = await Song.findByIdAndUpdate(
         songId,
-        { $inc: { likeCount: 1 } },
+        { $set: { likeCount: exactLikeCount } },
         { new: true }
       );
       isFavorite = true;
@@ -175,7 +177,7 @@ router.post("/toggle/:songId", authMiddleware, async (req, res) => {
       success: true,
       message: isFavorite ? "Đã thêm vào yêu thích" : "Đã xóa khỏi yêu thích",
       isFavorite,
-      likeCount: updatedSong?.likeCount || 0,
+      likeCount: updatedSong?.likeCount ?? 0,
     });
   } catch (error) {
     console.error("Toggle favorite error:", error);

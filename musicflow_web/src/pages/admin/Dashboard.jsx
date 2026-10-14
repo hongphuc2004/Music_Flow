@@ -47,7 +47,7 @@ import {
 import { Layout } from '../../components/Layout';
 import { statsApi } from '../../services/admin/admin.service';
 import { clearApiCache } from '../../services/api';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 // Helper function to format time ago
 const timeAgo = (date) => {

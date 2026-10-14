@@ -323,6 +323,16 @@ router.post("/:id/follow", authMiddleware, async (req, res) => {
       { $set: { followersCount: followers } }
     );
 
+    // Trigger notification to artist when followed
+    if (!alreadyFollowing) {
+      const notificationTriggerService = require("../services/notificationTrigger.service");
+      notificationTriggerService.triggerArtistFollowNotification({
+        artistId: artist._id,
+        followerId: user._id,
+        followerName: user.name,
+      }).catch((err) => console.error("Follow notification trigger error:", err.message));
+    }
+
     return res.json({
       success: true,
       isFollowing: !alreadyFollowing,

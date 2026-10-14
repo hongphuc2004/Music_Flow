@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/presentation/widgets/song_options_menu.dart';
+import 'package:musicflow_app/presentation/widgets/premium_badge.dart';
 import 'home_shared.dart';
 
 class HomeTrendingChart extends StatelessWidget {
@@ -114,15 +115,25 @@ class _TrendingSongRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      song.title,
-                      style: TextStyle(
-                        color: HomePalette.textPrimary(context),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            song.title,
+                            style: TextStyle(
+                              color: HomePalette.textPrimary(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (song.isPremium) ...[
+                          const SizedBox(width: 6),
+                          const PremiumBadge(),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 3),
                     Text(

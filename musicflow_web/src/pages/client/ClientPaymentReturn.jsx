@@ -14,7 +14,7 @@ import {
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
 import { clientSubscriptionApi } from '../../services/client/client.service';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 function ClientPaymentReturn() {
   const location = useLocation();
@@ -83,7 +83,7 @@ function ClientPaymentReturn() {
             p: 5,
             width: '100%',
             maxWidth: 500,
-            borderRadius: 5,
+            borderRadius: 3.5,
             border: '1px solid',
             borderColor: () => success 
               ? 'rgba(34, 197, 94, 0.2)' 

@@ -46,7 +46,7 @@ import {
 import { Layout } from '../../components/Layout';
 
 import { accountsApi } from '../../services/admin/admin.service';
-import useAppToast from '../../components/common/useAppToast';
+import useAppToast from '../../components/common/js/useAppToast';
 
 const emptyEditForm = {
   name: '',
@@ -966,7 +966,7 @@ function Accounts() {
                       Gói Mặc Định
                     </Typography>
                     <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#a78bfa', mt: 0.5, lineHeight: 1.2 }}>
-                      {aiQuotaDialog.info?.tierLimit ?? 5} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
+                      {aiQuotaDialog.info?.tierLimit ?? 3} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
                     </Typography>
                   </Paper>
                 </Grid>
@@ -1111,7 +1111,7 @@ function Accounts() {
                       }}
                     />
                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: 11 }}>
-                      💡 Ví dụ nhập 50: User sẽ có 50 lượt/24h thay vì hạn mức mặc định của gói ({aiQuotaDialog.info?.tierLimit ?? 5} lượt).
+                      💡 Ví dụ nhập 50: User sẽ có 50 lượt/24h thay vì hạn mức mặc định của gói ({aiQuotaDialog.info?.tierLimit ?? 3} lượt).
                     </Typography>
                   </Box>
 
@@ -1210,7 +1210,7 @@ function Accounts() {
                     TỔNG HẠN MỨC HIỆU LỰC MỚI CỦA USER
                   </Typography>
                   <Typography variant="subtitle1" fontWeight={900} sx={{ color: 'text.primary' }}>
-                    {(aiQuotaDialog.customAiLimit !== '' ? Number(aiQuotaDialog.customAiLimit) : (aiQuotaDialog.info?.tierLimit ?? 5)) +
+                    {(aiQuotaDialog.customAiLimit !== '' ? Number(aiQuotaDialog.customAiLimit) : (aiQuotaDialog.info?.tierLimit ?? 3)) +
                       Number(aiQuotaDialog.bonusAiQuota || 0)}{' '}
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>yêu cầu / 24 giờ</span>
                   </Typography>

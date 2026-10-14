@@ -7,6 +7,7 @@ import {
   PauseRounded as PauseIcon,
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
+import PremiumBadge from '../../common/ui/PremiumBadge';
 
 function ClientQueueDrawer({ open, onClose, fallbackQueue = [] }) {
   const { currentSong, queue, isPlaying, playSong } = useClientPlayer();
@@ -171,23 +172,25 @@ function ClientQueueDrawer({ open, onClose, fallbackQueue = [] }) {
 
                 {/* Title & Artist */}
                 <Box sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden' }}>
-                  <Typography
-                    variant="body2"
-                    fontWeight={800}
-                    noWrap
-                    sx={{
-                      color: isCurrent ? '#8c85ff' : 'rgba(255, 255, 255, 0.9)',
-                      fontSize: 13,
-                      mb: 0.25,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      display: 'block',
-                      width: '100%',
-                    }}
-                  >
-                    {song.title}
-                  </Typography>
+                  <Stack direction="row" alignItems="center" spacing={0.8} sx={{ mb: 0.25, minWidth: 0, width: '100%' }}>
+                    <Typography
+                      variant="body2"
+                      fontWeight={800}
+                      noWrap
+                      sx={{
+                        color: isCurrent ? '#8c85ff' : 'rgba(255, 255, 255, 0.9)',
+                        fontSize: 13,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
+                        flexShrink: 1,
+                      }}
+                    >
+                      {song.title}
+                    </Typography>
+                    {Boolean(song.isPremium) && <PremiumBadge sx={{ flexShrink: 0 }} />}
+                  </Stack>
                   <Typography
                     variant="caption"
                     noWrap

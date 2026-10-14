@@ -30,9 +30,9 @@ import {
   triggerNativeShare,
   getQrCodeImageUrl,
   generateShareInstanceId,
-} from '../../utils/shareUtil';
-import { clientSongsApi } from '../../services/client/client.service';
-import useAppToast from './useAppToast';
+} from '../../../utils/shareUtil';
+import { clientSongsApi } from '../../../services/client/client.service';
+import useAppToast from '../js/useAppToast';
 
 const SOCIAL_CHANNELS = [
   {

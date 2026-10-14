@@ -19,15 +19,50 @@ class ApiConfig {
   static String _activeBaseUrl = baseUrlProd;
   static bool _hasInitialized = false;
 
+  static Future<bool> _isReachable(String url) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$url/api/songs?limit=1'))
+          .timeout(const Duration(milliseconds: 1500));
+      return response.statusCode >= 200 && response.statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Khởi tạo và tự động phát hiện môi trường:
   /// Nếu local backend khả dụng -> dùng local. Nếu không -> tự động chuyển sang Render Production.
   static Future<void> init() async {
     if (_hasInitialized) return;
 
     if (_customApiBaseUrl.isNotEmpty) {
-      _activeBaseUrl = _customApiBaseUrl;
+      if (await _isReachable(_customApiBaseUrl)) {
+        _activeBaseUrl = _customApiBaseUrl;
+        _hasInitialized = true;
+        debugPrint('[ApiConfig] Using custom defined API_BASE_URL: $_activeBaseUrl');
+        return;
+      }
+
+      // Check alternate local ports if custom defined port is unresponsive
+      if (_customApiBaseUrl.contains(':5001') &&
+          await _isReachable(_customApiBaseUrl.replaceFirst(':5001', ':5080'))) {
+        _activeBaseUrl = _customApiBaseUrl.replaceFirst(':5001', ':5080');
+        _hasInitialized = true;
+        debugPrint('[ApiConfig] Custom 5001 down -> Auto switched to Docker port 5080: $_activeBaseUrl');
+        return;
+      }
+      if (_customApiBaseUrl.contains(':5080') &&
+          await _isReachable(_customApiBaseUrl.replaceFirst(':5080', ':5001'))) {
+        _activeBaseUrl = _customApiBaseUrl.replaceFirst(':5080', ':5001');
+        _hasInitialized = true;
+        debugPrint('[ApiConfig] Custom 5080 down -> Auto switched to port 5001: $_activeBaseUrl');
+        return;
+      }
+
+      // Fallback to Production
+      _activeBaseUrl = baseUrlProd;
       _hasInitialized = true;
-      debugPrint('[ApiConfig] Using custom defined API_BASE_URL: $_activeBaseUrl');
+      debugPrint('[ApiConfig] Custom API_BASE_URL unreachable -> fallback to Production: $_activeBaseUrl');
       return;
     }
 
@@ -38,24 +73,24 @@ class ApiConfig {
       return;
     }
 
-    // Đang ở Debug Mode: Thử ping nhanh máy chủ Local trong 1.5 giây
-    try {
-      final response = await http
-          .get(Uri.parse('$baseUrlDev/api/songs?limit=1'))
-          .timeout(const Duration(milliseconds: 1500));
-      if (response.statusCode >= 200 && response.statusCode < 500) {
-        _activeBaseUrl = baseUrlDev;
-        debugPrint('[ApiConfig] Local dev server reachable -> using Local: $_activeBaseUrl');
-      } else {
-        _activeBaseUrl = baseUrlProd;
-        debugPrint('[ApiConfig] Local dev server error (${response.statusCode}) -> fallback to Production: $_activeBaseUrl');
+    // Đang ở Debug Mode: Thử ping local server (hỗ trợ localhost, LAN và Docker dev port)
+    final candidates = [
+      kIsWeb ? "http://localhost:5001" : baseUrlDev,
+      kIsWeb ? "http://localhost:5080" : "http://192.168.1.148:5080",
+    ];
+
+    for (final candidate in candidates) {
+      if (await _isReachable(candidate)) {
+        _activeBaseUrl = candidate;
+        _hasInitialized = true;
+        debugPrint('[ApiConfig] Local dev server reachable -> using: $_activeBaseUrl');
+        return;
       }
-    } catch (_) {
-      _activeBaseUrl = baseUrlProd;
-      debugPrint('[ApiConfig] Local dev server unreachable -> auto fallback to Production: $_activeBaseUrl');
     }
 
+    _activeBaseUrl = baseUrlProd;
     _hasInitialized = true;
+    debugPrint('[ApiConfig] Local dev server unreachable -> auto fallback to Production: $_activeBaseUrl');
   }
 
   static String get baseUrl => _activeBaseUrl;
@@ -81,6 +116,14 @@ class ApiConfig {
   static String get usersUpdateEndpoint => "$baseUrl/api/users/update";
   static String get plansEndpoint => "$baseUrl/api/plans";
   static String get subscriptionsEndpoint => "$baseUrl/api/subscriptions";
+  static String get adsEndpoint => "$baseUrl/api/ads";
+  static String get checkNextAdEndpoint => "$adsEndpoint/check-next";
+  static String get bannerAdsEndpoint => "$adsEndpoint/banners";
+  static String adImpressionEndpoint(String id) => "$adsEndpoint/$id/impression";
+  static String adClickEndpoint(String id) => "$adsEndpoint/$id/click";
+  static String get notificationsEndpoint => "$baseUrl/api/notifications";
+  static String markNotificationReadEndpoint(String id) => "$notificationsEndpoint/$id/read";
+  static String get markAllNotificationsReadEndpoint => "$notificationsEndpoint/read-all";
   static String songStreamUrl(String songId) => "$songsEndpoint/$songId/stream";
 
   static String ttsUrl(String text, {String lang = 'vi'}) =>

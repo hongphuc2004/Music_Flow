@@ -43,4 +43,28 @@ router.post("/audio", upload.single("audio"), async (req, res) => {
   }
 });
 
+// POST /api/upload/image
+router.post("/image", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No file uploaded. Field name must be 'image'",
+      });
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: cloudinaryFolder("images"),
+    });
+
+    res.json({
+      url: result.secure_url,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Upload failed" });
+  } finally {
+    safeUnlink(req.file?.path);
+  }
+});
+
 module.exports = router;

@@ -35,10 +35,15 @@ const songSchema = new mongoose.Schema(
       required: false, // null = admin upload
     },
 
-    // 🔒 VISIBILITY
+    // 🔒 VISIBILITY & ACCESS
     isPublic: {
       type: Boolean,
       default: false,
+    },
+    isPremium: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
 
     // 🎵 AUDIO

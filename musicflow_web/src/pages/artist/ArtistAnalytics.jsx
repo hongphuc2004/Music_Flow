@@ -320,7 +320,7 @@ function ArtistAnalytics() {
             elevation={0}
             sx={{
               p: { xs: 3.5, md: 4.5 },
-              borderRadius: 6,
+              borderRadius: 3.5,
               border: '1px solid',
               borderColor: 'divider',
               background: (theme) => theme.palette.mode === 'dark'
@@ -347,7 +347,7 @@ function ArtistAnalytics() {
                 <Card 
                   elevation={0} 
                   sx={{ 
-                    borderRadius: 5, 
+                    borderRadius: 3, 
                     border: '1px solid', 
                     borderColor: 'divider', 
                     bgcolor: 'background.paper',
@@ -366,7 +366,7 @@ function ArtistAnalytics() {
                       height: 54, 
                       display: 'grid', 
                       placeItems: 'center', 
-                      borderRadius: 3.5, 
+                      borderRadius: 2.5, 
                       color: item.accent, 
                       backgroundColor: `${item.accent}12` 
                     }}>
@@ -393,7 +393,7 @@ function ArtistAnalytics() {
               <Card 
                 elevation={0} 
                 sx={{ 
-                  borderRadius: 6, 
+                  borderRadius: 3.5, 
                   border: '1px solid', 
                   borderColor: 'divider', 
                   bgcolor: 'background.paper',
@@ -416,7 +416,7 @@ function ArtistAnalytics() {
               <Card 
                 elevation={0} 
                 sx={{ 
-                  borderRadius: 6, 
+                  borderRadius: 3.5, 
                   border: '1px solid', 
                   borderColor: 'divider', 
                   bgcolor: 'background.paper',
@@ -439,7 +439,7 @@ function ArtistAnalytics() {
           <Card 
             elevation={0}
             sx={{
-              borderRadius: 6,
+              borderRadius: 3.5,
               border: '1px solid',
               borderColor: 'divider',
               bgcolor: 'background.paper',

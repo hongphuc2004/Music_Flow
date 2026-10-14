@@ -27,10 +27,11 @@ import {
   AlternateEmailOutlined as BioIcon,
 } from '@mui/icons-material';
 import api, { setAccessToken } from '../../../services/api';
-import useAppToast from '../../../components/common/useAppToast';
+import useAppToast from '../../../components/common/js/useAppToast';
 import { notifyClientSessionChanged } from '../../../hooks/useClientSession';
+import { syncArtistSession } from '../../../utils/artistSession';
 import ForgotPasswordDialog from '../../auth/ForgotPasswordDialog';
-import FloatingTextField from '../../common/FloatingTextField';
+import FloatingTextField from '../../common/ui/FloatingTextField';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -151,21 +152,49 @@ function ClientAuthDialog() {
     switchMode('artist-login');
   };
 
-  const completeAuth = useCallback(({ token, user }, message) => {
+  const completeAuth = useCallback((data, message) => {
+    const token = data.token;
+    const user = data.user;
+    const isArtist = data.isArtist || user?.role === 'artist';
+    const artist = data.artist || (isArtist ? user : null);
+
     setAccessToken(token);
-    localStorage.setItem('role', user.role);
-    localStorage.setItem('userName', user.name || 'Listener');
-    localStorage.setItem('email', user.email || '');
-    localStorage.setItem('userId', user._id || '');
-    localStorage.setItem('userAvatar', user.avatar || '');
+
+    if (isArtist) {
+      localStorage.setItem('role', 'artist');
+      syncArtistSession(artist || user);
+      showToast({
+        severity: 'success',
+        title: 'Thành công!',
+        message: message || 'Đăng nhập nghệ sĩ thành công.',
+      });
+      navigate('/artist/dashboard', { replace: true });
+      return;
+    }
+
+    localStorage.setItem('role', user?.role || 'user');
+    localStorage.setItem('userName', user?.name || 'Listener');
+    localStorage.setItem('email', user?.email || '');
+    localStorage.setItem('userId', user?._id || '');
+    localStorage.setItem('userAvatar', user?.avatar || '');
     notifyClientSessionChanged();
-    closeDialog();
+    
+    // Kiểm tra trang chuyển hướng sau khi đăng nhập thành công
+    const redirectUrl = sessionStorage.getItem('mf_redirect_after_login');
+    if (redirectUrl) {
+      sessionStorage.removeItem('mf_redirect_after_login');
+      closeDialog();
+      navigate(redirectUrl, { replace: true });
+    } else {
+      closeDialog();
+    }
+
     showToast({
       severity: 'success',
       title: 'Thành công!',
       message,
     });
-  }, [closeDialog, showToast]);
+  }, [closeDialog, showToast, navigate]);
 
   const handleGoogleLogin = async () => {
     if (!GOOGLE_CLIENT_ID) {
@@ -192,19 +221,15 @@ function ClientAuthDialog() {
               });
               const { token, artist } = res.data;
               setAccessToken(token);
-              localStorage.setItem('role', artist.role);
-              localStorage.setItem('artistName', artist.name || 'Artist');
-              localStorage.setItem('artistEmail', artist.email || '');
-              localStorage.setItem('artistId', artist._id || '');
-              localStorage.setItem('artistAvatar', artist.avatar || '');
+              localStorage.setItem('role', artist.role || 'artist');
+              syncArtistSession(artist);
               
-              closeDialog();
               showToast({
                 severity: 'success',
                 title: 'Thành công!',
                 message: 'Đăng nhập Google Nghệ sĩ thành công.',
               });
-              navigate('/artist/dashboard');
+              navigate('/artist/dashboard', { replace: true });
             } else {
               const res = await api.post('/auth/google', {
                 credential: accessToken,
@@ -239,19 +264,15 @@ function ClientAuthDialog() {
         const res = await api.post('/artist/login', loginForm);
         const { token, artist } = res.data;
         setAccessToken(token);
-        localStorage.setItem('role', artist.role);
-        localStorage.setItem('artistName', artist.name || 'Artist');
-        localStorage.setItem('artistEmail', artist.email || '');
-        localStorage.setItem('artistId', artist._id || '');
-        localStorage.setItem('artistAvatar', artist.avatar || '');
+        localStorage.setItem('role', artist.role || 'artist');
+        syncArtistSession(artist);
 
-        closeDialog();
         showToast({
           severity: 'success',
           title: 'Thành công!',
           message: 'Đăng nhập nghệ sĩ thành công.',
         });
-        navigate('/artist/dashboard');
+        navigate('/artist/dashboard', { replace: true });
       } else {
         const res = await api.post('/auth/login', loginForm);
         completeAuth(res.data, 'Đăng nhập thành công.');

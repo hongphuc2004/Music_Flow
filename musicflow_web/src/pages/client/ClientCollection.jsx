@@ -101,7 +101,7 @@ function ClientCollection() {
         <Box 
           sx={{ 
             position: 'relative', 
-            borderRadius: 6, 
+            borderRadius: 3.5, 
             overflow: 'hidden',
             border: '1px solid',
             borderColor: 'divider',
@@ -155,7 +155,7 @@ function ClientCollection() {
                     bgcolor: 'primary.main', 
                     fontSize: { xs: 44, md: 56 }, 
                     fontWeight: 900,
-                    borderRadius: 5,
+                    borderRadius: 3,
                     boxShadow: '0 8px 30px rgba(108,99,255,0.22)',
                     border: '4px solid',
                     borderColor: 'background.paper'
@@ -266,7 +266,7 @@ function ClientCollection() {
           elevation={0}
           sx={{ 
             p: { xs: 3, md: 4.5 }, 
-            borderRadius: 6, 
+            borderRadius: 3.5, 
             border: '1px solid',
             borderColor: 'divider',
             bgcolor: 'background.paper',
@@ -299,7 +299,7 @@ function ClientCollection() {
                   tabIndex={0}
                   sx={{
                     p: 1.5,
-                    borderRadius: 4.5,
+                    borderRadius: 2.5,
                     border: '1px solid',
                     borderColor: 'transparent',
                     bgcolor: 'transparent',

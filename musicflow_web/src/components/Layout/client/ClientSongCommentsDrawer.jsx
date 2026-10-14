@@ -35,7 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useClientPlayer } from './ClientPlayerProvider';
 import { clientCommentsApi } from '../../../services/client/client.service';
-import useAppToast from '../../../components/common/useAppToast';
+import useAppToast from '../../../components/common/js/useAppToast';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';

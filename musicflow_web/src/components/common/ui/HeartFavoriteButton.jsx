@@ -25,11 +25,13 @@ const HeartFavoriteButton = ({
   useEffect(() => {
     // Khi chuyển trạng thái từ false -> true, kích hoạt hiệu ứng văng pháo hoa celebrate
     if (!prevCheckedRef.current && checked) {
-      setAnimating(true);
-      const timer = setTimeout(() => {
-        setAnimating(false);
-      }, 600);
-      return () => clearTimeout(timer);
+      const startTimer = setTimeout(() => setAnimating(true), 0);
+      const endTimer = setTimeout(() => setAnimating(false), 600);
+      prevCheckedRef.current = checked;
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(endTimer);
+      };
     }
     prevCheckedRef.current = checked;
   }, [checked]);

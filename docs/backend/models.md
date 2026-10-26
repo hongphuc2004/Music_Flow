@@ -312,18 +312,25 @@ Quản lý refresh token bảo mật dạng SHA-256 hash.
 
 ## 11. Plan (Premium Plans)
 
-Định nghĩa các gói cước nâng cấp dịch vụ nghe nhạc Premium.
+Định nghĩa các gói cước nâng cấp dịch vụ nghe nhạc Premium (User) và bộ công cụ sản xuất sáng tạo Artist Studio (Artist).
 
 ```js
 // src/models/plan.model.js
 {
   name:           String (required, unique, trim)
-  price:          Number (required, min 0)  // VND
-  durationInDays: Number (required, min 1)
+  price:          Number (required, min 0)  // VND: PLUS (20.000đ), PREMIUM (50.000đ), Artist Studio Pro (79.000đ)
+  durationInDays: Number (required, min 1)  // Mặc định: 30 ngày
   description:    [String]
+  targetRole:     String enum: ["user", "artist"] (default: "user")
+  aiLimitPerDay:  Number (default: 30, PLUS: 20, PREMIUM: 50, Artist Studio Pro: 70)
   isActive:       Boolean  default: true
 }
 ```
+
+Các gói cước chuẩn đang hoạt động:
+- **Gói PLUS**: 20.000đ / 30 ngày (User) — HQ 320kbps, 20 lượt AI DJ/ngày, tải 700MB offline, không quảng cáo.
+- **Gói PREMIUM**: 50.000đ / 30 ngày (User) — HQ 320kbps toàn diện, 50 lượt AI DJ/ngày, tải 1GB offline, không quảng cáo.
+- **Artist Studio Pro**: 79.000đ / 30 ngày (Artist) — Trợ lý AI Studio 70 lượt/ngày, upload tối đa 150MB/bài, kho lưu trữ 5GB, huy hiệu PRO vàng hổ phách.
 
 ---
 

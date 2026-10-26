@@ -13,7 +13,7 @@
    * **Gói FREE (Basic)**: 
      * Cứ sau **5 bài hát** → phát **1 Audio Ad** (bắt buộc nghe hết, không được phép bỏ qua).
      * Hiển thị **Banner Ads** tại trang Home và Discover.
-   * **Gói PLUS (49.000đ/tháng) & PREMIUM (99.000đ/tháng)**:
+   * **Gói PLUS (20.000đ/tháng) & PREMIUM (50.000đ/tháng)**:
      * **Miễn 100% quảng cáo** (cả Audio Ad xen kẽ lẫn Banner Ads).
 3. **Trải Nghiệm Nghe Nhạc Liền Mạch & Fallback An Toàn 100%**:
    * Khi gặp bất kỳ sự cố nào (mất mạng, server timeout, file audio Cloudinary bị lỗi 404, token hết hạn), hệ thống **tự động fallback ngay lập tức** tiếp tục phát bài hát tiếp theo. Quảng cáo không bao giờ được phép chặn luồng nghe nhạc của người dùng.

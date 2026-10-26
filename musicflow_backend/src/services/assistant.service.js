@@ -13,8 +13,8 @@ const promptBuilder = require("../ai/promptBuilder.service");
 const aiIntent = require("./aiIntent.service");
 
 
-const MAX_PLAYLIST_SONGS = 20;
-const PLAYLIST_MIN_TARGET_SONGS = 15;
+const DEFAULT_PLAYLIST_SONGS = 15;
+const MAX_PLAYLIST_SONGS_LIMIT = 50;
 
 const MOOD_TOPIC_MAP = promptBuilder.getMoodTopicMap();
 
@@ -190,7 +190,7 @@ async function findMatchedArtists(prompt) {
   });
 }
 
-async function findSongsByArtists(artists, limit = MAX_PLAYLIST_SONGS) {
+async function findSongsByArtists(artists, limit = DEFAULT_PLAYLIST_SONGS) {
   if (!artists.length) return [];
 
   return Song.find({
@@ -214,7 +214,7 @@ function extractArtistHintFromPrompt(prompt = "") {
   return { artistHint, terms };
 }
 
-async function findSongsByArtistHint(prompt = "", limit = MAX_PLAYLIST_SONGS) {
+async function findSongsByArtistHint(prompt = "", limit = DEFAULT_PLAYLIST_SONGS) {
   const { terms } = extractArtistHintFromPrompt(prompt);
   if (terms.length < 2) return [];
 
@@ -244,7 +244,7 @@ async function findSongsByMood(
   analysis,
   matchedTopics,
   prioritizedTopics = [],
-  limit = MAX_PLAYLIST_SONGS,
+  limit = DEFAULT_PLAYLIST_SONGS,
   options = {}
 ) {
   const { strictTopicOnly = false } = options;
@@ -328,11 +328,11 @@ async function findSongsByMood(
   return scoredSongs.slice(0, limit).map(({ _score, _hasPriorityTopic, ...song }) => song);
 }
 
-async function findSongsByTopicsSequential(topics = [], limit = MAX_PLAYLIST_SONGS, minTarget = PLAYLIST_MIN_TARGET_SONGS) {
+async function findSongsByTopicsSequential(topics = [], limit = DEFAULT_PLAYLIST_SONGS, minTarget = DEFAULT_PLAYLIST_SONGS) {
   const orderedTopics = topics.filter(Boolean);
   if (!orderedTopics.length) return [];
 
-  const targetCount = Math.min(limit, minTarget);
+  const targetCount = limit || minTarget;
   const chosen = [];
   const seenSongIds = new Set();
 
@@ -819,7 +819,7 @@ function getToolsForRole(actorRole) {
   if (actorRole !== "artist") {
     declarations.push({
       name: "create_mood_playlist",
-      description: "Tạo danh sách phát nhạc (playlist) dựa trên cảm xúc, tâm trạng (sad, happy, chill, focus, energetic, romantic, sleep, party, angry) hoặc ca sĩ.",
+      description: "Tạo danh sách phát nhạc (playlist) dựa trên cảm xúc, tâm trạng (sad, happy, chill, focus, energetic, romantic, sleep, party, angry), ca sĩ hoặc số lượng bài hát yêu cầu.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -829,6 +829,10 @@ function getToolsForRole(actorRole) {
             enum: ["sad", "happy", "chill", "focus", "energetic", "romantic", "sleep", "party", "angry"],
           },
           artist: { type: "STRING", description: "Tên ca sĩ chỉ định (nếu có)." },
+          count: {
+            type: "NUMBER",
+            description: "Số lượng bài hát người dùng muốn có trong playlist (ví dụ: 10, 20, 25...). Không bắt buộc; nếu người dùng không yêu cầu số lượng cụ thể thì để trống (hệ thống sẽ tự mặc định là 15 bài).",
+          },
         },
         required: ["mood"],
       },
@@ -915,6 +919,7 @@ class AssistantService {
     const referenceType = intentData.referenceType || params.referenceType || params.followUpType || null;
     const isLyrics = intentData.isLyrics ?? params.isLyrics ?? false;
     const lyricsSnippet = intentData.lyricsSnippet || params.lyricsSnippet || null;
+    const count = intentData.count || params.count || null;
 
     // 1. FOLLOW_UP / ORDINAL / CONTEXTUAL REFERENCE
     if (intent === aiIntent.INTENTS.FOLLOW_UP || (referenceType && referenceType !== "none") || index) {
@@ -1136,9 +1141,11 @@ class AssistantService {
         }
 
         const analysis = analyzeMood(cleanPrompt);
+        const reqCount = count || aiIntent.extractRequestedCount(cleanPrompt);
         const resObj = await this.generatePlaylistInternal({
           prompt: cleanPrompt,
           mood: mood || analysis.mood,
+          count: reqCount,
           userId: actorId,
           conversationId,
           activeModelName,
@@ -1398,6 +1405,7 @@ class AssistantService {
                     } else {
                       const resObj = await this.generatePlaylistInternal({
                         prompt: cleanPrompt,
+                        count: aiIntent.extractRequestedCount(cleanPrompt),
                         userId: actorId,
                         conversationId: conversation._id,
                         activeModelName: modelName,
@@ -1497,6 +1505,7 @@ class AssistantService {
                       prompt: cleanPrompt,
                       mood: args.mood,
                       artistHint: args.artist,
+                      count: args.count || aiIntent.extractRequestedCount(cleanPrompt),
                       userId: actorId,
                       conversationId: conversation._id,
                       activeModelName: modelName,
@@ -1734,7 +1743,22 @@ class AssistantService {
   /**
    * Internal helper to create the actual playlist (Mood Playlist) in DB
    */
-  async generatePlaylistInternal({ prompt, mood, artistHint, userId, conversationId, activeModelName = null, userTier = "basic" }) {
+  async generatePlaylistInternal({
+    prompt,
+    mood,
+    artistHint,
+    count = null,
+    userId,
+    conversationId,
+    activeModelName = null,
+    userTier = "basic",
+  }) {
+    const aiIntent = require("./aiIntent.service");
+    const requestedCount = count || aiIntent.extractRequestedCount(prompt) || aiIntent.extractRequestedCount(artistHint ? `${prompt} ${artistHint}` : prompt);
+    const targetLimit = requestedCount
+      ? Math.max(1, Math.min(Number(requestedCount), MAX_PLAYLIST_SONGS_LIMIT))
+      : DEFAULT_PLAYLIST_SONGS;
+
     const allTopics = await Topic.find({}).lean();
     const mockPrompt = artistHint ? `${prompt} ${artistHint}` : prompt;
     const analysis = analyzeMood(mockPrompt);
@@ -1767,23 +1791,64 @@ class AssistantService {
     let songs = [];
     let source = "topic_only";
 
+    // 1. Fetch user memory profile for personalization
+    let userProfile = null;
+    let recentProfile = null;
+    if (userId) {
+      const personalizationService = require("./personalization.service");
+      const adaptiveService = require("./adaptiveRecommendation.service");
+      [userProfile, recentProfile] = await Promise.all([
+        personalizationService.getUserMusicProfile(userId),
+        adaptiveService.getRecentInterestProfile(userId),
+      ]);
+    }
+
+    // 2. Artist flow if artist intent is detected
     if (allowArtistFlow && primaryArtist) {
-      songs = await findSongsByArtists([primaryArtist], MAX_PLAYLIST_SONGS);
+      songs = await findSongsByArtists([primaryArtist], targetLimit);
       source = songs.length > 0 ? "artist_match" : "topic_only";
     }
 
     if (allowArtistFlow && songs.length === 0) {
-      songs = await findSongsByArtistHint(mockPrompt, MAX_PLAYLIST_SONGS);
+      songs = await findSongsByArtistHint(mockPrompt, targetLimit);
       if (songs.length > 0) {
         source = "artist_match";
       }
     }
 
-    if (!(allowArtistFlow && songs.length > 0) && songs.length < PLAYLIST_MIN_TARGET_SONGS) {
+    // 3. Mood & Topic Flow (scored via findSongsByMood)
+    if (!allowArtistFlow || songs.length === 0) {
+      const moodSongs = await findSongsByMood(
+        analysis,
+        matchedTopics,
+        prioritizedTopics,
+        targetLimit,
+        { strictTopicOnly: hasMoodSignal, userProfile, recentProfile }
+      );
+      if (moodSongs.length > 0) {
+        if (songs.length === 0) {
+          songs = moodSongs;
+          source = songs.length < targetLimit ? "topic_partial" : "topic_match";
+        } else {
+          const seen = new Set(songs.map((s) => s?._id?.toString()).filter(Boolean));
+          for (const s of moodSongs) {
+            const sid = s?._id?.toString();
+            if (!sid || seen.has(sid)) continue;
+            songs.push(s);
+            seen.add(sid);
+            if (songs.length >= targetLimit) break;
+          }
+          source = "artist_then_topic";
+        }
+      }
+    }
+
+    // 4. Sequential fallback/supplement if still under targetLimit
+    if (songs.length < targetLimit && orderedTopics.length > 0) {
       const topicSongs = await findSongsByTopicsSequential(
         orderedTopics,
-        MAX_PLAYLIST_SONGS,
-        PLAYLIST_MIN_TARGET_SONGS
+        targetLimit,
+        targetLimit
       );
       if (songs.length === 0) {
         songs = topicSongs;
@@ -1795,35 +1860,30 @@ class AssistantService {
           if (!id || seen.has(id)) continue;
           songs.push(song);
           seen.add(id);
-          if (songs.length >= MAX_PLAYLIST_SONGS) break;
+          if (songs.length >= targetLimit) break;
         }
-        source = "artist_then_topic";
+        if (source === "artist_match") source = "artist_then_topic";
       }
     }
 
-    if (songs.length === 0 && matchedArtists.length === 0) {
-      let userProfile = null;
-      let recentProfile = null;
-      if (userId) {
-        const personalizationService = require("./personalization.service");
-        const adaptiveService = require("./adaptiveRecommendation.service");
-        [userProfile, recentProfile] = await Promise.all([
-          personalizationService.getUserMusicProfile(userId),
-          adaptiveService.getRecentInterestProfile(userId),
-        ]);
+    // 5. Intelligent Library Fill if user explicitly asked for count and DB topics didn't reach it
+    if (songs.length < targetLimit) {
+      const remainingNeeded = targetLimit - songs.length;
+      const seenIds = new Set(songs.map((s) => s?._id?.toString()).filter(Boolean));
+      const fillerSongs = await Song.find({
+        isPublic: true,
+        _id: { $nin: Array.from(seenIds) },
+      })
+        .populate("artists", "name avatar")
+        .populate("topicIds", "name description")
+        .sort({ playCount: -1, likeCount: -1, createdAt: -1 })
+        .limit(remainingNeeded)
+        .lean();
+
+      if (fillerSongs.length > 0) {
+        songs.push(...fillerSongs);
       }
-
-      songs = await findSongsByMood(
-        analysis,
-        matchedTopics,
-        prioritizedTopics,
-        MAX_PLAYLIST_SONGS,
-        { strictTopicOnly: hasMoodSignal, userProfile, recentProfile }
-      );
-      source = songs.length > 0 ? songs.length < MAX_PLAYLIST_SONGS ? "topic_partial" : "topic_match" : "topic_only";
     }
-
-
 
     if (allowArtistFlow && songs.length === 0) {
       songs = [];
@@ -1832,7 +1892,7 @@ class AssistantService {
 
     const matchStatus = songs.length === 0
       ? "fallback"
-      : songs.length < PLAYLIST_MIN_TARGET_SONGS
+      : songs.length < targetLimit
         ? "partial"
         : "matched";
 
@@ -1849,6 +1909,8 @@ class AssistantService {
         `Yêu cầu user: ${prompt}`,
         `Mood phân tích: ${analysis.mood}`,
         `Ca sĩ mục tiêu (nếu có): ${primaryArtist?.name || "không"}`,
+        `Số lượng bài yêu cầu: ${targetLimit}`,
+        `Số lượng bài thực tế trong playlist: ${songs.length}`,
         `Trạng thái match: ${matchStatus}`,
         `Playlist:\n${songList}`,
       ].join("\n");

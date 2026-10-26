@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/audio/global_audio_state.dart';
+import '../../core/services/app_tab_service.dart';
 import '../../core/utils/app_toast.dart';
 import '../../data/services/notification_api_service.dart';
+import '../../data/services/song_api_service.dart';
+import '../screens/player/player_screen.dart';
 
 /// Notification Panel styled after Lucian UX/UI Prompt #074
 /// Features:
@@ -53,6 +57,9 @@ class _NotificationItemData {
   final String time;
   final List<Color> gradientColors;
   final String badgeEmoji;
+  final bool isSystem;
+  final String? avatarUrl;
+  final AppNotification? rawNotification;
   bool isRead;
 
   _NotificationItemData({
@@ -63,6 +70,9 @@ class _NotificationItemData {
     required this.gradientColors,
     required this.badgeEmoji,
     required this.isRead,
+    this.isSystem = false,
+    this.avatarUrl,
+    this.rawNotification,
   });
 }
 
@@ -85,6 +95,17 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
     _loadNotifications();
   }
 
+  String _extractSafeInitial(String sender, [String fallback = 'M']) {
+    if (sender.isEmpty) return fallback;
+    for (final rune in sender.runes) {
+      final char = String.fromCharCode(rune);
+      if (RegExp(r'[\p{L}\p{N}]', unicode: true).hasMatch(char)) {
+        return char.toUpperCase();
+      }
+    }
+    return fallback;
+  }
+
   Future<void> _loadNotifications() async {
     setState(() => _isLoading = true);
 
@@ -97,14 +118,104 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
         final index = entry.key;
         final n = entry.value;
         final grad = _gradientPresets[index % _gradientPresets.length];
+        final meta = n.metadata;
+        final type = n.type;
+        final rawTitle = n.title;
+        final rawContent = n.content.isNotEmpty ? n.content : rawTitle;
+
+        final hasPersonalActor = meta['senderName'] != null ||
+            meta['actorName'] != null ||
+            meta['commenterName'] != null ||
+            meta['followerName'] != null ||
+            meta['artistName'] != null;
+
+        final isSystem = const {
+          'system',
+          'general',
+          'ai_quota_reset',
+          'subscription',
+          'artist_pro',
+          'song_moderation_result',
+          'admin_moderation_alert',
+          'artist_milestone',
+        }.contains(type) || (!hasPersonalActor && type != 'interaction' && type != 'artist_follow');
+
+        String sender = 'MusicFlow';
+        String? avatarUrl;
+        String badgeEmoji = '🔔';
+
+        if (isSystem) {
+          if (type == 'ai_quota_reset') {
+            sender = 'MusicFlow AI';
+            badgeEmoji = '✨';
+          } else if (type == 'subscription' || type == 'artist_pro') {
+            final planName = meta['planName']?.toString();
+            sender = planName != null ? 'MusicFlow $planName' : 'MusicFlow Premium';
+            badgeEmoji = '👑';
+          } else if (type == 'song_moderation_result') {
+            sender = 'MusicFlow Kiểm duyệt';
+            final status = meta['status']?.toString();
+            if (status == 'SAFE' || rawTitle.contains('duyệt') || rawTitle.contains('an toàn')) {
+              badgeEmoji = '✅';
+            } else if (status == 'BLOCK' || rawTitle.contains('xóa') || rawTitle.contains('vi phạm')) {
+              badgeEmoji = '⛔';
+            } else {
+              badgeEmoji = '🛡️';
+            }
+          } else if (type == 'admin_moderation_alert') {
+            final status = meta['status']?.toString();
+            sender = status == 'BLOCK' ? 'Cảnh báo vi phạm' : 'Hệ thống kiểm duyệt';
+            badgeEmoji = status == 'BLOCK' ? '🚨' : '🛡️';
+          } else if (type == 'artist_milestone') {
+            sender = 'MusicFlow Cột mốc';
+            badgeEmoji = '🎉';
+          } else {
+            sender = 'Hệ thống MusicFlow';
+            badgeEmoji = '🔔';
+          }
+        } else if (type == 'artist_release') {
+          sender = meta['artistName']?.toString() ?? 'Nghệ sĩ';
+          avatarUrl = meta['songCover']?.toString() ?? meta['artistAvatar']?.toString();
+          badgeEmoji = '🎵';
+        } else if (type == 'artist_follow') {
+          sender = meta['followerName']?.toString() ?? 'Thính giả mới';
+          avatarUrl = meta['followerAvatar']?.toString();
+          badgeEmoji = '👤';
+        } else if (type == 'interaction') {
+          sender = meta['senderName']?.toString() ??
+              meta['actorName']?.toString() ??
+              meta['commenterName']?.toString() ??
+              'Người dùng';
+          avatarUrl = meta['senderAvatar']?.toString() ??
+              meta['actorAvatar']?.toString() ??
+              meta['commenterAvatar']?.toString();
+          final action = meta['action']?.toString();
+          final isLike = action == 'like' ||
+              rawContent.toLowerCase().contains('thích') ||
+              rawContent.toLowerCase().contains('like');
+          badgeEmoji = isLike ? '❤️' : '💬';
+        } else {
+          sender = meta['senderName']?.toString() ?? 'Người dùng';
+          avatarUrl = meta['senderAvatar']?.toString();
+          badgeEmoji = '💬';
+        }
+
+        String body = rawContent;
+        if (body.startsWith(sender)) {
+          body = body.substring(sender.length).trim();
+        }
+
         return _NotificationItemData(
           id: n.id,
-          sender: n.title.isNotEmpty ? n.title : 'MusicFlow',
-          text: n.content,
+          sender: sender,
+          text: body,
           time: _formatTime(n.createdAt),
           gradientColors: grad,
-          badgeEmoji: _getEmojiForType(n.type),
+          badgeEmoji: badgeEmoji,
           isRead: n.isRead,
+          isSystem: isSystem,
+          avatarUrl: avatarUrl,
+          rawNotification: n,
         );
       }).toList();
     } else {
@@ -116,7 +227,7 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
           text: 'đã trả lời bình luận của bạn: “Giai điệu bài hát này đỉnh thật!”',
           time: 'Vừa xong',
           gradientColors: const [Color(0xFF3D8BFF), Color(0xFF22C3A6)],
-          badgeEmoji: '↩',
+          badgeEmoji: '💬',
           isRead: false,
         ),
         _NotificationItemData(
@@ -130,12 +241,13 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
         ),
         _NotificationItemData(
           id: 'mock-3',
-          sender: 'Harin Yoon',
+          sender: 'MusicFlow Kiểm duyệt',
           text: 'đã phê duyệt bản phát hành ca khúc “Spring Flow 2026”',
           time: '12 phút trước',
           gradientColors: const [Color(0xFF22C3A6), Color(0xFF0EA5E9)],
           badgeEmoji: '✅',
           isRead: false,
+          isSystem: true,
         ),
         _NotificationItemData(
           id: 'mock-4',
@@ -143,17 +255,18 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
           text: 'đã bắt đầu theo dõi trang nghệ sĩ của bạn',
           time: '1 giờ trước',
           gradientColors: const [Color(0xFFFF7A93), Color(0xFFB04FD0)],
-          badgeEmoji: '👋',
+          badgeEmoji: '👤',
           isRead: true,
         ),
         _NotificationItemData(
           id: 'mock-5',
-          sender: 'Lumen AI',
-          text: 'Báo cáo âm nhạc và xu hướng nghe tháng 10 của bạn đã sẵn sàng',
+          sender: 'MusicFlow AI',
+          text: 'Hạn mức AI DJ của bạn đã được làm mới, bắt đầu nghe nhạc ngay!',
           time: 'Hôm qua',
           gradientColors: const [Color(0xFFFFB547), Color(0xFFFF7A45)],
-          badgeEmoji: '📊',
+          badgeEmoji: '✨',
           isRead: true,
+          isSystem: true,
         ),
       ];
     }
@@ -165,32 +278,6 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
   void _syncUnreadCount() {
     final unread = _items.where((i) => !i.isRead).length;
     NotificationApiService.unreadCountNotifier.value = unread;
-  }
-
-  String _getEmojiForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'comment':
-      case 'reply':
-        return '💬';
-      case 'interaction':
-      case 'like':
-      case 'favorite':
-        return '❤️';
-      case 'artist_release':
-      case 'song':
-        return '🎵';
-      case 'subscription':
-      case 'artist_pro':
-      case 'approved':
-        return '✅';
-      case 'report':
-      case 'system':
-        return '📊';
-      case 'follow':
-        return '👋';
-      default:
-        return '📢';
-    }
   }
 
   String _formatTime(DateTime time) {
@@ -238,6 +325,84 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
 
     NotificationApiService.markAllAsRead();
     AppToast.showSuccess(context, 'Đã đánh dấu tất cả thông báo là đã đọc');
+  }
+
+  Future<void> _handleNotificationTap(_NotificationItemData item) async {
+    _markItemAsRead(_items.indexOf(item));
+    Navigator.of(context).pop(); // dismiss notification panel
+
+    final raw = item.rawNotification;
+    if (raw == null) return;
+
+    final metadata = raw.metadata;
+    final type = raw.type;
+    final actionUrl = metadata['actionUrl']?.toString() ?? '';
+
+    // 1. Interaction / Comment notification (like comment, reply to comment)
+    String? songId = metadata['songId']?.toString();
+    String? commentId = metadata['commentId']?.toString();
+
+    // Extract songId or commentId from actionUrl if missing (e.g. /client/song/xxx?comment=yyy)
+    if ((songId == null || songId.isEmpty) && actionUrl.isNotEmpty) {
+      final songMatch = RegExp(r'(?:client\/)?songs?\/([a-fA-F0-9]{24}|[a-zA-Z0-9_-]{10,40})').firstMatch(actionUrl);
+      if (songMatch != null && songMatch.groupCount >= 1) {
+        songId = songMatch.group(1);
+      }
+    }
+
+    if ((commentId == null || commentId.isEmpty) && actionUrl.isNotEmpty) {
+      final commentMatch = RegExp(r'[?&]comment=([a-fA-F0-9]{24}|[a-zA-Z0-9_-]+)').firstMatch(actionUrl);
+      if (commentMatch != null && commentMatch.groupCount >= 1) {
+        commentId = commentMatch.group(1);
+      }
+    }
+
+    if (songId != null && songId.isNotEmpty) {
+      AppToast.showInfo(context, 'Đang mở bình luận bài hát...');
+      try {
+        final song = await SongApiService.fetchSongById(songId);
+        if (song != null && mounted) {
+          GlobalAudioState().playSong(song);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PlayerScreen(
+                song: song,
+                initialShowComments: true,
+                targetCommentId: commentId,
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error navigating to song from notification: $e');
+      }
+      return;
+    }
+
+    // 2. AI DJ Quota reset
+    if (type == 'ai_quota_reset' || actionUrl.contains('/client/ai-dj') || actionUrl.contains('/ai')) {
+      AppTabService().switchTab(3); // Tab 3 is AI Assistant
+      return;
+    }
+
+    // 3. New release from followed artist
+    if (type == 'artist_release') {
+      final songIdFromMeta = metadata['songId']?.toString();
+      if (songIdFromMeta != null && songIdFromMeta.isNotEmpty) {
+        try {
+          final song = await SongApiService.fetchSongById(songIdFromMeta);
+          if (song != null && mounted) {
+            GlobalAudioState().playSong(song);
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PlayerScreen(song: song),
+              ),
+            );
+          }
+        } catch (_) {}
+      }
+      return;
+    }
   }
 
   @override
@@ -406,9 +571,7 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                                             final item = filteredItems[index];
                                             return _buildNotificationRow(
                                               item: item,
-                                              onTap: () => _markItemAsRead(
-                                                _items.indexOf(item),
-                                              ),
+                                              onTap: () => _handleNotificationTap(item),
                                               isDark: isDark,
                                             );
                                           },
@@ -511,34 +674,98 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Avatar with Vibrant Gradient + Mini Badge (.u074-av & em)
+                // 1. Avatar with Vibrant Gradient / System Logo + Mini Badge (.u074-av & em)
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: item.gradientColors,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    if (item.isSystem)
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            center: Alignment.topCenter,
+                            radius: 1.2,
+                            colors: isDark
+                                ? const [Color(0x556C63FF), Color(0xF0141724)]
+                                : const [Color(0x336C63FF), Color(0xFFFFFFFF)],
+                          ),
+                          border: Border.all(
+                            color: const Color(0xFF6C63FF).withOpacity(isDark ? 0.45 : 0.35),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF6C63FF).withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          item.sender.isNotEmpty
-                              ? item.sender[0].toUpperCase()
-                              : 'M',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                        child: Center(
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 22,
+                            height: 22,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      )
+                    else if (item.avatarUrl != null && item.avatarUrl!.isNotEmpty)
+                      ClipOval(
+                        child: Image.network(
+                          item.avatarUrl!,
+                          width: 38,
+                          height: 38,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: item.gradientColors,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _extractSafeInitial(item.sender),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: item.gradientColors,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _extractSafeInitial(item.sender),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
-                    ),
 
                     // Mini badge at bottom-right (.u074-av em)
                     Positioned(

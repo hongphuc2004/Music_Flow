@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:musicflow_app/core/theme/app_theme.dart';
 import 'package:musicflow_app/data/models/lrc_line_model.dart';
 
 class SyncedLyricsView extends StatefulWidget {
@@ -22,9 +21,12 @@ class SyncedLyricsView extends StatefulWidget {
 
 class _SyncedLyricsViewState extends State<SyncedLyricsView> {
   final ScrollController _scrollController = ScrollController();
-  static const double _itemExtent = 56.0;
-
+  final Map<int, GlobalKey> _lineKeys = {};
   int _activeIndex = -1;
+
+  GlobalKey _getKeyForIndex(int index) {
+    return _lineKeys.putIfAbsent(index, () => GlobalKey());
+  }
 
   @override
   void initState() {
@@ -49,7 +51,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
 
     if (nextActive != _activeIndex) {
       _activeIndex = nextActive;
-      _autoScrollToActiveLine();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _autoScrollToActiveLine();
+      });
     }
   }
 
@@ -74,24 +78,31 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
   }
 
   void _autoScrollToActiveLine() {
-    if (!_scrollController.hasClients || _activeIndex < 0) {
+    if (!mounted || _activeIndex < 0) {
       return;
     }
 
-    final viewportHeight = _scrollController.position.viewportDimension;
-    final targetOffset =
-        (_activeIndex * _itemExtent) - (viewportHeight / 2) + (_itemExtent / 2);
+    if (_activeIndex <= 0) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
 
-    final clampedOffset = targetOffset.clamp(
-      _scrollController.position.minScrollExtent,
-      _scrollController.position.maxScrollExtent,
-    );
-
-    _scrollController.animateTo(
-      clampedOffset.toDouble(),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.fastOutSlowIn,
-    );
+    final key = _lineKeys[_activeIndex];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.35,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   @override
@@ -105,56 +116,117 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView> {
       );
     }
 
-    return ListView.builder(
-      controller: _scrollController,
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      itemExtent: _itemExtent,
-      itemCount: widget.lyrics.length,
-      itemBuilder: (context, index) {
-        final line = widget.lyrics[index];
-        final isActive = index == _activeIndex;
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          cacheExtent: 5000.0,
+          padding: const EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 14,
+            bottom: 120,
+          ),
+          itemCount: widget.lyrics.length,
+          itemBuilder: (context, index) {
+            final line = widget.lyrics[index];
+            final isActive = index == _activeIndex;
 
-        return InkWell(
-          onTap: !widget.isSynced || widget.onLineTap == null
-              ? null
-              : () => widget.onLineTap!(line.timestamp),
-          highlightColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 250),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: widget.isSynced
-                    ? (isActive ? AppColors.secondary : Colors.white.withOpacity(0.35))
-                    : Colors.white.withOpacity(0.65),
-                fontSize: widget.isSynced ? (isActive ? 22 : 16) : 17,
-                fontWeight: widget.isSynced
-                    ? (isActive ? FontWeight.bold : FontWeight.w500)
-                    : FontWeight.w500,
-                shadows: isActive && widget.isSynced
-                    ? [
-                        Shadow(
-                          color: AppColors.secondary.withOpacity(0.6),
-                          blurRadius: 12,
-                        ),
-                      ]
-                    : null,
-                height: 1.3,
+            return InkWell(
+              key: _getKeyForIndex(index),
+              onTap: !widget.isSynced || widget.onLineTap == null
+                  ? null
+                  : () => widget.onLineTap!(line.timestamp),
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 250),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: widget.isSynced
+                        ? (isActive
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.36))
+                        : Colors.white.withOpacity(0.70),
+                    fontSize: widget.isSynced ? (isActive ? 20.0 : 15.5) : 16,
+                    fontWeight: widget.isSynced
+                        ? (isActive ? FontWeight.w800 : FontWeight.w600)
+                        : FontWeight.w500,
+                    letterSpacing: isActive ? -0.2 : 0.0,
+                    height: 1.38,
+                    shadows: isActive && widget.isSynced
+                        ? [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.85),
+                              offset: const Offset(0, 2),
+                              blurRadius: 10,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    line.text.isEmpty ? '...' : line.text,
+                    textAlign: TextAlign.center,
+                    softWrap: true,
+                  ),
+                ),
               ),
-              child: Text(
-                line.text.isEmpty ? '...' : line.text,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            );
+          },
+        ),
+
+        // Top edge subtle fade vignette
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 32,
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.45),
+                    Colors.black.withOpacity(0.0),
+                  ],
+                ),
               ),
             ),
           ),
-        );
-      },
+        ),
+
+        // Bottom edge soft fade vignette
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 52,
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.75),
+                    Colors.black.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
+
+

@@ -29,7 +29,7 @@ musicflow_app/lib/
 │   │   ├── playlist_model.dart              ← Danh sách phát cá nhân và hệ thống
 │   │   ├── artist_profile_model.dart        ← Thông tin nghệ sĩ, lượt nghe, bài hát nổi bật
 │   │   ├── user_model.dart                  ← Hồ sơ người dùng, trạng thái Premium
-│   │   ├── plan_model.dart                  ← Gói cước Premium (Gói PLUS, PREMIUM)
+│   │   ├── plan_model.dart                  ← Gói cước Premium (Gói PLUS 20k, PREMIUM 50k)
 │   │   ├── comment_model.dart               ← Bình luận, phản hồi lồng nhau, lượt thả tim
 │   │   ├── topic_model.dart                 ← Thể loại và chủ đề âm nhạc
 │   │   └── lrc_line_model.dart              ← Dòng lời bài hát và mốc thời gian karaoke

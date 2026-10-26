@@ -1,16 +1,19 @@
 import React, { forwardRef } from 'react';
+import { useTheme } from '@mui/material/styles';
 import '../css/NotificationBellButton.css';
 
 const NotificationBellButton = forwardRef(function NotificationBellButton(
   { onClick, hasUnread = false, unreadCount = 0, className = '', title = 'Thông báo' },
   ref
 ) {
+  const theme = useTheme();
+  const isLight = theme.palette.mode === 'light';
   const showUnread = hasUnread || unreadCount > 0;
 
   return (
     <div
       ref={ref}
-      className={`noti-bell-container ${showUnread ? 'has-unread' : ''} ${className}`}
+      className={`noti-bell-container ${isLight ? 'is-light' : 'is-dark'} ${showUnread ? 'has-unread' : ''} ${className}`}
       onClick={onClick}
       role="button"
       tabIndex={0}

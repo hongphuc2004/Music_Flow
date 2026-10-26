@@ -108,7 +108,7 @@ SplashScreen (/)
 ### I. PremiumScreen (Nâng cấp Gói cước)
 - **File:** `presentation/screens/premium/premium_screen.dart`
   - Giới thiệu các đặc quyền của tài khoản trả phí: Âm thanh chất lượng cao 320kbps, không giới hạn tải ngoại tuyến, mở rộng lượt tương tác AI DJ/Assistant, tăng dung lượng lưu trữ bài hát cá nhân.
-  - Hiển thị các gói cước linh hoạt: **Gói PLUS (49.000đ)**, **Gói PREMIUM (89.000đ)**.
+  - Hiển thị các gói cước linh hoạt: **Gói PLUS (20.000đ)**, **Gói PREMIUM (50.000đ)**.
   - Tích hợp cổng thanh toán Sandbox / VNPay trực quan.
 
 ---

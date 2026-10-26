@@ -235,10 +235,12 @@ exports.getQuota = async (req, res) => {
         data: {
           role: "admin",
           unlimited: true,
+          usedToday: 0,
           used24h: 0,
           remaining: null,
           limit: null,
           planLabel: "Quản trị viên (Không giới hạn)",
+          resetTime: "00:00",
         },
       });
     }
@@ -251,11 +253,13 @@ exports.getQuota = async (req, res) => {
             role: "artist",
             isPro: Boolean(err.isPro),
             unlimited: false,
+            usedToday: limit,
             used24h: limit,
             remaining: 0,
             limit: limit,
             isExhausted: true,
             planLabel: err.isPro ? "Artist Studio Pro" : "Artist Studio (Free)",
+            resetTime: "00:00",
           };
         }
         throw err;
@@ -281,7 +285,10 @@ exports.getQuota = async (req, res) => {
           unlimited: false,
           remaining: 0,
           limit: 5,
+          usedToday: 5,
+          used24h: 5,
           isExhausted: true,
+          resetTime: "00:00",
         },
       });
     }

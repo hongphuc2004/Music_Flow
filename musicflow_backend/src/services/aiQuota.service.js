@@ -39,7 +39,46 @@ function releaseLock(userId) {
 }
 
 /**
+ * Lấy mốc 00:00:00 bắt đầu ngày theo múi giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7)
+ * @param {Date} [date] - Ngày cần tính (mặc định là thời điểm hiện tại)
+ * @returns {Date}
+ */
+function getStartOfDayVN(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((p) => p.type === "year").value;
+  const month = parts.find((p) => p.type === "month").value;
+  const day = parts.find((p) => p.type === "day").value;
+  return new Date(`${year}-${month}-${day}T00:00:00.000+07:00`);
+}
+
+/**
+ * Lấy chuỗi YYYY-MM-DD theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
+ * @param {Date} [date]
+ * @returns {string}
+ */
+function getDateStrVN(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((p) => p.type === "year").value;
+  const month = parts.find((p) => p.type === "month").value;
+  const day = parts.find((p) => p.type === "day").value;
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Kiểm tra hạn mức sử dụng AI DJ & Chat của người dùng (User/Admin).
+ * Hạn mức được làm mới hàng ngày vào lúc 00:00 (múi giờ Việt Nam).
  * @param {string} userId - ID người dùng cần kiểm tra
  * @param {string} [userRole] - Role từ token xác thực (nếu có)
  */
@@ -48,10 +87,12 @@ async function checkQuota(userId, userRole = null) {
     return {
       role: "admin",
       unlimited: true,
+      usedToday: 0,
       used24h: 0,
       remaining: null,
       limit: null,
       planLabel: "Quản trị viên (Không giới hạn)",
+      resetTime: "00:00",
     };
   }
 
@@ -66,14 +107,16 @@ async function checkQuota(userId, userRole = null) {
     return {
       role: "admin",
       unlimited: true,
+      usedToday: 0,
       used24h: 0,
       remaining: null,
       limit: null,
       planLabel: "Quản trị viên (Không giới hạn)",
+      resetTime: "00:00",
     };
   }
 
-  let tierLimit = 3; // Free: 3 yêu cầu
+  let tierLimit = 3; // Free: 3 yêu cầu / ngày
   let planLabel = "miễn phí";
 
   if (hasPremiumAccess(user)) {
@@ -82,7 +125,7 @@ async function checkQuota(userId, userRole = null) {
       tierLimit = 20;
       planLabel = "Gói PLUS";
     } else {
-      tierLimit = 50; // Gói PREMIUM: 50 yêu cầu / 24h
+      tierLimit = 50; // Gói PREMIUM: 50 yêu cầu / ngày
       planLabel = "Gói PREMIUM";
     }
   }
@@ -100,23 +143,24 @@ async function checkQuota(userId, userRole = null) {
   const conversations = await AssistantConversation.find({ actorId: userId, actorType: "User" }).select("_id").lean();
   const conversationIds = conversations.map((c) => c._id);
 
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Đếm số tin nhắn đã gửi từ 00:00 hôm nay
+  const startOfToday = getStartOfDayVN();
   const count = conversationIds.length > 0
     ? await AssistantMessage.countDocuments({
         conversationId: { $in: conversationIds },
         role: "user", // CHỈ ĐẾM TIN NHẮN DO USER GỬI LÊN, KHÔNG ĐẾM 'model'
-        createdAt: { $gte: oneDayAgo },
+        createdAt: { $gte: startOfToday },
       })
     : 0;
 
   if (count >= effectiveLimit) {
     if (!hasPremiumAccess(user)) {
-      const error = new Error("🤖 Bạn đã sử dụng hết lượt AI hôm nay. Nâng cấp Gói PLUS để có thêm lượt sử dụng AI.");
+      const error = new Error("🤖 Bạn đã sử dụng hết lượt AI hôm nay. Hạn mức sẽ tự động hồi lại sau 00:00. Nâng cấp Gói PLUS để có thêm lượt sử dụng AI.");
       error.status = 403;
       error.code = "AI_QUOTA_EXCEEDED";
       throw error;
     }
-    const error = new Error(`Bạn đã vượt quá hạn mức ${effectiveLimit} yêu cầu AI trong 24 giờ của tài khoản ${planLabel}. Vui lòng nâng cấp gói hoặc liên hệ quản trị viên.`);
+    const error = new Error(`Bạn đã vượt quá hạn mức ${effectiveLimit} yêu cầu AI trong ngày hôm nay của tài khoản ${planLabel}. Hạn mức sẽ tự động làm mới sau 00:00.`);
     error.status = 403;
     throw error;
   }
@@ -137,19 +181,22 @@ async function checkQuota(userId, userRole = null) {
     bonusAiQuota: bonusQuota,
     effectiveLimit,
     limit: effectiveLimit,
-    used24h: count,
+    usedToday: count,
+    used24h: count, // Giữ để tương thích ngược với Web Admin / App cũ
     remaining: Math.max(0, effectiveLimit - count),
     planLabel,
+    resetTime: "00:00",
   };
 }
 
 /**
  * Kiểm tra hạn mức sử dụng Trợ lý Studio dành cho Nghệ sĩ (Artist).
- * Hạn mức an toàn mặc định: 30 requests / 24h.
+ * Hạn mức làm mới vào 00:00 hàng ngày (múi giờ Việt Nam).
+ * Hạn mức an toàn mặc định: 10 requests / ngày (Free), 70 requests / ngày (Artist Studio Pro).
  * @param {string} artistId - ID nghệ sĩ từ token xác thực
  */
 async function checkArtistQuota(artistId) {
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const startOfToday = getStartOfDayVN();
 
   // Kiem tra trang thai Artist Studio Pro
   const artist = await Artist.findById(artistId).populate("proPlan").lean();
@@ -167,10 +214,12 @@ async function checkArtistQuota(artistId) {
       role: "artist",
       isPro,
       unlimited: false,
+      usedToday: 0,
       used24h: 0,
       remaining: limit,
       limit,
       planLabel,
+      resetTime: "00:00",
     };
   }
 
@@ -179,14 +228,14 @@ async function checkArtistQuota(artistId) {
   const count = await AssistantMessage.countDocuments({
     conversationId: { $in: conversationIds },
     role: "user", // CHỈ ĐẾM CÁC PROMPT DO ARTIST GỬI LÊN
-    createdAt: { $gte: oneDayAgo },
+    createdAt: { $gte: startOfToday },
   });
 
   if (count >= limit) {
     const error = new Error(
       isPro
-        ? `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong 24 giờ của gói Artist Studio Pro. Vui lòng quay lại sau.`
-        : `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong 24 giờ dành cho Nghệ sĩ miễn phí. Vui lòng nâng cấp gói Artist Studio Pro để nhận 70 lượt/24h.`
+        ? `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong ngày của gói Artist Studio Pro. Hạn mức sẽ tự động làm mới sau 00:00.`
+        : `Bạn đã đạt giới hạn ${limit} yêu cầu AI trong ngày dành cho Nghệ sĩ miễn phí. Hạn mức sẽ tự động làm mới sau 00:00 hoặc nâng cấp gói Artist Studio Pro để nhận 70 lượt/ngày.`
     );
     error.status = 403;
     error.code = "QUOTA_EXCEEDED";
@@ -199,16 +248,19 @@ async function checkArtistQuota(artistId) {
     role: "artist",
     isPro,
     unlimited: false,
+    usedToday: count,
     used24h: count,
     remaining: Math.max(0, limit - count),
     limit,
     planLabel,
+    resetTime: "00:00",
   };
 }
 
 /**
- * Evaluates whether the user's rolling 24h AI quota transitioned from exhausted (>= limit)
- * back to available (< limit). If so, triggers triggerQuotaRestoredNotification.
+ * Kiểm tra xem người dùng có từng bị cạn kiệt hạn mức vào ngày hoạt động gần nhất (>= limit)
+ * và hôm nay đã bước sang ngày mới để được hồi phục đầy đủ hạn mức (3/3) hay không.
+ * Nếu thỏa mãn, bắn thông báo làm mới hạn mức (chỉ 1 lần duy nhất trong ngày).
  */
 async function checkAndTriggerQuotaRestored(userId) {
   try {
@@ -231,32 +283,52 @@ async function checkAndTriggerQuotaRestored(userId) {
     const conversationIds = conversations.map((c) => c._id);
     if (conversationIds.length === 0) return;
 
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const startOfToday = getStartOfDayVN();
+    const todayDateStr = getDateStrVN();
 
+    // 1. Kiểm tra số lượng đã dùng hôm nay
     const currentCount = await AssistantMessage.countDocuments({
       conversationId: { $in: conversationIds },
       role: "user",
-      createdAt: { $gte: oneDayAgo },
+      createdAt: { $gte: startOfToday },
     });
 
-    if (currentCount < limit) {
-      const oldestMessage24h = await AssistantMessage.findOne({
-        conversationId: { $in: conversationIds },
-        role: "user",
-        createdAt: { $gte: oneDayAgo },
-      }).sort({ createdAt: 1 }).lean();
+    if (currentCount >= limit) {
+      // Hôm nay đã dùng hết rồi, không bắn thông báo restored
+      return;
+    }
 
-      if (oldestMessage24h) {
-        const oldestMessageExpiryTimestamp = new Date(oldestMessage24h.createdAt).getTime() + 24 * 60 * 60 * 1000;
-        const notificationTriggerService = require("./notificationTrigger.service");
-        await notificationTriggerService.triggerQuotaRestoredNotification({
-          userId,
-          previousCount: limit,
-          currentCount,
-          limit,
-          oldestMessageExpiryTimestamp,
-        });
-      }
+    // 2. Tìm tin nhắn gần nhất trước ngày hôm nay để kiểm tra xem ngày hoạt động trước đó có bị hết hạn mức không
+    const lastMessageBeforeToday = await AssistantMessage.findOne({
+      conversationId: { $in: conversationIds },
+      role: "user",
+      createdAt: { $lt: startOfToday },
+    }).sort({ createdAt: -1 }).lean();
+
+    if (!lastMessageBeforeToday) {
+      // Chưa từng chat ngày nào trước hôm nay -> không cần bắn thông báo
+      return;
+    }
+
+    const lastActiveDayStart = getStartOfDayVN(new Date(lastMessageBeforeToday.createdAt));
+    const lastActiveDayEnd = new Date(lastActiveDayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    const countOnLastActiveDay = await AssistantMessage.countDocuments({
+      conversationId: { $in: conversationIds },
+      role: "user",
+      createdAt: { $gte: lastActiveDayStart, $lt: lastActiveDayEnd },
+    });
+
+    // Chỉ bắn thông báo nếu ngày hoạt động trước đó user THẬT SỰ đã dùng hết lượt (>= limit)
+    if (countOnLastActiveDay >= limit) {
+      const notificationTriggerService = require("./notificationTrigger.service");
+      await notificationTriggerService.triggerQuotaRestoredNotification({
+        userId,
+        previousCount: limit,
+        currentCount,
+        limit,
+        dateStr: todayDateStr,
+      });
     }
   } catch (err) {
     console.error("Failed to check and trigger quota restored notification:", err.message);
@@ -270,5 +342,6 @@ module.exports = {
   releaseLock,
   getUserTier,
   checkAndTriggerQuotaRestored,
+  getStartOfDayVN,
+  getDateStrVN,
 };
-

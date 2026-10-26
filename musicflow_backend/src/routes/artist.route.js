@@ -382,6 +382,173 @@ router.get("/suggestions", async (req, res) => {
   }
 });
 
+// Lấy danh sách các nghệ sĩ mà người dùng hiện tại đang theo dõi
+router.get("/me/following", authMiddleware, async (req, res) => {
+  try {
+    const { search = "", page = 1, limit = 50 } = req.query;
+    const user = await User.findById(req.userId)
+      .populate({
+        path: "followedArtists",
+        select: "name avatar bio isVerified isPro followersCount slug",
+      })
+      .select("followedArtists")
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    let artists = (user.followedArtists || []).filter(Boolean);
+
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      artists = artists.filter(
+        (a) =>
+          a.name?.toLowerCase().includes(q) ||
+          a.slug?.toLowerCase().includes(q) ||
+          a.bio?.toLowerCase().includes(q)
+      );
+    }
+
+    const total = artists.length;
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const startIndex = (pageNum - 1) * limitNum;
+    const paginatedArtists = artists.slice(startIndex, startIndex + limitNum);
+
+    // Bổ sung số lượng bài hát phát hành cho mỗi nghệ sĩ
+    const artistIds = paginatedArtists.map((a) => a._id);
+    let songCountMap = {};
+    if (artistIds.length > 0) {
+      const songCounts = await Song.aggregate([
+        { $match: { artists: { $in: artistIds }, isPublic: true } },
+        { $unwind: "$artists" },
+        { $match: { artists: { $in: artistIds } } },
+        { $group: { _id: "$artists", count: { $sum: 1 } } },
+      ]);
+      songCounts.forEach((sc) => {
+        songCountMap[sc._id.toString()] = sc.count;
+      });
+    }
+
+    const data = paginatedArtists.map((a) => ({
+      ...a,
+      songsCount: songCountMap[a._id.toString()] || 0,
+      isFollowing: true,
+    }));
+
+    return res.json({
+      success: true,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Get following artists failed",
+      error: error.message,
+    });
+  }
+});
+
+// Lấy danh sách thính giả đang theo dõi nghệ sĩ đang đăng nhập
+router.get("/me/followers", authMiddleware, async (req, res) => {
+  try {
+    const { search = "", page = 1, limit = 50 } = req.query;
+    const filter = { followedArtists: req.userId };
+
+    if (search && search.trim()) {
+      filter.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+
+    const [followers, total] = await Promise.all([
+      User.find(filter)
+        .select("name email avatar createdAt")
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
+
+    return res.json({
+      success: true,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      data: followers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Get artist followers failed",
+      error: error.message,
+    });
+  }
+});
+
+// Lấy danh sách thính giả đang theo dõi một nghệ sĩ bất kỳ theo ID hoặc slug
+router.get("/:id/followers", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { search = "", page = 1, limit = 50 } = req.query;
+
+    const artist = await findArtistBySlugOrId(id);
+    if (!artist) {
+      return res.status(404).json({
+        success: false,
+        message: "Artist not found",
+      });
+    }
+
+    const filter = { followedArtists: artist._id };
+    if (search && search.trim()) {
+      filter.name = { $regex: search.trim(), $options: "i" };
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+
+    const [followers, total] = await Promise.all([
+      User.find(filter)
+        .select("name email avatar createdAt")
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
+
+    return res.json({
+      success: true,
+      artist: {
+        _id: artist._id,
+        name: artist.name,
+        avatar: artist.avatar,
+        followersCount: total,
+      },
+      total,
+      page: pageNum,
+      limit: limitNum,
+      data: followers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Get artist followers failed",
+      error: error.message,
+    });
+  }
+});
+
 router.get("/:id/follow-status", authMiddleware, async (req, res) => {
   try {
     const [artist, user] = await Promise.all([

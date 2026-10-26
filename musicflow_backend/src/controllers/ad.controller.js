@@ -64,7 +64,7 @@ async function ensureSeedAds() {
       },
       {
         title: "Mở khóa âm thanh Studio HQ 320kbps",
-        description: "Thưởng thức từng chi tiết âm bass và vocal rõ nét cùng Gói PLUS chỉ 49.000đ/tháng - Hoàn toàn không quảng cáo.",
+        description: "Thưởng thức từng chi tiết âm bass và vocal rõ nét cùng Gói PLUS chỉ 20.000đ/tháng - Hoàn toàn không quảng cáo.",
         type: "audio",
         audioUrl: "https://res.cloudinary.com/dzuhbme19/video/upload/v1768844449/musicflow/audio/j5dt9cbb8r6z8fpyihyu.mp3",
         imageUrl: "https://res.cloudinary.com/dzuhbme19/image/upload/v1768844450/musicflow/images/vfy22bgfnmve88gpkgp9.jpg",

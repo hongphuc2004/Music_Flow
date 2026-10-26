@@ -17,10 +17,11 @@
 }
 
 /* Light mode support */
+.noti-bell-container.is-light,
 [data-theme='light'] .noti-bell-container,
 .light .noti-bell-container {
-  background-color: #f1f3f9;
-  border-color: rgba(0, 0, 0, 0.08);
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -31,10 +32,11 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
+.noti-bell-container.is-light:hover,
 [data-theme='light'] .noti-bell-container:hover,
 .light .noti-bell-container:hover {
-  background-color: #e2e6f0;
-  border-color: rgba(0, 0, 0, 0.16);
+  background-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .noti-bell-container:active {
@@ -42,14 +44,15 @@
 }
 
 .noti-bell-container svg {
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.85);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
   display: block;
 }
 
+.noti-bell-container.is-light svg,
 [data-theme='light'] .noti-bell-container svg,
 .light .noti-bell-container svg {
-  color: rgba(30, 41, 59, 0.75);
+  color: #1e293b !important;
 }
 
 /* Swinging ring animation on hover or has-unread */
@@ -60,9 +63,11 @@
   transform-origin: 50% 15%;
 }
 
+.noti-bell-container.is-light:hover svg,
+.noti-bell-container.is-light.has-unread svg,
 [data-theme='light'] .noti-bell-container:hover svg,
 [data-theme='light'] .noti-bell-container.has-unread svg {
-  color: #0f172a;
+  color: #0f172a !important;
 }
 
 @keyframes noti-bell-swing {

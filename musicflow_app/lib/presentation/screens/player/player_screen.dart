@@ -31,6 +31,8 @@ class PlayerScreen extends StatefulWidget {
   final List<Song> playlist;
   final int currentIndex;
   final Function(int)? onSongChanged;
+  final bool initialShowComments;
+  final String? targetCommentId;
 
   const PlayerScreen({
     super.key,
@@ -38,6 +40,8 @@ class PlayerScreen extends StatefulWidget {
     this.playlist = const [],
     this.currentIndex = 0,
     this.onSongChanged,
+    this.initialShowComments = false,
+    this.targetCommentId,
   });
 
   @override
@@ -124,6 +128,16 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     _globalAudioState.addListener(_onGlobalAudioStateChanged);
     _globalAudioState.premiumRequiredModalNotifier.addListener(_onPremiumModalTriggered);
+
+    if (widget.initialShowComments) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 350), () {
+          if (mounted) {
+            _openComments();
+          }
+        });
+      });
+    }
   }
 
   void _onPremiumModalTriggered() {
@@ -404,6 +418,9 @@ class _PlayerScreenState extends State<PlayerScreen>
       backgroundColor: Colors.transparent,
       builder: (context) => SongCommentsSheet(
         songId: _currentSong.id,
+        song: _currentSong,
+        initialCommentCount: _commentCount,
+        targetCommentId: widget.targetCommentId,
         onCommentCountChanged: (count) {
           if (mounted) {
             setState(() {
@@ -562,38 +579,44 @@ class _PlayerScreenState extends State<PlayerScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Blurred background image
+          // 1. Full-screen smooth blurred cover art of the song (true song image backdrop)
           Positioned.fill(
             child: _currentSong.imageUrl.isNotEmpty
-                ? Image.network(_currentSong.imageUrl, fit: BoxFit.cover)
+                ? Transform.scale(
+                    scale: 1.15,
+                    child: Image.network(
+                      _currentSong.imageUrl,
+                      fit: BoxFit.cover,
+                    ),
+                  )
                 : Container(color: AppColors.darkBackground),
           ),
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 40.0, sigmaY: 40.0),
-              child: Container(color: Colors.black.withOpacity(0.55)),
-            ),
-          ),
-          // Gradient overlay mask
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.3),
-                    Colors.black.withOpacity(0.85),
-                  ],
+              filter: ImageFilter.blur(sigmaX: 55.0, sigmaY: 55.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.38),
+                      Colors.black.withOpacity(0.55),
+                      Colors.black.withOpacity(0.85),
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
                 ),
               ),
             ),
           ),
+
+          // 2. Main Foreground UI
           SafeArea(
             child: Column(
               children: [
                 _buildAppBar(),
-                _buildPageIndicator(),
+                const SizedBox(height: 6),
                 Expanded(
                   child: PageView(
                     controller: _pageController,
@@ -606,7 +629,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                       }
                     },
                     children: [
-                      // Page 1: Player
+                      // Page 1: Player (Giữ nguyên đĩa ban đầu)
                       _buildPlayerPage(),
                       // Page 2: Lyrics
                       _buildLyricsPage(),
@@ -638,50 +661,77 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (_activePlaylist.isNotEmpty) 'Danh sách chờ',
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xxs),
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(labels.length, (index) {
-          final isActive = _currentPage == index;
-          return GestureDetector(
-            onTap: () {
-              _pageController.animateToPage(
-                index,
-                duration: AppDurations.cardSlide,
-                curve: Curves.easeInOut,
-              );
-              if (labels[index] == 'Danh sách chờ') {
-                _scrollToCurrentSongInQueue();
-              }
-            },
-            child: AnimatedContainer(
-              duration: AppDurations.hover,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isActive ? AppColors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: isActive
-                    ? AppShadows.neonGlow(AppColors.primary)
-                    : null,
-              ),
-              child: Text(
-                labels[index],
-                style: TextStyle(
-                  color: isActive ? Colors.white : Colors.white60,
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withOpacity(0.12)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(labels.length, (index) {
+              final isActive = _currentPage == index;
+              return GestureDetector(
+                onTap: () {
+                  _pageController.animateToPage(
+                    index,
+                    duration: AppDurations.cardSlide,
+                    curve: Curves.easeInOut,
+                  );
+                  if (labels[index] == 'Danh sách chờ') {
+                    _scrollToCurrentSongInQueue();
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: isActive
+                        ? const LinearGradient(
+                            colors: [
+                              Color(0xFF6C63FF),
+                              Color(0xFF8B82FF),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isActive ? null : Colors.transparent,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF6C63FF).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    labels[index],
+                    style: TextStyle(
+                      color: isActive ? Colors.white : Colors.white60,
+                      fontSize: 11.5,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w500,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
-        }),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -696,12 +746,12 @@ class _PlayerScreenState extends State<PlayerScreen>
         : 'Nghệ sĩ';
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Row(
         children: [
@@ -710,18 +760,22 @@ class _PlayerScreenState extends State<PlayerScreen>
             borderRadius: BorderRadius.circular(10),
             child: Image.network(
               _currentSong.imageUrl,
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 color: Colors.white12,
-                child: const Icon(Icons.music_note_rounded, color: Colors.white60, size: 20),
+                child: const Icon(
+                  Icons.music_note_rounded,
+                  color: Colors.white60,
+                  size: 20,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
           // Title and Artist
           Expanded(
@@ -733,7 +787,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   _currentSong.title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
@@ -742,9 +796,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                 const SizedBox(height: 2),
                 Text(
                   artist,
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.65),
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -754,32 +808,32 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
           ),
 
-          // Live audio pulse wave badge
+          // Live audio visualizer wave + LỜI NHẠC
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.secondary.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+              color: AppColors.secondary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.secondary.withOpacity(0.25)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 RiveAudioVisualizer(
                   isPlaying: _isPlaying,
-                  width: 14,
-                  height: 12,
+                  width: 12,
+                  height: 10,
                   barCount: 3,
-                  barWidth: 2.2,
+                  barWidth: 2.0,
                   spacing: 1.5,
                   color: AppColors.secondary,
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 4),
                 const Text(
                   'LỜI NHẠC',
                   style: TextStyle(
                     color: AppColors.secondary,
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
                   ),
@@ -1034,39 +1088,52 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+      padding: const EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: 6,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
+          _buildAppbarIconButton(
+            icon: Icons.keyboard_arrow_down_rounded,
+            iconSize: 28,
             onPressed: () => Navigator.pop(context),
+            tooltip: 'Thu nhỏ',
           ),
-          Text(
-            _currentPage == 0
-                ? 'ĐANG PHÁT'
-                : _currentPage == 1
-                ? 'LỜI BÀI HÁT'
-                : 'DANH SÁCH CHỜ',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.0,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+          _buildPageIndicator(),
+          _buildAppbarIconButton(
+            icon: Icons.more_horiz_rounded,
+            iconSize: 22,
             onPressed: _showMoreOptions,
+            tooltip: 'Tùy chọn',
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAppbarIconButton({
+    required IconData icon,
+    required double iconSize,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white, size: iconSize),
+        padding: EdgeInsets.zero,
+        tooltip: tooltip,
+        onPressed: onPressed,
       ),
     );
   }
@@ -1145,7 +1212,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         (user.planBadge == 'PLUS' || user.planBadge == 'PREMIUM');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
       child: Column(
         children: [
           Row(
@@ -1157,7 +1224,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        offset: Offset(0, 2),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1173,18 +1248,31 @@ class _PlayerScreenState extends State<PlayerScreen>
           const SizedBox(height: 6),
           GestureDetector(
             onTap: _openCurrentArtist,
-            child: Text(
-              _currentSong.artists.join(', '),
-              style: TextStyle(
-                color: AppColors.secondary.withOpacity(0.9),
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                decoration: TextDecoration.underline,
-                decorationColor: AppColors.secondary.withOpacity(0.5),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.verified_rounded,
+                  size: 14,
+                  color: Color(0xFF00E5FF),
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    _currentSong.artists.join(', '),
+                    style: TextStyle(
+                      color: const Color(0xFF80DEEA).withOpacity(0.95),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
             ),
           ),
           if (_globalAudioState.isPremiumPreview)
@@ -1198,13 +1286,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                 margin: const EdgeInsets.only(top: 10, bottom: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5AC18),
-                  borderRadius: BorderRadius.circular(10),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x44E5AC18),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+                      color: Color(0x55F59E0B),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
@@ -1232,23 +1322,41 @@ class _PlayerScreenState extends State<PlayerScreen>
                 ),
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // Quality Badge (Quality Gate)
+          // Hi-Res Studio Lossless Audio Chip (Quality Gate)
           GestureDetector(
             onTap: () => _showQualityGateModal(isHQUnlocked),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: isHQUnlocked
-                    ? const Color(0xFF6C63FF).withOpacity(0.2)
-                    : Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: isHQUnlocked
+                      ? [
+                          const Color(0xFF6C63FF).withOpacity(0.35),
+                          const Color(0xFF00E5FF).withOpacity(0.20),
+                        ]
+                      : [
+                          Colors.white.withOpacity(0.08),
+                          const Color(0xFFF59E0B).withOpacity(0.10),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isHQUnlocked
-                      ? const Color(0xFF6C63FF).withOpacity(0.6)
-                      : Colors.white.withOpacity(0.15),
+                      ? const Color(0xFF00E5FF).withOpacity(0.60)
+                      : const Color(0xFFF59E0B).withOpacity(0.38),
+                  width: 1.0,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isHQUnlocked
+                        ? const Color(0xFF00E5FF).withOpacity(0.20)
+                        : const Color(0xFFF59E0B).withOpacity(0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1256,20 +1364,24 @@ class _PlayerScreenState extends State<PlayerScreen>
                   Icon(
                     isHQUnlocked
                         ? Icons.auto_awesome_rounded
-                        : Icons.lock_outline_rounded,
-                    size: 13,
-                    color: isHQUnlocked ? const Color(0xFF6C63FF) : Colors.white60,
+                        : Icons.bolt_rounded,
+                    size: 13.5,
+                    color: isHQUnlocked
+                        ? const Color(0xFF00E5FF)
+                        : const Color(0xFFFFB300),
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                   Text(
                     isHQUnlocked
-                        ? 'HQ 320kbps • Lossless'
-                        : '128kbps • Chuẩn (Chạm để nâng cấp HQ)',
+                        ? 'HI-RES LOSSLESS • 320 KBPS'
+                        : '128 KBPS • CHẠM ĐỂ BẬT HI-RES 320K',
                     style: TextStyle(
-                      color:
-                          isHQUnlocked ? const Color(0xFF6C63FF) : Colors.white70,
-                      fontSize: 11,
+                      color: isHQUnlocked
+                          ? const Color(0xFFE0F7FA)
+                          : Colors.white.withOpacity(0.85),
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ],
@@ -1509,18 +1621,16 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildProgressBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
       child: Column(
         children: [
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              trackHeight: 3,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-              activeTrackColor: AppColors.secondary,
-              inactiveTrackColor: Colors.white24,
-              thumbColor: AppColors.secondary,
-              overlayColor: AppColors.secondary.withOpacity(0.2),
+              trackHeight: 4,
+              trackShape: const NeonGradientSliderTrackShape(),
+              thumbShape: const NeonGlowThumbShape(radius: 6.5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              overlayColor: const Color(0xFF00E5FF).withOpacity(0.18),
             ),
             child: Slider(
               value: _duration.inMilliseconds > 0
@@ -1538,17 +1648,27 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _formatDuration(_position),
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.65),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
                 ),
                 Text(
                   _formatDuration(_duration),
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.65),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ],
             ),
@@ -1574,62 +1694,177 @@ class _PlayerScreenState extends State<PlayerScreen>
         repeatMode == PlaybackRepeatMode.all ||
         _globalAudioState.isAutoplayEnabled;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        RiveShuffleButton(
-          isEnabled: isShuffleEnabled,
-          size: 26,
-          onTap: canUsePlaylistModes
-              ? () {
-                  _globalAudioState.toggleShuffle();
-                  setState(() {});
-                }
-              : null,
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.skip_previous_rounded,
-            color: canTriggerPrevious ? Colors.white : Colors.white38,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // 1. Tactile Shuffle Pod
+          _buildTactileControlPod(
+            size: 42,
+            isActive: isShuffleEnabled,
+            onTap: canUsePlaylistModes
+                ? () {
+                    _globalAudioState.toggleShuffle();
+                    setState(() {});
+                  }
+                : null,
+            child: RiveShuffleButton(
+              isEnabled: isShuffleEnabled,
+              size: 23,
+              onTap: canUsePlaylistModes
+                  ? () {
+                      _globalAudioState.toggleShuffle();
+                      setState(() {});
+                    }
+                  : null,
+            ),
           ),
-          iconSize: 38,
-          onPressed: canTriggerPrevious ? _playPrevious : null,
-        ),
-        RivePlayPauseButton(
-          isPlaying: _isPlaying,
-          onTap: () {
-            if (_isPlaying) {
-              _audioService.pause();
-            } else {
-              _audioService.resume();
-            }
-          },
-          size: 78,
-          iconSize: 32,
-          progress: _duration.inMilliseconds > 0
-              ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
-              : 0.0,
-          showProgressRing: true,
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.skip_next_rounded,
-            color: canTriggerNext ? Colors.white : Colors.white38,
+
+          // 2. Tactile Previous Pod
+          _buildTactileControlPod(
+            size: 48,
+            onTap: canTriggerPrevious ? _playPrevious : null,
+            child: Icon(
+              Icons.skip_previous_rounded,
+              color: canTriggerPrevious ? Colors.white : Colors.white24,
+              size: 28,
+            ),
           ),
-          iconSize: 38,
-          onPressed: canTriggerNext ? _playNext : null,
-        ),
-        RiveRepeatButton(
-          repeatMode: repeatMode,
-          size: 26,
-          onTap: canUsePlaylistModes
-              ? () {
-                  _globalAudioState.cycleRepeatMode();
-                  setState(() {});
+
+          // 3. Center Showstopper Liquid Glass & Neon Breathing Play/Pause Button
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E5FF).withOpacity(_isPlaying ? 0.45 : 0.15),
+                  blurRadius: _isPlaying ? 36 : 14,
+                  spreadRadius: _isPlaying ? 5 : 1,
+                ),
+                BoxShadow(
+                  color: const Color(0xFF6C63FF).withOpacity(_isPlaying ? 0.40 : 0.12),
+                  blurRadius: _isPlaying ? 24 : 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: RivePlayPauseButton(
+              isPlaying: _isPlaying,
+              onTap: () {
+                if (_isPlaying) {
+                  _audioService.pause();
+                } else {
+                  _audioService.resume();
                 }
-              : null,
+              },
+              size: 78,
+              iconSize: 34,
+              backgroundGradient: const LinearGradient(
+                colors: [
+                  Color(0xFF00E5FF),
+                  Color(0xFF6C63FF),
+                  Color(0xFF8B82FF),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              progress: _duration.inMilliseconds > 0
+                  ? (_position.inMilliseconds / _duration.inMilliseconds).clamp(0.0, 1.0)
+                  : 0.0,
+              showProgressRing: true,
+            ),
+          ),
+
+          // 4. Tactile Next Pod
+          _buildTactileControlPod(
+            size: 48,
+            onTap: canTriggerNext ? _playNext : null,
+            child: Icon(
+              Icons.skip_next_rounded,
+              color: canTriggerNext ? Colors.white : Colors.white24,
+              size: 28,
+            ),
+          ),
+
+          // 5. Tactile Repeat Pod
+          _buildTactileControlPod(
+            size: 42,
+            isActive: repeatMode != PlaybackRepeatMode.off,
+            onTap: canUsePlaylistModes
+                ? () {
+                    _globalAudioState.cycleRepeatMode();
+                    setState(() {});
+                  }
+                : null,
+            child: RiveRepeatButton(
+              repeatMode: repeatMode,
+              size: 23,
+              onTap: canUsePlaylistModes
+                  ? () {
+                      _globalAudioState.cycleRepeatMode();
+                      setState(() {});
+                    }
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTactileControlPod({
+    required double size,
+    required Widget child,
+    VoidCallback? onTap,
+    bool isActive = false,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(isActive ? 0.16 : 0.08),
+            Colors.white.withOpacity(isActive ? 0.07 : 0.03),
+          ],
         ),
-      ],
+        border: Border.all(
+          color: isActive
+              ? const Color(0xFF00E5FF).withOpacity(0.55)
+              : Colors.white.withOpacity(0.12),
+          width: 1.1,
+        ),
+        boxShadow: [
+          if (isActive)
+            BoxShadow(
+              color: const Color(0xFF00E5FF).withOpacity(0.28),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          splashColor: Colors.white.withOpacity(0.15),
+          highlightColor: Colors.white.withOpacity(0.08),
+          child: Center(child: child),
+        ),
+      ),
     );
   }
 
@@ -1650,5 +1885,137 @@ class _PlayerScreenState extends State<PlayerScreen>
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+}
+
+/// Custom Slider Track Shape with Neon Cyan-Indigo-Violet Gradient
+class NeonGradientSliderTrackShape extends RoundedRectSliderTrackShape {
+  const NeonGradientSliderTrackShape();
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 1.0,
+  }) {
+    if (sliderTheme.trackHeight == null || sliderTheme.trackHeight! <= 0) {
+      return;
+    }
+
+    final Rect trackRect = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+      isEnabled: isEnabled,
+      isDiscrete: isDiscrete,
+    );
+
+    final trackRadius = Radius.circular(trackRect.height / 2);
+    final activeRect = Rect.fromLTRB(
+      trackRect.left,
+      trackRect.top - (additionalActiveTrackHeight / 2),
+      thumbCenter.dx,
+      trackRect.bottom + (additionalActiveTrackHeight / 2),
+    );
+
+    final canvas = context.canvas;
+
+    // 1. Inactive Track (soft frosted glass line)
+    final Paint inactivePaint = Paint()
+      ..color = Colors.white.withOpacity(0.12);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(trackRect, trackRadius),
+      inactivePaint,
+    );
+
+    // 2. Active Track with Electric Cyan to Violet Neon Gradient
+    if (activeRect.width > 0) {
+      final Paint activePaint = Paint()
+        ..shader = const LinearGradient(
+          colors: [
+            Color(0xFF00E5FF), // Electric Cyan
+            Color(0xFF6C63FF), // Neon Indigo
+            Color(0xFF9D4EDD), // Vivid Violet
+          ],
+        ).createShader(activeRect);
+
+      // Ambient neon glow along active track
+      final Paint glowPaint = Paint()
+        ..shader = activePaint.shader
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          activeRect,
+          Radius.circular(activeRect.height / 2),
+        ),
+        glowPaint,
+      );
+
+      // Core crisp gradient line
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          activeRect,
+          Radius.circular(activeRect.height / 2),
+        ),
+        activePaint,
+      );
+    }
+  }
+}
+
+/// Custom Slider Thumb Shape with Glowing Neon Pearl Effect
+class NeonGlowThumbShape extends SliderComponentShape {
+  final double radius;
+
+  const NeonGlowThumbShape({this.radius = 6.5});
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
+    return Size.fromRadius(radius + 8);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final canvas = context.canvas;
+
+    // 1. Outer ambient cyan glow halo
+    final glowPaint = Paint()
+      ..color = const Color(0xFF00E5FF).withOpacity(0.55)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(center, radius + 4, glowPaint);
+
+    // 2. Cyan neon ring
+    final ringPaint = Paint()
+      ..color = const Color(0xFF00E5FF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(center, radius + 1, ringPaint);
+
+    // 3. Crisp white pearl center
+    final corePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, corePaint);
   }
 }

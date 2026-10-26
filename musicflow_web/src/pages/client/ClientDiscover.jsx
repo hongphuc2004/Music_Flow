@@ -286,6 +286,8 @@ function ClientDiscover() {
               spacing={1}
               sx={{
                 overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x',
                 scrollbarWidth: 'none',
                 '&::-webkit-scrollbar': { display: 'none' },
                 maxWidth: '100%',
@@ -298,6 +300,7 @@ function ClientDiscover() {
                     key={cat.id}
                     onClick={() => handleSelectCategory(cat.id)}
                     sx={{
+                      flexShrink: 0,
                       px: 2,
                       py: 0.75,
                       borderRadius: '9999px',

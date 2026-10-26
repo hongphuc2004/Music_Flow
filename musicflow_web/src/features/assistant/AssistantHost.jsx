@@ -42,6 +42,7 @@ import {
 import { useAssistant } from './AssistantProvider';
 import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import useVoiceRecognition from '../../hooks/useVoiceRecognition';
+import { PaperPlaneSendButton } from './PaperPlaneSendButton';
 
 export default function AssistantHost() {
   const navigate = useNavigate();
@@ -67,7 +68,10 @@ export default function AssistantHost() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [inputText, setInputText] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [isInputShaking, setIsInputShaking] = useState(false);
   const messagesEndRef = useRef(null);
+  const panelRef = useRef(null);
+  const sendButtonRef = useRef(null);
 
   const { isPlaying } = useClientPlayer();
   const { pauseSong, resumeSong } = useClientPlayerActions();
@@ -127,17 +131,124 @@ export default function AssistantHost() {
     });
   };
 
-  // Drag and drop state & handlers for floating launcher button
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const userRole = localStorage.getItem('role');
+  const hasPlayer = location.pathname.startsWith('/client');
+
+  // Custom panel size state (user can drag/resize width and height)
+  const DEFAULT_PANEL_SIZE = { width: 420, height: 600 };
+  const MIN_PANEL_SIZE = { width: 360, height: 460 };
+
+  const [panelSize, setPanelSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicflow_ai_assistant_size');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.width === 'number' && typeof parsed.height === 'number') {
+          const clampW = Math.max(MIN_PANEL_SIZE.width, Math.min(window.innerWidth - 48, parsed.width));
+          const clampH = Math.max(MIN_PANEL_SIZE.height, Math.min(window.innerHeight - 120, parsed.height));
+          return { width: clampW, height: clampH };
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to read saved assistant size:', err);
+    }
+    return DEFAULT_PANEL_SIZE;
+  });
+
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStateRef = useRef({
+    startX: 0,
+    startY: 0,
+    startW: 0,
+    startH: 0,
+    direction: '',
+  });
+
+  // Drag and drop state for launcher button (allows free movement across the entire system)
+  const [position, setPosition] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicflow_ai_assistant_btn_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return { x: 0, y: 0 };
+  });
+
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const buttonPosRef = useRef({ x: 0, y: 0 });
   const dragThreshold = 5;
 
+  // Collision prevention: guarantees the round button never enters or overlaps the chat panel
+  const getSafePosition = (candidateX, candidateY, openState, width, height) => {
+    const btnSize = 58;
+    const padding = 12;
+    const nativeRight = 24;
+    const nativeBottom = hasPlayer ? 104 : 24;
+
+    const maxRight = nativeRight - padding;
+    const maxLeft = -(window.innerWidth - nativeRight - btnSize - padding);
+    const maxBottom = nativeBottom - padding;
+    const maxTop = -(window.innerHeight - nativeBottom - btnSize - padding);
+
+    let clampedX = Math.max(maxLeft, Math.min(maxRight, candidateX));
+    let clampedY = Math.max(maxTop, Math.min(maxBottom, candidateY));
+
+    // When chat is closed, user can freely drag button anywhere on screen
+    if (!openState) {
+      return { x: clampedX, y: clampedY };
+    }
+
+    // When chat is open, prevent button from overlapping the chat panel area
+    // Panel right is 24px, bottom is (nativeBottom + 70)px.
+    const buffer = 12; // Safety buffer gap
+
+    // Horizontal overlap: button's x is within panel width
+    const forbiddenXMin = -(width + buffer);
+    const forbiddenXMax = btnSize + buffer;
+
+    // Vertical overlap: button's y encroaches from nativeBottom into the panel height
+    const forbiddenYMin = -(70 + height + buffer);
+    const forbiddenYMax = -2; // Below this (y < -2), button encroaches into panel area
+
+    const isInsideForbidden =
+      clampedX >= forbiddenXMin &&
+      clampedX <= forbiddenXMax &&
+      clampedY >= forbiddenYMin &&
+      clampedY <= forbiddenYMax;
+
+    if (isInsideForbidden) {
+      const distBelow = Math.abs(clampedY - 0);
+      const safeLeft = forbiddenXMin - 8;
+      const distLeft = Math.abs(clampedX - safeLeft);
+      const safeAbove = forbiddenYMin - 8;
+      const canGoAbove = safeAbove >= maxTop;
+      const distAbove = canGoAbove ? Math.abs(clampedY - safeAbove) : Infinity;
+
+      const minDist = Math.min(distBelow, distLeft, distAbove);
+
+      if (minDist === distBelow) {
+        clampedY = 0; // Snap cleanly below the chat panel
+      } else if (minDist === distLeft) {
+        clampedX = Math.max(maxLeft, safeLeft); // Snap cleanly to the left of chat panel
+      } else {
+        clampedY = Math.max(maxTop, safeAbove); // Snap cleanly above the chat panel
+      }
+    }
+
+    return { x: clampedX, y: clampedY };
+  };
+
   const handlePointerDown = (e) => {
     if (e.button !== 0) return;
     dragStartRef.current = { x: e.clientX, y: e.clientY };
-    buttonPosRef.current = { ...position };
+    buttonPosRef.current = { ...effectivePosition };
 
     e.currentTarget.setPointerCapture(e.pointerId);
     e.currentTarget.addEventListener('pointermove', handlePointerMove);
@@ -153,23 +264,11 @@ export default function AssistantHost() {
       setIsDragging(true);
     }
 
-    let newX = buttonPosRef.current.x + deltaX;
-    let newY = buttonPosRef.current.y + deltaY;
+    const rawX = buttonPosRef.current.x + deltaX;
+    const rawY = buttonPosRef.current.y + deltaY;
 
-    const btnSize = 56;
-    const padding = 12;
-    const nativeRight = 24;
-    const nativeBottom = hasPlayer ? 104 : 24;
-
-    const maxRight = nativeRight - padding;
-    const maxLeft = -(window.innerWidth - nativeRight - btnSize - padding);
-    const maxBottom = nativeBottom - padding;
-    const maxTop = -(window.innerHeight - nativeBottom - btnSize - padding);
-
-    newX = Math.max(maxLeft, Math.min(maxRight, newX));
-    newY = Math.max(maxTop, Math.min(maxBottom, newY));
-
-    setPosition({ x: newX, y: newY });
+    const safe = getSafePosition(rawX, rawY, isOpen, panelSize.width, panelSize.height);
+    setPosition(safe);
   };
 
   const handlePointerUp = (e) => {
@@ -180,7 +279,76 @@ export default function AssistantHost() {
 
     setTimeout(() => {
       setIsDragging(false);
-    }, 50);
+    }, 60);
+
+    // Persist position whenever user drops the button (both when open or closed)
+    setPosition((current) => {
+      try {
+        localStorage.setItem('musicflow_ai_assistant_btn_pos', JSON.stringify(current));
+      } catch {
+        // ignore
+      }
+      return current;
+    });
+  };
+
+  // Ensure button never overlaps the chat panel when open without triggering cascading effect renders
+  const effectivePosition = isOpen
+    ? getSafePosition(position.x, position.y, true, panelSize.width, panelSize.height)
+    : position;
+
+  const handleResizeStart = (e, direction) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: panelSize.width,
+      startH: panelSize.height,
+      direction,
+    };
+
+    const handlePointerMoveResize = (moveEvt) => {
+      const { startX, startY, startW, startH, direction: dir } = resizeStateRef.current;
+      const deltaX = startX - moveEvt.clientX; // Dragging left increases width
+      const deltaY = startY - moveEvt.clientY; // Dragging up increases height
+
+      const maxW = Math.max(MIN_PANEL_SIZE.width, window.innerWidth - 48);
+      const maxH = Math.max(MIN_PANEL_SIZE.height, window.innerHeight - (hasPlayer ? 190 : 110));
+
+      let newW = startW;
+      let newH = startH;
+
+      if (dir.includes('w')) {
+        newW = Math.max(MIN_PANEL_SIZE.width, Math.min(maxW, startW + deltaX));
+      }
+      if (dir.includes('n')) {
+        newH = Math.max(MIN_PANEL_SIZE.height, Math.min(maxH, startH + deltaY));
+      }
+
+      setPanelSize({ width: Math.round(newW), height: Math.round(newH) });
+    };
+
+    const handlePointerUpResize = () => {
+      setIsResizing(false);
+      window.removeEventListener('pointermove', handlePointerMoveResize);
+      window.removeEventListener('pointerup', handlePointerUpResize);
+      window.removeEventListener('pointercancel', handlePointerUpResize);
+
+      setPanelSize((current) => {
+        try {
+          localStorage.setItem('musicflow_ai_assistant_size', JSON.stringify(current));
+        } catch (err) {
+          console.warn('Failed to save assistant size:', err);
+        }
+        return current;
+      });
+    };
+
+    window.addEventListener('pointermove', handlePointerMoveResize);
+    window.addEventListener('pointerup', handlePointerUpResize);
+    window.addEventListener('pointercancel', handlePointerUpResize);
   };
 
   const handleButtonClick = (e) => {
@@ -189,11 +357,19 @@ export default function AssistantHost() {
       e.stopPropagation();
       return;
     }
-    setIsOpen(true);
+    setIsOpen((prev) => !prev);
   };
 
-  const userRole = localStorage.getItem('role');
-  const hasPlayer = location.pathname.startsWith('/client');
+  // Close assistant on Escape key (Lucian UX/UI Prompt #215 interaction)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, setIsOpen]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -213,7 +389,7 @@ export default function AssistantHost() {
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      sendButtonRef.current?.triggerSend();
     }
   };
 
@@ -253,61 +429,89 @@ export default function AssistantHost() {
 
   return (
     <Box sx={{ position: 'fixed', zIndex: 9999 }}>
-      {/* LAUNCHER BUTTON */}
-      {!isOpen && (
-        <Tooltip title="Trợ lý AI MusicFlow (Bấm để trò chuyện, Kéo để di chuyển)" placement="left">
+      {/* LAUNCHER BUTTON - Lucian UX/UI Prompt #215 with Draggable Mobility & Collision Avoidance */}
+      <Tooltip title={isOpen ? "Đóng trợ lý AI (Esc, Kéo để di chuyển)" : "Trợ lý AI MusicFlow (Bấm để trò chuyện, Kéo để di chuyển)"} placement="left">
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: hasPlayer ? '104px' : '24px', // Shift up on client view to clear player bar
+            right: '24px',
+            transform: `translate(${effectivePosition.x}px, ${effectivePosition.y}px)`,
+            cursor: isDragging ? 'grabbing' : 'pointer',
+            touchAction: 'none',
+            zIndex: 9999,
+            transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)',
+          }}
+        >
+          {/* Outer Breathing Glow Halo */}
           <Box
             sx={{
-              position: 'fixed',
-              bottom: hasPlayer ? '104px' : '24px', // Shift up on client view to clear player bar
-              right: '24px',
-              transform: `translate(${position.x}px, ${position.y}px)`,
-              cursor: isDragging ? 'grabbing' : 'pointer',
-              touchAction: 'none',
-              zIndex: 9999,
+              position: 'absolute',
+              inset: -6,
+              borderRadius: '50%',
+              background: isOpen
+                ? 'linear-gradient(135deg, #EC4899 0%, #D93A55 100%)'
+                : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 40%, #06b6d4 100%)',
+              opacity: isOpen ? 0.35 : 0.55,
+              filter: 'blur(10px)',
+              animation: isOpen ? 'none' : 'aiHaloPulse 2.8s ease-in-out infinite',
+              '@keyframes aiHaloPulse': {
+                '0%, 100%': { transform: 'scale(0.92)', opacity: 0.4 },
+                '50%': { transform: 'scale(1.18)', opacity: 0.8 },
+              },
+              transition: 'background 0.35s ease, opacity 0.35s ease',
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* Main Interactive Button with Icon Morphing */}
+          <IconButton
+            onPointerDown={handlePointerDown}
+            onClick={handleButtonClick}
+            aria-label={isOpen ? 'Đóng trợ lý AI' : 'Mở trợ lý AI'}
+            aria-expanded={isOpen}
+            sx={{
+              position: 'relative',
+              width: 58,
+              height: 58,
+              p: 0,
+              borderRadius: '50%',
+              boxShadow: isOpen
+                ? '0 14px 28px -10px rgba(217, 58, 85, 0.6), 0 6px 16px rgba(0, 0, 0, 0.25)'
+                : '0 14px 28px -10px rgba(106, 87, 242, 0.7), 0 0 20px rgba(6, 182, 212, 0.35)',
+              background: isOpen
+                ? 'linear-gradient(135deg, #EC4899 0%, #D93A55 100%)'
+                : 'linear-gradient(135deg, #7B61FF 0%, #3D8BFF 55%, #1FB89A 100%)',
+              border: '2px solid rgba(255, 255, 255, 0.8)',
+              overflow: 'hidden',
+              display: 'grid',
+              placeItems: 'center',
+              color: '#ffffff',
+              cursor: 'pointer',
+              transition: 'transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1), background 0.35s ease, box-shadow 0.35s ease',
+              '&:hover': {
+                transform: 'scale(1.1) rotate(4deg)',
+                boxShadow: isOpen
+                  ? '0 16px 36px -8px rgba(217, 58, 85, 0.7)'
+                  : '0 16px 36px -8px rgba(106, 87, 242, 0.8), 0 0 24px rgba(6, 182, 212, 0.5)',
+              },
+              '&:active': {
+                transform: 'scale(0.92)',
+              },
             }}
           >
-            {/* Outer Breathing Glow Halo */}
+            {/* Assistant Icon (.c in Prompt #215) */}
             <Box
               sx={{
                 position: 'absolute',
-                inset: -6,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 40%, #06b6d4 100%)',
-                opacity: 0.55,
-                filter: 'blur(10px)',
-                animation: 'aiHaloPulse 2.8s ease-in-out infinite',
-                '@keyframes aiHaloPulse': {
-                  '0%, 100%': { transform: 'scale(0.92)', opacity: 0.4 },
-                  '50%': { transform: 'scale(1.18)', opacity: 0.8 },
-                },
+                width: 32,
+                height: 32,
+                display: 'grid',
+                placeItems: 'center',
+                transform: isOpen ? 'rotate(90deg) scale(0.5)' : 'none',
+                opacity: isOpen ? 0 : 1,
+                transition: 'transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1), opacity 0.2s ease',
                 pointerEvents: 'none',
-              }}
-            />
-
-            {/* Main Interactive Button */}
-            <IconButton
-              onPointerDown={handlePointerDown}
-              onClick={handleButtonClick}
-              sx={{
-                position: 'relative',
-                width: 60,
-                height: 60,
-                p: 0,
-                borderRadius: '50%',
-                boxShadow: '0 10px 32px rgba(124, 58, 237, 0.55), 0 0 20px rgba(6, 182, 212, 0.4)',
-                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                border: '2px solid rgba(255, 255, 255, 0.65)',
-                overflow: 'hidden',
-                bgcolor: 'transparent',
-                '&:hover': {
-                  transform: 'scale(1.12) rotate(6deg)',
-                  boxShadow: '0 14px 44px rgba(124, 58, 237, 0.8), 0 0 32px rgba(6, 182, 212, 0.65)',
-                  border: '2px solid rgba(255, 255, 255, 0.95)',
-                },
-                '&:active': {
-                  transform: 'scale(0.95)',
-                },
               }}
             >
               <Box
@@ -317,113 +521,285 @@ export default function AssistantHost() {
                 sx={{
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                  pointerEvents: 'none',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                 }}
               />
-            </IconButton>
+            </Box>
 
-            {/* Glowing Online Status Dot */}
+            {/* Close 'X' Icon (.x in Prompt #215) */}
             <Box
               sx={{
                 position: 'absolute',
-                top: 1,
-                right: 1,
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                bgcolor: '#10b981',
-                border: '2.5px solid #0f172a',
-                boxShadow: '0 0 10px #10b981',
+                width: 24,
+                height: 24,
+                display: 'grid',
+                placeItems: 'center',
+                transform: isOpen ? 'none' : 'rotate(-90deg) scale(0.5)',
+                opacity: isOpen ? 1 : 0,
+                transition: 'transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1), opacity 0.2s ease',
                 pointerEvents: 'none',
               }}
-            />
-          </Box>
-        </Tooltip>
-      )}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </Box>
+          </IconButton>
 
-      {/* CHAT PANEL */}
-      <Collapse in={isOpen}>
-        <Paper
-          elevation={24}
-          sx={{
-            position: 'fixed',
-            bottom: isMobile ? 0 : (hasPlayer ? '104px' : '24px'),
-            top: isMobile ? 0 : 'auto',
-            right: isMobile ? 0 : '24px',
-            width: isMobile ? '100vw' : 400,
-            height: isMobile ? '100dvh' : 600,
-            borderRadius: isMobile ? 0 : '16px',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            border: '1px solid',
-            borderColor: 'divider',
-            backdropFilter: 'blur(20px)',
-            bgcolor: (theme) =>
-              theme.palette.mode === 'dark'
-                ? 'rgba(17, 24, 39, 0.92)'
-                : 'rgba(255, 255, 255, 0.95)',
-            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.25)',
-          }}
-        >
-          {/* HEADER */}
+          {/* Glowing Online Status Dot */}
           <Box
             sx={{
-              p: 2,
-              background: 'linear-gradient(135deg, rgba(108,99,255,0.15) 0%, rgba(0,188,212,0.1) 100%)',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
+              position: 'absolute',
+              top: 1,
+              right: 1,
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              bgcolor: '#10b981',
+              border: '2.5px solid #0f172a',
+              boxShadow: '0 0 10px #10b981',
+              pointerEvents: 'none',
+              transform: isOpen ? 'scale(0)' : 'scale(1)',
+              opacity: isOpen ? 0 : 1,
+              transition: 'transform 0.25s ease, opacity 0.2s ease',
             }}
-          >
-            <Stack direction="row" alignItems="center" spacing={1.5}>
-              <Avatar
-                src="/ai-assistant-icon.png"
+          />
+        </Box>
+      </Tooltip>
+
+      {/* CHAT PANEL - Lucian UX/UI Prompt #215 Scale & Spring Transform with Custom Resizing */}
+      <Paper
+        ref={panelRef}
+        elevation={24}
+        role="dialog"
+        aria-modal="false"
+        aria-hidden={!isOpen}
+        sx={{
+          position: 'fixed',
+          bottom: isMobile ? '80px' : (hasPlayer ? '174px' : '94px'), // Always positioned above the round button with 12px gap
+          right: isMobile ? '12px' : '24px',
+          width: isMobile ? 'calc(100vw - 24px)' : panelSize.width,
+          height: isMobile ? 'calc(100dvh - 170px)' : panelSize.height,
+          maxHeight: isMobile ? 'calc(100dvh - 170px)' : `calc(100vh - ${hasPlayer ? 190 : 110}px)`,
+          maxWidth: isMobile ? 'calc(100vw - 24px)' : 'calc(100vw - 48px)',
+          minWidth: isMobile ? 'calc(100vw - 24px)' : MIN_PANEL_SIZE.width,
+          minHeight: isMobile ? 'calc(100dvh - 170px)' : MIN_PANEL_SIZE.height,
+          borderRadius: '24px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          border: '1px solid',
+          borderColor: (theme) =>
+            theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(22, 21, 27, 0.09)',
+          backdropFilter: 'blur(20px)',
+          bgcolor: (theme) =>
+            theme.palette.mode === 'dark'
+              ? 'rgba(19, 20, 28, 0.94)'
+              : 'rgba(255, 255, 255, 0.96)',
+          boxShadow: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '0 0 0 1px rgba(255, 255, 255, 0.08), 0 30px 60px -20px rgba(0, 0, 0, 0.7)'
+              : '0 0 0 1px rgba(22, 21, 27, 0.09), 0 30px 60px -20px rgba(40, 30, 80, 0.25)',
+          zIndex: 9998,
+          userSelect: isResizing ? 'none' : 'auto',
+          // Prompt #215 Transform Origin & Spring Scale Transitions
+          transformOrigin: isMobile
+            ? 'calc(100% - 24px) calc(100% + 44px)'
+            : 'calc(100% - 29px) calc(100% + 41px)',
+          transform: isOpen ? 'none' : 'scale(0.1)',
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
+          visibility: isOpen ? 'visible' : 'hidden',
+          transition: isResizing
+            ? 'none'
+            : (isOpen
+                ? 'transform 0.45s cubic-bezier(0.3, 1.15, 0.4, 1), opacity 0.25s ease'
+                : 'transform 0.45s cubic-bezier(0.3, 1.15, 0.4, 1), opacity 0.25s ease, visibility 0.45s'),
+          '@media (prefers-reduced-motion: reduce)': {
+            transition: 'none !important',
+            transform: isOpen ? 'none' : 'scale(0.1)',
+          },
+        }}
+      >
+        {/* RESIZE HANDLES (Desktop only) */}
+        {!isMobile && (
+          <>
+            {/* Top-Left Corner Handle (Width & Height) */}
+            <Tooltip title="Kéo để chỉnh kích thước (Rộng & Cao)" placement="top-start">
+              <Box
+                onPointerDown={(e) => handleResizeStart(e, 'nw')}
                 sx={{
-                  width: 40,
-                  height: 40,
-                  boxShadow: '0 2px 10px rgba(124, 58, 237, 0.4)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.3)',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: 26,
+                  height: 26,
+                  cursor: 'nwse-resize',
+                  zIndex: 30,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  p: '5px',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  '&:hover .corner-grip': {
+                    borderColor: '#8b5cf6',
+                    opacity: 1,
+                    transform: 'scale(1.2)',
+                  },
+                }}
+              >
+                <Box
+                  className="corner-grip"
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderTop: '2.5px solid',
+                    borderLeft: '2.5px solid',
+                    borderColor: 'rgba(255, 255, 255, 0.45)',
+                    opacity: 0.7,
+                    transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                    borderRadius: '2px 0 0 0',
+                  }}
+                />
+              </Box>
+            </Tooltip>
+
+            {/* Left Edge Handle (Width) */}
+            <Tooltip title="Kéo để chỉnh độ rộng" placement="left">
+              <Box
+                onPointerDown={(e) => handleResizeStart(e, 'w')}
+                sx={{
+                  position: 'absolute',
+                  top: 26,
+                  left: 0,
+                  bottom: 26,
+                  width: 8,
+                  cursor: 'ew-resize',
+                  zIndex: 25,
+                  touchAction: 'none',
+                  '&:hover': {
+                    bgcolor: 'rgba(139, 92, 246, 0.3)',
+                  },
+                  transition: 'background-color 0.2s',
                 }}
               />
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                <Typography variant="subtitle1" fontWeight={800} noWrap>
-                  Trợ lý MusicFlow
-                </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
-                  {isLoading ? 'Đang xử lý...' : 'Trực tuyến'}
-                </Typography>
-              </Box>
+            </Tooltip>
 
-              {/* Toolbar Actions */}
-              <Stack direction="row" spacing={0.5}>
-                {showHistory ? (
-                  <Tooltip title="Quay lại">
-                    <IconButton size="small" onClick={() => setShowHistory(false)}>
-                      <BackIcon />
+            {/* Top Edge Handle (Height) */}
+            <Tooltip title="Kéo để chỉnh độ cao" placement="top">
+              <Box
+                onPointerDown={(e) => handleResizeStart(e, 'n')}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 26,
+                  right: 50,
+                  height: 8,
+                  cursor: 'ns-resize',
+                  zIndex: 25,
+                  touchAction: 'none',
+                  '&:hover': {
+                    bgcolor: 'rgba(139, 92, 246, 0.3)',
+                  },
+                  transition: 'background-color 0.2s',
+                }}
+              />
+            </Tooltip>
+          </>
+        )}
+
+        {/* HEADER */}
+        <Box
+          sx={{
+            p: 2,
+            background: 'linear-gradient(135deg, rgba(108,99,255,0.15) 0%, rgba(0,188,212,0.1) 100%)',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Avatar
+              src="/ai-assistant-icon.png"
+              sx={{
+                width: 40,
+                height: 40,
+                boxShadow: '0 2px 10px rgba(124, 58, 237, 0.4)',
+                border: '1.5px solid rgba(255, 255, 255, 0.3)',
+              }}
+            />
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={800} noWrap>
+                Trợ lý MusicFlow
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {isLoading ? 'Đang xử lý...' : 'Trực tuyến'}
+              </Typography>
+            </Box>
+
+            {/* Toolbar Actions */}
+            <Stack direction="row" spacing={0.5}>
+              {showHistory ? (
+                <Tooltip title="Quay lại">
+                  <IconButton size="small" onClick={() => setShowHistory(false)}>
+                    <BackIcon />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <>
+                  <Tooltip title="Cuộc trò chuyện mới">
+                    <IconButton size="small" onClick={() => startNewConversation('global')}>
+                      <AddIcon />
                     </IconButton>
                   </Tooltip>
-                ) : (
-                  <>
-                    <Tooltip title="Cuộc trò chuyện mới">
-                      <IconButton size="small" onClick={() => startNewConversation('global')}>
-                        <AddIcon />
+                  <Tooltip title="Lịch sử chat">
+                    <IconButton size="small" onClick={() => setShowHistory(true)}>
+                      <HistoryIcon />
+                    </IconButton>
+                  </Tooltip>
+                  {!isMobile && (
+                    <Tooltip title={panelSize.width > 500 ? "Thu nhỏ về kích thước chuẩn (420x600)" : "Mở rộng khung chat (680x720)"}>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          const nextSize = panelSize.width > 500 ? DEFAULT_PANEL_SIZE : { width: 680, height: 720 };
+                          setPanelSize(nextSize);
+                          try {
+                            localStorage.setItem('musicflow_ai_assistant_size', JSON.stringify(nextSize));
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                      >
+                        {panelSize.width > 500 ? (
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="4 14 10 14 10 20" />
+                            <polyline points="20 10 14 10 14 4" />
+                            <line x1="14" y1="10" x2="21" y2="3" />
+                            <line x1="3" y1="21" x2="10" y2="14" />
+                          </svg>
+                        ) : (
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 3 21 3 21 9" />
+                            <polyline points="9 21 3 21 3 15" />
+                            <line x1="21" y1="3" x2="14" y2="10" />
+                            <line x1="3" y1="21" x2="10" y2="14" />
+                          </svg>
+                        )}
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Lịch sử chat">
-                      <IconButton size="small" onClick={() => setShowHistory(true)}>
-                        <HistoryIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </>
-                )}
-                <IconButton size="small" onClick={() => setIsOpen(false)}>
-                  <CloseIcon />
-                </IconButton>
-              </Stack>
+                  )}
+                </>
+              )}
+              <IconButton size="small" onClick={() => setIsOpen(false)}>
+                <CloseIcon />
+              </IconButton>
             </Stack>
-          </Box>
+          </Stack>
+        </Box>
 
           {/* MAIN PANEL CONTENT */}
           <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -550,6 +926,7 @@ export default function AssistantHost() {
                               color: isAssistant ? 'text.primary' : 'white',
                               border: isAssistant ? '1px solid' : 'none',
                               borderColor: 'divider',
+                              animation: isAssistant ? 'none' : 'u005-pop .45s cubic-bezier(.3,1.5,.5,1) both',
                             }}
                           >
                             {cleanContent && (
@@ -818,6 +1195,7 @@ export default function AssistantHost() {
               <TextField
                 fullWidth
                 size="small"
+                className={isInputShaking ? 'u005-shake' : ''}
                 placeholder={isVoiceListening ? "Đang lắng nghe bạn nói..." : "Nhắn tin cho trợ lý..."}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
@@ -826,14 +1204,13 @@ export default function AssistantHost() {
                 slotProps={{
                   input: {
                     endAdornment: (
-                      <InputAdornment position="end">
+                      <InputAdornment position="end" sx={{ gap: 0.5, alignItems: 'center' }}>
                         <Tooltip title={isVoiceListening ? "Đang nghe... Bấm để dừng" : "Nói chuyện bằng giọng nói"}>
                           <IconButton
                             size="small"
                             onClick={handleToggleVoice}
                             disabled={isLoading}
                             sx={{
-                              mr: 0.5,
                               color: isVoiceListening ? '#ef4444' : 'text.secondary',
                               bgcolor: isVoiceListening ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
                               animation: isVoiceListening ? 'pulseVoiceAssistantBtn 1.4s infinite ease-in-out' : 'none',
@@ -851,19 +1228,23 @@ export default function AssistantHost() {
                             <MicIcon sx={{ fontSize: 19 }} />
                           </IconButton>
                         </Tooltip>
-                        <IconButton
-                          edge="end"
-                          color="primary"
-                          onClick={handleSend}
-                          disabled={!inputText.trim() || isLoading}
-                        >
-                          <SendIcon />
-                        </IconButton>
+
+                        <PaperPlaneSendButton
+                          ref={sendButtonRef}
+                          onSend={handleSend}
+                          disabled={isLoading}
+                          hasContent={Boolean(inputText.trim())}
+                          rootRef={panelRef}
+                          onEmptyTrigger={() => {
+                            setIsInputShaking(true);
+                            setTimeout(() => setIsInputShaking(false), 450);
+                          }}
+                        />
                       </InputAdornment>
                     ),
                     sx: {
                       borderRadius: '24px',
-                      pr: 1.5,
+                      pr: 1,
                     },
                   },
                 }}
@@ -871,7 +1252,6 @@ export default function AssistantHost() {
             </Box>
           )}
         </Paper>
-      </Collapse>
 
       {/* Dialog Nâng cấp cước khi hết hạn mức AI */}
       <Dialog

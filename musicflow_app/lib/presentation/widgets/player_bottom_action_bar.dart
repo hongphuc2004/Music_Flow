@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'rive/rive_heart_button.dart';
 
@@ -26,70 +27,192 @@ class PlayerBottomActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 48,
-                child: Center(
-                  child: RiveHeartButton(
-                    isLiked: isLiked,
-                    onTap: onLikePressed,
-                    size: 24,
-                    activeColor: Colors.redAccent,
-                    inactiveColor: Colors.white70,
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(26),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.14),
+                  Colors.white.withOpacity(0.04),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.18),
+                width: 1.1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6C63FF).withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.42),
+                  blurRadius: 28,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _ActionItemWrapper(
+                  onTap: onLikePressed,
+                  tooltip: 'Yêu thích',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 38,
+                        child: Center(
+                          child: RiveHeartButton(
+                            isLiked: isLiked,
+                            onTap: onLikePressed,
+                            size: 24,
+                            activeColor: const Color(0xFFFF4B6E),
+                            inactiveColor: Colors.white.withOpacity(0.75),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _formatCount(likeCount),
+                        style: TextStyle(
+                          color: isLiked
+                              ? const Color(0xFFFF7597)
+                              : Colors.white.withOpacity(0.75),
+                          fontSize: 11,
+                          fontWeight:
+                              isLiked ? FontWeight.w700 : FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Text(
-                _formatCount(likeCount),
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                _ActionItemWrapper(
+                  onTap: onCommentPressed,
+                  tooltip: 'Bình luận',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 38,
+                        child: Center(
+                          child: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _formatCount(commentCount),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                _ActionItemWrapper(
+                  onTap: onDownloadPressed,
+                  tooltip: 'Tải bài hát',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 38,
+                        child: Center(
+                          child: Icon(
+                            Icons.download_rounded,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 23,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Tải',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _ActionItemWrapper(
+                  onTap: onSharePressed,
+                  tooltip: 'Chia sẻ',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 38,
+                        child: Center(
+                          child: Icon(
+                            Icons.share_outlined,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Chia sẻ',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _ActionItemWrapper(
+                  onTap: onMorePressed,
+                  tooltip: 'Thêm tùy chọn',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 38,
+                        child: Center(
+                          child: Icon(
+                            Icons.more_horiz_rounded,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Thêm',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          _ActionMenuItem(
-            icon: Icons.chat_bubble_outline,
-            iconColor: Colors.white70,
-            label: _formatCount(commentCount),
-            tooltip: 'Bình luận',
-            onPressed: onCommentPressed,
-          ),
-          _ActionMenuItem(
-            icon: Icons.download_outlined,
-            iconColor: Colors.white70,
-            label: 'Tai',
-            tooltip: 'Tải bài hát',
-            onPressed: onDownloadPressed,
-          ),
-          _ActionMenuItem(
-            icon: Icons.share_outlined,
-            iconColor: Colors.white70,
-            label: 'Chia sẻ',
-            tooltip: 'Chia sẻ',
-            onPressed: onSharePressed,
-          ),
-          _ActionMenuItem(
-            icon: Icons.more_vert,
-            iconColor: Colors.white70,
-            label: 'Them',
-            tooltip: 'Them tuy chon',
-            onPressed: onMorePressed,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -105,41 +228,35 @@ class PlayerBottomActionBar extends StatelessWidget {
   }
 }
 
-class _ActionMenuItem extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
+class _ActionItemWrapper extends StatelessWidget {
+  final Widget child;
+  final VoidCallback onTap;
   final String tooltip;
-  final VoidCallback onPressed;
 
-  const _ActionMenuItem({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
+  const _ActionItemWrapper({
+    required this.child,
+    required this.onTap,
     required this.tooltip,
-    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(icon, color: iconColor, size: 24),
-          onPressed: onPressed,
-          tooltip: tooltip,
-          splashRadius: 22,
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white60,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.white.withOpacity(0.12),
+          highlightColor: Colors.white.withOpacity(0.06),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: child,
           ),
         ),
-      ],
+      ),
     );
   }
 }
+

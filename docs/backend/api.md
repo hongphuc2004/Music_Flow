@@ -199,7 +199,7 @@ Hệ thống Trợ lý thông minh toàn năng đa phiên chat, kiểm soát h�
 
 | Method | Endpoint | Auth | Mô tả |
 |--------|----------|------|-------|
-| GET | `/` | — | Lấy danh sách các gói cước Premium đang kích hoạt (Gói PLUS, PREMIUM) |
+| GET | `/` | — | Lấy danh sách các gói cước đang kích hoạt (Gói PLUS 20k, PREMIUM 50k cho User hoặc Artist Studio Pro 79k cho Artist) |
 
 ---
 

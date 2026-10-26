@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useContext, useCallback } from 'react';
+import { useEffect, useMemo, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -36,6 +36,7 @@ import {
 import { ColorModeContext } from '../../../context/ColorModeContext';
 import useAppToast from '../../common/js/useAppToast';
 import { artistNotificationsApi } from '../../../services/artist/artist.service';
+import { logout } from '../../../services/api';
 import NotificationBellButton from '../../common/ui/NotificationBellButton';
 import NotificationPanel from '../../common/ui/NotificationPanel';
 
@@ -57,25 +58,29 @@ function ArtistHeader({ title, desktopSidebarOpen = true }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notiAnchorEl, setNotiAnchorEl] = useState(null);
 
-  const fetchNotifications = useCallback(async () => {
-    if (localStorage.getItem('role') !== 'artist') return;
-    try {
-      const res = await artistNotificationsApi.getAll();
-      if (res.data?.success) {
-        setNotifications(res.data.data || []);
-        setUnreadCount(res.data.unreadCount || 0);
-      }
-    } catch (err) {
-      console.warn('Failed to fetch artist notifications:', err);
-    }
-  }, []);
-
   useEffect(() => {
+    let isCancelled = false;
     if (localStorage.getItem('role') !== 'artist') return;
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // 60s auto refresh
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+
+    const loadNotifications = async () => {
+      try {
+        const res = await artistNotificationsApi.getAll();
+        if (!isCancelled && res.data?.success) {
+          setNotifications(res.data.data || []);
+          setUnreadCount(res.data.unreadCount || 0);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch artist notifications:', err);
+      }
+    };
+
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 60000); // 60s auto refresh
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleNotiOpen = (event) => {
     setNotiAnchorEl(event.currentTarget);
@@ -104,23 +109,6 @@ function ArtistHeader({ title, desktopSidebarOpen = true }) {
       setUnreadCount(0);
     } catch (err) {
       console.warn('Failed to mark all notifications as read:', err);
-    }
-  };
-
-  const formatTimeAgo = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      const seconds = Math.floor((new Date() - date) / 1000);
-      if (seconds < 60) return 'vừa xong';
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes} phút trước`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours} giờ trước`;
-      const days = Math.floor(hours / 24);
-      if (days < 30) return `${days} ngày trước`;
-      return date.toLocaleDateString('vi-VN');
-    } catch {
-      return '';
     }
   };
 

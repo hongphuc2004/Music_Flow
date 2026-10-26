@@ -484,7 +484,18 @@ function ClientHome() {
 
       <Stack spacing={4} sx={{ width: '100%', pb: 4 }}>
         {/* ── 0. TOP CATEGORY PILLS BAR ── */}
-        <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 0.5, scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            overflowX: 'auto',
+            pb: 0.5,
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x',
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           {[
             { id: 'all', label: '✨ Tất Cả Dòng Chảy' },
             { id: 'lyrics', label: '🎙️ Live Lyrics Karaoke' },
@@ -501,6 +512,7 @@ function ClientHome() {
                 key={tab.id}
                 onClick={() => setActiveTabFilter(tab.id)}
                 sx={{
+                  flexShrink: 0,
                   px: 2.25,
                   py: 0.85,
                   borderRadius: '9999px',

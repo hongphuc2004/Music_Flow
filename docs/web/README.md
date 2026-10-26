@@ -104,7 +104,7 @@ musicflow_web/
 - **`Dashboard.jsx`:** Thống kê tổng số người dùng, nghệ sĩ, bài hát và doanh thu.
 - **`Accounts.jsx`:** Phân quyền, chỉnh sửa hoặc khóa tài khoản vi phạm.
 - **`Songs.jsx`:** Duyệt bài hát, gỡ bỏ nội dung vi phạm tiêu chuẩn cộng đồng.
-- **`Premium.jsx`:** Thiết lập giá và quyền lợi các gói cước (Gói PLUS, PREMIUM), quản lý danh sách thuê bao đang hoạt động và theo dõi lịch sử giao dịch thanh toán.
+- **`Premium.jsx`:** Thiết lập giá và quyền lợi các gói cước (Gói PLUS 20k, Gói PREMIUM 50k, Artist Studio Pro 79k), quản lý danh sách thuê bao đang hoạt động và theo dõi lịch sử giao dịch thanh toán.
 
 ---
 

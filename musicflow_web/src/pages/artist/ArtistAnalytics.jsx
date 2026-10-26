@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Avatar,
   Box,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Grid,
+  InputAdornment,
   Stack,
+  TextField,
   Typography,
   Paper,
   Divider,
@@ -18,6 +22,8 @@ import {
   TimerRounded as TimerIcon,
   PeopleRounded as FollowersIcon,
   LibraryMusicRounded as TracksIcon,
+  SearchRounded as SearchIcon,
+  PersonRounded as PersonIcon,
 } from '@mui/icons-material';
 import ArtistLayout from '../../components/Layout/artist/ArtistLayout';
 import { artistApi } from '../../services/artist/artist.service';
@@ -256,6 +262,26 @@ function ArtistAnalytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [followers, setFollowers] = useState([]);
+  const [followersTotal, setFollowersTotal] = useState(0);
+  const [followersSearch, setFollowersSearch] = useState('');
+  const [followersLoading, setFollowersLoading] = useState(false);
+
+  const fetchFollowersList = useCallback(async (searchQuery = '') => {
+    try {
+      setFollowersLoading(true);
+      const res = await artistApi.getMyFollowers({ search: searchQuery, limit: 50 });
+      if (res.data?.success) {
+        setFollowers(res.data.data || []);
+        setFollowersTotal(res.data.total || 0);
+      }
+    } catch {
+      // Gracefully handle error
+    } finally {
+      setFollowersLoading(false);
+    }
+  }, []);
+
   const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
@@ -283,6 +309,13 @@ function ArtistAnalytics() {
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchFollowersList(followersSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [followersSearch, fetchFollowersList]);
 
   const analytics = useMemo(() => calculateArtistAnalytics(artist, songs), [artist, songs]);
   
@@ -515,6 +548,167 @@ function ArtistAnalytics() {
                   )}
                 </tbody>
               </table>
+            </Box>
+          </Card>
+
+          {/* Followers Community Card & Table */}
+          <Card 
+            elevation={0}
+            sx={{
+              borderRadius: 3.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.01)',
+              overflow: 'hidden'
+            }}
+          >
+            <Box 
+              sx={{ 
+                p: 3, 
+                borderBottom: '1px solid', 
+                borderColor: 'divider', 
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      display: 'grid',
+                      placeItems: 'center',
+                      bgcolor: 'rgba(56, 189, 248, 0.12)',
+                      color: '#0284c7',
+                    }}
+                  >
+                    <FollowersIcon fontSize="small" />
+                  </Box>
+                  <Typography variant="h6" fontWeight={900}>
+                    Khán giả đang theo dõi ({followersTotal})
+                  </Typography>
+                </Stack>
+                <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5, fontWeight: 500 }}>
+                  Danh sách những người dùng đã bấm quan tâm và theo dõi kênh nghệ sĩ của bạn.
+                </Typography>
+              </Box>
+
+              <TextField
+                size="small"
+                placeholder="Tìm người theo dõi..."
+                value={followersSearch}
+                onChange={(e) => setFollowersSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: { xs: '100%', sm: 260 },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                  },
+                }}
+              />
+            </Box>
+
+            <Box sx={{ overflowX: 'auto' }}>
+              {followersLoading ? (
+                <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+                  <CircularProgress size={32} sx={{ color: '#0284c7' }} />
+                </Box>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 600 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <th style={{ padding: '16px 24px', fontSize: 11, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800 }}>Người nghe</th>
+                      <th style={{ padding: '16px 24px', fontSize: 11, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800 }}>Tài khoản / Email</th>
+                      <th style={{ padding: '16px 24px', fontSize: 11, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800 }}>Thời gian theo dõi</th>
+                      <th style={{ padding: '16px 24px', fontSize: 11, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800, textAlign: 'right' }}>Vai trò</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {followers.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                            <PersonIcon sx={{ fontSize: 44, color: 'text.disabled' }} />
+                            <Typography color="text.secondary" fontWeight={600}>
+                              {followersSearch ? 'Không tìm thấy người nghe nào khớp với tìm kiếm.' : 'Chưa có người nghe nào theo dõi bạn.'}
+                            </Typography>
+                          </Box>
+                        </td>
+                      </tr>
+                    ) : (
+                      followers.map((follower) => {
+                        const dateStr = follower.createdAt ? new Date(follower.createdAt).toLocaleDateString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        }) : 'Gần đây';
+
+                        return (
+                          <tr 
+                            key={follower._id}
+                            style={{ 
+                              borderBottom: '1px solid rgba(255,255,255,0.03)',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                          >
+                            <td style={{ padding: '14px 24px' }}>
+                              <Stack direction="row" alignItems="center" spacing={2}>
+                                <Avatar
+                                  src={follower.avatar}
+                                  alt={follower.name}
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    bgcolor: 'primary.main',
+                                    fontWeight: 800,
+                                    fontSize: '0.95rem',
+                                  }}
+                                >
+                                  {follower.name?.charAt(0)?.toUpperCase()}
+                                </Avatar>
+                                <Typography variant="subtitle2" fontWeight={800}>
+                                  {follower.name || 'Người dùng ẩn danh'}
+                                </Typography>
+                              </Stack>
+                            </td>
+                            <td style={{ padding: '14px 24px', color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                              {follower.email ? follower.email.replace(/(.{2})(.*)(?=@)/, (_, a, b) => a + '*'.repeat(b.length)) : 'Người nghe MusicFlow'}
+                            </td>
+                            <td style={{ padding: '14px 24px', color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                              {dateStr}
+                            </td>
+                            <td style={{ padding: '14px 24px', textAlign: 'right' }}>
+                              <Chip
+                                size="small"
+                                label="Người theo dõi"
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: '0.72rem',
+                                  bgcolor: 'rgba(56, 189, 248, 0.1)',
+                                  color: '#0284c7',
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              )}
             </Box>
           </Card>
         </Stack>

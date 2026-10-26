@@ -11,6 +11,7 @@ class AppNotification {
   final String type;
   final bool isRead;
   final DateTime createdAt;
+  final Map<String, dynamic> metadata;
 
   const AppNotification({
     required this.id,
@@ -19,6 +20,7 @@ class AppNotification {
     required this.type,
     required this.isRead,
     required this.createdAt,
+    this.metadata = const {},
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,9 @@ class AppNotification {
       content: json['content'] ?? '',
       type: json['type'] ?? 'general',
       isRead: json['isRead'] == true,
+      metadata: json['metadata'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(json['metadata'] as Map)
+          : {},
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),

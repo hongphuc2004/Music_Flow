@@ -5,6 +5,8 @@ import 'package:musicflow_app/data/models/song_model.dart';
 import 'package:musicflow_app/data/services/artist_api_service.dart';
 import 'package:musicflow_app/presentation/screens/artist/artist_screen.dart';
 import 'package:musicflow_app/core/utils/app_toast.dart';
+import 'package:musicflow_app/presentation/screens/artist/artist_followers_sheet.dart';
+import 'package:musicflow_app/presentation/widgets/liquid_glass_button.dart';
 
 /// Artist Header Card styled after Lucian UX/UI Prompt #054
 /// Features:
@@ -48,7 +50,6 @@ class ArtistHeaderSection extends StatefulWidget {
 
 class _ArtistHeaderSectionState extends State<ArtistHeaderSection>
     with SingleTickerProviderStateMixin {
-  bool _isFollowPressed = false;
   bool _isActionPressed = false;
 
   late final AnimationController _avatarPopController;
@@ -574,118 +575,13 @@ class _ArtistHeaderSectionState extends State<ArtistHeaderSection>
 
         const SizedBox(width: 8),
 
-        // Animated Follow pill button (.u054-fb) with vertical sliding text transition
-        GestureDetector(
-          onTapDown: (_) => setState(() => _isFollowPressed = true),
-          onTapUp: (_) {
-            setState(() => _isFollowPressed = false);
-            widget.onFollow();
-          },
-          onTapCancel: () => setState(() => _isFollowPressed = false),
-          child: AnimatedScale(
-            scale: _isFollowPressed ? 0.94 : 1.0,
-            duration: const Duration(milliseconds: 150),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutCubic,
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                color: widget.isFollowing
-                    ? Colors.white.withOpacity(0.09)
-                    : Colors.white,
-                border: Border.all(
-                  color: widget.isFollowing
-                      ? Colors.white.withOpacity(0.18)
-                      : Colors.transparent,
-                  width: 1.0,
-                ),
-                boxShadow: widget.isFollowing
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-              ),
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final isFollowing =
-                        child.key == const ValueKey('following');
-                    final offsetTween = Tween<Offset>(
-                      begin: Offset(0.0, isFollowing ? 0.8 : -0.8),
-                      end: Offset.zero,
-                    );
-                    return ClipRect(
-                      child: SlideTransition(
-                        position: offsetTween.animate(animation),
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        ),
-                      ),
-                    );
-                  },
-                  child: widget.isFollowLoading
-                      ? SizedBox(
-                          key: const ValueKey('loading'),
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.0,
-                            color: widget.isFollowing
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        )
-                      : widget.isFollowing
-                          ? const Row(
-                              key: ValueKey('following'),
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check_rounded,
-                                  size: 15,
-                                  color: Colors.white,
-                                ),
-                                SizedBox(width: 5),
-                                Text(
-                                  'Following',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Row(
-                              key: ValueKey('follow'),
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Follow',
-                                  style: TextStyle(
-                                    color: Color(0xFF11131A),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                ),
-              ),
-            ),
-          ),
+        // Animated Liquid Glass Follow Button (Lucian UX/UI Prompt #001)
+        LiquidGlassFollowButton(
+          isFollowing: widget.isFollowing,
+          isLoading: widget.isFollowLoading,
+          onTap: widget.onFollow,
+          followingText: 'Đã theo dõi',
+          followText: 'Quan tâm',
         ),
       ],
     );
@@ -695,10 +591,19 @@ class _ArtistHeaderSectionState extends State<ArtistHeaderSection>
   Widget _buildStatsRow(ArtistProfile artist) {
     return Row(
       children: [
-        _buildStatItem(
-          _formatCount(artist.followers),
-          'Followers',
-          isAnimated: true,
+        GestureDetector(
+          onTap: () {
+            ArtistFollowersSheet.show(
+              context,
+              artistId: artist.id,
+              artistName: artist.name,
+            );
+          },
+          child: _buildStatItem(
+            _formatCount(artist.followers),
+            'Followers',
+            isAnimated: true,
+          ),
         ),
         const SizedBox(width: 26),
         // following -> lượt nghe

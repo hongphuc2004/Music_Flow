@@ -83,7 +83,7 @@ Client (Flutter / Web)
 
 ### B. Nâng cấp Gói cước Premium & Kích hoạt Tự động
 ```
-Người dùng chọn gói (GO, PLUS, PREMIUM)
+Người dùng chọn gói (Gói PLUS 20k, Gói PREMIUM 50k, hoặc Artist Studio Pro 79k)
   └─ POST /api/subscriptions/checkout { planId, paymentMethod: "vnpay" }
        └─ Backend khởi tạo Transaction (status: "pending") + Link VNPay
             └─ Người dùng thanh toán trên cổng VNPay

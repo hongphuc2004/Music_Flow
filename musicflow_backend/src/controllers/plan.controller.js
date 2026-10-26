@@ -20,7 +20,7 @@ exports.getActivePlans = async (req, res) => {
     if (!artistPlanExists) {
       await Plan.create({
         name: "Artist Studio Pro",
-        price: 99000,
+        price: 79000,
         durationInDays: 30,
         description: [
           "Trợ lý AI Studio nâng cấp (70 yêu cầu / 24 giờ)",
@@ -33,13 +33,26 @@ exports.getActivePlans = async (req, res) => {
         aiLimitPerDay: 70,
         isActive: true,
       });
-    } else if (artistPlanExists.aiLimitPerDay !== 70) {
-      artistPlanExists.aiLimitPerDay = 70;
-      artistPlanExists.description = artistPlanExists.description.map((d) =>
-        d.includes("yêu cầu / 24") ? "Trợ lý AI Studio nâng cấp (70 yêu cầu / 24 giờ)" : d
-      );
-      await artistPlanExists.save();
     }
+
+    // Luôn đồng bộ giá 79k và quyền lợi chuẩn cho Artist Studio Pro
+    await Plan.updateOne(
+      { name: "Artist Studio Pro" },
+      {
+        $set: {
+          price: 79000,
+          aiLimitPerDay: 70,
+          description: [
+            "Trợ lý AI Studio nâng cấp (70 yêu cầu / 24 giờ)",
+            "Tải lên bài hát tối đa 150MB / bài",
+            "Kho lưu trữ nhạc Studio mở rộng 5GB",
+            "Huy hiệu PRO dành riêng cho Nghệ sĩ chuyên nghiệp",
+            "Ưu tiên tài nguyên AI phản hồi nhanh",
+          ],
+          isActive: true,
+        },
+      }
+    );
 
     // Xóa vĩnh viễn Gói GO nếu còn tồn tại
     await Plan.deleteMany({ name: { $in: ["Gói GO", "GO"] } });

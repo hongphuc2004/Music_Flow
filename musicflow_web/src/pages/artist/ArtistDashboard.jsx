@@ -833,7 +833,7 @@ function ArtistDashboard() {
                                       size="small"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        showToast({ severity: 'success', title: 'Song Analytics', message: `Loading stream analytics for "${song.title}"...` });
+                                        navigate('/artist/analytics');
                                       }}
                                       sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}
                                     >
@@ -845,7 +845,7 @@ function ArtistDashboard() {
                                       size="small"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        showToast({ severity: 'info', title: 'Edit Track', message: `Opening metadata editor for "${song.title}"...` });
+                                        navigate(`/artist/songs?editSongId=${song._id}`);
                                       }}
                                       sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}
                                     >

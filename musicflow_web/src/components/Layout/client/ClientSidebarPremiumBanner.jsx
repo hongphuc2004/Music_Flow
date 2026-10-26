@@ -25,7 +25,7 @@ import { useClientPlayer } from './ClientPlayerProvider';
  */
 export default function ClientSidebarPremiumBanner({ collapsed = false }) {
   const navigate = useNavigate();
-  const { currentSong, isPremiumPreview, setOpenPremiumRequiredModal } = useClientPlayer();
+  const { currentSong, isPremiumPreview } = useClientPlayer();
   const [dismissedSongId, setDismissedSongId] = useState(null);
 
   // Điều kiện hiển thị: bài hát đang phát là Premium VÀ người dùng chưa có gói VIP

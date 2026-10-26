@@ -329,15 +329,18 @@ class NotificationTriggerService {
   /**
    * Phase 2 Helper: Nhận sự kiện QUOTA_RESTORED từ aiQuota.service.js và tạo thông báo
    */
-  async triggerQuotaRestoredNotification({ userId, previousCount, currentCount, limit, oldestMessageExpiryTimestamp }) {
+  async triggerQuotaRestoredNotification({ userId, previousCount, currentCount, limit, oldestMessageExpiryTimestamp, dateStr }) {
     if (!userId) return null;
 
-    const expiryStr = oldestMessageExpiryTimestamp ? oldestMessageExpiryTimestamp.toString() : Date.now().toString();
+    const expiryStr = dateStr || (oldestMessageExpiryTimestamp ? oldestMessageExpiryTimestamp.toString() : new Date().toISOString().slice(0, 10));
     const uniqueKey = `ai_quota_restored_${userId.toString()}_${expiryStr}`;
     const actionUrl = "/client/ai-dj";
 
+    const remaining = Math.max(0, limit - currentCount);
     const title = "🔄 Hạn mức AI DJ đã được làm mới";
-    const content = `Hạn mức AI DJ của bạn đã khả dụng trở lại (${limit - currentCount}/${limit} lượt còn lại). Hãy bắt đầu trò chuyện ngay!`;
+    const content = remaining === limit
+      ? `Hạn mức AI DJ của bạn đã được làm mới (${remaining}/${limit} lượt). Hãy bắt đầu trò chuyện ngay!`
+      : `Hạn mức AI DJ của bạn đã khả dụng trở lại (${remaining}/${limit} lượt còn lại). Hãy bắt đầu trò chuyện ngay!`;
 
     try {
       return await Notification.findOneAndUpdate(
@@ -351,8 +354,9 @@ class NotificationTriggerService {
             isRead: false,
             uniqueKey,
             metadata: {
-              remaining: limit - currentCount,
+              remaining,
               limit,
+              dateStr,
               oldestMessageExpiryTimestamp,
               actionUrl,
             },

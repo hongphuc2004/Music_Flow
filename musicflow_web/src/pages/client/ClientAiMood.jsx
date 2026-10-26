@@ -70,7 +70,7 @@ function FormattedBotContent({ content }) {
         }
 
         // Check if line is numbered song list: e.g. "1. Cô Đơn Trong Nhà Mình - Hoài Lâm"
-        const numberedMatch = trimmed.match(/^(\d+)[\.\)]\s*(.+)$/);
+        const numberedMatch = trimmed.match(/^(\d+)[.)]\s*(.+)$/);
         if (numberedMatch) {
           const num = numberedMatch[1];
           const rawTitle = numberedMatch[2];
@@ -151,8 +151,8 @@ function FormattedBotContent({ content }) {
         }
 
         // Bullet point lines: e.g. "• Một đoạn lời bài hát..."
-        if (/^[•\-\*]\s*(.+)$/.test(trimmed)) {
-          const bulletText = trimmed.replace(/^[•\-\*]\s*/, '');
+        if (/^[•\-*]\s*(.+)$/.test(trimmed)) {
+          const bulletText = trimmed.replace(/^[•\-*]\s*/, '');
           return (
             <Stack key={idx} direction="row" spacing={1.25} alignItems="flex-start" sx={{ pl: 0.5, py: 0.25 }}>
               <Box

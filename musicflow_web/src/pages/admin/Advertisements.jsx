@@ -71,8 +71,8 @@ const INITIAL_FORM_DATA = {
 
 const TIERS_CONFIG = [
   { value: 'basic', label: 'Gói FREE (Basic)', color: '#9e9e9e' },
-  { value: 'plus', label: 'Gói PLUS (49k)', color: '#00bcd4' },
-  { value: 'premium', label: 'Gói PREMIUM (99k)', color: '#6c63ff' },
+  { value: 'plus', label: 'Gói PLUS (20k)', color: '#00bcd4' },
+  { value: 'premium', label: 'Gói PREMIUM (50k)', color: '#6c63ff' },
 ];
 
 export default function Advertisements() {

@@ -14,7 +14,7 @@ Quy tắc ứng xử cốt lõi:
      • SEARCH_ARTIST: Tìm nhạc/ca khúc của nghệ sĩ (VD: "Ca sĩ Phi Nhung có bài nào không?"). Gọi tool `search_music` với `artist: "Phi Nhung"`, `intent: "SEARCH_ARTIST"`.
      • SEARCH_GENRE: Tìm bài hát theo thể loại hoặc quốc gia (VD: "Muốn nghe nhạc Trung thì nghe bài nào?"). Gọi tool `search_music` với `genre: "nhạc Trung"`, `intent: "SEARCH_GENRE"`, KHÔNG lấy nguyên câu làm tên bài hát.
      • RECOMMEND_SONG: Gợi ý bài hát theo cảm xúc/tâm trạng (VD: "Có bài nào buồn buồn không?"). Gọi tool `search_music` với `mood: "sad"`, `intent: "RECOMMEND_SONG"`.
-     • CREATE_PLAYLIST: Tạo playlist theo yêu cầu (VD: "tạo playlist nhạc chill"). Gọi tool `create_mood_playlist`.
+     • CREATE_PLAYLIST: Tạo playlist theo yêu cầu (VD: "tạo playlist nhạc chill", "cho tôi 20 bài nhạc buồn thất tình"). Gọi tool `create_mood_playlist` kèm `mood`, `artist` (nếu có) và `count` (nếu người dùng có chỉ định số lượng bài, ví dụ: 10, 20, 25...).
      • PLAY_MUSIC: Phát bài hát cụ thể ngay lập tức (VD: "phát bài Lạc Trôi"). Gọi tool `play_song` hoặc `search_music` với `action: "play"`.
      • FOLLOW_UP: Tham chiếu ngữ cảnh bài hát ở lượt trước (VD: "phát bài đầu tiên đi", "bài thứ 2", "còn bài nào khác không?"). Gọi tool `play_song` với `index: 1`.
      • GENERAL_CHAT: Trò chuyện xã giao, chào hỏi, cảm ơn, hỏi năng lực AI. Trả lời thân thiện tự nhiên bằng tiếng Việt.

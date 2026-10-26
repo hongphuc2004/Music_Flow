@@ -36,6 +36,7 @@ import { clientSongsApi, clientArtistApi } from '../../services/client/client.se
 import { useClientPlayer, useClientPlayerActions } from '../../components/Layout/client/ClientPlayerProvider';
 import useAppToast from '../../components/common/js/useAppToast';
 import ShareArtistModal from '../../components/common/ui/ShareArtistModal';
+import LiquidGlassButton from '../../components/common/ui/LiquidGlassButton';
 import { toZingArtistSlug, getArtistCollectionPath } from '../../utils/shareUtil';
 
 function formatNumber(num) {
@@ -64,6 +65,28 @@ function ClientArtist() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+
+  // Followers Modal
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followersModalLoading, setFollowersModalLoading] = useState(false);
+
+  const handleOpenFollowersModal = async () => {
+    const artistId = artistData?._id;
+    if (!artistId) return;
+    setFollowersModalOpen(true);
+    setFollowersModalLoading(true);
+    try {
+      const res = await clientArtistApi.getFollowers(artistId, { limit: 50 });
+      if (res.data?.success) {
+        setFollowersList(res.data.data || []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setFollowersModalLoading(false);
+    }
+  };
 
   // Dialog
   const [bioDialogOpen, setBioDialogOpen] = useState(false);
@@ -289,7 +312,7 @@ function ClientArtist() {
         severity: 'warning',
       });
       openLoginModal();
-      return;
+      return false;
     }
 
     try {
@@ -307,12 +330,15 @@ function ClientArtist() {
           message: res.data.isFollowing ? `Đã quan tâm ${artistInfo.name}` : `Đã bỏ quan tâm ${artistInfo.name}`,
           severity: 'success',
         });
+        return true;
       }
+      return false;
     } catch {
       showToast({
         message: 'Không thể cập nhật trạng thái quan tâm. Vui lòng thử lại.',
         severity: 'error',
       });
+      return false;
     } finally {
       setFollowLoading(false);
     }
@@ -394,7 +420,7 @@ function ClientArtist() {
             sx={{
               position: 'relative',
               zIndex: 1,
-              p: { xs: 3, sm: 4, md: 4.5 },
+              p: { xs: 2, sm: 3.5, md: 4.5 },
               background: (theme) =>
                 theme.palette.mode === 'dark'
                   ? 'linear-gradient(180deg, rgba(18,15,31,0.6) 0%, rgba(18,15,31,0.95) 100%)'
@@ -419,10 +445,10 @@ function ClientArtist() {
                   src={artistInfo.avatar}
                   alt={artistInfo.name}
                   sx={{
-                    width: { xs: 120, sm: 135, md: 145 },
-                    height: { xs: 120, sm: 135, md: 145 },
+                    width: { xs: 96, sm: 125, md: 145 },
+                    height: { xs: 96, sm: 125, md: 145 },
                     bgcolor: 'primary.main',
-                    fontSize: { xs: 44, md: 54 },
+                    fontSize: { xs: 38, sm: 46, md: 54 },
                     fontWeight: 900,
                     boxShadow: '0 8px 24px rgba(108,99,255,0.25)',
                     border: '3px solid',
@@ -445,7 +471,7 @@ function ClientArtist() {
                     <Typography
                       variant="h1"
                       sx={{
-                        fontSize: { xs: 26, sm: 34, md: 40 },
+                        fontSize: { xs: 22, sm: 30, md: 40 },
                         fontWeight: 900,
                         letterSpacing: '-0.5px',
                         lineHeight: 1.2,
@@ -474,9 +500,25 @@ function ClientArtist() {
                       flexWrap: 'wrap',
                     }}
                   >
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                      {formatNumber(followersCount)} người quan tâm
-                    </Typography>
+                    <Tooltip title="Xem danh sách người quan tâm" arrow>
+                      <Typography
+                        variant="body2"
+                        onClick={handleOpenFollowersModal}
+                        sx={{
+                          fontWeight: 700,
+                          color: 'text.primary',
+                          cursor: 'pointer',
+                          borderRadius: '6px',
+                          transition: 'color 0.2s',
+                          '&:hover': {
+                            color: 'primary.main',
+                            textDecoration: 'underline',
+                          },
+                        }}
+                      >
+                        {formatNumber(followersCount)} người quan tâm
+                      </Typography>
+                    </Tooltip>
                     <span>•</span>
                     <Typography variant="body2" color="text.secondary">
                       {songs.length} bài hát
@@ -536,12 +578,14 @@ function ClientArtist() {
               {/* Right Column: Actions */}
               <Stack
                 direction="row"
-                spacing={1.5}
+                spacing={{ xs: 1, sm: 1.5 }}
                 alignItems="center"
                 sx={{
-                  flexShrink: 0,
+                  flexWrap: 'wrap',
+                  gap: { xs: 1, sm: 1.5 },
                   justifyContent: { xs: 'center', md: 'flex-end' },
                   width: { xs: '100%', md: 'auto' },
+                  maxWidth: '100%',
                 }}
               >
                 {/* Play All Button */}
@@ -549,14 +593,14 @@ function ClientArtist() {
                   variant="contained"
                   disabled={!songs.length}
                   onClick={playAll}
-                  startIcon={<PlayIcon sx={{ fontSize: 22 }} />}
+                  startIcon={<PlayIcon sx={{ fontSize: { xs: 19, sm: 22 } }} />}
                   sx={{
                     background: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)',
                     color: '#fff',
-                    px: { xs: 3, sm: 3.5 },
-                    py: 1.1,
+                    px: { xs: 2.2, sm: 3.5 },
+                    py: { xs: 0.9, sm: 1.1 },
                     borderRadius: '9999px',
-                    fontSize: 14,
+                    fontSize: { xs: 13, sm: 14 },
                     fontWeight: 800,
                     textTransform: 'uppercase',
                     letterSpacing: 0.5,
@@ -572,33 +616,18 @@ function ClientArtist() {
                   Phát tất cả
                 </Button>
 
-                {/* Follow Button */}
-                <Button
-                  variant={isFollowing ? 'outlined' : 'contained'}
-                  disabled={followLoading}
+                {/* Follow Button - Liquid Glass Animation (Prompt #001) */}
+                <LiquidGlassButton
+                  isFollowing={isFollowing}
+                  loading={followLoading}
                   onClick={handleToggleFollow}
-                  startIcon={isFollowing ? <UnfollowIcon /> : <FollowIcon />}
-                  sx={{
-                    borderRadius: '9999px',
-                    px: 2.5,
-                    py: 1.1,
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    borderColor: isFollowing ? 'divider' : 'transparent',
-                    bgcolor: isFollowing
-                      ? 'background.paper'
-                      : (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
-                    color: isFollowing ? 'text.secondary' : 'text.primary',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: isFollowing ? 'action.hover' : 'rgba(108,99,255,0.1)',
-                      color: 'primary.main',
-                    },
-                  }}
-                >
-                  {isFollowing ? 'Đã quan tâm' : 'Quan tâm'}
-                </Button>
+                  size="compact"
+                  icon={isFollowing ? <UnfollowIcon sx={{ fontSize: 17 }} /> : <FollowIcon sx={{ fontSize: 17 }} />}
+                  followingLabel="Đã quan tâm"
+                  notFollowingLabel="Quan tâm"
+                  followingSuccessLabel="Đã quan tâm"
+                  unfollowingSuccessLabel="Đã bỏ quan tâm"
+                />
 
                 {/* Share Button */}
                 <Tooltip title="Chia sẻ trang nghệ sĩ" arrow>
@@ -630,13 +659,21 @@ function ClientArtist() {
         {/* ========================================================================= */}
         {/* NAVIGATION TABS: ZingMP3 Template Strip                                 */}
         {/* ========================================================================= */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', maxWidth: '100%', overflow: 'hidden' }}>
           <Tabs
             value={activeTab}
             onChange={(_, val) => setActiveTab(val)}
             variant="scrollable"
             scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
+              maxWidth: '100%',
+              '& .MuiTabs-scroller': {
+                overflowX: 'auto !important',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+              },
               '& .MuiTabs-indicator': {
                 height: 3,
                 borderRadius: '3px 3px 0 0',
@@ -786,6 +823,7 @@ function ClientArtist() {
                       sx={{
                         cursor: 'pointer',
                         width: '100%',
+                        minWidth: 0,
                         '&:hover .cover-overlay': { opacity: 1 },
                         '&:hover .cover-img': { transform: 'scale(1.05)' },
                       }}
@@ -811,6 +849,9 @@ function ClientArtist() {
                           alt={song.title}
                           className="cover-img"
                           sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
                             width: '100%',
                             height: '100%',
                             objectFit: 'cover',
@@ -919,6 +960,7 @@ function ClientArtist() {
                       sx={{
                         cursor: 'pointer',
                         width: '100%',
+                        minWidth: 0,
                         '&:hover .col-overlay': { opacity: 1 },
                         '&:hover .col-img': { transform: 'scale(1.05)' },
                       }}
@@ -943,6 +985,9 @@ function ClientArtist() {
                           <Box
                             className="col-img"
                             sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
                               width: '100%',
                               height: '100%',
                               display: 'flex',
@@ -950,6 +995,7 @@ function ClientArtist() {
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               p: { xs: 1, sm: 1.25 },
+                              boxSizing: 'border-box',
                               transition: 'transform 0.3s ease',
                               background: (theme) =>
                                 theme.palette.mode === 'dark'
@@ -957,7 +1003,7 @@ function ClientArtist() {
                                   : 'linear-gradient(180deg, #f1f0f7 0%, #e5e3f1 100%)',
                             }}
                           >
-                            <Box sx={{ textAlign: 'center', width: '100%', pt: 0.5 }}>
+                            <Box sx={{ textAlign: 'center', width: '100%', pt: 0.5, flexShrink: 0 }}>
                               <Typography
                                 sx={{
                                   fontSize: { xs: 8.5, sm: 9.5 },
@@ -991,6 +1037,7 @@ function ClientArtist() {
                               sx={{
                                 width: '100%',
                                 flex: 1,
+                                minHeight: 0,
                                 mt: 0.75,
                                 borderRadius: 1.5,
                                 overflow: 'hidden',
@@ -1002,6 +1049,9 @@ function ClientArtist() {
                                 src={artistInfo.avatar || col.imageUrl}
                                 alt={col.title}
                                 sx={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
                                   width: '100%',
                                   height: '100%',
                                   objectFit: 'cover',
@@ -1018,6 +1068,9 @@ function ClientArtist() {
                             alt={col.title}
                             className="col-img"
                             sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover',
@@ -1321,6 +1374,7 @@ function ClientArtist() {
                   sx={{
                     cursor: 'pointer',
                     width: '100%',
+                    minWidth: 0,
                     '&:hover .cover-overlay': { opacity: 1 },
                     '&:hover .cover-img': { transform: 'scale(1.05)' },
                   }}
@@ -1345,6 +1399,9 @@ function ClientArtist() {
                       alt={song.title}
                       className="cover-img"
                       sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
@@ -1424,6 +1481,7 @@ function ClientArtist() {
                   sx={{
                     cursor: 'pointer',
                     width: '100%',
+                    minWidth: 0,
                     '&:hover .col-overlay': { opacity: 1 },
                     '&:hover .col-img': { transform: 'scale(1.05)' },
                   }}
@@ -1447,6 +1505,9 @@ function ClientArtist() {
                       <Box
                         className="col-img"
                         sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
                           width: '100%',
                           height: '100%',
                           display: 'flex',
@@ -1454,6 +1515,7 @@ function ClientArtist() {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           p: { xs: 1, sm: 1.25 },
+                          boxSizing: 'border-box',
                           transition: 'transform 0.3s ease',
                           background: (theme) =>
                             theme.palette.mode === 'dark'
@@ -1461,7 +1523,7 @@ function ClientArtist() {
                               : 'linear-gradient(180deg, #f1f0f7 0%, #e5e3f1 100%)',
                         }}
                       >
-                        <Box sx={{ textAlign: 'center', width: '100%', pt: 0.5 }}>
+                        <Box sx={{ textAlign: 'center', width: '100%', pt: 0.5, flexShrink: 0 }}>
                           <Typography
                             sx={{
                               fontSize: { xs: 8.5, sm: 9.5 },
@@ -1495,6 +1557,7 @@ function ClientArtist() {
                           sx={{
                             width: '100%',
                             flex: 1,
+                            minHeight: 0,
                             mt: 0.75,
                             borderRadius: 1.5,
                             overflow: 'hidden',
@@ -1506,6 +1569,9 @@ function ClientArtist() {
                             src={artistInfo.avatar || col.imageUrl}
                             alt={col.title}
                             sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover',
@@ -1522,6 +1588,9 @@ function ClientArtist() {
                         alt={col.title}
                         className="col-img"
                         sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover',
@@ -1771,6 +1840,85 @@ function ClientArtist() {
         onClose={() => setShareModalOpen(false)}
         artist={artistInfo}
       />
+
+      {/* Followers List Modal */}
+      <Dialog
+        open={followersModalOpen}
+        onClose={() => setFollowersModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3.5,
+            p: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            maxHeight: '80vh',
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={900}>
+              Người quan tâm
+            </Typography>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              {formatNumber(followersCount)} người đang theo dõi {artistInfo.name}
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setFollowersModalOpen(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2 }}>
+          {followersModalLoading ? (
+            <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress size={32} />
+            </Box>
+          ) : followersList.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Typography color="text.secondary" fontWeight={600}>
+                Chưa có danh sách người theo dõi công khai.
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={1.5}>
+              {followersList.map((follower) => (
+                <Paper
+                  key={follower._id}
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 2.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Avatar
+                    src={follower.avatar}
+                    alt={follower.name}
+                    sx={{ width: 42, height: 42, bgcolor: 'primary.main', fontWeight: 800, fontSize: '1rem' }}
+                  >
+                    {follower.name?.charAt(0)?.toUpperCase()}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={800} noWrap>
+                      {follower.name || 'Người dùng ẩn danh'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                      {follower.email ? follower.email.replace(/(.{2})(.*)(?=@)/, (_, a, b) => a + '*'.repeat(b.length)) : 'Thính giả'}
+                    </Typography>
+                  </Box>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+      </Dialog>
     </ClientLayout>
   );
 }

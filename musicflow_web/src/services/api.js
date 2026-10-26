@@ -50,12 +50,14 @@ export const setAccessToken = (token) => {
 
 export const logout = async () => {
   try {
-    await api.post('/auth/logout');
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+    await api.post('/auth/logout', storedRefreshToken ? { refreshToken: storedRefreshToken } : {});
   } catch (err) {
     console.warn('Logout API error:', err);
   } finally {
     accessToken = null;
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     apiCache.clear();
     localStorage.removeItem('role');
     localStorage.removeItem('userName');
@@ -88,10 +90,11 @@ export const refreshAccessToken = async (forceRefresh = false) => {
     return accessToken;
   }
   if (!refreshPromise) {
+    const storedRefreshToken = localStorage.getItem('refreshToken');
     refreshPromise = axios
       .post(
         `${API_BASE_URL}/auth/refresh`,
-        {},
+        storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
         {
           withCredentials: true,
           headers: { 'Content-Type': 'application/json' },
@@ -99,6 +102,7 @@ export const refreshAccessToken = async (forceRefresh = false) => {
       )
       .then((res) => {
         const token = res?.data?.token;
+        const newRefreshToken = res?.data?.refreshToken;
         const role = res?.data?.user?.role || (res?.data?.isArtist ? 'artist' : null);
         accessToken = token || null;
         if (token) {
@@ -106,12 +110,23 @@ export const refreshAccessToken = async (forceRefresh = false) => {
         } else {
           localStorage.removeItem('accessToken');
         }
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
         if (role) {
           localStorage.setItem('role', role);
         }
         if (role === 'artist' || res?.data?.isArtist) {
           syncArtistSession(res?.data?.artist || res?.data?.user);
+        } else if (res?.data?.user) {
+          const u = res.data.user;
+          if (u._id) localStorage.setItem('userId', u._id);
+          if (u.name) localStorage.setItem('userName', u.name);
+          if (u.email) localStorage.setItem('email', u.email);
+          if (u.avatar) localStorage.setItem('userAvatar', u.avatar);
+          clearArtistSession();
         }
+        window.dispatchEvent(new Event('musicflow-client-session-changed'));
         return token;
       })
       .finally(() => {

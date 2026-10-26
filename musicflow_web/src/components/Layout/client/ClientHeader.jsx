@@ -202,23 +202,6 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
     }
   };
 
-  const formatTimeAgo = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      const seconds = Math.floor((new Date() - date) / 1000);
-      if (seconds < 60) return "vừa xong";
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes} phút trước`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours} giờ trước`;
-      const days = Math.floor(hours / 24);
-      if (days < 30) return `${days} ngày trước`;
-      return date.toLocaleDateString("vi-VN");
-    } catch {
-      return "";
-    }
-  };
-
   useEffect(() => {
     const trimmed = searchValue.trim();
     if (!trimmed) {
@@ -1075,9 +1058,32 @@ function ClientHeader({ title, desktopSidebarOpen = true, onToggleSidebar, onLog
           </ClickAwayListener>
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mr: 1.5 }}>
-          <IconButton onClick={toggleColorMode} color="inherit">
-            {mode === 'dark' ? <LightModeIcon sx={{ color: '#fbbf24' }} /> : <DarkModeIcon />}
-          </IconButton>
+          <Tooltip title={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}>
+            <IconButton
+              onClick={toggleColorMode}
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: '13px',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                border: '1px solid',
+                borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.12)',
+                boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 2px 8px rgba(0, 0, 0, 0.06)',
+                color: (theme) => theme.palette.mode === 'dark' ? '#fbbf24' : '#1e293b',
+                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                '&:hover': {
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                  borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:active': {
+                  transform: 'scale(0.94)',
+                },
+              }}
+            >
+              {mode === 'dark' ? <LightModeIcon sx={{ fontSize: 20, color: '#fbbf24' }} /> : <DarkModeIcon sx={{ fontSize: 20, color: '#1e293b' }} />}
+            </IconButton>
+          </Tooltip>
           <NotificationBellButton
             onClick={handleNotiOpen}
             hasUnread={unreadCount > 0}

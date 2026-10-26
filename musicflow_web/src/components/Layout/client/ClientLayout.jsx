@@ -127,7 +127,8 @@ function ClientLayout({ children, title }) {
         minHeight: '100vh',
         bgcolor: 'background.default',
         position: 'relative',
-        overflow: 'hidden',
+        maxWidth: '100vw',
+        overflowX: 'clip',
       }}
     >
       {/* ── Dynamic Liquid Ambient Aura Background Orbs (Apple Music Style) ── */}
@@ -183,7 +184,9 @@ function ClientLayout({ children, title }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 2.5, md: 3.5 },
+          minWidth: 0,
+          maxWidth: '100%',
+          p: { xs: 1.5, sm: 2.5, md: 3.5 },
           // Dynamic padding-bottom ensures no extra gap when player is hidden
           pb: currentSong ? { xs: '110px', sm: '106px', md: '110px' } : { xs: 2, md: 3 },
           width: {
@@ -219,6 +222,7 @@ function ClientLayout({ children, title }) {
         commentCount={commentCount}
         onCommentCountChanged={setCommentCount}
         targetCommentId={targetCommentId}
+        onClearTargetComment={() => setTargetCommentId(null)}
         targetSong={commentTargetSong}
       />
       <ClientAuthDialog />

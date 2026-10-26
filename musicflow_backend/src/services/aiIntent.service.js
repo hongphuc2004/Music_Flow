@@ -318,6 +318,38 @@ function extractContextReference(prompt = "", context = {}) {
 }
 
 /**
+ * Extracts requested number of songs from user prompt (e.g. "cỡ 20 bài", "khoảng 15 bài hát", "10 ca khúc").
+ * Returns null if no specific song count is requested.
+ */
+function extractRequestedCount(prompt = "") {
+  if (!prompt || typeof prompt !== "string") return null;
+
+  // 1. Direct digit matching (e.g. "cỡ 20 bài", "khoảng 15 bài hát", "20 ca khúc", "10 track", "5 bài")
+  // Ensures we don't accidentally match "1 playlist"
+  const match = prompt.match(/(?:cỡ|khoảng|tầm|tầm khoảng|đúng|chính xác|lấy|cần|muốn|xin|cho|chọn)?\s*(\d+)\s*(?:bài(?:\s+hát)?|ca\s+khúc|track|tracks)\b/i);
+  if (match && match[1]) {
+    const num = parseInt(match[1], 10);
+    if (!isNaN(num) && num > 0) return num;
+  }
+
+  // 2. Text number in Vietnamese (ordered from longest/multi-word to single-word)
+  const norm = normalizeText(prompt);
+  const wordMap = [
+    { regex: /\b(hai lam|hai mươi lăm|hai nam)\s*(?:bai|ca khuc|track)/i, val: 25 },
+    { regex: /\b(hai muoi|hai mươi)\s*(?:bai|ca khuc|track)/i, val: 20 },
+    { regex: /\b(ba muoi|ba mươi)\s*(?:bai|ca khuc|track)/i, val: 30 },
+    { regex: /\b(muoi lam|mười lăm)\s*(?:bai|ca khuc|track)/i, val: 15 },
+    { regex: /\b(muoi|mười)\s*(?:bai|ca khuc|track)/i, val: 10 },
+    { regex: /\b(nam|năm)\s*(?:bai|ca khuc|track)/i, val: 5 },
+  ];
+  for (const item of wordMap) {
+    if (item.regex.test(norm)) return item.val;
+  }
+
+  return null;
+}
+
+/**
  * Master Intent Analyzer
  * Takes raw prompt and conversation context, returns structured Intent & Entities.
  */
@@ -368,14 +400,17 @@ function analyzeIntent(prompt = "", context = {}) {
   // 4. Create Playlist Intent
   const moodPattern = /\b(buon|sad|chill|vui|happy|soi dong|energetic|tap trung|focus|ngu|sleep|lang man|romantic|party|thu gian)\b/i;
   const isCreatePlaylist = /\b(tao playlist|tao danh sach|lap playlist|lam playlist|build playlist|tao 1 playlist|tao mot playlist|goi y playlist|de xuat playlist)\b/i.test(norm) ||
-    (/\b(cho toi|cho minh|cho em|nghe)\s+(nhac|playlist|1 playlist|mot playlist)\b/i.test(norm) && moodPattern.test(norm));
+    (/\b(cho toi|cho minh|cho em|nghe)\s+(?:1\s+|mot\s+)?(?:nhac|playlist)\b/i.test(norm) && moodPattern.test(norm)) ||
+    (/\b(?:playlist|danh sach|tuyen tap)\b/i.test(norm) && moodPattern.test(norm));
   if (isCreatePlaylist) {
     const genreInfo = resolveGenreFromPrompt(clean);
     const moodMatch = norm.match(moodPattern);
+    const count = extractRequestedCount(clean);
     return {
       intent: INTENTS.CREATE_PLAYLIST,
       genre: genreInfo ? genreInfo.topicName : null,
       mood: moodMatch ? moodMatch[1] : null,
+      count: count || null,
       prompt: clean,
     };
   }
@@ -502,5 +537,6 @@ module.exports = {
   resolveArtistFromPrompt,
   extractContextReference,
   extractLyricsSnippet,
+  extractRequestedCount,
   analyzeIntent,
 };

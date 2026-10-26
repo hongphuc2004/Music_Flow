@@ -385,7 +385,7 @@ function ArtistPro() {
                         '&:hover': { background: 'linear-gradient(135deg, #d97706, #b45309)' },
                       }}
                     >
-                      Gia hạn thêm 30 ngày (99.000 đ)
+                      Gia hạn thêm 30 ngày ({proPlan?.price ? `${Number(proPlan.price).toLocaleString('vi-VN')} đ` : '79.000 đ'})
                     </Button>
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.55)' }}>
                       Thời hạn mới sẽ được tự động cộng dồn tiếp tục.
@@ -524,14 +524,14 @@ function ArtistPro() {
                   </Typography>
                   <Box sx={{ my: 1.5 }}>
                     <Typography variant="h3" fontWeight={950} color="#f59e0b" sx={{ display: 'inline', letterSpacing: '-1px' }}>
-                      99.000 đ
+                      {proPlan?.price ? `${Number(proPlan.price).toLocaleString('vi-VN')} đ` : '79.000 đ'}
                     </Typography>
                     <Typography variant="caption" color="rgba(255, 255, 255, 0.6)" sx={{ ml: 0.75 }}>
                       / 30 ngày
                     </Typography>
                   </Box>
                   <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255, 255, 255, 0.55)', mb: 2.5 }}>
-                    Chỉ ~3.300 đ / ngày • Không ràng buộc tự gia hạn
+                    Chỉ ~{proPlan?.price ? `${Math.round(proPlan.price / 30).toLocaleString('vi-VN')} đ` : '2.600 đ'} / ngày • Không ràng buộc tự gia hạn
                   </Typography>
 
                   <Button
@@ -827,13 +827,13 @@ function ArtistPro() {
 
                     <Box sx={{ mb: 3, p: 2, borderRadius: 2.5, bgcolor: 'action.hover' }}>
                       <Typography variant="h3" fontWeight={950} color="#f59e0b" sx={{ display: 'inline', letterSpacing: '-1px' }}>
-                        99.000 đ
+                        {proPlan?.price ? `${Number(proPlan.price).toLocaleString('vi-VN')} đ` : '79.000 đ'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ display: 'inline', ml: 1, fontWeight: 600 }}>
                         / chu kỳ 30 ngày
                       </Typography>
                       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.5 }}>
-                        Tương đương ~3.300 đ / ngày (Đã bao gồm VAT)
+                        Tương đương ~{proPlan?.price ? `${Math.round(proPlan.price / 30).toLocaleString('vi-VN')} đ` : '2.600 đ'} / ngày (Đã bao gồm VAT)
                       </Typography>
                     </Box>
 
@@ -1234,7 +1234,7 @@ function ArtistPro() {
                 Tổng thanh toán (đã có VAT):
               </Typography>
               <Typography variant="h5" fontWeight={950} color="#f59e0b">
-                99.000 đ
+                {proPlan?.price ? `${Number(proPlan.price).toLocaleString('vi-VN')} đ` : '79.000 đ'}
               </Typography>
             </Stack>
           </Paper>

@@ -375,8 +375,6 @@ function ClientPremium() {
                 const { title: displayTitle, badge: highlightBadge } = getMappedPlanLabel(plan);
                 const planBenefits = getConciseBenefits(plan);
 
-                // CSS styles for highlighted cards (Plus and Premium)
-                const isHighlighted = highlightBadge !== '';
                 const isPopular = plan.price === 20000 || plan.name.includes("PLUS");
                 const isPremium = plan.price === 50000 || plan.name.includes("PREMIUM");
                 

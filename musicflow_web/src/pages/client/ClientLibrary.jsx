@@ -40,9 +40,14 @@ import {
   AutoAwesomeRounded as SparklesIcon,
   VisibilityRounded as ViewIcon,
   OpenInNewRounded as OpenIcon,
+  PersonRounded as PersonIcon,
+  PersonRemoveRounded as PersonRemoveIcon,
+  CheckRounded as CheckIcon,
+  VerifiedRounded as VerifiedIcon,
+  HowToRegRounded as FollowingIcon,
 } from '@mui/icons-material';
 import ClientLayout from '../../components/Layout/client/ClientLayout';
-import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi, clientAssistantApi } from '../../services/client/client.service';
+import { clientFavoritesApi, clientPlaylistsApi, clientSongsApi, clientAssistantApi, clientArtistApi } from '../../services/client/client.service';
 import FileUploader from '../../components/common/ui/FileUploader';
 import { useClientPlayer } from '../../components/Layout/client/ClientPlayerProvider';
 import ClientSongMoreMenu from '../../components/Layout/client/ClientSongMoreMenu';
@@ -51,6 +56,7 @@ import useClientSession from '../../hooks/useClientSession';
 import ClientSongItem from '../../components/Layout/client/ClientSongItem';
 import ClientPlaylistCard from '../../components/Layout/client/ClientPlaylistCard';
 import HeartFavoriteButton from '../../components/common/ui/HeartFavoriteButton';
+import { getArtistPath } from '../../utils/shareUtil';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -64,6 +70,7 @@ function ClientLibrary() {
   const [uploads, setUploads] = useState([]);
   const [favoriteSongs, setFavoriteSongs] = useState([]);
   const [downloadedSongs, setDownloadedSongs] = useState([]);
+  const [followingArtists, setFollowingArtists] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -79,7 +86,7 @@ function ClientLibrary() {
   const [editingUploadSong, setEditingUploadSong] = useState(null);
 
   // Tab & Search States
-  const [activeTab, setActiveTab] = useState(0); // 0: Playlists, 1: Favorites, 2: Uploads, 3: Downloads
+  const [activeTab, setActiveTab] = useState(0); // 0: Playlists, 1: Favorites, 2: Uploads, 3: Downloads, 4: Following
   const [searchQuery, setSearchQuery] = useState('');
 
   // Playlist Dialog State
@@ -125,11 +132,12 @@ function ClientLibrary() {
       setLoading(true);
       setError('');
 
-      const [playlistsRes, uploadsRes, downloadRes, favoritesRes] = await Promise.all([
+      const [playlistsRes, uploadsRes, downloadRes, favoritesRes, followingRes] = await Promise.all([
         clientPlaylistsApi.getMine(),
         clientSongsApi.getMyUploads(),
         clientSongsApi.getMyDownloadHistory({ limit: 50 }),
         clientFavoritesApi.getAll(),
+        clientArtistApi.getFollowing({ limit: 100 }).catch(() => ({ data: { data: [] } })),
       ]);
 
       setPlaylists(playlistsRes.data?.playlists || []);
@@ -137,10 +145,42 @@ function ClientLibrary() {
       setDownloadedSongs(downloadRes.data?.songs || []);
       const favorites = favoritesRes.data?.favorites || [];
       setFavoriteSongs(Array.isArray(favorites) ? favorites : []);
+      const followData = followingRes.data?.data || [];
+      setFollowingArtists(followData.map((a) => ({ ...a, isFollowing: true })));
     } catch (err) {
       setError(err.response?.data?.message || 'Không thể tải thư viện.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleFollowArtist = async (event, artist) => {
+    event.stopPropagation();
+    try {
+      const res = await clientArtistApi.toggleFollow(artist._id);
+      const isNowFollowing = res.data?.isFollowing;
+      
+      setFollowingArtists((prev) =>
+        prev.map((a) => {
+          if (a._id === artist._id) {
+            const currentFollowers = Number(a.followersCount || 0);
+            return {
+              ...a,
+              isFollowing: isNowFollowing,
+              followersCount: isNowFollowing ? currentFollowers + 1 : Math.max(0, currentFollowers - 1),
+            };
+          }
+          return a;
+        })
+      );
+
+      if (!isNowFollowing) {
+        showToast({ severity: 'info', title: 'Đã hủy theo dõi', message: `Đã hủy theo dõi ${artist.name}.` });
+      } else {
+        showToast({ severity: 'success', title: 'Đang theo dõi', message: `Đã theo dõi ${artist.name}.` });
+      }
+    } catch (err) {
+      showToast({ severity: 'error', title: 'Thất bại', message: err.response?.data?.message || 'Không thể cập nhật theo dõi.' });
     }
   };
 
@@ -600,6 +640,17 @@ function ClientLibrary() {
     );
   }, [downloadedSongs, searchQuery]);
 
+  const filteredFollowing = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return followingArtists;
+    return followingArtists.filter(
+      (a) =>
+        a.name?.toLowerCase().includes(query) ||
+        a.slug?.toLowerCase().includes(query) ||
+        a.bio?.toLowerCase().includes(query)
+    );
+  }, [followingArtists, searchQuery]);
+
   const activeSongsList = useMemo(() => {
     if (activeTab === 1) return filteredFavorites;
     if (activeTab === 2) return filteredUploads;
@@ -669,6 +720,7 @@ function ClientLibrary() {
     if (activeTab === 1) return { color: '#ff4e7c', bg: 'linear-gradient(135deg, #ff4e7c 0%, #ff839b 100%)', label: 'Yêu thích' };
     if (activeTab === 2) return { color: '#a855f7', bg: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)', label: 'Đã tải lên' };
     if (activeTab === 3) return { color: '#06b6d4', bg: 'linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%)', label: 'Đã tải xuống' };
+    if (activeTab === 4) return { color: '#10b981', bg: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)', label: 'Đang theo dõi' };
     return { color: '#6c63ff', bg: 'linear-gradient(135deg, #6c63ff 0%, #00bcd4 100%)', label: 'Danh sách phát' };
   }, [activeTab]);
 
@@ -818,8 +870,8 @@ function ClientLibrary() {
         </Paper>
       </Box>
 
-      {/* ================= 2. 4-COLUMN STATS ROW (FULL-WIDTH) ================= */}
-      <Grid container spacing={3} sx={{ mb: 5 }}>
+      {/* ================= 2. 5-COLUMN STATS ROW (FULL-WIDTH) ================= */}
+      <Grid container spacing={2.5} sx={{ mb: 5 }}>
         {[
           {
             title: 'Danh sách phát',
@@ -840,6 +892,15 @@ function ClientLibrary() {
             onClick: () => setActiveTab(1),
           },
           {
+            title: 'Đang theo dõi',
+            count: followingArtists.filter((a) => a.isFollowing !== false).length,
+            icon: <FollowingIcon sx={{ fontSize: 28, color: '#10b981' }} />,
+            glow: 'rgba(16, 185, 129, 0.4)',
+            cardGlow: '0 8px 24px rgba(16, 185, 129, 0.06)',
+            accentColor: '#10b981',
+            onClick: () => setActiveTab(4),
+          },
+          {
             title: 'Tải lên',
             count: uploads.length,
             icon: <UploadIcon sx={{ fontSize: 28, color: '#a855f7' }} />,
@@ -858,16 +919,16 @@ function ClientLibrary() {
             onClick: () => setActiveTab(3),
           },
         ].map((stat, i) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i} sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }} key={i} sx={{ display: 'flex', flexDirection: 'column' }}>
             <Paper
               onClick={stat.onClick}
               sx={{
-                p: 2.75,
+                p: 2.5,
                 borderRadius: '14px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2.5,
+                gap: 2,
                 flexGrow: 1,
                 width: '100%',
                 border: '1px solid',
@@ -893,9 +954,9 @@ function ClientLibrary() {
                 sx={{
                   display: 'grid',
                   placeItems: 'center',
-                  width: 56,
-                  height: 56,
-                  borderRadius: '16px',
+                  width: 50,
+                  height: 50,
+                  borderRadius: '14px',
                   backgroundColor: (theme) => theme.palette.mode === 'dark'
                     ? 'rgba(255,255,255,0.04)'
                     : 'rgba(0,0,0,0.02)',
@@ -904,16 +965,16 @@ function ClientLibrary() {
               >
                 {stat.icon}
               </Box>
-              <Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography
                   variant="caption"
                   color="text.secondary"
-                  sx={{ textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 800, fontSize: '0.65rem' }}
+                  sx={{ textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 800, fontSize: '0.62rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}
                 >
                   {stat.title}
                 </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 900, mt: 0.25, color: 'text.primary', letterSpacing: -0.5 }}>
-                  {loading ? <CircularProgress size={20} /> : stat.count}
+                <Typography variant="h5" sx={{ fontWeight: 900, mt: 0.25, color: 'text.primary', letterSpacing: -0.5 }}>
+                  {loading ? <CircularProgress size={18} /> : stat.count}
                 </Typography>
               </Box>
             </Paper>
@@ -947,6 +1008,9 @@ function ClientLibrary() {
             alignSelf: 'flex-start',
             maxWidth: '100%',
             overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x',
+            scrollbarWidth: 'none',
             alignItems: 'center',
             '&::-webkit-scrollbar': { display: 'none' },
           }}
@@ -954,6 +1018,7 @@ function ClientLibrary() {
           {[
             { label: 'Danh sách phát', value: 0 },
             { label: 'Yêu thích', value: 1 },
+            { label: 'Đang theo dõi', value: 4 },
             { label: 'Tải lên', value: 2 },
             { label: 'Tải xuống', value: 3 },
           ].map((tab) => {
@@ -966,7 +1031,8 @@ function ClientLibrary() {
                   setSearchQuery('');
                 }}
                 sx={{
-                  px: 3,
+                  flexShrink: 0,
+                  px: { xs: 2, sm: 3 },
                   py: 1,
                   height: '100%',
                   borderRadius: '9999px',
@@ -1296,7 +1362,7 @@ function ClientLibrary() {
           )}
 
           {/* ================= ASYMMETRIC SONGS VIEW LAYOUT (TAB 1, 2, 3) ================= */}
-          {activeTab !== 0 && (
+          {[1, 2, 3].includes(activeTab) && (
             <Grid container spacing={4}>
               {/* Left Sticky Panel */}
               <Grid size={{ xs: 12, md: 4, lg: 3.5 }}>
@@ -1488,6 +1554,317 @@ function ClientLibrary() {
                 </Box>
               </Grid>
             </Grid>
+          )}
+
+          {/* ================= FOLLOWING ARTISTS TAB VIEW (TAB 4) ================= */}
+          {activeTab === 4 && (
+            <Box>
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: -0.5 }}>
+                    Nghệ sĩ bạn đang theo dõi
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 550, mt: 0.5 }}>
+                    {followingArtists.filter((a) => a.isFollowing !== false).length} nghệ sĩ trong danh sách quan tâm của bạn
+                  </Typography>
+                </Box>
+              </Box>
+
+              {filteredFollowing.length === 0 ? (
+                <Paper
+                  sx={{
+                    py: 8,
+                    px: 3,
+                    textAlign: 'center',
+                    borderRadius: '16px',
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(16, 185, 129, 0.1)',
+                      color: '#10b981',
+                      display: 'grid',
+                      placeItems: 'center',
+                      mx: 'auto',
+                      mb: 2,
+                    }}
+                  >
+                    <FollowingIcon sx={{ fontSize: 36 }} />
+                  </Box>
+                  <Typography variant="h6" fontWeight={800} gutterBottom>
+                    {searchQuery ? 'Không tìm thấy nghệ sĩ phù hợp' : 'Bạn chưa theo dõi nghệ sĩ nào'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 3 }}>
+                    {searchQuery
+                      ? 'Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc tìm kiếm.'
+                      : 'Hãy khám phá các nghệ sĩ yêu thích và nhấn Theo dõi để cập nhật bài hát và hoạt động mới nhất!'}
+                  </Typography>
+                  {!searchQuery && (
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate('/client/discover')}
+                      sx={{
+                        borderRadius: '24px',
+                        px: 3.5,
+                        py: 1,
+                        fontWeight: 800,
+                        background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
+                        color: '#fff',
+                        boxShadow: '0 8px 20px rgba(16, 185, 129, 0.3)',
+                      }}
+                    >
+                      Khám phá nghệ sĩ
+                    </Button>
+                  )}
+                </Paper>
+              ) : (
+                <Grid container spacing={3}>
+                  {filteredFollowing.map((artist) => {
+                    const isFollowing = artist.isFollowing !== false;
+                    return (
+                      <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={artist._id}>
+                        <Paper
+                          onClick={() => navigate(getArtistPath(artist))}
+                          sx={{
+                            p: 3,
+                            borderRadius: '18px',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            border: '1px solid',
+                            borderColor: (theme) => isFollowing
+                              ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
+                              : (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'),
+                            background: (theme) => theme.palette.mode === 'dark'
+                              ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)'
+                              : '#ffffff',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+                            transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            opacity: isFollowing ? 1 : 0.8,
+                            '&:hover': {
+                              transform: 'translateY(-6px)',
+                              borderColor: isFollowing ? '#10b981' : 'divider',
+                              boxShadow: isFollowing ? '0 16px 36px rgba(16, 185, 129, 0.15)' : '0 12px 28px rgba(0,0,0,0.08)',
+                              opacity: 1,
+                              '& .artist-avatar': {
+                                transform: 'scale(1.06)',
+                                boxShadow: isFollowing ? '0 10px 25px rgba(16, 185, 129, 0.35)' : '0 8px 16px rgba(0,0,0,0.15)',
+                              },
+                            },
+                          }}
+                        >
+                          {/* Avatar */}
+                          <Box
+                            sx={{ position: 'relative', mb: 2, cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(getArtistPath(artist));
+                            }}
+                          >
+                            <Avatar
+                              className="artist-avatar"
+                              src={artist.avatar}
+                              alt={artist.name}
+                              sx={{
+                                width: 104,
+                                height: 104,
+                                border: '3px solid',
+                                borderColor: isFollowing ? '#10b981' : 'divider',
+                                boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                                transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                                bgcolor: 'primary.main',
+                                fontSize: '2rem',
+                                fontWeight: 800,
+                              }}
+                            >
+                              {artist.name?.charAt(0)?.toUpperCase()}
+                            </Avatar>
+                            {artist.isVerified && (
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 2,
+                                  right: 2,
+                                  bgcolor: '#fff',
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  p: '2px',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                }}
+                              >
+                                <VerifiedIcon sx={{ fontSize: 20, color: '#00bcd4' }} />
+                              </Box>
+                            )}
+                          </Box>
+
+                          {/* Name and Handle */}
+                          <Typography
+                            variant="h6"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(getArtistPath(artist));
+                            }}
+                            sx={{
+                              fontWeight: 800,
+                              letterSpacing: -0.3,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              width: '100%',
+                              cursor: 'pointer',
+                              transition: 'color 0.2s ease',
+                              '&:hover': {
+                                color: '#10b981',
+                                textDecoration: 'underline',
+                              },
+                            }}
+                          >
+                            {artist.name}
+                          </Typography>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(getArtistPath(artist));
+                            }}
+                            sx={{
+                              fontWeight: 600,
+                              mb: 1.5,
+                              display: 'block',
+                              letterSpacing: 0.2,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            @{artist.slug || artist.name?.toLowerCase().replace(/\s+/g, '')}
+                          </Typography>
+
+                          {/* Stats Badges */}
+                          <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <Chip
+                              size="small"
+                              label={`${Number(artist.followersCount || 0).toLocaleString('vi-VN')} theo dõi`}
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: '0.72rem',
+                                height: 24,
+                                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+                                color: '#10b981',
+                              }}
+                            />
+                            {artist.songsCount !== undefined && (
+                              <Chip
+                                size="small"
+                                label={`${artist.songsCount} bài hát`}
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: '0.72rem',
+                                  height: 24,
+                                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                }}
+                              />
+                            )}
+                          </Stack>
+
+                          {/* Bio preview if any */}
+                          {artist.bio && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                mb: 2.5,
+                                minHeight: 32,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {artist.bio}
+                            </Typography>
+                          )}
+
+                          {/* Action buttons */}
+                          <Box sx={{ width: '100%', mt: 'auto', pt: 1 }}>
+                            {isFollowing ? (
+                              <Button
+                                fullWidth
+                                variant="outlined"
+                                onClick={(e) => handleToggleFollowArtist(e, artist)}
+                                startIcon={<CheckIcon sx={{ fontSize: 18 }} />}
+                                sx={{
+                                  borderRadius: '12px',
+                                  py: 0.9,
+                                  fontWeight: 800,
+                                  fontSize: '0.82rem',
+                                  borderColor: 'rgba(16, 185, 129, 0.4)',
+                                  color: '#10b981',
+                                  bgcolor: 'rgba(16, 185, 129, 0.06)',
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    borderColor: 'error.main',
+                                    color: 'error.main',
+                                    bgcolor: 'rgba(239, 68, 68, 0.08)',
+                                    '& .MuiButton-startIcon': {
+                                      display: 'none',
+                                    },
+                                    '&::after': {
+                                      content: '"Bỏ theo dõi"',
+                                    },
+                                    '& span': {
+                                      display: 'none',
+                                    },
+                                  },
+                                }}
+                              >
+                                <span>Đang theo dõi</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={(e) => handleToggleFollowArtist(e, artist)}
+                                startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+                                sx={{
+                                  borderRadius: '12px',
+                                  py: 0.9,
+                                  fontWeight: 800,
+                                  fontSize: '0.82rem',
+                                  background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
+                                  color: '#fff',
+                                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)',
+                                    boxShadow: '0 6px 18px rgba(16, 185, 129, 0.45)',
+                                    transform: 'translateY(-1px)',
+                                  },
+                                }}
+                              >
+                                <span>Theo dõi</span>
+                              </Button>
+                            )}
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </Box>
           )}
         </>
       )}
@@ -1725,12 +2102,23 @@ function ClientLibrary() {
               </Tooltip>
             </Stack>
             
-            <Stack direction="row" spacing={1.5} sx={{ overflowX: 'auto', pb: 1, minHeight: 66 }}>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              sx={{
+                overflowX: 'auto',
+                pb: 1,
+                minHeight: 66,
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x',
+              }}
+            >
               {currentPresets.map((preset, i) => (
                 <Box
                   key={preset.id || i}
                   onClick={() => !playlistSaving && handleSelectPreset(preset)}
                   sx={{
+                    flexShrink: 0,
                     width: 58,
                     height: 58,
                     borderRadius: '10px',

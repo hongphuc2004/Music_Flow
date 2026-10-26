@@ -18,6 +18,8 @@ export const artistApi = {
   getAnalyticsTimeseries: (params) => api.get('/artist/analytics/timeseries', { params }),
   getTopSongs: (params) => api.get('/artist/analytics/top-songs', { params }),
   getDiscoverySources: (params) => api.get('/artist/analytics/discovery-sources', { params }),
+  getMyFollowers: (params) => api.get('/artist/me/followers', { params }),
+  getFollowers: (artistId, params) => api.get(`/artist/${artistId}/followers`, { params }),
 
   // 📝 Lyrics & LRC Management Module
   getSongLyrics: (songId) => api.get(`/artist/songs/${songId}/lyrics`),

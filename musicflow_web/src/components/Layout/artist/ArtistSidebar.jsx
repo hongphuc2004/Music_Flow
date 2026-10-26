@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
@@ -30,6 +30,7 @@ import {
 import useAppToast from '../../common/js/useAppToast';
 import { logout } from '../../../services/api';
 import { preloadRoute } from '../../../utils/routePreload';
+import { AccountSwitcherMenu } from '../client/AccountSwitcherMenu';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -58,12 +59,15 @@ function ArtistSidebar({
   const isDark = theme.palette.mode === 'dark';
   const [artistName, setArtistName] = useState(localStorage.getItem('artistName') || 'Artist');
   const [artistAvatar, setArtistAvatar] = useState(localStorage.getItem('artistAvatar') || '');
-  const artistInitial = useMemo(() => artistName.charAt(0).toUpperCase(), [artistName]);
+  const [artistEmail, setArtistEmail] = useState(
+    localStorage.getItem('artistEmail') || localStorage.getItem('email') || ''
+  );
 
   useEffect(() => {
     const syncArtist = () => {
       setArtistName(localStorage.getItem('artistName') || 'Artist');
       setArtistAvatar(localStorage.getItem('artistAvatar') || '');
+      setArtistEmail(localStorage.getItem('artistEmail') || localStorage.getItem('email') || '');
     };
 
     window.addEventListener('artist-profile-updated', syncArtist);
@@ -300,49 +304,17 @@ function ArtistSidebar({
         ))}
       </Box>
 
-      {/* Footer Area with profile info and logout inline */}
+      {/* Footer Area with Lucian UX/UI Prompt #037 Account Switcher Menu */}
       <Stack spacing={1.5} sx={{ p: collapsed ? 1 : 2, mt: 'auto' }}>
-        <Tooltip title={collapsed ? artistName : ''} placement="right" arrow>
-          <Box
-            onClick={collapsed ? () => startTransition(() => navigate('/artist/profile')) : undefined}
-            sx={{
-              p: collapsed ? 0.75 : 1.25,
-              borderRadius: 3.5,
-              bgcolor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: collapsed ? 0 : 1.25,
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              cursor: collapsed ? 'pointer' : 'default',
-            }}
-          >
-            <Avatar src={artistAvatar} sx={{ width: 36, height: 36, bgcolor: '#0ea5e9', fontSize: 15, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
-              {artistInitial}
-            </Avatar>
-            <Box sx={{ minWidth: 0, flexGrow: 1, display: collapsed ? 'none' : 'block' }}>
-              <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#fff' : 'text.primary', fontSize: 13 }} noWrap>
-                {artistName}
-              </Typography>
-              <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'text.secondary', display: 'block', fontSize: 10 }} noWrap>
-                Nghệ sĩ
-              </Typography>
-            </Box>
-            {!collapsed && (
-              <IconButton
-                onClick={handleLogout}
-                size="small"
-                sx={{
-                  color: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
-                  '&:hover': { color: '#ef4444', bgcolor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.06)' },
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <LogoutIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-        </Tooltip>
+        <AccountSwitcherMenu
+          userName={artistName}
+          userEmail={artistEmail}
+          userAvatar={artistAvatar}
+          userRole="artist"
+          collapsed={collapsed}
+          onLogout={handleLogout}
+          onNavigate={(path) => startTransition(() => navigate(path))}
+        />
       </Stack>
     </Stack>
   );

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, forwardRef } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import {
   Alert,
   Avatar,
@@ -70,6 +71,10 @@ const Transition = forwardRef(function Transition(props, ref) {
 
 function ArtistSong() {
   const { showToast, updateToast } = useAppToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const editSongIdParam = searchParams.get('editSongId') || location.state?.editSongId;
+
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -207,6 +212,17 @@ function ArtistSong() {
     setCreateDialogOpen(true);
     setError(null);
   };
+
+  useEffect(() => {
+    if (!editSongIdParam || !songs.length) return;
+    const target = songs.find((s) => s._id === editSongIdParam);
+    if (target) {
+      openEditDialog(target);
+      const newParams = new URLSearchParams(window.location.search);
+      newParams.delete('editSongId');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [editSongIdParam, songs, setSearchParams]);
 
   const handleCreateSong = async () => {
     if (!formData.title.trim()) {

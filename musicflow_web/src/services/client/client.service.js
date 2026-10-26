@@ -75,6 +75,8 @@ export const clientArtistApi = {
   getFollowStatus: (id) => cachedGet(`/artist/${id}/follow-status`, {}, 20000),
   toggleFollow: (id) => api.post(`/artist/${id}/follow`),
   getBatchFollowStatus: (artistIds) => api.post('/artist/follow-statuses', { artistIds }),
+  getFollowing: (params) => api.get('/artist/me/following', { params }),
+  getFollowers: (artistId, params) => api.get(`/artist/${artistId}/followers`, { params }),
 };
 
 // Client AI API

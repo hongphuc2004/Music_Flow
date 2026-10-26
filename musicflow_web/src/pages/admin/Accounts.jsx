@@ -996,10 +996,10 @@ function Accounts() {
                       noWrap
                       sx={{ fontSize: '0.66rem', letterSpacing: 0.3, width: '100%', textAlign: 'center' }}
                     >
-                      Đã Dùng 24h
+                      Đã Dùng Hôm Nay
                     </Typography>
                     <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#60a5fa', mt: 0.5, lineHeight: 1.2 }}>
-                      {aiQuotaDialog.info?.used24h ?? 0} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
+                      {(aiQuotaDialog.info?.usedToday ?? aiQuotaDialog.info?.used24h ?? 0)} <Typography component="span" variant="caption" fontWeight={700}>lượt</Typography>
                     </Typography>
                   </Paper>
                 </Grid>
@@ -1066,7 +1066,7 @@ function Accounts() {
                       Hạn Mức Tổng
                     </Typography>
                     <Typography variant="h6" fontWeight={900} noWrap sx={{ color: '#fbbf24', mt: 0.5, lineHeight: 1.2 }}>
-                      {aiQuotaDialog.info?.effectiveLimit ?? 5} <Typography component="span" variant="caption" fontWeight={700}>/24h</Typography>
+                      {aiQuotaDialog.info?.effectiveLimit ?? 5} <Typography component="span" variant="caption" fontWeight={700}>/ngày</Typography>
                     </Typography>
                   </Paper>
                 </Grid>
@@ -1101,7 +1101,7 @@ function Accounts() {
                       value={aiQuotaDialog.customAiLimit}
                       onChange={(e) => setAiQuotaDialog((prev) => ({ ...prev, customAiLimit: e.target.value }))}
                       InputProps={{
-                        endAdornment: <InputAdornment position="end">lượt / 24h</InputAdornment>,
+                        endAdornment: <InputAdornment position="end">lượt / ngày</InputAdornment>,
                         sx: {
                           borderRadius: 1.5,
                           fontWeight: 700,
@@ -1111,7 +1111,7 @@ function Accounts() {
                       }}
                     />
                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: 11 }}>
-                      💡 Ví dụ nhập 50: User sẽ có 50 lượt/24h thay vì hạn mức mặc định của gói ({aiQuotaDialog.info?.tierLimit ?? 3} lượt).
+                      💡 Ví dụ nhập 50: User sẽ có 50 lượt/ngày thay vì hạn mức mặc định của gói ({aiQuotaDialog.info?.tierLimit ?? 3} lượt).
                     </Typography>
                   </Box>
 

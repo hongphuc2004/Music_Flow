@@ -105,12 +105,14 @@ function AccountLogin() {
           const res = await api.post('/auth/google', {
             credential: response.credential,
           });
-          const { token, user } = res.data;
+          const { token, user, refreshToken } = res.data;
           setAccessToken(token);
+          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
           localStorage.setItem('role', user.role);
           localStorage.setItem('userName', user.name || 'Listener');
           localStorage.setItem('email', user.email || '');
           localStorage.setItem('userId', user._id || '');
+          if (user.avatar) localStorage.setItem('userAvatar', user.avatar);
           notifyClientSessionChanged();
           navigate('/');
         } catch (err) {
@@ -151,12 +153,14 @@ function AccountLogin() {
               credential: accessToken,
               tokenType: 'access_token',
             });
-            const { token, user } = res.data;
+            const { token, user, refreshToken } = res.data;
             setAccessToken(token);
+            if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
             localStorage.setItem('role', user.role);
             localStorage.setItem('userName', user.name || 'Listener');
             localStorage.setItem('email', user.email || '');
             localStorage.setItem('userId', user._id || '');
+            if (user.avatar) localStorage.setItem('userAvatar', user.avatar);
             notifyClientSessionChanged();
             navigate('/');
           } catch (err) {
@@ -180,8 +184,9 @@ function AccountLogin() {
     setError('');
     try {
       const res = await api.post('/auth/login', formData);
-      const { token, user, artist, isArtist } = res.data;
+      const { token, user, artist, isArtist, refreshToken } = res.data;
       setAccessToken(token);
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('role', user.role);
       if (user.role === 'artist' || isArtist) {
         syncArtistSession(artist || user);
@@ -191,6 +196,7 @@ function AccountLogin() {
       localStorage.setItem('userName', user.name || 'Listener');
       localStorage.setItem('email', user.email || '');
       localStorage.setItem('userId', user._id || '');
+      if (user.avatar) localStorage.setItem('userAvatar', user.avatar);
       notifyClientSessionChanged();
       if (user.role === 'user') {
         navigate('/');

@@ -38,6 +38,7 @@ import useClientSession from '../../../hooks/useClientSession';
 import { preloadRoute } from '../../../utils/routePreload';
 import { logout } from '../../../services/api';
 import ClientSidebarPremiumBanner from './ClientSidebarPremiumBanner';
+import { AccountSwitcherMenu } from './AccountSwitcherMenu';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 76;
@@ -75,7 +76,6 @@ function ClientSidebar({
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { isLoggedIn, userName, userAvatar } = useClientSession();
-  const userInitial = (userName || 'U').charAt(0).toUpperCase();
 
   const handleNavigate = (path) => {
     const privatePaths = ['/library', '/profile', '/ai-mood', '/favorites'];
@@ -413,47 +413,17 @@ function ClientSidebar({
           </Paper>
         )}
 
-        {/* User Account Section */}
+        {/* User Account Section - Lucian UX/UI Prompt #037 Account Switcher Menu */}
         {isLoggedIn ? (
-          <Tooltip title={collapsed ? userName : ''} placement="right" arrow>
-          <Box
-            onClick={collapsed ? () => handleNavigate('/profile') : undefined}
-            sx={{
-              p: collapsed ? 0.75 : 1.25,
-              borderRadius: 3.5,
-              bgcolor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: collapsed ? 0 : 1.25,
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              cursor: collapsed ? 'pointer' : 'default',
-            }}
-          >
-            <Avatar src={isLoggedIn && userAvatar ? userAvatar : undefined} sx={{ width: 36, height: 36, bgcolor: '#6c63ff', fontSize: 15, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
-              {userInitial}
-            </Avatar>
-            <Box sx={{ minWidth: 0, flexGrow: 1, display: collapsed ? 'none' : 'block' }}>
-              <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#fff' : 'text.primary', fontSize: 13 }} noWrap>
-                {userName}
-              </Typography>
-              <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'text.secondary', display: 'block', fontSize: 10 }} noWrap>
-                Người nghe
-              </Typography>
-            </Box>
-            {!collapsed && <IconButton 
-              onClick={handleLogout} 
-              size="small" 
-              sx={{ 
-                color: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)', 
-                '&:hover': { color: '#ef4444', bgcolor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.06)' },
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <LogoutIcon fontSize="small" />
-            </IconButton>}
-          </Box>
-          </Tooltip>
+          <AccountSwitcherMenu
+            userName={userName}
+            userEmail={localStorage.getItem('userEmail') || localStorage.getItem('email') || ''}
+            userAvatar={userAvatar}
+            userRole={localStorage.getItem('role') || 'user'}
+            collapsed={collapsed}
+            onLogout={handleLogout}
+            onNavigate={handleNavigate}
+          />
         ) : (
           <Tooltip title={collapsed ? 'Đăng nhập' : ''} placement="right" arrow>
           <ListItemButton

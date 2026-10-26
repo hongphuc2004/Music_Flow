@@ -259,6 +259,31 @@
   object-fit: cover;
 }
 
+/* System Logo Avatar (.noti-item-av.system-logo) */
+.noti-item-av.system-logo {
+  background: radial-gradient(130% 130% at 50% 15%, rgba(108, 99, 255, 0.3) 0%, rgba(20, 23, 36, 0.95) 100%);
+  border: 1px solid rgba(108, 99, 255, 0.4);
+  box-shadow: 0 4px 14px rgba(108, 99, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.noti-item-av.system-logo img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 0;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+}
+
+[data-theme='light'] .noti-item-av.system-logo,
+.light .noti-item-av.system-logo {
+  background: radial-gradient(130% 130% at 50% 15%, rgba(108, 99, 255, 0.15) 0%, #FFFFFF 100%);
+  border-color: rgba(108, 99, 255, 0.28);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.12);
+}
+
 /* Mini Badge at Bottom-Right of Avatar (.u074-av em) */
 .noti-item-av-badge {
   position: absolute;

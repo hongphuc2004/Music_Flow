@@ -532,8 +532,10 @@ router.get("/users/:id/ai-quota", authMiddleware, requireAdmin, async (req, res)
           customAiLimit: user.customAiLimit,
           bonusAiQuota: user.bonusAiQuota || 0,
           effectiveLimit,
+          usedToday: effectiveLimit,
           used24h: effectiveLimit,
           remaining: 0,
+          resetTime: "00:00",
         };
       }
       throw err;

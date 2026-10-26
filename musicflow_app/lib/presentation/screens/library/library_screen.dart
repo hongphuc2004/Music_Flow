@@ -16,6 +16,8 @@ import '../library/your_uploads_screen.dart';
 import '../library/favorites_screen.dart';
 import '../library/playlists_screen.dart';
 import '../library/downloaded_songs_screen.dart';
+import '../library/following_screen.dart';
+import '../../../data/services/artist_api_service.dart';
 
 class LibraryScreen extends StatefulWidget {
   final Function(Song)? onSongTap;
@@ -49,6 +51,7 @@ class LibraryScreenState extends State<LibraryScreen> {
   List<Song> _favoriteSongs = [];
   int _uploadedSongsCount = 0;
   int _downloadedSongsCount = 0;
+  int _followingCount = 0;
 
   bool _isLoadingHistory = false;
   bool _isLoggedIn = false;
@@ -83,9 +86,27 @@ class LibraryScreenState extends State<LibraryScreen> {
         _loadFavorites(),
         _loadUploadedSongsCount(),
         _loadDownloadedSongsCount(),
+        _loadFollowingCount(),
       ]);
     } catch (e) {
       debugPrint('[LibraryScreen] _loadData error: $e');
+    }
+  }
+
+  Future<void> _loadFollowingCount() async {
+    if (!_isLoggedIn) {
+      if (mounted) setState(() => _followingCount = 0);
+      return;
+    }
+    try {
+      final list = await ArtistApiService.fetchFollowingArtists(limit: 100);
+      if (mounted) {
+        setState(() {
+          _followingCount = list.length;
+        });
+      }
+    } catch (e) {
+      debugPrint('[LibraryScreen] _loadFollowingCount error: $e');
     }
   }
 
@@ -122,6 +143,7 @@ class LibraryScreenState extends State<LibraryScreen> {
     _favoriteSongs = [];
     _uploadedSongsCount = 0;
     _downloadedSongsCount = 0;
+    _followingCount = 0;
   }
 
   Future<void> _loadPlaylists() async {
@@ -312,6 +334,13 @@ class LibraryScreenState extends State<LibraryScreen> {
         title: 'Playlists',
         subtitle: _playlists.isNotEmpty ? '${_playlists.length} playlist' : '0 playlist',
         onTap: _openPlaylists,
+      ),
+      _MenuData(
+        icon: Icons.how_to_reg_rounded,
+        color: const Color(0xFF10B981),
+        title: 'Đang theo dõi',
+        subtitle: _followingCount > 0 ? '$_followingCount nghệ sĩ' : '0 nghệ sĩ',
+        onTap: _openFollowing,
       ),
       _MenuData(
         icon: Icons.cloud_upload_rounded,
@@ -635,5 +664,17 @@ class LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
     ).then((_) => _loadDownloadedSongsCount());
+  }
+
+  void _openFollowing() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FollowingScreen(
+          onSongTap: widget.onSongTap,
+          onPlayAll: widget.onPlayAll,
+        ),
+      ),
+    ).then((_) => _loadFollowingCount());
   }
 }

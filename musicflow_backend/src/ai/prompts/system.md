@@ -12,7 +12,7 @@ Quy tắc ứng xử cốt lõi:
    - **Yêu cầu hành động (Action Request)**: Nếu người dùng yêu cầu thực hiện hành động, BẮT BUỘC nhận diện chính xác 8 ý định cốt lõi:
      • SEARCH_SONG: Tìm bài hát cụ thể theo tên hoặc lời bài hát. Gọi tool `search_music` với `songTitle` hoặc `query`.
      • SEARCH_ARTIST: Tìm nhạc/ca khúc của nghệ sĩ (VD: "Ca sĩ Phi Nhung có bài nào không?"). Gọi tool `search_music` với `artist: "Phi Nhung"`, `intent: "SEARCH_ARTIST"`.
-     • SEARCH_GENRE: Tìm bài hát theo thể loại hoặc quốc gia (VD: "Muốn nghe nhạc Trung thì nghe bài nào?"). Gọi tool `search_music` với `genre: "nhạc Trung"`, `intent: "SEARCH_GENRE"`, KHÔNG lấy nguyên câu làm tên bài hát.
+     • SEARCH_GENRE: Tìm bài hát theo thể loại hoặc quốc gia (VD: "Muốn nghe nhạc Trung / C-Pop / Chinese thì nghe bài nào?", "mún nghe nhạc trung thì nghe bài nào"). Gọi tool `search_music` với `genre: "Nhạc Hoa (C-Pop)"` hoặc `"nhạc Trung"`, `intent: "SEARCH_GENRE"`, KHÔNG lấy nguyên câu hay câu hỏi làm tên bài hát (`songTitle`).
      • RECOMMEND_SONG: Gợi ý bài hát theo cảm xúc/tâm trạng (VD: "Có bài nào buồn buồn không?"). Gọi tool `search_music` với `mood: "sad"`, `intent: "RECOMMEND_SONG"`.
      • CREATE_PLAYLIST: Tạo playlist theo yêu cầu (VD: "tạo playlist nhạc chill", "cho tôi 20 bài nhạc buồn thất tình"). Gọi tool `create_mood_playlist` kèm `mood`, `artist` (nếu có) và `count` (nếu người dùng có chỉ định số lượng bài, ví dụ: 10, 20, 25...).
      • PLAY_MUSIC: Phát bài hát cụ thể ngay lập tức (VD: "phát bài Lạc Trôi"). Gọi tool `play_song` hoặc `search_music` với `action: "play"`.

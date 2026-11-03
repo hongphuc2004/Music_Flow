@@ -686,12 +686,13 @@ function isLyricsSearchQuery(prompt = "") {
 function cleanSearchQuery(prompt = "") {
   let text = prompt.trim();
   let cleaned = text
-    .replace(/\b(tôi|mình|em|anh)?\s*(muốn|cần|hãy)?\s*(tìm|kiếm|cho tôi|mình muốn tìm|phát|bật|mở|nghe|có|cho nghe)\s*(1|một)?\s*(bài hát|bài|ca khúc|nhạc)?\s*(của|do)?\s*/gi, " ")
+    .replace(/\b(tôi|mình|em|anh)?\s*(muốn|mún|mun|cần|hãy)?\s*(tìm|kiếm|cho tôi|mình muốn tìm|phát|bật|mở|nghe|có|cho nghe)\s*(1|một)?\s*(bài hát|bài|ca khúc|nhạc)?\s*(của|do)?\s*/gi, " ")
     .replace(/\b(bài hát đó của|bài đó của|bài của|ca khúc của|nhạc của|của)\b/gi, " ")
     .replace(/\b(và tên bài hát đó có từ|và tên bài có từ|tên bài hát đó có từ|tên bài có từ|tên bài hát là|tên bài là|tên bài hát đó|tên bài đó)\b/gi, " ")
     .replace(/\b(mà tôi|mà mình|mà em|tôi|mình|em)?\s*(chỉ nhớ được|chỉ nhớ là|chỉ nhớ mỗi|chỉ nhớ|nhớ được|nhớ là)\s*(từ|chữ|đoạn|câu)?\b/gi, " ")
     .replace(/\b(của tên bài hát đó thôi|của tên bài hát|trong tên bài hát|trong tên bài|của bài hát đó|trong bài hát đó|của bài đó|đó thôi|thôi|nha|nhé|đi|giúp mình|giúp tôi)\b/gi, " ")
     .replace(/\b(có chữ|có từ|tên là|tên|đoạn|chứa từ|chứa chữ|từ khóa|từ|chữ)\b/gi, " ")
+    .replace(/\b(thì\s+)?(nghe|phát|bật|mở)\s*(bài\s+)?(nào|gì|sao|đây|nè|nào hay|gì hay)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
   return cleaned || text;
@@ -908,11 +909,11 @@ class AssistantService {
     const searchService = require("./search.service");
     const aiIntent = require("./aiIntent.service");
 
-    const intent = intentData.intent || params.intent || aiIntent.INTENTS.RECOMMEND_SONG;
+    let intent = intentData.intent || params.intent || aiIntent.INTENTS.RECOMMEND_SONG;
     const action = intentData.action || params.action || "search";
     const songTitle = intentData.songTitle || params.songTitle || null;
     const artist = intentData.artist || intentData.artistName || params.artist || params.artistName || null;
-    const genre = intentData.genre || params.genre || null;
+    let genre = intentData.genre || params.genre || null;
     const mood = intentData.mood || params.mood || null;
     const query = intentData.query || params.query || cleanPrompt;
     const index = intentData.index || params.index || params.targetIndex || null;
@@ -920,6 +921,17 @@ class AssistantService {
     const isLyrics = intentData.isLyrics ?? params.isLyrics ?? false;
     const lyricsSnippet = intentData.lyricsSnippet || params.lyricsSnippet || null;
     const count = intentData.count || params.count || null;
+
+    // Proactive Genre Resolution: If genre is not provided or if songTitle/query actually refers to a genre, resolve it
+    if (!genre) {
+      const resolvedGenre = aiIntent.resolveGenreFromPrompt(songTitle || query || cleanPrompt);
+      if (resolvedGenre) {
+        genre = resolvedGenre.topicName;
+        if (intent === aiIntent.INTENTS.SEARCH_SONG || intent === aiIntent.INTENTS.RECOMMEND_SONG) {
+          intent = aiIntent.INTENTS.SEARCH_GENRE;
+        }
+      }
+    }
 
     // 1. FOLLOW_UP / ORDINAL / CONTEXTUAL REFERENCE
     if (intent === aiIntent.INTENTS.FOLLOW_UP || (referenceType && referenceType !== "none") || index) {
@@ -1263,7 +1275,7 @@ class AssistantService {
     mode = "chat",
   }) {
     const rawPrompt = typeof prompt === "string" ? prompt.trim() : "";
-    const cleanPrompt = rawPrompt;
+    const cleanPrompt = aiIntent.cleanText(rawPrompt) || rawPrompt;
     if (!cleanPrompt) {
       throw new Error("Prompt is empty");
     }

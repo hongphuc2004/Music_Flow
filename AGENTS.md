@@ -174,7 +174,7 @@ GEMINI_API_KEY=...
 
 ## AI DJ — Gemini Integration
 
-- Model: `gemini-2.5-flash` → fallback `gemini-2.0-flash` → `gemini-1.5-flash-latest`
+- Model: Tier-Based Routing (`geminiRouter.service.js`: basic, plus, premium - auto-routed per tier pool)
 - Mood map: sad, happy, chill, focus, energetic, romantic, sleep, party, angry
 - Max playlist: 20 bài
 - Logic: phân tích mood → match topic → rank song theo playCount/likeCount

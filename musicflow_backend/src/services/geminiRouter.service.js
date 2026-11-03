@@ -21,7 +21,6 @@ const MODEL_ROUTING_RPD_LIMITS = {
   "gemini-2.5-flash": 20,
   "gemini-3.6-flash": 20,
   "gemini-3-flash-preview": 20,
-  "gemini-2.5-flash-lite": 20,
 };
 
 // Model pools mapped strictly per MusicFlow subscription tier
@@ -31,13 +30,6 @@ const TIER_MODEL_POOLS = {
   basic: ["gemini-2.5-flash", "gemini-3.5-flash"],
 };
 
-// Safe fallback pool for offline/emergency fallback
-const SAFE_FALLBACK_POOL = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-1.5-flash-latest",
-  "gemini-1.5-pro-latest",
-];
 
 // Store outside src/ so nodemon does NOT watch it and restart the server on every Gemini model fetch
 const LAST_KNOWN_GOOD_PATH = path.join(__dirname, "../../data/last_known_good_models.json");
@@ -209,11 +201,16 @@ async function fetchModels() {
 }
 
 /**
- * Loads models from local file or safe hardcoded list, formatted as mock API response.
+ * Loads models from local file or tier pools if API cannot be reached, formatted as mock API response.
  */
 function loadFallbackPool() {
   const goodPool = loadLastKnownGoodPool();
-  const poolToUse = goodPool || SAFE_FALLBACK_POOL;
+  const allTierModels = [
+    ...TIER_MODEL_POOLS.premium,
+    ...TIER_MODEL_POOLS.plus,
+    ...TIER_MODEL_POOLS.basic,
+  ];
+  const poolToUse = goodPool || allTierModels;
   
   return poolToUse.map((name) => {
     const fullName = name.startsWith("models/") ? name : `models/${name}`;

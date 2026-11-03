@@ -35,12 +35,16 @@ const INTENTS = {
  */
 const GENRE_TOPIC_MAP = {
   "Nhạc Hoa (C-Pop)": [
-    "trung", "trung quoc", "nhac trung", "nhac hoa", "hoa", "c-pop", "cpop",
-    "hoa ngu", "co phong", "cổ phong", "tieng trung", "c pop", "nhac hoa ngu"
+    "trung", "trung quoc", "trung quốc", "nhac trung", "nhạc trung", "nhac hoa", "nhạc hoa", "hoa", "c-pop", "cpop",
+    "hoa ngu", "hoa ngữ", "co phong", "cổ phong", "tieng trung", "tiếng trung", "c pop", "nhac hoa ngu", "nhạc hoa ngữ",
+    "chinese", "chinise", "music chinese", "nhac chinese", "nhac chinise", "nhạc chinese", "nhạc chinise"
+  ],
+  "Nhạc Hàn (K-Pop)": [
+    "k-pop", "kpop", "k pop", "nhac han", "nhạc hàn", "han quoc", "hàn quốc", "tieng han", "tiếng hàn", "korean", "music korean"
   ],
   "Nhạc Âu Mỹ (US-UK)": [
     "au my", "âu mỹ", "us-uk", "us uk", "usuk", "tieng anh", "tiếng anh",
-    "nhac anh", "nhac tay", "nhạc tây", "ngoai quoc", "ngoại quốc", "english", "pop au my"
+    "nhac anh", "nhac tay", "nhạc tây", "ngoai quoc", "ngoại quốc", "english", "pop au my", "music english", "music us-uk"
   ],
   "V-Pop": [
     "viet", "việt", "viet nam", "việt nam", "v-pop", "vpop", "nhac tre",
@@ -87,6 +91,29 @@ const GENRE_TOPIC_MAP = {
   "Party": [
     "party", "tiec", "tiệc", "tiec tung", "tiệc tùng", "quay banh noc"
   ],
+};
+
+/**
+ * DB Topic Aliases Map
+ * Ensures resilient lookup across different topic seed names in MongoDB
+ */
+const TOPIC_DB_ALIASES = {
+  "Nhạc Hoa (C-Pop)": ["Nhạc Hoa (C-Pop)", "Music Chinese", "Nhạc Hoa", "C-Pop", "cpop", "Nhạc Trung", "Chinese", "Chinise", "nation-cpop"],
+  "Nhạc Âu Mỹ (US-UK)": ["Nhạc Âu Mỹ (US-UK)", "US-UK", "usuk", "Nhạc Âu Mỹ", "Pop Âu Mỹ", "English", "nation-usuk"],
+  "V-Pop": ["V-Pop", "vpop", "Việt Nam", "Nhạc Trẻ", "Nhạc Việt", "nation-vn"],
+  "Việt Nam": ["Việt Nam", "V-Pop", "vpop", "Nhạc Việt", "nation-vn"],
+  "Nhạc Hàn (K-Pop)": ["Nhạc Hàn (K-Pop)", "K-Pop", "kpop", "Nhạc Hàn", "Korean", "nation-kpop"],
+  "Lofi": ["Lofi", "Lo-Fi", "lo fi"],
+  "EDM": ["EDM", "Dance", "Remix", "Electronic", "Vinahouse"],
+  "Chill": ["Chill", "Thư Giãn"],
+  "Sad": ["Sad", "Buồn", "Tâm Trạng"],
+  "Rock": ["Rock", "Nhạc Rock"],
+  "Hip Hop & Rap": ["Hip Hop & Rap", "Rap", "Hip Hop"],
+  "Piano": ["Piano", "Không Lời"],
+  "Study": ["Study", "Học Tập"],
+  "Sleep": ["Sleep", "Ngủ Ngon"],
+  "WorkOut": ["WorkOut", "Gym"],
+  "Party": ["Party", "Tiệc Tùng"],
 };
 
 /**
@@ -154,6 +181,10 @@ function cleanText(text = "") {
        .replace(/\b(cx)\b/gi, "cũng")
        .replace(/\b(ntn)\b/gi, "như thế nào")
        .replace(/\b(thui)\b/gi, "thôi")
+       .replace(/\b(mún|mun)\b/gi, "muốn")
+       .replace(/\b(mik|mk)\b/gi, "mình")
+       .replace(/\b(chx)\b/gi, "chưa")
+       .replace(/\b(j)\b/gi, "gì")
        .replace(/\s+/g, " ");
 
   return s;
@@ -531,6 +562,7 @@ function analyzeIntent(prompt = "", context = {}) {
 module.exports = {
   INTENTS,
   GENRE_TOPIC_MAP,
+  TOPIC_DB_ALIASES,
   ARTIST_ALIASES,
   cleanText,
   resolveGenreFromPrompt,

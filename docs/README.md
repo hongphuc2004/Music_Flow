@@ -15,6 +15,7 @@
 - [API Reference](./backend/api.md) — Toàn bộ 20 nhóm REST endpoints chi tiết.
 - [Authentication Flow](./backend/auth.md) — Quy trình xác thực JWT, Google OAuth, Refresh token.
 - [AI Architecture & Suite](./backend/ai.md) — AI Orchestrator, Gemini Multi-model, Mistral Enricher, Auto-Tagging & Moderation.
+- [Báo cáo Kỹ thuật Tích hợp AI](./ai_integration_report.md) — Phân tích chuyên sâu kiến trúc AI Production-grade, đối chiếu với ngộ nhận "API wrapper".
 - [Hệ thống Quảng cáo (Ads System)](./advertisement_system.md) — Kiến trúc Freemium, Audio Ads xen kẽ, Dynamic Banner, Tracking & Admin Portal.
 
 ### 3. Mobile App (`musicflow_app`)

@@ -21,10 +21,10 @@ MusicFlow sở hữu kiến trúc AI đa mô hình kết hợp (**Google Gemini 
           │                                                │
           └───────────────────────┬────────────────────────┘
                                   ▼
-                       [Gemini Multi-Model Router]
-                      - gemini-2.5-flash
-                      - gemini-2.0-flash
-                      - gemini-1.5-flash-latest
+                       [Gemini Tier-Based Model Router]
+                      - Premium: gemini-3.5-flash-lite, 3.8-flash, 3.1-flash-lite
+                      - Plus:    gemini-3.7-flash, 3.6-flash, 3-flash-preview
+                      - Basic:   gemini-2.5-flash, 3.5-flash
                                   │
           ┌───────────────────────┼────────────────────────┐
           ▼                       ▼                        ▼
@@ -78,15 +78,16 @@ MusicFlow sở hữu kiến trúc AI đa mô hình kết hợp (**Google Gemini 
 
 ---
 
-## 3. Danh sách Model Gemini Fallback Chain
+## 3. Kiến trúc Phân tầng Mô hình (Tier-Based Model Routing) & Fallback
 
 ```js
-const MODELS_TO_TRY = [
-  process.env.GEMINI_MODEL,    // Biến môi trường ưu tiên (mặc định gemini-2.5-flash)
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash-latest"
-];
+// Định tuyến model theo gói cước (kết hợp theo dõi RPD: 500 RPD cho flash-lite, 20 RPD cho flash)
+const TIER_MODEL_POOLS = {
+  premium: ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-flash-lite"],
+  plus: ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3-flash-preview"],
+  basic: ["gemini-2.5-flash", "gemini-3.5-flash"],
+};
+
 ```
 
-Mọi yêu cầu đều được bọc trong vòng thử nghiệm tuần tự qua danh sách model, đảm bảo dịch vụ luôn duy trì tính sẵn sàng cao ngay cả khi Google áp dụng giới hạn quota trên một model cụ thể.
+Mọi yêu cầu đều được điều phối tuần tự qua pool model của gói cước tương ứng. Khi gặp mã lỗi 404 (model deprecated), router tự động loại bỏ (prune); khi gặp 429/503 (rate limit/server error), router tự động chuyển vùng sang model kế tiếp mà không làm gián đoạn trải nghiệm người dùng.

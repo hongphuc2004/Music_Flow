@@ -19,7 +19,7 @@ const geminiRouter = require("./geminiRouter.service");
 const geminiEmbedding = require("./geminiEmbedding.service");
 const { buildSearchRegexes, normalizeText, extractCleanLyrics, escapeRegex } = require("../utils/string.util");
 const { findArtistBySlugOrId } = require("../utils/artist.util");
-const { resolveGenreFromPrompt, ARTIST_ALIASES } = require("./aiIntent.service");
+const { resolveGenreFromPrompt, ARTIST_ALIASES, TOPIC_DB_ALIASES } = require("./aiIntent.service");
 const { SONG_PUBLIC_SELECT, ARTIST_POPULATE, TOPIC_POPULATE } = require("../repositories/song.repository");
 
 // ---------------------------------------------------------------------------
@@ -438,7 +438,11 @@ const searchSongs = async ({
       const resolvedGenre = resolveGenreFromPrompt(rawQuery);
 
       if (resolvedGenre) {
-        const gTopic = allTopics.find((t) => t.name === resolvedGenre.topicName);
+        const aliases = (TOPIC_DB_ALIASES && TOPIC_DB_ALIASES[resolvedGenre.topicName]) || [resolvedGenre.topicName];
+        const gTopic = allTopics.find((t) =>
+          aliases.some((a) => t.name && t.name.toLowerCase() === a.toLowerCase()) ||
+          t.name === resolvedGenre.topicName
+        );
         if (gTopic) matchedTopics.push(gTopic);
       }
 
@@ -526,7 +530,13 @@ const searchSongs = async ({
   if (genre) {
     const resolved = resolveGenreFromPrompt(genre);
     const gName = resolved ? resolved.topicName : genre;
-    const gTopic = await Topic.findOne({ name: { $regex: new RegExp(`^${escapeRegex(gName)}$`, "i") } });
+    const aliases = (TOPIC_DB_ALIASES && TOPIC_DB_ALIASES[gName]) || [gName];
+    const gTopic = await Topic.findOne({
+      $or: [
+        { name: { $in: aliases.map((a) => new RegExp(`^${escapeRegex(a)}$`, "i")) } },
+        { slug: { $in: aliases.map((a) => a.toLowerCase().replace(/[\s()]/g, "-").replace(/-+/g, "-")) } },
+      ],
+    });
     if (gTopic) {
       conditions.push({ topicIds: gTopic._id });
     }
